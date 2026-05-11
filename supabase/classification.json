@@ -64,6 +64,18 @@
     "public.cancellations.matched_to_correction_id": {},
     "public.cancellations.matched_at": {},
     "public.cancellations.created_at": {},
-    "public.cancellations.created_by": {}
+    "public.cancellations.created_by": {},
+    "public.data_field_definitions.id": {},
+    "public.data_field_definitions.table_schema": {},
+    "public.data_field_definitions.table_name": {},
+    "public.data_field_definitions.column_name": {},
+    "public.data_field_definitions.category": {},
+    "public.data_field_definitions.pii_level": {},
+    "public.data_field_definitions.retention_type": {},
+    "public.data_field_definitions.retention_value": {},
+    "public.data_field_definitions.match_role": {},
+    "public.data_field_definitions.purpose": {},
+    "public.data_field_definitions.created_at": {},
+    "public.data_field_definitions.updated_at": {}
   }
 }

@@ -319,6 +319,55 @@ genkender og lader transition igennem.
 Eksempel-template dokumenteres her, bygges ved sales-tabel i lag E.
 Generic helper-funktion bygges først ved 3+ brugere (rule of three).
 
+## Klassifikations-systemet (lag D1)
+
+`public.data_field_definitions` er registry over hvad hver kolonne pr. kilde
+er klassificeret som. Lag D6 importerer eksisterende `classification.json`
+hertil og flipper migration-gate til Phase 2 (strict).
+
+### Skema
+
+| Felt                                          | Type               | Beskrivelse                                                               |
+| --------------------------------------------- | ------------------ | ------------------------------------------------------------------------- |
+| `id`                                          | uuid PK            |                                                                           |
+| `table_schema` + `table_name` + `column_name` | UNIQUE             | Kolonne-pr-kilde                                                          |
+| `category`                                    | enum (CHECK)       | `operationel` / `konfiguration` / `master_data` / `audit` / `raw_payload` |
+| `pii_level`                                   | enum (CHECK)       | `none` / `indirect` / `direct`                                            |
+| `retention_type`                              | enum (CHECK, NULL) | `time_based` / `event_based` / `legal` / `manual`                         |
+| `retention_value`                             | jsonb (NULL)       | Struktur valideret pr. type, se nedenfor                                  |
+| `match_role`                                  | text (NULL)        | Per kolonne-per-kilde — fri tekst nu, strammere i lag E                   |
+| `purpose`                                     | text NOT NULL      | Fri tekst, audit-kontekst                                                 |
+
+### retention_value-strukturer
+
+Valideret via BEFORE INSERT/UPDATE-trigger:
+
+| retention_type | retention_value                                                      |
+| -------------- | -------------------------------------------------------------------- |
+| `time_based`   | `{"max_days": positive integer}`                                     |
+| `event_based`  | `{"event": non-empty string, "days_after": non-negative integer}`    |
+| `legal`        | `{"max_days": positive integer}` — lovgivning er fast MAKS           |
+| `manual`       | `{"max_days": positive integer}` ELLER `{"event": non-empty string}` |
+
+### Mathias-principper håndhævet
+
+- **Kolonne-pr-kilde** via UNIQUE(schema, table, column). Eesy.customer_id og TDC.customer_id har hver deres række (forskellige retention-aftaler)
+- **Lovgivning er fast MAKS** — `retention_type='legal'` valideres som positive integer max_days, ingen forlængelse-mekanisme i skema
+- **Formål påkrævet** via NOT NULL + length(trim) > 0 CHECK
+- **Kategorier låst** som CHECK enum (Mathias' U3-afgørelse)
+
+### RPCs
+
+- `data_field_definition_upsert(...)` — admin-only via `is_admin()` (C1-stub afviser indtil D4)
+- `data_field_definition_delete(schema, table, column, change_reason)` — admin-only
+
+Begge kræver `change_reason` for audit-trail.
+
+### Read-adgang
+
+Authenticated kan SELECT direkte via policy (metadata, ikke selv PII).
+Lag D opdaterer policy til at konsultere permission-system når det lander.
+
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
