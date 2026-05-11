@@ -1,0 +1,8 @@
+node_modules
+dist
+.turbo
+pnpm-lock.yaml
+
+# Supabase CLI artifacts
+supabase/.temp/
+supabase/.branches/
