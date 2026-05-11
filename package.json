@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "supabase:link": "supabase link --project-ref imtxvrymaqbgcvsarlib",
     "types:generate": "supabase gen types typescript --linked | prettier --parser typescript > packages/types/src/database.ts",
-    "types:check": "supabase gen types typescript --linked | prettier --parser typescript | diff -u packages/types/src/database.ts -",
+    "types:check": "bash scripts/types-check.sh",
     "schema:pull": "supabase db dump --linked --schema public --file supabase/schema.sql",
     "schema:check": "bash scripts/schema-check.sh",
     "prepare": "husky"
