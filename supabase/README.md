@@ -92,6 +92,55 @@ Ikke via direkte service-role-API-kald.
 Stubs returnerer safe defaults så feature-tabeller i lag D kan reference
 dem i policies uden circular dependency.
 
+## Audit-template (lag C2)
+
+Alle feature-tabeller får audit via `public.stork_audit()`-trigger.
+Audit-log er append-only, immutable, og kun læselig via SECURITY
+DEFINER RPC med permission-check.
+
+**Attach trigger til ny tabel:**
+
+```sql
+CREATE TRIGGER example_audit
+  AFTER INSERT OR UPDATE OR DELETE ON public.example
+  FOR EACH ROW EXECUTE FUNCTION public.stork_audit();
+```
+
+**Session-vars callere kan sætte for at berige audit-rækker:**
+
+```sql
+SET LOCAL stork.source_type = 'cron';        -- override auto-detection
+SET LOCAL stork.change_reason = 'GDPR-anonymisering, request #42';
+SET LOCAL stork.schema_version = '20260511152603';
+-- ...mutationen her
+```
+
+`source_type` auto-detekteres ellers via:
+`pg_trigger_depth()` → `current_user` → `auth.uid()` → fallback.
+6 mulige værdier: `manual / cron / webhook / trigger_cascade /
+service_role / unknown`.
+
+**Læs audit:**
+
+```sql
+SELECT * FROM public.audit_log_read(
+  p_table_name => 'pay_periods',
+  p_record_id => '<id>',
+  p_limit => 50
+);
+```
+
+Kalder skal være admin (per `public.is_admin()`-helper). C1-stub
+returnerer false → ingen kan læse indtil lag D låser op.
+
+**PII-filter-hook:** `public.audit_filter_values(schema, table, jsonb)`.
+C2-stub returnerer values uændret. Lag D omdefinerer til at hashe
+kolonner med `pii_level=direct` inden de gemmes.
+
+**Audit-failure-policy:** hvis `stork_audit()` RAISE'r, bobler det op
+til main transaction → main rulles tilbage. Compliance kræver vores
+adgangslog, så "audit failure = transaction failure" er bevidst.
+
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
