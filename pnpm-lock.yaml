@@ -168,9 +168,9 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
-      '@eslint/js':
-        specifier: ^9.32.0
-        version: 9.39.4
+      '@stork/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.19(tailwindcss@3.4.19)
@@ -198,15 +198,6 @@ importers:
       eslint:
         specifier: ^9.32.0
         version: 9.39.4(jiti@1.21.7)
-      eslint-plugin-react-hooks:
-        specifier: ^5.2.0
-        version: 5.2.0(eslint@9.39.4(jiti@1.21.7))
-      eslint-plugin-react-refresh:
-        specifier: ^0.4.20
-        version: 0.4.26(eslint@9.39.4(jiti@1.21.7))
-      globals:
-        specifier: ^15.15.0
-        version: 15.15.0
       jsdom:
         specifier: ^20.0.3
         version: 20.0.3
@@ -216,9 +207,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19
-      typescript-eslint:
-        specifier: ^8.38.0
-        version: 8.59.2(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
       vite:
         specifier: ^5.4.19
         version: 5.4.21(@types/node@22.19.18)
@@ -228,7 +216,26 @@ importers:
 
   packages/core: {}
 
-  packages/eslint-config: {}
+  packages/eslint-config:
+    dependencies:
+      '@eslint/js':
+        specifier: ^9.32.0
+        version: 9.39.4
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.4(jiti@1.21.7)
+      eslint-plugin-react-hooks:
+        specifier: ^5.2.0
+        version: 5.2.0(eslint@9.39.4(jiti@1.21.7))
+      eslint-plugin-react-refresh:
+        specifier: ^0.4.20
+        version: 0.4.26(eslint@9.39.4(jiti@1.21.7))
+      globals:
+        specifier: ^15.15.0
+        version: 15.15.0
+      typescript-eslint:
+        specifier: ^8.38.0
+        version: 8.59.2(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
 
   packages/types: {}
 
