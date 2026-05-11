@@ -1,0 +1,4 @@
+{
+  "$comment": "Klassifikations-registry for kolonner pr. tabel pr. schema. Phase 1 (lag B-D): nye kolonner uden indgang her giver ::warning::. Phase 2 (efter lag D): blokerer. Format-validering ankommer i lag D — i Phase 1 tæller eksistens af nøglen som 'klassificeret'.",
+  "columns": {}
+}

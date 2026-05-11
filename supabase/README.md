@@ -57,9 +57,40 @@ pnpm exec supabase status             # verificerer linket
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
-`<timestamp>_<beskrivelse>.sql`. Lag B introducerer migration-gate
-der validerer hver migration mod klassifikations-skemaet før den
-kan merges.
+`<timestamp>_<beskrivelse>.sql`.
+
+### Migration-gate
+
+`scripts/migration-gate.mjs` parser hver migration, finder kolonner
+fra `CREATE TABLE` og `ALTER TABLE ADD COLUMN`, og tjekker dem mod
+`supabase/classification.json`.
+
+**Phase 1 (lag B-D, default):** uklassificerede kolonner giver
+`::warning::` i CI men blokerer ikke merge.
+
+**Phase 2 (efter lag D):** samme tjek, men som `::error::` der
+fejler CI. Aktiveres via `MIGRATION_GATE_STRICT=true` env var i CI.
+
+```bash
+pnpm migration:check                           # Phase 1
+MIGRATION_GATE_STRICT=true pnpm migration:check # Phase 2 simulation
+```
+
+### Klassifikations-registry
+
+`supabase/classification.json` er Phase 1's enkle registry:
+
+```json
+{
+  "columns": {
+    "public.tablename.columnname": {}
+  }
+}
+```
+
+I Phase 1 tæller eksistens af nøglen som "klassificeret".
+Lag D introducerer skemaet (pii_level, retention_type osv.) som
+hver indgang skal opfylde, og flytter registryet til en DB-tabel.
 
 ## Database-typer + schema-snapshot
 

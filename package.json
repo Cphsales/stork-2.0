@@ -21,6 +21,7 @@
     "types:check": "bash scripts/types-check.sh",
     "schema:pull": "supabase db dump --linked --schema public --file supabase/schema.sql",
     "schema:check": "bash scripts/schema-check.sh",
+    "migration:check": "node scripts/migration-gate.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

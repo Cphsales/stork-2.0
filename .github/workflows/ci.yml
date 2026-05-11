@@ -52,6 +52,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Migration-gate (Phase 1)
+        run: pnpm migration:check
+
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
