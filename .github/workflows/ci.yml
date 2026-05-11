@@ -55,6 +55,9 @@ jobs:
       - name: Migration-gate (Phase 1)
         run: pnpm migration:check
 
+      - name: Fitness functions
+        run: pnpm fitness
+
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
