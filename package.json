@@ -16,6 +16,8 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "types:generate": "supabase gen types typescript --project-id imtxvrymaqbgcvsarlib | prettier --parser typescript > packages/types/src/database.ts",
+    "types:check": "supabase gen types typescript --project-id imtxvrymaqbgcvsarlib | prettier --parser typescript | diff -u packages/types/src/database.ts -",
     "prepare": "husky"
   },
   "devDependencies": {

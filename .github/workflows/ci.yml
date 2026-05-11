@@ -50,3 +50,16 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Types drift check
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -e
+          if pnpm types:check; then
+            echo "Types in sync with remote schema"
+          else
+            echo "::error::Generated types drift from committed packages/types/src/database.ts. Run 'pnpm types:generate' locally and commit."
+            exit 1
+          fi
