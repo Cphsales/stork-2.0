@@ -76,6 +76,16 @@
     "public.data_field_definitions.match_role": {},
     "public.data_field_definitions.purpose": {},
     "public.data_field_definitions.created_at": {},
-    "public.data_field_definitions.updated_at": {}
+    "public.data_field_definitions.updated_at": {},
+    "public.employees.id": {},
+    "public.employees.auth_user_id": {},
+    "public.employees.first_name": {},
+    "public.employees.last_name": {},
+    "public.employees.email": {},
+    "public.employees.hire_date": {},
+    "public.employees.termination_date": {},
+    "public.employees.anonymized_at": {},
+    "public.employees.created_at": {},
+    "public.employees.updated_at": {}
   }
 }
