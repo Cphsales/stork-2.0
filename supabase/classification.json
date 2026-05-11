@@ -101,6 +101,23 @@
     "public.role_page_permissions.can_edit": {},
     "public.role_page_permissions.scope": {},
     "public.role_page_permissions.created_at": {},
-    "public.role_page_permissions.updated_at": {}
+    "public.role_page_permissions.updated_at": {},
+    "public.clients.id": {},
+    "public.clients.name": {},
+    "public.clients.fields": {},
+    "public.clients.anonymized_at": {},
+    "public.clients.created_at": {},
+    "public.clients.updated_at": {},
+    "public.client_field_definitions.id": {},
+    "public.client_field_definitions.key": {},
+    "public.client_field_definitions.display_name": {},
+    "public.client_field_definitions.field_type": {},
+    "public.client_field_definitions.required": {},
+    "public.client_field_definitions.pii_level": {},
+    "public.client_field_definitions.match_role": {},
+    "public.client_field_definitions.display_order": {},
+    "public.client_field_definitions.is_active": {},
+    "public.client_field_definitions.created_at": {},
+    "public.client_field_definitions.updated_at": {}
   }
 }
