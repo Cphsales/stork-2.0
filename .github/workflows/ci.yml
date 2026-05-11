@@ -52,7 +52,9 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Migration-gate (Phase 1)
+      - name: Migration-gate (Phase 2 strict)
+        env:
+          MIGRATION_GATE_STRICT: "true"
         run: pnpm migration:check
 
       - name: Fitness functions
