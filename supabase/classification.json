@@ -86,6 +86,21 @@
     "public.employees.termination_date": {},
     "public.employees.anonymized_at": {},
     "public.employees.created_at": {},
-    "public.employees.updated_at": {}
+    "public.employees.updated_at": {},
+    "public.employees.role_id": {},
+    "public.roles.id": {},
+    "public.roles.name": {},
+    "public.roles.description": {},
+    "public.roles.created_at": {},
+    "public.roles.updated_at": {},
+    "public.role_page_permissions.id": {},
+    "public.role_page_permissions.role_id": {},
+    "public.role_page_permissions.page_key": {},
+    "public.role_page_permissions.tab_key": {},
+    "public.role_page_permissions.can_view": {},
+    "public.role_page_permissions.can_edit": {},
+    "public.role_page_permissions.scope": {},
+    "public.role_page_permissions.created_at": {},
+    "public.role_page_permissions.updated_at": {}
   }
 }
