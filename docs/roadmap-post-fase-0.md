@@ -324,6 +324,98 @@ pr. tabel.
 
 ---
 
+## 9. `clients` SELECT-policy — rolle-baseret read-adgang
+
+**Hvorfor punktet eksisterer:** D5's `clients_select`-policy er
+`USING (public.is_admin())` — pragmatisk start. Det betyder kun admins
+kan se klient-data via direkte PostgREST-SELECT. Sælgere skal også
+kunne se klienter (med scope-filtrering), men det er ikke implementeret.
+
+**Placering:** Lag F, sammen med `role_page_permissions`-UI.
+
+**Omfang (skitse):**
+
+- Definer page_key `clients` i `role_page_permissions` (UI tilføjer)
+- Erstat `clients_select`-policy med en helper-funktion fx
+  `is_authorized_for_clients()` der konsulterer
+  `role_page_permissions.page_key='clients'` + scope:
+  - scope `all` → adgang til alle clients
+  - scope `team` → adgang til clients tilknyttet eget team (kræver
+    teams-mapping fra lag E)
+  - scope `self` → adgang til clients tilknyttet egen `employee_id`
+    (kræver sales/opportunities-mapping fra lag E)
+- Policy: `is_admin() OR is_authorized_for_clients()`
+- Helper kan også bruges af RPC'er der returnerer filtreret data
+
+**Afhængigheder:** lag E (teams + sales/opportunities-mapping) skal
+være tilstrækkeligt langt til at understøtte scope='team' og 'self'.
+
+---
+
+## 10. `clients.fields` jsonb — filtreret read for ikke-admins
+
+**Hvorfor punktet eksisterer:** D5's `audit_filter_values()`
+client-special-case hasher `pii_level='direct'`-keys ved skrivning til
+`audit_log`. Men SELECT på `public.clients` returnerer `fields` i klar
+til den læser. Det er OK for admins (som er adgangskontrolleret via
+SELECT-policy), men når sælgere får read-adgang i pkt 9, skal direct-
+PII filtreres FØR jsonb returneres til dem.
+
+**Placering:** Lag F, sammen med pkt 9.
+
+**Omfang (skitse):**
+
+- Byg dedikeret read-RPC fx `clients_read(p_client_id uuid)` eller
+  `clients_list(p_filter jsonb)` der:
+  - Konsulterer current employee's permission (`is_admin()` eller
+    `is_authorized_for_clients()`)
+  - For ikke-admins: kald en parallel-funktion til
+    `audit_filter_values()` der hasher eller redacter
+    `pii_level='direct'`-keys i fields-jsonb baseret på
+    `client_field_definitions`
+  - Returnerer filtreret jsonb
+- Alternativ: byg en `clients_view`-VIEW med samme filtreringslogik;
+  RLS-policy på view'en bestemmer hvad ikke-admins kan SELECT
+- Direct PII filtreres KUN ved SELECT for ikke-admins; ved
+  audit-skrivning bevares D5's filter-logik for ALLE skrivninger
+
+**Risici hvis ikke håndteret:** sælgere ser direct-PII på klienter de
+ikke skulle se rå data om.
+
+---
+
+## 11. UI-validering af `clients.fields` før submit (lag F)
+
+**Hvorfor punktet eksisterer:** D5's `clients_validate_fields`-trigger
+er LENIENT default — den logger WARNING ved ukendte/inaktive keys men
+accepterer INSERT/UPDATE alligevel. Strict-mode toggle via session-var
+`stork.clients_fields_strict='true'` eksisterer men er ikke
+default-aktiveret.
+
+Hvis UI'en (lag F) ikke validerer felter mod
+`client_field_definitions` før submit, kan en typo eller forældet UI
+oprette client-rækker med felter der ikke matcher schema'et. LENIENT
+trigger accepterer dem; ingen får besked.
+
+**Placering:** Lag F, klient-edit-side.
+
+**Omfang (skitse):**
+
+- Hent aktive `client_field_definitions` (cached) ved page-load
+- UI viser kun felter der er `is_active=true`
+- Submit-validering:
+  - Required-felter er sat (matcher `required=true`)
+  - Field-types matcher (`email` skal være validt email,
+    `phone` skal være phone-format, etc.)
+  - Ingen ekstra keys ud over de aktive definitioner
+- DB-trigger forbliver LENIENT som sikkerhedsnet; UI er primær gate
+- Når UI-validering er stabil, kan stork.clients_fields_strict'true'
+  aktiveres globalt (D6-pattern) for at fange edge-cases
+
+**Afhængigheder:** lag F's clients-side bygges.
+
+---
+
 ## Roadmap-opsummering — afhængigheds-rækkefølge
 
 ```
@@ -331,6 +423,9 @@ D1.5 (seed) → D2 → D3 → D4 → D5 → D6 → lag E → lag F
                                               │
                                               ├─ UI-editor data_field_definitions  (pkt 1)
                                               ├─ UI-editor pay_period_settings     (pkt 7)
+                                              ├─ clients SELECT-policy udvidelse   (pkt 9)
+                                              ├─ clients.fields filtreret read     (pkt 10)
+                                              ├─ UI-validering af clients.fields   (pkt 11)
                                               │
                                               └─ Compliance-fase
                                                   ├─ is_compliance_officer()       (pkt 4)

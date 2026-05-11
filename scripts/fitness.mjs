@@ -9,6 +9,47 @@ import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", ".git", "coverage"]);
+const MIGRATIONS_DIR = "supabase/migrations";
+
+// D6: tabeller der eksisterede før D6's dedup-key-check landede.
+// Disse er master-tabeller / config-tabeller / audit-infrastruktur og har
+// ikke ingestion-flow der kræver dedup_key. Nye tabeller efter D6 skal
+// enten erklære dedup_key eller eksplicit opt-out med
+// `-- no-dedup-key: <reason>` i CREATE TABLE-blokken.
+const GRANDFATHERED_NO_DEDUP_KEY = new Set([
+  "public.audit_log",
+  "public.cron_heartbeats",
+  "public.pay_period_settings",
+  "public.pay_periods",
+  "public.commission_snapshots",
+  "public.salary_corrections",
+  "public.cancellations",
+  "public.data_field_definitions",
+  "public.employees",
+  "public.roles",
+  "public.role_page_permissions",
+  "public.clients",
+  "public.client_field_definitions",
+]);
+
+// D6: tabeller der har immutability-trigger (BEFORE UPDATE/DELETE block).
+// De SKAL også have BEFORE TRUNCATE-blokering, da TRUNCATE bypassser
+// row-level triggers.
+const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
+  "public.audit_log",
+  "public.commission_snapshots",
+  "public.salary_corrections",
+  "public.cancellations",
+];
+
+// D6: migrationsfiler oprettet før D6's set-config-discipline-check.
+// Disse pre-D6-filer kan indeholde top-level INSERT/UPDATE uden
+// session-vars. Migrationsfiler er historik og modificeres ikke
+// retroaktivt — grandfather-listen dokumenterer eksplicit hvilke
+// filer der er undtaget. Nye migrations skal opfylde checkken.
+const GRANDFATHERED_NO_SETCONFIG_DISCIPLINE = new Set([
+  "20260511165543_c4_pay_periods_template.sql", // singleton-config-INSERT uden top-level session-vars
+]);
 
 async function walk(dir, exts) {
   const out = [];
@@ -34,6 +75,55 @@ function rel(p) {
   return relative(ROOT, p);
 }
 
+function stripSqlComments(sql) {
+  return sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+// Strip dollar-quoted-strings ($$...$$, $tag$...$tag$). Brugt til checks
+// der vurderer migration-tidens mutationer — funktion-bodies eksekverer
+// først ved runtime, ikke ved apply.
+function stripDollarQuoted(sql) {
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const m = sql.slice(i).match(/^\$(\w*)\$/);
+    if (m) {
+      const tag = m[0];
+      const endIdx = sql.indexOf(tag, i + tag.length);
+      if (endIdx === -1) {
+        // unbalanced — bevar resten som-er
+        out += sql.slice(i);
+        break;
+      }
+      // Erstat blocken med whitespace for at bevare linje-numre
+      const block = sql.slice(i, endIdx + tag.length);
+      out += block.replace(/[^\n]/g, " ");
+      i = endIdx + tag.length;
+    } else {
+      out += sql[i];
+      i++;
+    }
+  }
+  return out;
+}
+
+async function readMigrationFiles() {
+  let entries;
+  try {
+    entries = await readdir(MIGRATIONS_DIR);
+  } catch {
+    return [];
+  }
+  const files = entries.filter((f) => f.endsWith(".sql")).sort();
+  const out = [];
+  for (const f of files) {
+    const path = join(MIGRATIONS_DIR, f);
+    const sql = await readFile(path, "utf8");
+    out.push({ file: f, path, sql });
+  }
+  return out;
+}
+
 // ─── checks ─────────────────────────────────────────────────────────────────
 
 async function noTsIgnore() {
@@ -57,7 +147,6 @@ async function eslintDisableJustified() {
   const files = await walk("apps", [".ts", ".tsx", ".js", ".mjs", ".cjs"]);
   files.push(...(await walk("packages", [".ts", ".tsx", ".js", ".mjs", ".cjs"])));
   const violations = [];
-  // eslint-disable[-line|-next-line] <rule> -- <begrundelse>
   const disableRe = /eslint-disable(?:-line|-next-line)?\s+([\w\-/@]+)/;
   const justifiedRe = /eslint-disable\S*\s+[\w\-/@,\s]+--\s+\S+/;
   for (const f of files) {
@@ -75,7 +164,7 @@ async function migrationNaming() {
   const violations = [];
   let entries;
   try {
-    entries = await readdir("supabase/migrations");
+    entries = await readdir(MIGRATIONS_DIR);
   } catch {
     return { name: "migration-naming", violations };
   }
@@ -83,7 +172,7 @@ async function migrationNaming() {
   for (const e of entries) {
     if (e === ".gitkeep" || e.startsWith(".")) continue;
     if (!re.test(e)) {
-      violations.push(`supabase/migrations/${e}: skal matche <14digits>_<snake_case>.sql`);
+      violations.push(`${MIGRATIONS_DIR}/${e}: skal matche <14digits>_<snake_case>.sql`);
     }
   }
   return { name: "migration-naming", violations };
@@ -120,24 +209,265 @@ async function noHardcodedSupabaseUrls() {
   return { name: "no-hardcoded-supabase-urls", violations };
 }
 
+// D6 check 1: migrations der muterer feature-tabeller skal sætte session-vars
+// stork.source_type + stork.change_reason inden mutation.
+// Pragmatisk per-fil-check: hvis filen indeholder INSERT/UPDATE/DELETE på
+// en feature-tabel (ikke information_schema, ikke audit_log selv), kræver
+// vi at filen også sætter begge session-vars et sted før.
+//
+// Hvis migration KUN udfører DDL (CREATE TABLE, ALTER, CREATE TRIGGER,
+// CREATE FUNCTION, GRANT/REVOKE), kræves ingen session-vars.
+async function migrationSetConfigDiscipline() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  for (const { file, path, sql } of migrations) {
+    if (GRANDFATHERED_NO_SETCONFIG_DISCIPLINE.has(file)) continue;
+    // Strip kommentarer OG dollar-quoted-strings: INSERT inden i en
+    // CREATE FUNCTION-body eksekverer først ved runtime og er ikke
+    // migration-tidens mutation.
+    const cleaned = stripDollarQuoted(stripSqlComments(sql));
+    const hasMutation = /\b(INSERT\s+INTO|UPDATE\s+|DELETE\s+FROM)\s+public\./i.test(cleaned);
+    if (!hasMutation) continue;
+    const hasSourceType = /set_config\s*\(\s*'stork\.source_type'/i.test(cleaned);
+    const hasChangeReason = /set_config\s*\(\s*'stork\.change_reason'/i.test(cleaned);
+    if (!hasSourceType || !hasChangeReason) {
+      const missing = [];
+      if (!hasSourceType) missing.push("stork.source_type");
+      if (!hasChangeReason) missing.push("stork.change_reason");
+      violations.push(`${rel(path)}: muterer feature-tabel uden at sætte session-var(s): ${missing.join(", ")}`);
+    }
+  }
+  return { name: "migration-set-config-discipline", violations };
+}
+
+// D6 check 2: nye CREATE TABLE skal enten have dedup_key text-kolonne
+// ELLER eksplicit "-- no-dedup-key: <reason>" comment i migration-filen.
+// Tabeller oprettet før D6 er grandfathered (se GRANDFATHERED_NO_DEDUP_KEY).
+async function dedupKeyOrOptOut() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  const createTableRe =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(([\s\S]*?)\)\s*(?:WITH\s*\([^)]*\)\s*)?(?:TABLESPACE\s+\w+\s*)?;/gi;
+  for (const { path, sql } of migrations) {
+    // Strip kommentarer så CREATE TABLE i docs ikke fanger.
+    const cleaned = stripSqlComments(sql);
+    // Opt-out marker SØGES i raw SQL (det er bevidst en kommentar
+    // foran CREATE TABLE — markeret med "-- no-dedup-key: <reason>").
+    const optOutRe = /--\s*no-dedup-key:\s*\S+/i;
+    const hasOptOut = optOutRe.test(sql);
+    createTableRe.lastIndex = 0;
+    let m;
+    while ((m = createTableRe.exec(cleaned)) !== null) {
+      const schema = (m[1] || "public").toLowerCase();
+      const table = m[2].toLowerCase();
+      const qualified = `${schema}.${table}`;
+      if (GRANDFATHERED_NO_DEDUP_KEY.has(qualified)) continue;
+      const body = m[3];
+      const hasDedupKey = /\bdedup_key\s+\w+/i.test(body);
+      if (!hasDedupKey && !hasOptOut) {
+        violations.push(
+          `${rel(path)}: ${qualified} mangler enten dedup_key-kolonne eller "-- no-dedup-key: <reason>"-marker`,
+        );
+      }
+    }
+  }
+  return { name: "dedup-key-or-opt-out", violations };
+}
+
+// D6 check 3: immutable tabeller (med BEFORE UPDATE/DELETE-blokering)
+// skal også blokere TRUNCATE eksplicit. TRUNCATE bypassser row-level
+// triggers og er en gengivelse-bypass uden BEFORE TRUNCATE-trigger.
+async function truncateBlockedOnImmutable() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  const allSql = migrations.map((x) => x.sql).join("\n");
+  for (const qualified of IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK) {
+    // Find CREATE TRIGGER ... BEFORE TRUNCATE ON <qualified> i en
+    // hvilken som helst migration-fil.
+    const re = new RegExp(
+      `CREATE\\s+TRIGGER\\s+\\w+\\s+BEFORE\\s+TRUNCATE\\s+ON\\s+${qualified.replace(".", "\\.")}\\b`,
+      "i",
+    );
+    if (!re.test(allSql)) {
+      violations.push(
+        `${qualified}: immutable tabel uden BEFORE TRUNCATE-trigger (TRUNCATE bypasser DELETE-blokering)`,
+      );
+    }
+  }
+  return { name: "truncate-blocked-on-immutable", violations };
+}
+
+// D6 check 4: cron.schedule()-kald skal sætte stork.change_reason i
+// command-body. Audit-trail for cron-mutationer ville ellers være tom.
+async function cronChangeReason() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  for (const { path, sql } of migrations) {
+    // Find cron.schedule( ... )
+    const re = /cron\.schedule\s*\(/gi;
+    let m;
+    while ((m = re.exec(sql)) !== null) {
+      // Find matching close-paren (depth-aware, quote-aware)
+      let i = m.index + m[0].length;
+      let depth = 1;
+      let inQuote = false;
+      let inDollar = false;
+      let dollarTag = "";
+      while (i < sql.length && depth > 0) {
+        const ch = sql[i];
+        if (inDollar) {
+          if (sql.slice(i, i + dollarTag.length) === dollarTag) {
+            inDollar = false;
+            i += dollarTag.length;
+            continue;
+          }
+          i++;
+          continue;
+        }
+        if (inQuote) {
+          if (ch === "'") {
+            if (sql[i + 1] === "'") {
+              i += 2;
+              continue;
+            }
+            inQuote = false;
+          }
+          i++;
+          continue;
+        }
+        const dm = sql.slice(i).match(/^\$(\w*)\$/);
+        if (dm) {
+          dollarTag = dm[0];
+          inDollar = true;
+          i += dm[0].length;
+          continue;
+        }
+        if (ch === "'") {
+          inQuote = true;
+          i++;
+          continue;
+        }
+        if (ch === "(") depth++;
+        else if (ch === ")") depth--;
+        i++;
+      }
+      const callBody = sql.slice(m.index, i);
+      if (!/set_config\s*\(\s*'stork\.change_reason'/i.test(callBody)) {
+        // Find linje-nummer
+        const upto = sql.slice(0, m.index);
+        const line = (upto.match(/\n/g) || []).length + 1;
+        violations.push(
+          `${rel(path)}:${line}: cron.schedule mangler set_config('stork.change_reason', ...) i command-body`,
+        );
+      }
+    }
+  }
+  return { name: "cron-change-reason", violations };
+}
+
+// D6 check 5: spørg Supabase Management API om RLS-aktiverede tabeller
+// uden policies. Default-deny er OK, men skal være dokumenteret via
+// skip-force-rls-marker. Skip hvis SUPABASE_ACCESS_TOKEN ikke er sat
+// (lokal udvikling uden Supabase-link).
+async function dbRlsPolicies() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+  if (!token) {
+    return { name: "db-rls-policies", violations: [], skipped: "SUPABASE_ACCESS_TOKEN ikke sat" };
+  }
+
+  const query = `
+    SELECT n.nspname AS schema, c.relname AS table_name,
+           (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policy_count
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind = 'r'
+      AND c.relrowsecurity = true
+      AND n.nspname = 'public'
+    ORDER BY 1, 2;
+  `;
+
+  let body;
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) {
+      return {
+        name: "db-rls-policies",
+        violations: [`Management API returned ${res.status}; check skipped`],
+        soft: true,
+      };
+    }
+    body = await res.json();
+  } catch (err) {
+    return { name: "db-rls-policies", violations: [`Network fejl: ${err.message}; check skipped`], soft: true };
+  }
+
+  // Tabeller med 0 policies = default deny. Det er OK hvis dokumenteret
+  // via "-- skip-force-rls:" eller "-- default-deny:" markør i nogen
+  // migration-fil for den tabel. Ellers violation.
+  const migrations = await readMigrationFiles();
+  const allSql = migrations.map((x) => x.sql).join("\n");
+  const violations = [];
+  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  for (const row of rows) {
+    if (row.policy_count > 0) continue;
+    const qualified = `${row.schema}.${row.table_name}`;
+    const markerRe = new RegExp(
+      `--\\s*(skip-force-rls|default-deny):\\s*\\S+[\\s\\S]*?${qualified.replace(".", "\\.")}|${qualified.replace(".", "\\.")}[\\s\\S]*?--\\s*(skip-force-rls|default-deny):`,
+      "i",
+    );
+    if (!markerRe.test(allSql)) {
+      violations.push(
+        `${qualified}: RLS ENABLE'd men 0 policies og ingen "-- skip-force-rls:" eller "-- default-deny:" markør`,
+      );
+    }
+  }
+  return { name: "db-rls-policies", violations };
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
-const checks = [noTsIgnore, eslintDisableJustified, migrationNaming, workspaceBoundaries, noHardcodedSupabaseUrls];
+const checks = [
+  noTsIgnore,
+  eslintDisableJustified,
+  migrationNaming,
+  workspaceBoundaries,
+  noHardcodedSupabaseUrls,
+  migrationSetConfigDiscipline,
+  dedupKeyOrOptOut,
+  truncateBlockedOnImmutable,
+  cronChangeReason,
+  dbRlsPolicies,
+];
 
 async function main() {
   let total = 0;
   for (const check of checks) {
-    const { name, violations } = await check();
+    const result = await check();
+    const { name, violations, skipped, soft } = result;
+    if (skipped) {
+      console.log(`- ${name} — skipped (${skipped})`);
+      continue;
+    }
     if (violations.length === 0) {
       console.log(`✓ ${name}`);
       continue;
     }
-    console.log(`✗ ${name} — ${violations.length} violation(s)`);
+    const marker = soft ? "!" : "✗";
+    console.log(`${marker} ${name} — ${violations.length} violation(s)`);
     for (const v of violations) {
       const file = v.split(":")[0];
-      console.log(`::error file=${file}::${v}`);
+      const level = soft ? "warning" : "error";
+      console.log(`::${level} file=${file}::${v}`);
     }
-    total += violations.length;
+    if (!soft) total += violations.length;
   }
   if (total === 0) {
     console.log("\nFitness: all checks passed");
