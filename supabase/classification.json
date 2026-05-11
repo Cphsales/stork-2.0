@@ -1,4 +1,20 @@
 {
   "$comment": "Klassifikations-registry for kolonner pr. tabel pr. schema. Phase 1 (lag B-D): nye kolonner uden indgang her giver ::warning::. Phase 2 (efter lag D): blokerer. Format-validering ankommer i lag D — i Phase 1 tæller eksistens af nøglen som 'klassificeret'.",
-  "columns": {}
+  "columns": {
+    "public.audit_log.id": {},
+    "public.audit_log.occurred_at": {},
+    "public.audit_log.table_schema": {},
+    "public.audit_log.table_name": {},
+    "public.audit_log.record_id": {},
+    "public.audit_log.operation": {},
+    "public.audit_log.actor_user_id": {},
+    "public.audit_log.actor_role": {},
+    "public.audit_log.source_type": {},
+    "public.audit_log.change_reason": {},
+    "public.audit_log.schema_version": {},
+    "public.audit_log.changed_columns": {},
+    "public.audit_log.old_values": {},
+    "public.audit_log.new_values": {},
+    "public.audit_log.trigger_depth": {}
+  }
 }
