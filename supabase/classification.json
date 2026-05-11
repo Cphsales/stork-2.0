@@ -15,6 +15,17 @@
     "public.audit_log.changed_columns": {},
     "public.audit_log.old_values": {},
     "public.audit_log.new_values": {},
-    "public.audit_log.trigger_depth": {}
+    "public.audit_log.trigger_depth": {},
+    "public.cron_heartbeats.job_name": {},
+    "public.cron_heartbeats.schedule": {},
+    "public.cron_heartbeats.is_enabled": {},
+    "public.cron_heartbeats.last_run_at": {},
+    "public.cron_heartbeats.last_status": {},
+    "public.cron_heartbeats.last_error": {},
+    "public.cron_heartbeats.last_duration_ms": {},
+    "public.cron_heartbeats.run_count": {},
+    "public.cron_heartbeats.failure_count": {},
+    "public.cron_heartbeats.created_at": {},
+    "public.cron_heartbeats.updated_at": {}
   }
 }
