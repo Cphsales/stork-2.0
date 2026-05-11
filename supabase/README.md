@@ -61,26 +61,41 @@ Migrations lever i `supabase/migrations/`. Filnavnskonvention:
 der validerer hver migration mod klassifikations-skemaet før den
 kan merges.
 
-## Database-typer
+## Database-typer + schema-snapshot
 
-TS-typer genereres fra remote schema og bor i
-`packages/types/src/database.ts` (eksporteret som `Database`).
+Begge bygger på `supabase --linked`. Engangs-setup per dev-maskine:
 
 ```bash
-# Generér typer (kræver SUPABASE_ACCESS_TOKEN sat eller `supabase login`)
-pnpm types:generate
-
-# Drift-check (CI bruger denne — fejler hvis typer ikke matcher remote)
-pnpm types:check
+pnpm exec supabase login          # browser-auth, gemmer access token
+pnpm supabase:link                # link til imtxvrymaqbgcvsarlib via config.toml
 ```
 
-`packages/types/src/database.ts` er pre-fyldt med tomt
-placeholder-skema. Når første migration lander og bliver pushet til
-remote, kør `pnpm types:generate` lokalt og commit resultatet.
+CI har `SUPABASE_ACCESS_TOKEN`-secret sat på repo'et — link sker
+automatisk i workflow før drift-checks kører.
 
-CI har et "Types drift check"-trin i `.github/workflows/ci.yml` der
-kører kun hvis `SUPABASE_ACCESS_TOKEN`-secret er sat på repo'et.
-Tilføj den via GitHub Settings → Secrets and variables → Actions.
+### Types — packages/types/src/database.ts
+
+```bash
+pnpm types:generate   # regenerér fra remote schema → packages/types/src/database.ts
+pnpm types:check      # CI-check: drift → exit 1
+```
+
+Placeholder-Database-typen blev pre-genereret i B1. Når første
+migration lander, kør `pnpm types:generate` lokalt og commit.
+
+### Schema-snapshot — supabase/schema.sql
+
+```bash
+pnpm schema:pull      # supabase db dump --linked --schema public → supabase/schema.sql
+pnpm schema:check     # CI-check: drift → exit 1
+```
+
+Snapshot er strukturel ground truth (DDL, ingen data). Når
+migrations lander på remote, kør `pnpm schema:pull` lokalt og commit.
+
+Indtil første pull er filen en placeholder med marker — CI's
+schema drift check springer over til filen er populated. Det betyder
+første migration's PR SKAL include en opdateret schema.sql.
 
 ## Edge functions
 
