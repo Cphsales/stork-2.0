@@ -22,6 +22,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "prettier": "^3.4.2",
+    "supabase": "^2.98.2",
     "turbo": "^2.3.3",
     "typescript": "^5.8.3"
   },
@@ -31,6 +32,13 @@
     ],
     "apps/web/**/*.{ts,tsx}": [
       "eslint --fix"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "supabase"
     ]
   }
 }
