@@ -239,6 +239,86 @@ når email-provider er valgt. Indtil da: failures synlige i
 `audit_log` (filter source_type='cron') og via
 `public.cron_heartbeats_read()` RPC.
 
+## Period-lock-template (lag C4)
+
+Generic mønster for "tal låses, data må ikke" der bruges på tværs af
+domæner (løn implementeret nu; KPI og bogføring senere).
+
+**Fire dele pr. domæne:**
+
+1. `{domain}_periods` — periode-tabel med open/locked livscyklus
+2. `{domain}_snapshots` — immutable frosne tal ved lock
+3. `{domain}_corrections` — immutable kompenserings-modposter
+4. Cron-job + `on_period_lock()`-trigger der materialiserer snapshots
+
+Lag C4 instans: `pay_periods` + `commission_snapshots` + `salary_corrections`
+
+- `ensure_pay_periods`-cron. Lag D får `kpi_snapshots`/`kpi_corrections`.
+  Lag E udvider med faktisk materialisering i `on_period_lock()`.
+
+### pay_periods — periode-livscyklus
+
+- `status` flippes via UPDATE: open → locked (engangs)
+- Exclusion-constraint på `daterange(start_date, end_date, '[]')` forhindrer overlap
+- DELETE altid blokeret. Senere lag bygger `correct_pay_period_delete()` RPC ved behov
+- Auto-genererer fremtidige perioder via daglig cron-job (`ensure_pay_periods`)
+
+### Snapshots — immutable frosne tal
+
+`commission_snapshots` INSERT-only via `on_period_lock()`-trigger ved
+lock-transition. UNIQUE(period, sale, employee) understøtter
+provision-split mellem flere medarbejdere.
+
+### Corrections — append-only modposter
+
+`salary_corrections` med 5 reasons: cancellation / cancellation_reversal /
+kurv_correction / manual_error / other. Reason-baseret sign-CHECK:
+cancellation → amount<0, cancellation_reversal → amount>0, øvrige fri.
+`amount <> 0` håndhævet.
+
+Rollback af correction sker via ny correction-række (cancellation_reversal).
+Original røres aldrig. Audit-trail bevarer historikken.
+
+### Cancellations — domæne-specifik begivenheds-tabel
+
+`cancellations` (IKKE del af generic templaten) sporer kunde-fortrydelser.
+Sales-rækken røres aldrig — annullering = ny begivenhed.
+
+Kun `matched_to_correction_id` + `matched_at` kan UPDATE'es efter INSERT.
+DELETE altid blokeret. matched_at sættes automatisk når matched_to_correction_id
+går NULL → NOT NULL.
+
+`amount > 0` håndhævet (positivt fradragsbeløb). Tilhørende
+salary_correction får `amount = -cancellation.amount`.
+
+### Session-var-konvention
+
+Hver feature-tabel med FORCE RLS Variant B har eget skrivetilladelses-var:
+
+| Tabel                | Session-var                              |
+| -------------------- | ---------------------------------------- |
+| pay_period_settings  | `stork.allow_pay_period_settings_write`  |
+| pay_periods          | `stork.allow_pay_periods_write`          |
+| commission_snapshots | `stork.allow_commission_snapshots_write` |
+| salary_corrections   | `stork.allow_salary_corrections_write`   |
+| cancellations        | `stork.allow_cancellations_write`        |
+
+Skriv-RPCs sætter dem via `SET LOCAL` / `set_config(..., true)` inden mutation.
+Policy `WITH CHECK (current_setting('stork.allow_X_write', true) = 'true')`
+matcher kun når session-var er sat.
+
+### Status-engangs-transitionspattern (sales kommer i lag E)
+
+For tabeller hvor en kolonne flytter sig én vej (sales.status: pending →
+completed/afvist), bygges BEFORE UPDATE-trigger der nægter transitioner
+udenfor normal-pathen. Rollback ved menneskelig fejl sker via
+`correct_<table>_status()` SECURITY DEFINER RPC der sætter
+`stork.allow_<table>_status_correction = 'true'`-session-var som triggeren
+genkender og lader transition igennem.
+
+Eksempel-template dokumenteres her, bygges ved sales-tabel i lag E.
+Generic helper-funktion bygges først ved 3+ brugere (rule of three).
+
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
