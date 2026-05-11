@@ -5,24 +5,18 @@ import tseslint from "typescript-eslint";
 
 import base from "./base.js";
 
-export default tseslint.config(
-  ...base,
-  {
-    files: ["**/*.{ts,tsx,js,jsx}"],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-    },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
-    },
+export default tseslint.config(...base, {
+  files: ["**/*.{ts,tsx,js,jsx}"],
+  languageOptions: {
+    ecmaVersion: 2020,
+    globals: globals.browser,
   },
-);
+  plugins: {
+    "react-hooks": reactHooks,
+    "react-refresh": reactRefresh,
+  },
+  rules: {
+    ...reactHooks.configs.recommended.rules,
+    "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+  },
+});

@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import prettierConfig from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -16,10 +17,8 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: "^_",
         },
       ],
-      "@typescript-eslint/no-empty-object-type": [
-        "error",
-        { allowInterfaces: "with-single-extends" },
-      ],
+      "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     },
   },
+  prettierConfig,
 );
