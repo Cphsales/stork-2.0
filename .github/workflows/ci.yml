@@ -58,14 +58,7 @@ jobs:
 
       - name: Types drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''
-        run: |
-          set -e
-          if pnpm types:check; then
-            echo "Types in sync with remote schema"
-          else
-            echo "::error::Types drift. Run 'pnpm types:generate' locally and commit."
-            exit 1
-          fi
+        run: pnpm types:check
 
       - name: Schema drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''

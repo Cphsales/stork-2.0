@@ -1,3 +1,6 @@
+// PLACEHOLDER: regenereres ved første `pnpm types:generate` efter at remote schema er populated.
+// CI's "Types drift check" springer dette over indtil filen er populated.
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
