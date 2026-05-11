@@ -21,9 +21,31 @@ stork-2.0/
 
 ## Toolchain
 
-- Node 22 LTS (`.nvmrc`)
-- pnpm 10 (håndhævet via `packageManager`-feltet + Corepack)
-- Turborepo 2.x
+| Tool         | Version | Pinning                                                                            |
+| ------------ | ------- | ---------------------------------------------------------------------------------- |
+| Node         | 22 LTS  | `.nvmrc`, `.tool-versions`, `package.json#engines`                                 |
+| pnpm         | 10.33.0 | `package.json#packageManager` (Corepack), `.tool-versions`, `package.json#engines` |
+| Turborepo    | 2.x     | `package.json#devDependencies`                                                     |
+| Supabase CLI | 2.98.x  | workspace devDep, downloadet via postinstall                                       |
+
+`.npmrc` håndhæver `engine-strict=true` — pnpm afviser install hvis
+Node- eller pnpm-version ligger uden for engines-range.
+
+## Setup (engangsskridt)
+
+```bash
+# Hvis du bruger nvm
+nvm install            # læser .nvmrc → 22
+
+# Hvis du bruger asdf/mise
+asdf install           # læser .tool-versions
+
+# Aktivér Corepack så packageManager-feltet håndhæves
+corepack enable
+
+# Installer alle workspaces
+pnpm install
+```
 
 ## Scripts
 
@@ -33,6 +55,21 @@ Fra repo-rod:
 - `pnpm dev` — start alle apps (turbo)
 - `pnpm build` — byg alle workspaces
 - `pnpm lint` / `pnpm typecheck` / `pnpm test` — på tværs af workspaces
+- `pnpm format` / `pnpm format:check` — Prettier
+- `pnpm exec supabase <cmd>` — Supabase CLI (se `supabase/README.md`)
+
+## Disciplin-mekanismer
+
+- **Pre-commit:** Husky + lint-staged kører Prettier og ESLint på
+  staged files (`.husky/pre-commit`)
+- **CI:** GitHub Actions kører hele pipelinen på PRs
+  (`.github/workflows/ci.yml`)
+- **Branch-protection:** Påkrævede checks + review + linear history.
+  Konfiguration dokumenteret i `.github/BRANCH_PROTECTION.md`
+- **ESLint:** Delt config i `@stork/eslint-config` med Stork-regler
+  (no-console, no-explicit-any, strict no-unused-vars)
+- **TypeScript:** `tsconfig.base.json` med fuld strict +
+  noUncheckedIndexedAccess + exactOptionalPropertyTypes
 
 ## Status
 
