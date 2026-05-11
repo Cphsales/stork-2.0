@@ -63,8 +63,24 @@ kan merges.
 
 ## Database-typer
 
-Lag B genererer TS-typer fra schema og placerer dem i
-`packages/types/`. Indtil videre er pakken tom.
+TS-typer genereres fra remote schema og bor i
+`packages/types/src/database.ts` (eksporteret som `Database`).
+
+```bash
+# Generér typer (kræver SUPABASE_ACCESS_TOKEN sat eller `supabase login`)
+pnpm types:generate
+
+# Drift-check (CI bruger denne — fejler hvis typer ikke matcher remote)
+pnpm types:check
+```
+
+`packages/types/src/database.ts` er pre-fyldt med tomt
+placeholder-skema. Når første migration lander og bliver pushet til
+remote, kør `pnpm types:generate` lokalt og commit resultatet.
+
+CI har et "Types drift check"-trin i `.github/workflows/ci.yml` der
+kører kun hvis `SUPABASE_ACCESS_TOKEN`-secret er sat på repo'et.
+Tilføj den via GitHub Settings → Secrets and variables → Actions.
 
 ## Edge functions
 
