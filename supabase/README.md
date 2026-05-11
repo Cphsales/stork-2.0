@@ -54,6 +54,44 @@ pnpm exec supabase status             # verificerer linket
 | `pnpm exec supabase functions deploy <name>`       | Deploy edge function                                                                                           |
 | `pnpm exec supabase gen types typescript --linked` | Generér TS-typer fra remote schema                                                                             |
 
+## RLS-template (lag C1)
+
+Hver feature-tabel skal have RLS aktiveret OG forced. Default deny —
+ingen rolle har implicit adgang, heller ikke owner eller service_role.
+
+**Standard-mønster for ny tabel:**
+
+```sql
+CREATE TABLE public.example (...);
+ALTER TABLE public.example ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.example FORCE ROW LEVEL SECURITY;
+-- Tilføj policies efter behov for authenticated.
+```
+
+**Opt-out fra FORCE** (kun hvis tabellen designet til at have
+service-role-skrivere som integration-engine eller webhook-forwarder
+der ikke kan gå gennem SECURITY DEFINER):
+
+```sql
+-- skip-force-rls: <eksplicit begrundelse>
+ALTER TABLE public.example ENABLE ROW LEVEL SECURITY;
+```
+
+**Privilegerede operationer** (cron-jobs, webhook-ingest, snapshot-
+trigger, m.fl.) går gennem `SECURITY DEFINER`-funktioner med
+`SET search_path = ''` + eksplicitte schema-qualified referencer.
+Ikke via direkte service-role-API-kald.
+
+### Helper-funktioner
+
+| Funktion                       | Returner          | Status                                           |
+| ------------------------------ | ----------------- | ------------------------------------------------ |
+| `public.current_employee_id()` | `uuid` (null)     | Stub i C1. Lag D mapper `auth.uid()` → employees |
+| `public.is_admin()`            | `boolean` (false) | Stub i C1. Lag D læser `role_page_permissions`   |
+
+Stubs returnerer safe defaults så feature-tabeller i lag D kan reference
+dem i policies uden circular dependency.
+
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
