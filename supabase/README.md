@@ -141,6 +141,104 @@ kolonner med `pii_level=direct` inden de gemmes.
 til main transaction → main rulles tilbage. Compliance kræver vores
 adgangslog, så "audit failure = transaction failure" er bevidst.
 
+## Cron-skabelon (lag C3)
+
+**Princip:** `pg_cron` til DB-interne jobs, scheduled edge functions
+til eksterne. Hybrid mønster — `pg_cron` tickrer + edge function
+gør arbejdet — bruges når DB-jobs skal kalde eksterne API'er.
+
+**Extensions aktiveret:** `pg_cron`, `btree_gist` (til C4),
+`pg_net` (til hybrid pg_cron → edge function).
+
+### Heartbeat-pattern
+
+Hver cron-job rapporterer status til `public.cron_heartbeats`
+via `public.cron_heartbeat_record()`. Failure-rows auditeres
+automatisk via WHEN-trigger (kun failures, ikke successes — ellers
+ville audit_log eksplodere).
+
+### Eksempel: pg_cron job med heartbeat
+
+```sql
+SELECT cron.schedule(
+  'cleanup_expired_tokens',
+  '0 * * * *',  -- hver time
+  $$
+  DO $do$
+  DECLARE
+    v_started timestamptz := clock_timestamp();
+    v_error text;
+  BEGIN
+    -- Job-logik her
+    DELETE FROM public.example_tokens WHERE expires_at < now();
+
+    PERFORM public.cron_heartbeat_record(
+      'cleanup_expired_tokens',
+      '0 * * * *',
+      'ok',
+      NULL,
+      (EXTRACT(EPOCH FROM (clock_timestamp() - v_started)) * 1000)::integer
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_error := SQLERRM;
+    PERFORM public.cron_heartbeat_record(
+      'cleanup_expired_tokens',
+      '0 * * * *',
+      'failure',
+      v_error,
+      (EXTRACT(EPOCH FROM (clock_timestamp() - v_started)) * 1000)::integer
+    );
+    RAISE;  -- så pg_cron logger failure
+  END;
+  $do$;
+  $$
+);
+```
+
+### Eksempel: edge function med heartbeat (hybrid pattern)
+
+```typescript
+// supabase/functions/sync-something/index.ts
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+Deno.serve(async (_req) => {
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const start = Date.now();
+  try {
+    // Job-logik via SECURITY DEFINER RPCs — IKKE direkte table-INSERTs
+    // (service_role respekterer FORCE RLS på feature-tabeller).
+    await supabase.rpc("cron_heartbeat_record", {
+      p_job_name: "sync-something",
+      p_schedule: "edge-function-scheduled",
+      p_status: "ok",
+      p_duration_ms: Date.now() - start,
+    });
+    return new Response("ok");
+  } catch (err) {
+    await supabase.rpc("cron_heartbeat_record", {
+      p_job_name: "sync-something",
+      p_schedule: "edge-function-scheduled",
+      p_status: "failure",
+      p_error: String(err),
+      p_duration_ms: Date.now() - start,
+    });
+    return new Response(String(err), { status: 500 });
+  }
+});
+```
+
+Edge function deploy: `pnpm exec supabase functions deploy sync-something`.
+Schedule edge function: brug Supabase Studio → Functions → Schedule,
+eller `pg_cron + pg_net.http_post()` for at trigge fra DB.
+
+### Notifikation ved failure
+
+**TODO:** email/Slack-notifikation når `cron_heartbeats.last_status='failure'`
+eller når en job ikke har kørt i for lang tid. Separat beslutning
+når email-provider er valgt. Indtil da: failures synlige i
+`audit_log` (filter source_type='cron') og via
+`public.cron_heartbeats_read()` RPC.
+
 ## Migration-disciplin
 
 Migrations lever i `supabase/migrations/`. Filnavnskonvention:
