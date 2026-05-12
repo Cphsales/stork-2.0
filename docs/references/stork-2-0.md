@@ -88,6 +88,10 @@ Skelnen: data og værdier = UI. System og beregninger = kode. Forkert default �
 
 **Bootstrap-paradokset er reelt.** Disciplin under bygning ≠ disciplin der bygges. Fase 0 etablerer mekanismer FØR forretningslogik bygges.
 
+**Ingen arv fra 1.0.** 1.0 har 5 års kode der både virker og har rod. 2.0 arver intet automatisk. Hvor 1.0's koncept eller mønster skaber forståelse og virker, tages konceptet med — ikke navnet, ikke strukturen, ikke implementationen. Tabel-navne, kolonne-navne og relations-struktur afgøres når 2.0 bygger, med 1.0 som inspiration hvor det giver mening.
+
+Konkret konsekvens: når dette dokument refererer til entiteter eller mekanismer der ikke er bygget i fase 0 endnu (sales, pricing-regler, person-identitet, integrations-adapters, KPI-engine), beskriver det **koncepter og afgjorte principper** — ikke afgjorte tabel-navne. Navngivning afgøres ved lag E og senere. Navne der ER afgjort (eksisterer i remote DB efter fase 0-migrations) markeres eksplicit som BYGGET.
+
 # 4. Datamodel-fundament
 
 ## 4.1 Status-modellen [LÅST]
@@ -241,36 +245,40 @@ Validering: `data_field_definitions_validate_retention()` BEFORE INSERT/UPDATE-t
 
 ## 4.6 Tre låste schemas [LÅST som retning, IKKE BYGGET]
 
-Alle eksisterende tabeller bor i `public`-schemaet i fase 0. Den arkitektoniske retning er at flytte til tre dedikerede schemas i lag E/F:
+Alle eksisterende tabeller bor i `public`-schemaet i fase 0. Den arkitektoniske retning er at flytte til tre dedikerede Postgres-schemas der håndhæver ejerskab via Postgres' indbyggede schema-grænse:
 
-**`core_identity`** [DESIGN] — `persons`, `person_identities`, `employees`, `teams`, `team_clients`, `system_roles`, `role_permissions`, `employee_roles`, `system_superadmins` (med trigger der forhindrer count < 2).
+**`core_identity`** — entiteter knyttet til person og organisation: identitets-master, identitet-til-employee-mapping, employees, organisationsstruktur (teams og hierarki), permissions/roller, klient-til-team-relation. System-superadmin-mekanisme der forhindrer alle-admins-slettet-tilstand.
 
-**`core_money`** [DESIGN] — `sales`, `sale_items`, `commission_snapshots` (eller `commission_transactions` — naming åbent, §11.2), `cancellations`, `pay_periods`, `period_locks`, `pricing_rules`. RLS-trigger nægter mutationer i låst periode.
+**`core_money`** — entiteter for monetær transaktion og periode-lås: salg (med line items), commission-pos pr. periode (immutable), annullerings-events, periode-livscyklus (open/locked + RLS-trigger der nægter mutationer i låst periode), pricing-regler.
 
-**`core_compliance`** [DESIGN] — `audit_log`, `data_field_definitions`, `consent_log`, `gdpr_cleanup_log`, `sensitive_data_access_log`, `ai_instruction_log`, `economic_invoices` (5-års DB-trigger), `amo_audit_log`. Hver persondata-tabel i andre schemas har FK til retention-config.
+**`core_compliance`** — entiteter for audit, GDPR og lovgivnings-trigger: audit_log (BYGGET, vil flyttes), klassifikations-registry (data_field_definitions, BYGGET, vil flyttes), consent-log, GDPR-cleanup-log, sensitive-data-access-log, AI-instruction-log, faktura-immutability med 5-års lovgivnings-trigger, AMO-audit.
 
 Apps får egne tabeller i schema `app_<navn>` og må kun skrive til `core_*` via SECURITY DEFINER RPCs ejet af respektive core-schema.
 
-**Status i fase 0:** Princippet er låst som målarkitektur. Implementeringen — schema-flytning af eksisterende tabeller plus build-out af de manglende tabeller — er lag E-arbejde.
+**Status i fase 0:** Princippet er låst som målarkitektur. Konkrete tabel-navne og kolonne-strukturer afgøres når lag E bygger. Eksisterende fase 0-tabeller (`audit_log`, `data_field_definitions`, `employees`, `roles`, `role_page_permissions`, `clients`, `client_field_definitions`, `cron_heartbeats`, `pay_periods`, `pay_period_settings`, `commission_snapshots`, `salary_corrections`, `cancellations`) flyttes fra `public` til respektive `core_*`-schema som del af lag E-arbejdet.
 
 ## 4.7 `@stork/core` delt beregningspakke [LÅST som design, IKKE BYGGET]
 
-TypeScript-pakke der eksisterer som workspace (`packages/core/`) men er **tom**: `packages/core/src/index.ts` indeholder kun `export {};`. Designet beskriver hvad pakken SKAL indeholde.
+TypeScript-pakke der eksisterer som workspace (`packages/core/`, navn afgjort) men er **tom**: `packages/core/src/index.ts` indeholder kun `export {};`. Pakke-navnet er afgjort; modulers og funktioners navne afgøres når de bygges.
 
-Importeret identisk af edge functions (Deno) og frontend (Vite/React). Pure functions, ingen DB-adgang, ingen IO:
+Pakken importeres identisk af edge functions (Deno) og frontend (Vite/React). Designkrav:
 
-- `pricing.match(input)` — autoritativ pricing-funktion
-- `salary.compute(input)` — løn-aggregation pr. medarbejder pr. periode
-- `identity.resolve(identities_snapshot, input)` — én resolver. Tager `person_identities`-snapshot som argument (purity bevares; gateway fetcher snapshot fra DB og passer ind). Returnerer eksplicit `Unresolved` hvis input ikke kan resolves
-- `period.from(date)`, `period.status(periodId)` — periode-helpers
-- `attribution.team(saleInput, team_clients_snapshot)` — bevarer `team_clients`-vejen; snapshot passes ind
-- `permissions.has(userContext, key)` — permission-resolution som ren funktion (userContext indeholder pre-fetched permissions)
+**Ansvarsområder pakken skal dække:**
+
+- **Pricing** — autoritativ pris-/commission-match som ren funktion. Samme implementation for FM og TM. Tager regel-snapshot og input som argumenter.
+- **Salary** — løn-aggregation pr. medarbejder pr. periode. Algoritme; værdier som start_day, sats, bonus-størrelser læses fra UI-konfigurations-tabeller af caller og passes ind.
+- **Identity-resolution** — én resolver der mapper integration-payloads til persons/employees, med eksplicit "ikke-resolvable"-fallback (ikke et gæt der kan give samme person to navne). Tager identitets-snapshot som argument fra gateway.
+- **Periode-helpers** — periode-lookup fra dato, periode-status-tjek.
+- **Attribution** — team-tilknytning af salg via klient-til-team-vejen. Tager snapshot af klient-team-mapping som argument.
+- **Permissions** — permission-resolution som ren funktion. Tager pre-fetched user-context som argument.
 
 **Snapshot-mønstret er afgørende** for at bevare purity: alle lookup-data fetches af gateway/edge-function/komponent FØR `@stork/core`-kald, og passes som argumenter. Det løser modsigelsen mellem "pure" og "skal kunne resolve identities/teams". Beskrevet eksplicit her efter intern modstrid blev identificeret i v1.2.
 
 Værdier (lønperiode start_day, feriepenge-sats, oplæringsbonus, ferie-frist, ASE-satser m.fl.) lever i UI-konfigurations-tabeller og slås op ved kørsel. `@stork/core` indeholder algoritmer — ikke værdier.
 
-Synkron RPC primært. Ingen `domain_events`-tabel som infrastruktur i dag. Hvis pipelines vokser sig komplekse, kan domain_events tilføjes som fase 4 uden at bryde modellen.
+Synkron RPC primært. Domain-events som infrastruktur er ikke i dag. Hvis pipelines vokser sig komplekse, kan event-mekanisme tilføjes som senere fase uden at bryde modellen.
+
+**Status i fase 0:** Pakke-navn + workspace-struktur er afgjort. Module-navne, funktions-signaturer og argument-strukturer afgøres når implementeringen bygges i lag E.
 
 ## 4.8 Gateway-lag [LÅST som retning, IKKE BYGGET]
 
@@ -400,31 +408,25 @@ UI håndhæver:
 
 ## 6.1 Pricing [LÅST som retning, IKKE BYGGET]
 
-**Én autoritativ funktion:** `@stork/core` `pricing.match()`. Pure function importeret identisk af edge og frontend. Drift fysisk umulig.
+**Én autoritativ funktion.** Pricing-match implementeres som ren funktion i `@stork/core`; importeres identisk af edge functions og frontend. Drift mellem flere implementationer er fysisk umulig fordi der kun er én.
 
-**Regel-struktur:** `product_pricing_rules`-tabel (DESIGN) med priority + campaign-match. UNIQUE-constraint på `(product_id, priority, campaign_match_mode, campaign_mapping_ids)` forhindrer duplikater. Livscyklus: draft → active → retired. Historik via `pricing_rules_history` (immutable).
+**Regler er konfiguration, ikke kode.** Pricing-regler er rækker i en regel-tabel med priority + kampagne-match-kriterier. Livscyklus pr. regel (fx draft / active / retired). Historik bevares immutable. Konkret tabel-struktur og kolonne-navne afgøres ved lag E.
 
-**Tie-breaker.** UNIQUE-constraint gør duplikater fysisk umulige. Tie-breaker er irrelevant.
+**Duplikat-forhindring via DB.** UNIQUE-constraint på regel-tabellen forhindrer fysisk to regler der matcher samme kontekst med samme priority. Tie-breaker-spørgsmålet kollapser fordi tilfældet ikke kan opstå.
 
-**TM-pricing.** Match `sale_items.product_id` mod regler med priority + kampagne-kontekst. Fallback til `products.commission_dkk` hvis ingen regel matcher.
+**TM og FM bruger samme motor.** Pris-match er ikke pr. forretningsområde forskellig — det er pr. (produkt-identitet, kampagne, klient)-kontekst der varierer. FM-pricing (produkt-navns-match) og TM-pricing (produkt-id-match) flyttes til samme algoritme med forskellig input. Ikke to implementationer.
 
-**FM-pricing.** Pris slås op pr. produkt-navn (case-insensitiv) + kampagne. FM og TM bruger SAMME pricing-motor i `@stork/core` — ikke to implementationer.
-
-**Status i fase 0:** Hverken `product_pricing_rules`, `pricing_rules_history`, `products` eller `pricing.match()` eksisterer. Bygges i lag E sammen med sales-tabellen.
+**Status i fase 0:** Pricing-regler, produkt-master og kampagne-kontekst er ikke bygget. `@stork/core` er tom. Bygges i lag E.
 
 ## 6.2 Provision [LÅST som retning, IKKE BYGGET]
 
-**Formel:** `Provision = Sum(sale_items.mapped_commission for pending + completed) − Cancellations`
+**Formel.** Provision = sum af mapped commission for pending + completed salg, minus annulleringer. Aggregering pr. employee pr. periode via navngivne RPCs — ikke duplikeret beregning i hooks og edge functions.
 
-Aggregering via navngivne RPCs (fx `commission_for_period(employee_id, period_id)`). Ingen drift mellem hooks og edge functions.
+**Sælger-attribution.** Én resolver med eksplicit "ikke-resolvable"-fallback. Identitet adskilles fra employee-row som distinkt koncept (kandidater før de bliver ansatte, eksterne integrationer der peger på samme person, anonymisering af tidligere ansatte kræver det). Resolver returnerer eksplicit "ikke resolvable" hvis input ikke kan mappes — ingen fallback der kan give samme person to navne. Ikke-resolvable rækker lander i en eksplicit kø der kræver manuel mapping.
 
-**Sælger-attribution:**
+**FM-sælger-navne integreres via samme resolver-vej** som integration-baserede sælger-emails. Manuelle navne behandles som én identitets-kilde blandt andre, ikke en separat fallback. Konkret tabel-struktur til identitet og employee-mapping afgøres ved lag E.
 
-- Én resolver: `@stork/core` `identity.resolve(identities_snapshot, input)` modtager `person_identities`-snapshot (UNIQUE på `(provider, external_id)`) fra gateway og resolver til person → employees. Snapshot-mønster bevarer `@stork/core`'s purity (se §4.7)
-- Hvis input ikke kan resolves: returnerer eksplicit `Unresolved` og landes i `needs_mapping`-kø — ikke fallback der kan give samme person to navne
-- FM `seller_name` registreres som identitet med provider='fm_manual' i `person_identities` på linje med dialer-emails — ingen separat fallback-vej
-
-**Status i fase 0:** Hverken `persons`, `person_identities`, `sale_items`, `commission_for_period()` eller `needs_mapping` eksisterer. `@stork/core` er tom. Bygges i lag E.
+**Status i fase 0:** Identitets-system, sales-tabel og commission-aggregations-RPCs eksisterer ikke. `@stork/core` er tom. Bygges i lag E.
 
 ## 6.3 Løn [LÅST som logik]
 
@@ -454,35 +456,35 @@ Algoritmer (perioden går fra start_day i én måned til start_day−1 i næste;
 
 ## 6.4 Cancellation [LÅST som logik]
 
-**Separat tabel.** Cancellations er egen tabel, ikke status på sales. Sales-rækken UPDATEes ALDRIG.
+**Separat tabel.** Annulleringer er egen tabel (`public.cancellations` BYGGET i C4), ikke status på sales. Sales-rækken UPDATEes ALDRIG ved annullering. Cancellations-tabellen er immutable undtagen `matched_to_correction_id` + `matched_at`.
 
-**Match-flow:** upload → matching → pending → godkendelse → approved → fradrag i løn.
+**Match-flow:** upload → matching → pending → godkendelse → approved → fradrag i løn. Konkret implementering af upload + matching afgøres ved lag E.
 
-**Tre upload-types (skal bevares fra 1.0):**
+**Tre konceptuelt distinkte annullerings-typer skal kunne adskilles** (taget fra 1.0's drift som koncepter, navne afgøres ved lag E):
 
-- `cancellation` — kunde fortryder, fradrag i løn
-- `basket_difference` — kurv-rettelse fra klient, commission-forskel
-- `correct_match` — rettelse til matching, ekskluderes fra modregning
+- **Kunde-annullering:** Kunde fortryder. Fradrag i løn til sælger
+- **Kurv-rettelse:** Klient justerer salgets sammensætning. Commission-forskel beregnes
+- **Match-rettelse:** Operationel rettelse til matching-resultat. Ekskluderes fra modregning
 
-Skal modelleres eksplicit, ikke kollapses til ét koncept.
+De tre typer skal modelleres eksplicit (tre værdier i en `reason`-kolonne, tre separate flows, eller anden struktur), ikke kollapses til ét generisk koncept.
 
-**`deduction_date` styrer lønperiode.** Cancellation rammer den lønperiode `deduction_date` peger på, ikke salgsdato.
+**Effekt-dato styrer lønperiode.** Annulleringen rammer den lønperiode hvor annulleringens effekt-dato falder — ikke salgsdatoen. Sælger får oprindelig provision i salgs-periode; fradrag falder i den senere periode hvor annulleringen lander. Kolonne-navn for effekt-dato afgøres ved lag E.
 
-**Cancellation-reversal.** Hvis cancellation skal rulles tilbage: original cancellation røres ikke; ny række med `reason='cancellation_reversal'`, positivt beløb.
+**Cancellation-reversal.** Hvis en annullering skal rulles tilbage: original annullering røres ikke (immutable). Ny række oprettes med positivt beløb og reason der markerer reversal. Audit-trail bevarer hele rejsen.
 
-**Eesy TM/FM cancellation-matching:** specialiseret matching-vej med 8 telefon-felter + opp_group. Egen vej i lag E.
+**Klient-specifik annullerings-matching.** Visse klienter (fx Eesy TM/FM) kræver specialiseret matching med flere telefon-felter og opportunity-grupperinger. Match-engine er den eneste reelt klient-specifikke kode-del; pricing/validation/cancellations-flow er fælles motor.
 
 ## 6.5 Attribution [LÅST som princip, IKKE BYGGET]
 
-**Sales attribueres via klientens team.** `team_clients` er autoritativ (klient → team), IKKE via sælgers team.
+**Salg attribueres via klientens team, ikke via sælgers team.** Klient-til-team-relationen er autoritativ. Et salg på en klient tilhører det team der ejer klienten — uanset hvor sælgeren er placeret organisatorisk.
 
-**Klient-attribution:** `sales.client_campaign_id` → `client_campaigns.client_id` → `clients`.
+**Klient-attribution.** Salg knyttes til kampagne-kontekst der peger på klient. Konkret relations-struktur (direct FK eller via mellemtabel) afgøres ved lag E.
 
-**Team-attribution (via klient):** `client_campaigns.client_id` → `team_clients.team_id` → `teams`. Med snapshot på sales-rækken ved INSERT.
+**Team-attribution (via klient).** Fra kampagne-kontekst på salget findes klienten; fra klienten findes ejer-teamet. Snapshot pr. salg ved INSERT.
 
-**Snapshot-pattern.** Sales-rækken får team_id_snapshot ved INSERT. Hvis sælger eller klient senere skifter team, ændres salget IKKE. Salget husker stadig "team X" — det team klienten var ejet af da salget skete.
+**Snapshot-pattern.** Salgs-rækken får snapshot af team-ejerskab ved INSERT. Hvis sælger eller klient senere skifter team, ændres salget IKKE. Salget husker stadig "team X" — det team klienten var ejet af på salgs-tidspunktet.
 
-**Status i fase 0:** Princip låst. `sales`, `sale_items`, `client_campaigns`, `teams`, `team_clients` eksisterer ikke. Bygges i lag E (sales + sale_items) og D7 (teams + team_clients).
+**Status i fase 0:** Princip låst. Salg, kampagne-kontekst, teams og klient-til-team-relation eksisterer ikke som tabeller. Bygges i lag E (salg + kampagne-relationer) og D7 (teams + klient-team-ejerskab).
 
 ## 6.6 Klient som driftens grundenhed [LÅST som princip]
 
@@ -494,29 +496,30 @@ Klient er ikke et filter på dashboards. Klient er driftens grundenhed.
 
 **Omsætning beregnes pr. klient.** Omsætningsformel pr. klient kombinerer tid + CPO (Cost Per Order) + provision. Formel er UI-konfigurerbar pr. klient via KPI-systemet (§6.10).
 
-**Konsekvens for 2.0.** Klient-dimensionen er attribution + lønberegning + tid-allokering + omsætning. Ikke kun rettigheds-filter. D7's team_clients er den ene halvdel; medarbejder-til-klient-relationer er den anden halvdel og bygges i lag E/F når time-attribution-vej er afgjort.
+**Konsekvens for 2.0.** Klient-dimensionen er attribution + lønberegning + tid-allokering + omsætning. Ikke kun rettigheds-filter. Klient-team-ejerskab (D7) er den ene halvdel; medarbejder-til-klient-relationer er den anden halvdel og bygges i lag E/F når time-attribution-vej er afgjort. Konkret tabel-struktur for begge relationer afgøres ved bygning.
 
 ## 6.7 Tidsenheder [LÅST som princip]
 
-- `sale_datetime` (timestamptz) = primær tidsstempel
+- Salgs-tidsstempel er præcis timestamp (timestamptz), ikke kun dato. Konkret kolonne-navn afgøres ved lag E
 - Storage UTC, render Europe/Copenhagen
 - Sommertid (CET ↔ CEST) kan give off-by-one ved UTC-grænser
 - Central tidszone-helper i `@stork/core`, ikke per-hook konvertering
-- CI fitness-check håndhæver Europe/Copenhagen-konvention
 - Periode-låsning [BYGGET]: `pay_periods.status` (CHECK in 'open','locked') + `pay_periods.locked_at` timestamptz + `pay_periods_lock_and_delete_check()`-trigger (C4). Ikke kun kode-konvention. RLS-policies på `commission_snapshots`, `salary_corrections`, `cancellations` nægter mutationer baseret på target-periodens status (C4)
 - CI fitness-check for Europe/Copenhagen-konvention er endnu IKKE bygget (aspiration)
 
 ## 6.8 Integration [LÅST som retning, IKKE BYGGET]
 
-**Adversus + Enreach (dialere).** Forskellige auth-modeller, forskellige rate-limit-strategier. Hver én adapter. Synkron pipeline: webhook → record_sale → rematch_pricing → recalculate_commission → notify_seller.
+**Eksterne integrationer er konkrete systemer:** Adversus + Enreach (dialere), e-conomic (bogføring), Twilio (telefoni/SMS), Microsoft Entra ID (login). Disse er afgjorte forretningsbeslutninger.
 
-**Rate-limit-fix.** 1.0 har akut rate-limit-problem i Adversus-webhook. 2.0's adapter designes med rate-limit-aware retry fra start.
+**Pr. integration én adapter.** Forskellige auth-modeller og rate-limit-strategier pr. kilde. Synkron pipeline pr. indkomst: webhook modtages → kanonisk DTO ekstraheres → forretningslogik kaldes som navngivet RPC → afhængige beregninger udløses synkront. Ingen baggrund-healers efter indkomst.
 
-**e-conomic.** Månedlig afstemning via Revenue Match + Sales Validation. Konto 1010 = revenue. Balance-konti (>=5000) ekskluderes fra P&L. Tre indgange: webhook + sync + manual ZIP. 5-års lovgivnings-trigger på `economic_invoices`.
+**Rate-limit-aware retry fra start.** 1.0's akutte rate-limit-problem i Adversus-webhook løses ved at adapter designes med backoff + retry fra første implementering — ikke som senere fix.
 
-**Twilio.** Softphone voice + SMS-notifikationer.
+**e-conomic.** Månedlig afstemning via revenue match + sales validation. Konto 1010 = revenue. Balance-konti (≥5000) ekskluderes fra P&L. Tre indgange: webhook + sync + manual ZIP. Faktura-immutability via 5-års lovgivnings-trigger (konkret tabel-navn afgøres ved lag E).
 
-**Stork har ingen bogføringspligt.** e-conomic har det. Storks løn-data er INPUT til bogføringen. Default retention: `time_based`, ikke `legal`. `legal` reserveret til e-conomic_invoices og evt. AMO.
+**Stork har ingen bogføringspligt.** e-conomic har det. Storks løn-data er INPUT til bogføringen, ikke selv bogføring. Default retention: `time_based`, ikke `legal`. `legal` reserveret til lovgivnings-bundne entiteter (e-conomic-fakturaer, evt. AMO-dokumentation).
+
+**Råpayload bevares immutable.** Hver indkomst gemmes uberørt før forretningslogik kalder. Tabel-struktur afgøres ved lag E.
 
 **Status i fase 0:** Ingen adapters bygget. `supabase/functions/`-mappen eksisterer ikke. Princip og pattern låst som retning; implementering venter til lag E.
 
@@ -536,25 +539,23 @@ Klient er ikke et filter på dashboards. Klient er driftens grundenhed.
 
 ## 6.10 KPI-system [LÅST som retning, IKKE BYGGET]
 
-**Plecto-inspireret model.** Formler som tekst-strenge (DSL). Datakilder defineret pr. KPI. Live-evaluering mod periode + scope. Komposition.
+**Plecto-inspireret model.** Formler udtrykt som tekst-strenge (DSL). Datakilder defineret pr. KPI. Live-evaluering mod periode + scope. Komposition (KPI'er kan bygges på andre KPI'er).
 
-KPI = formel + widget + tidsperiode + scope + hvem-må-se. Versioneret pr. udbetaling/snapshot. Formel-version aktiv ved låsning refereres permanent.
+KPI som koncept består af: formel + præsentations-widget + tidsperiode-binding + scope (hvem-ser-hvad) + permission-niveau (hvem-må-se-overhovedet). Versioneret pr. udbetaling: formel-version aktiv ved periode-låsning refereres permanent på den frosne beregning.
 
-Engine i `@stork/core` så frontend + edge bruger samme. Klassifikation pr. datakilde-kolonne. Permission-lag pr. formel/KPI.
+Engine implementeres i `@stork/core` så frontend og edge bruger samme. Klassifikation gælder ikke kun pr. datakilde-kolonne, men også pr. FORMEL (formlen er sin egen entitet med pii_level — fx "omsætning_pr_sælger" har samme følsomhed som rå sales-data, mens "omsætning_total" er mere kondenseret men også mere fortrolig).
 
-**Permission-eksempel:**
+**Permission-niveau pr. formel (illustrativt — endelige formel-navne afgøres ved bygning):**
 
-| Formel              | Hvem kan se                                |
-| ------------------- | ------------------------------------------ |
-| omsætning_total     | Kun ejer                                   |
-| omsætning_pr_klient | Ejer + den klients teamleder               |
-| omsætning_pr_team   | Ejer + den team's leder                    |
-| omsætning_pr_sælger | Ejer + sælgerens teamleder + sælgeren selv |
-| eget_salg           | Sælgeren selv                              |
+| Formel-eksempel      | Hvem kan se                                |
+| -------------------- | ------------------------------------------ |
+| Samlet omsætning     | Kun ejer                                   |
+| Omsætning pr. klient | Ejer + den klients teamleder               |
+| Omsætning pr. team   | Ejer + det teams leder                     |
+| Omsætning pr. sælger | Ejer + sælgerens teamleder + sælgeren selv |
+| Eget salg            | Sælgeren selv                              |
 
-Klassifikation handler ikke kun om datafelter, men også om FORMLERNE der bygger på dataen.
-
-**Eksempel: Teamleder-DB som KPI.**
+**Teamleder-DB som KPI (illustrativt):**
 
 ```
 Team-DB = SUM(omsætning på team-klienter)
@@ -562,7 +563,9 @@ Team-DB = SUM(omsætning på team-klienter)
         − SUM(annulleringer fra aktive sælgere)
 ```
 
-Filtrering på `is_active = true` er en KPI-konfigurations-mulighed (annulleringer fra stoppede medarbejdere tæller så ikke i teamleders DB). Implementations-vej er åben — se §11.2. KPI versioneres pr. lønperiode — beregningen ved låsning fastfryses.
+Filtrering på "aktiv-status" er en KPI-konfigurations-mulighed (annulleringer fra stoppede medarbejdere kan ekskluderes fra teamleder-DB). Implementations-vej og konkret formel-syntaks er åben — se §11.2. KPI versioneres pr. lønperiode; beregningen ved låsning fastfryses.
+
+**Status i fase 0:** Ingen KPI-tabeller, ingen formel-engine. `@stork/core` er tom. Eksempler ovenfor illustrerer mønstret og permission-modellen — ikke afgjorte formel-navne eller tabel-strukturer.
 
 Teamleder-provision = Team-DB × sats (sats konfigureres pr. teamleder eller pr. rolle, UI-styret).
 
@@ -574,7 +577,7 @@ Teamleder-provision = Team-DB × sats (sats konfigureres pr. teamleder eller pr.
 
 **EU AI Act.** AI-governance dokumenteres. AI-instruktioner logges (`ai_instruction_log`). Ansvarlige roller defineret.
 
-**Arbejdsmiljøloven (AMO).** AMO-dokumentation bevares. Audit-trail på ændringer. AMO-audit fanger alle ændringer på alle amo\_\*-tabeller via trigger.
+**Arbejdsmiljøloven (AMO).** AMO-dokumentation bevares. Audit-trail på ændringer. AMO-relaterede tabeller får dedikeret audit-trigger der fanger alle ændringer. Konkret tabel-navngivning afgøres ved bygning.
 
 ## 6.12 Vagtplan [LÅST som princip]
 
@@ -973,7 +976,7 @@ I dag (100 medarbejdere) er det fladt: ejer → teamleder → sælger. Bygges n�
 
 ### Multi-team-medlemsskab
 
-Cross-funktionelle teams, AMO-udvalget, strike-teams. Tilføj `employee_team_memberships` M2M hvis behov, uden at bryde primary employees.team_id.
+Cross-funktionelle teams, AMO-udvalget, strike-teams. Tilføjes som mange-til-mange-relation hvis behov, uden at bryde primær team-tilknytning. Konkret tabel-struktur afgøres når behovet er konkret.
 
 ### Team-historik når team selv flytter
 
@@ -1022,7 +1025,7 @@ Hvis vi sletter PII fra audit_log og restorer fra backup taget før, kommer PII 
 - Backup/restore RTO/RPO for løn-systemet
 - Lovgivnings-krav for løn-data — bekræftes med revisor
 - Skalerbarhed mod 200+ ansatte (data-volumen, ikke arkitektur)
-- Multi-superadmin-godkendelse for kritiske handlinger (system_superadmins forhindrer count < 2; multi-godkendelse for specifikke handlinger er åbent)
+- Multi-superadmin-godkendelse for kritiske handlinger (mekanisme der forhindrer alle-superadmins-slettet-tilstand er låst som princip; multi-godkendelse for specifikke handlinger er åbent. Konkret tabel afgøres ved bygning)
 - Kandidat-sletning efter konfigureret periode (ikke fuldt automatiseret i 1.0; skal med i 2.0's GDPR-pipeline)
 - Email-provider for cron-notifikationer
 - Dedikerede AMO-ansvarlig / GDPR-ansvarlig / økonomi-ansvarlig roller (EU AI Act + compliance)
@@ -1031,7 +1034,7 @@ Hvis vi sletter PII fra audit_log og restorer fra backup taget før, kommer PII 
 
 Anti-mønstre fra 1.0 der ikke må gentages.
 
-**1. Dobbelt sandhed for identitet.** 1.0 har 3 identiteter parallelt (employee_master_data, agents, sales.agent_email) uden FK-constraint. 2.0: `persons` + `person_identities` med UNIQUE, én resolver i `@stork/core`.
+**1. Dobbelt sandhed for identitet.** 1.0 har 3 identiteter parallelt (employee_master_data, agents, sales.agent_email) uden FK-constraint. 2.0-koncept: én identitets-vej fra integration-payload til employee. Identitet og employee adskilles som distinkte koncepter. UNIQUE-constraint forhindrer dubletter. Én resolver i `@stork/core` med eksplicit "ikke-resolvable"-fallback. Konkret tabel-struktur afgøres ved lag E (se §6.2).
 
 **2. Hardkodede rolle-bypasses.** `if (roleKey === 'ejer') return generateOwnerPermissions()`. 2.0: `is_admin()` permission-baseret. Ingen `if (role === '...')` nogensinde.
 
@@ -1041,7 +1044,7 @@ Anti-mønstre fra 1.0 der ikke må gentages.
 
 **5. Pricing tie-breaker mangler.** 1.0 har `ORDER BY priority DESC` uden sekundær nøgle. 2.0-løsning: §6.1.
 
-**6. `product_campaign_overrides` halv-død.** 1.0 har 76 aktive rækker der ikke læses af pricing-motoren. 2.0: dropper tabellen; overrides via priority i `product_pricing_rules`.
+**6. Halv-død override-tabel.** 1.0's `product_campaign_overrides` har 76 aktive rækker som pricing-motoren ikke læser. 2.0: kampagne-overrides håndteres som almindelige pricing-regler med priority — ingen separat override-mekanisme. Konkret tabel-struktur afgøres ved lag E.
 
 **7. Hardkodede konstanter i helpers.** Lønperiode 15→14, 12,5 %, 750 kr osv. hardkodet i `hours.ts`. 2.0: alle værdier i UI fra start. Algoritmer i `@stork/core` (pure functions), værdier i UI-konfigurations-tabeller. Ingen `system_constants`-mekanisme.
 
@@ -1059,7 +1062,7 @@ Anti-mønstre fra 1.0 der ikke må gentages.
 
 **14. Backdoors i auth.** Custom password-reset, hardkodet rolle-keys, `verify_jwt = false` på interne flows. 2.0: Microsoft Entra ID eneste provider for medarbejdere, ingen backdoor ved Microsoft-nedbrud. Webhooks bruger separate auth (signed payloads, IP-allowlist).
 
-**15. Healers og enrichment efter indkomst.** `enrichment-healer`, `heal_fm_missing_sale_items`. 2.0: salg valideres ved INSERT; hvis adapter ikke kan resolve, lander det i `needs_processing`-kø. Ingen baggrund-healers.
+**15. Healers og enrichment efter indkomst.** 1.0 har `enrichment-healer`, `heal_fm_missing_sale_items` der retter manglende data efter INSERT. 2.0-koncept: salg valideres ved INSERT. Hvis adapter ikke kan resolve, lander rækken i en eksplicit kø der kræver manuel mapping. Ingen baggrund-healers. Konkret kø-tabel afgøres ved lag E.
 
 **16. Manglende immutability-håndhævelse.** 1.0 har "ærlig disciplin" uden DB-trigger. 2.0: BEFORE UPDATE/DELETE-trigger på alle immutable tabeller, TRUNCATE-blokering, korrektion via modposter.
 
@@ -1189,7 +1192,29 @@ Når Code mærker glid: stop. Indrøm. Rul tilbage hvis nødvendigt. Vent.
 
 ---
 
-_Version 1.3 · 12. maj 2026 · Refactor af §4-§8 empirisk verificeret mod imtxvrymaqbgcvsarlib + repo claude/review-phase-zero-plan-oW5Cg @ 7157579e7. Status-skala indført: [BYGGET] / [DESIGN, IKKE BYGGET] / [LÅST som retning, IKKE BYGGET] / [ÅBEN]. v1.3-ændringer:_
+_Version 1.4 · 12. maj 2026 · Greenfield-princip ekspliciteret i §3.4: 2.0 arver intet automatisk fra 1.0. Hvor 1.0's koncept skaber forståelse, tages konceptet — ikke navnet, ikke strukturen, ikke implementationen. Tabel-navne afgøres når 2.0 bygger._
+
+_v1.4-ændringer (greenfield-pass):_
+
+- _§3.4 ny princip "Ingen arv fra 1.0" tilføjet med eksplicit konsekvens-formulering om at koncepter/principper beskrives, ikke konkrete tabel-navne, for ikke-byggede entiteter._
+- _§4.6 tre schemas: tabel-lister erstattet med koncept-beskrivelser pr. schema. Eksisterende fase 0-tabeller listet eksplicit som dem der skal flyttes (de er BYGGET, navne afgjort)._
+- _§4.7 @stork/core: funktions-signaturer (pricing.match, salary.compute, identity.resolve, period.from, attribution.team, permissions.has) erstattet med ansvarsområde-beskrivelser. Pakke-navn bevaret (workspace eksisterer, navn afgjort). Module-navne afgøres ved bygning._
+- _§6.1 pricing: konkrete tabel-navne (product_pricing_rules, pricing_rules_history, products, sale_items, products.commission_dkk) fjernet. Koncepter bevaret._
+- _§6.2 provision: identity.resolve-signatur og person_identities-navn fjernet. Koncept "én resolver med eksplicit Unresolved-fallback + identitet adskilt fra employee" bevaret. FM-håndtering reformuleret konceptuelt._
+- _§6.4 cancellation: tre upload-types omformuleret som koncepter (kunde-annullering, kurv-rettelse, match-rettelse) med eksplicit note om at navne afgøres ved lag E. deduction_date erstattet med "effekt-dato". Klient-specifik matching reformuleret._
+- _§6.5 attribution: client_campaigns, sales.client_campaign_id, team_clients fjernet. Koncepter bevaret med eksplicit note om at relations-struktur afgøres ved lag E._
+- _§6.6 konsekvens-paragraf: team_clients erstattet med "klient-team-ejerskab"._
+- _§6.7 tidsenheder: sale_datetime (timestamptz) erstattet med "salgs-tidsstempel, præcis timestamp"._
+- _§6.8 integration: integration_events, record_sale, rematch_pricing, recalculate_commission, notify_seller fjernet som konkrete navne. Eksterne integrationsnavne (Adversus, Enreach, e-conomic, Twilio, Entra) bevaret (afgjort)._
+- _§6.10 KPI-system: formel-navne (omsætning_total osv.) markeret som illustrative. "is_active" reformuleret til "aktiv-status"._
+- _§6.11 AMO-audit: amo_\*-tabeller erstattet med "AMO-relaterede tabeller".\_
+- _§12 punkt 1: persons + person_identities-navngivning fjernet. Koncept bevaret med reference til §6.2._
+- _§12 punkt 6: product_campaign_overrides reformuleret som "1.0's halv-død override-tabel". product_pricing_rules-reference fjernet._
+- _§12 punkt 15: needs_processing-kø fjernet som konkret navn. Koncept "eksplicit kø der kræver manuel mapping" bevaret._
+- _§11.4 multi-team-medlemsskab: employee_team_memberships fjernet. Koncept bevaret._
+- _§11.5 multi-superadmin: system_superadmins fjernet. Koncept bevaret._
+
+_v1.3 · 12. maj 2026 · Refactor af §4-§8 empirisk verificeret mod imtxvrymaqbgcvsarlib + repo claude/review-phase-zero-plan-oW5Cg @ 7157579e7. Status-skala indført: [BYGGET] / [DESIGN, IKKE BYGGET] / [LÅST som retning, IKKE BYGGET] / [ÅBEN]. v1.3-ændringer:_
 
 - _§4.2 BYGGET-claim verificeret + tilføjet RPC-navne, trigger-navne, faktisk antal kolonner/rækker. Klient-specifik retention re-klassificeret til DESIGN (ikke seedet)._
 - _§4.3 RLS-arkitektur præciseret pr-tabel. cron_heartbeats korrigeret til "ENABLE ikke FORCE" (skip-force-rls marker)._
