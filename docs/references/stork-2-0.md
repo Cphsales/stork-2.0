@@ -310,12 +310,12 @@ Pricing-rematch er navngivet RPC (`pricing.rematch_for_sale(saleId)`) kaldt synk
 
 # 5. Rettigheds-fundament
 
-## 5.1 To dimensioner [ÅBEN — under afklaring]
+## 5.1 To dimensioner [LÅST]
 
-Den nuværende retning er at adgang har to dimensioner:
+Adgang har to dimensioner:
 
 - **Rolle** bestemmer hvilke dele af systemet en bruger må se (menu, sider, funktioner)
-- **Team** bestemmer hvilken data inden for det der vises
+- **Team** (eller org-position) bestemmer hvilken data inden for det der vises
 
 Medarbejder er personen (tredje dimension, men ikke rettighed-givende).
 
@@ -323,13 +323,11 @@ Medarbejder er personen (tredje dimension, men ikke rettighed-givende).
 
 Forskellen betyder noget for debugging: "Hvis Alice ikke kan se en page, er det permissions-problem. Hvis Alice kan se pagen men ingen data, er det scope-problem."
 
-Den korrekte rettighedsopsætning er under afklaring. Se §11.1.
+**Scope-aksen har fire værdier:** `all` / `subtree` / `team` / `self`. Se §5.3 for org-træet der bærer `subtree`.
 
-## 5.2 Roller [D4 BYGGET, retning ÅBEN]
+## 5.2 Roller [LÅST og BYGGET]
 
-D4 har bygget en konkret rolle-model. Modellens forretningsmæssige korrekthed er under afklaring som del af den samlede rettighedsopsætning (§11.1).
-
-Den nuværende implementering: roller er KUN samlinger af rettigheder, ikke titler. Ingen hardkodede rolle-keys i kode (`if (role === 'ejer')` er forbudt).
+Roller er KUN samlinger af rettigheder, ikke titler. Ingen hardkodede rolle-keys i kode (`if (role === 'ejer')` er forbudt).
 
 **`is_admin()`** evaluerer mod `role_page_permissions` med specifik admin-key. Permission-baseret, ikke titel-baseret. Hvis ejer-rollen skifter navn, mister ejeren ikke alt.
 
@@ -339,36 +337,56 @@ Den nuværende implementering: roller er KUN samlinger af rettigheder, ikke titl
 
 1. Hvad: `page_key` + `tab_key` (tab_key NULL = hele page)
 2. Adgangsniveau: `can_view` + `can_edit` (separate booleans)
-3. Scope: `all` / `team` / `self`
+3. Scope: `all` / `subtree` / `team` / `self`
 4. Hvem: `role_id` (FK)
 
 Tabel: `role_page_permissions`, med 234 permission-rækker pr. rolle som målform.
 
+`subtree`-scope tilføjes til enum'en når org-træ-tabellerne bygges (D7-udvidelse). Eksisterende permissions-rækker uberørte ved tilføjelsen.
+
 mg@ og km@ er oprettet som admin-employees. `is_admin() = true` verificeret.
 
-## 5.3 Teams [DESIGN, IKKE BYGGET — D7 åben]
+## 5.3 Teams og org-træ [LÅST som arkitektur, IKKE BYGGET — D7 venter på detaljeret proposal]
 
 **Det Mathias har låst om fundamentet:**
 
 - 1 team max pr. medarbejder ad gangen (alle, inkl. stab)
 - Medarbejdere kan skifte teams med overgangsdato; historik bevares
 - Klient ejes af præcis ét team ad gangen; kan skifte med overgangsdato
-- Team-attribution af salg går via klient (`team_clients`), IKKE via sælgers team
+- Team-attribution af salg går via klient, IKKE via sælgers team
 - Snapshot på sales-rækken ved INSERT (team der ejede klienten på salgs-tidspunkt)
 - Min. dobbelt størrelse (200-300 medarbejdere) skal kunne håndteres uden omtænkning
+- Org-træ bygges som del af fase 0 (D7), ikke udskudt til 2.1
 
-**Team-attribution via klient.** Et salg på en klient tilhører det team der ejede klienten på salgsdatoen — uanset sælgers eget team. Eksempel: Thorbjørn fra Relatel sælger for Eesy TM → salget tilhører Eesy TM-teamet, ikke Relatel.
+**Team-attribution via klient.** Et salg på en klient tilhører det team der ejede klienten på salgsdatoen — uanset sælgers eget team. Eksempel: Thorbjørn fra Relatel sælger for Eesy TM → salget tilhører Eesy TM-teamet, ikke Relatel. Filtre for scope='team' på sales-rækker MÅ kun bruge salgets team-snapshot, ikke joins via sælgers nuværende team-medlemskab.
 
-**Foreslået model (Code's Hybrid Option C):**
+**Arkitektur (koncept-niveau, navne afgøres ved bygning):**
 
-- `org_units` (træ-struktur med `parent_org_unit_id`) = management-hierarki
-- `teams` (operationelle enheder der ejer klienter) — med `team.owner_org_unit_id` bridge
-- `employees` har både `org_unit_id` og `team_id` (uafhængige dimensioner — matrix-organisationer understøttes)
-- `clients.team_id` (single ownership, kan skifte med historik)
-- scope-enum udvides med `subtree` for management-chefer
-- Helper-funktioner: `employee_org_unit_at(employee_id, date)`, `org_unit_subtree(org_unit_id)`, `team_clients_at(team_id, date)`
+- **Operationelle teams** — enheder der ejer klienter og bærer medarbejdere
+- **Klient-team-relation** — autoritativ klient-til-team-ejerskab. UNIQUE-constraint på klient-id (én klient = ét team). Med historik når klient flytter
+- **Medarbejder-team-relation** — én aktiv tilknytning ad gangen pr. medarbejder. Med historik når medarbejder skifter team
+- **Org-træ** — selv-refererende træ-struktur der grupperer organisatoriske enheder. Vilkårligt antal niveauer. Teams og medarbejdere kan begge hænge i træet (medarbejdere uden team — fx stab — hænger direkte i org-træet)
+- **Helper-funktioner** — pure helpers der besvarer: hvilket team havde medarbejderen på dato X, hvilket team ejede klienten på dato X, hvilke org-enheder er under min position i træet
 
-Foreslået af Code, ikke endeligt godkendt af Mathias. Se §11.
+Konkrete tabel-navne og kolonne-strukturer afgøres når D7 bygger.
+
+**Hard constraints for D7-implementering:**
+
+- UNIQUE-constraint på klient-id i klient-team-relation (én klient = ét team)
+- Cycle-detection-trigger på org-træ (forhindrer A→B→A)
+- Snapshot-mønstret på sales-rækken (team-id-snapshot ved INSERT)
+- RLS-policy på sales for scope='team' bruger snapshot-feltet, ikke joins
+- RLS-policy på sales for scope='subtree' bruger recursive CTE op gennem org-træet, derefter alle teams under positionen, derefter snapshot-felt
+- Historik bevares på medarbejder-team-relation og klient-team-relation
+
+**Scope-aksens fire værdier:**
+
+- `self` — egne rækker (employee_id-match)
+- `team` — rækker hvor sales' team-snapshot = current employee's team
+- `subtree` — rækker hvor sales' team-snapshot tilhører et team under current employee's position i org-træet
+- `all` — alle rækker
+
+Mellem-niveauer i hierarkiet (FM-chef, TM-chef, region-chef) tilføjes som data i org-træet når behovet er konkret — ikke som schema-ændring. Træet er bygget til at vokse.
 
 ## 5.4 Pages-arkitektur [LÅST]
 
@@ -376,6 +394,7 @@ Foreslået af Code, ikke endeligt godkendt af Mathias. Se §11.
 
 - Sælger med scope=self → ser kun sit
 - Teamleder med scope=team → ser sit teams
+- Mellem-chef med scope=subtree → ser alle teams under sin position i org-træet
 - CEO/admin med scope=all → ser alle
 
 ÉN vagtplan-page (ikke 7 pages for 7 teams). ÉN sales-page. ÉN team-økonomi-page.
@@ -400,7 +419,8 @@ TV-link er spejl af moder-dashboard (samme data, anden visning). Pseudonymiseret
 UI håndhæver:
 
 - Hvis rolle har scope='team' → team SKAL vælges ved oprettelse af medarbejder
-- Hvis rolle har scope='all' → team kan være tom
+- Hvis rolle har scope='subtree' → org-position SKAL vælges ved oprettelse
+- Hvis rolle har scope='all' → team og org-position kan være tom
 - Forhindrer 0-data-admins (admin med team_id=NULL og kun scope='team'-permissions)
 - Roller indeholder IKKE team-information i navnet
 
@@ -849,34 +869,17 @@ Triggere der altid gør rødt:
 
 ## 11.1 Fase 0 — skal afgøres nu
 
-### Rettigheds-model fundament
-
-Den samlede rettighedsopsætning er under afklaring. §5.1 (to dimensioner), §5.2 (D4-rolle-model), D7-teams og pages-arkitekturen hænger sammen — beslutninger truffet på ét sted påvirker de andre.
-
-Konkrete åbne punkter:
-
-1. Holder to-dimensions-modellen (rolle × team) eller er der behov for flere akser?
-2. Er den firedimensionelle permission-model (page_key/tab_key + can_view/can_edit + scope + role_id) den rigtige form?
-3. En rolle pr. medarbejder eller M2M?
-4. Hvordan håndteres rolle-typer (TM-medarbejder vs. stab vs. leder) — som scope-konfiguration eller som separat dimension?
-
-Blokerer Lag E sales-tabel og Lag F UI-bygning.
-
 ### Pages-arkitektur: hardkodet vs. data-drevet
 
 §5.4 beskriver retningen "hardkodede pages, scope-filtrering på rækker" med vagtplan-1.0 som bevis. Argumentet imod data-drevne pages (CMS som Strapi/Sanity): 3-6 måneders investering for to-personers projekt. Argumentet for: fleksibilitet hvis felter pr. rolle reelt varierer meget.
 
-Skal afgøres som del af rettigheds-modellen — pages-arkitektur og permission-modellen er sammenflettede.
+Retningen er låst (hardkodet) som princip. Konkret implementering af conditional rendering og field-visibility-pattern afgøres i lag F.
 
-### D7 rettigheds-model
+### D7 detaljeret proposal
 
-Status: Code har foreslået Hybrid Option C. Venter på Mathias' godkendelse.
+§5.3 har låst arkitekturen (operationelle teams + klient-team-relation + medarbejder-team-relation + org-træ + helpers). Code skal levere detaljeret proposal: konkrete tabel-strukturer, kolonne-navne, RLS-policies, migration-plan fra D4 til D7, smoke-test-plan.
 
-1. Accepteres Hybrid Option C som retning?
-2. scope='subtree' tilføjes nu eller udskydes til 2.1+?
-3. Klient-overdragelse: hård cut-over eller overlap-mulighed?
-
-Blokerer lag E (sales-tabel design afhænger af team-modellen).
+Blokerer lag E (sales-tabel design afhænger af team-modellen og snapshot-mekanisme).
 
 ## 11.2 Lag E — skal afgøres før Engine + Integration
 
@@ -970,9 +973,9 @@ Drag-and-drop visual builder, live-test mod rigtige data, permission-toggle pr. 
 
 ## 11.4 2.1+ — bygges senere
 
-### Hierarki-graduering (FM-chef, TM-chef niveauer)
+### Hierarki-graduering (mellem-niveauer i org-træet)
 
-I dag (100 medarbejdere) er det fladt: ejer → teamleder → sælger. Bygges når Stork vokser til mellem-niveauer. D7's Hybrid Option C er klar til at understøtte uden migration.
+I dag (100 medarbejdere) er det fladt: ejer → teamleder → sælger. Org-træ-fundamentet bygges i fase 0 (D7), så mellem-niveauer (FM-chef, TM-chef, region-chef) tilføjes som data i træet når behovet er konkret — ikke som schema-ændring. Træet er bygget til at vokse.
 
 ### Multi-team-medlemsskab
 
@@ -1192,7 +1195,17 @@ Når Code mærker glid: stop. Indrøm. Rul tilbage hvis nødvendigt. Vent.
 
 ---
 
-_Version 1.4 · 12. maj 2026 · Greenfield-princip ekspliciteret i §3.4: 2.0 arver intet automatisk fra 1.0. Hvor 1.0's koncept skaber forståelse, tages konceptet — ikke navnet, ikke strukturen, ikke implementationen. Tabel-navne afgøres når 2.0 bygger._
+_Version 1.5 · 12. maj 2026 · Rettigheds-fundamentet låses. §5.1, §5.2, §5.3 ÅBNE-status fjernet. Org-træ accepteret som del af fase 0 (D7 udvidet til at omfatte org_units-træ). Scope-aksen får fjerde værdi `subtree`. D7 venter på detaljeret proposal fra Code._
+
+_v1.5-ændringer (rettigheds-låsning):_
+
+- _§5.1 fra [ÅBEN — under afklaring] til [LÅST]. To dimensioner (rolle + team/org-position) låst. Note tilføjet om scope-aksens fire værdier._
+- _§5.2 fra [D4 BYGGET, retning ÅBEN] til [LÅST og BYGGET]. Firedimensionel permission-model låst. Scope udvidet fra 3 til 4 værdier (`all` / `subtree` / `team` / `self`). Note om at `subtree` tilføjes til enum'en når org-træ-tabellerne bygges (D7-udvidelse)._
+- _§5.3 fra [DESIGN, IKKE BYGGET — D7 åben] til [LÅST som arkitektur, IKKE BYGGET — D7 venter på detaljeret proposal]. "Foreslået af Code, ikke endeligt godkendt" fjernet. Arkitekturen låst på koncept-niveau (operationelle teams + klient-team-relation + medarbejder-team-relation + org-træ + helpers). Greenfield-princip bevares: tabel-navne afgøres ved D7-bygning. Hard constraints præciseret (UNIQUE klient-id, cycle-trigger, snapshot-mønster, RLS bruger snapshot ikke joins)._
+- _§5.4 udvidet med scope='subtree' eksempel (mellem-chef ser teams under sin position i org-træet)._
+- _§5.6 UI-disciplin udvidet med subtree-tilfælde (org-position SKAL vælges)._
+- _§11.1 "Rettigheds-model fundament" og "D7 rettigheds-model" fjernet (begge nu låst). "Pages-arkitektur" omformuleret: retning låst, kun implementerings-detalje åben for lag F. "D7 detaljeret proposal" tilføjet som åbent fase 0-arbejde._
+- _§11.4 "Hierarki-graduering" opdateret: fundamentet bygges i fase 0, kun data tilføjes når behovet er konkret. "FM-chef, TM-chef niveauer" erstattet med "mellem-niveauer i org-træet"._
 
 _v1.4-ændringer (greenfield-pass):_
 
