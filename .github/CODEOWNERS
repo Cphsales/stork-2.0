@@ -1,0 +1,12 @@
+# Stork 2.0 Code Owners
+#
+# Linje-format: <path-glob>   <owner1> [<owner2> ...]
+# Den sidst-matchende regel vinder.
+
+# Default — alt review af Mathias (repo-ejer)
+*       @copenhagensales
+
+# Disciplin-mekanismer (lag B kommer) — kræver ekstra opmærksomhed
+# /supabase/migrations/        @copenhagensales
+# /packages/core/              @copenhagensales
+# /.github/                    @copenhagensales
