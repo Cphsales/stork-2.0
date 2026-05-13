@@ -29,8 +29,10 @@ function extractColumns(sql) {
   const cleaned = stripComments(sql);
   const columns = [];
 
+  // Accepter både simpel CREATE TABLE og PARTITION BY-varianter.
+  // Trin 1: core_*-schemas tilføjet; PARTITION BY-klausul nu mulig.
   const createTableRe =
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(([\s\S]*?)\)\s*(?:WITH\s*\([^)]*\)\s*)?(?:TABLESPACE\s+\w+\s*)?;/gi;
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(([\s\S]*?)\)\s*(?:PARTITION\s+BY\s+\w+\s*\([^)]*\)\s*)?(?:WITH\s*\([^)]*\)\s*)?(?:TABLESPACE\s+\w+\s*)?;/gi;
   let m;
   while ((m = createTableRe.exec(cleaned)) !== null) {
     const schema = (m[1] || "public").toLowerCase();
@@ -85,8 +87,11 @@ function extractClassifiedFromInserts(sql) {
   const cleaned = stripComments(sql);
   const classified = new Set();
 
-  // Find hver INSERT-start (uden den greedy regex' semicolon-trap)
-  const startRe = /INSERT\s+INTO\s+public\.data_field_definitions\s*(?:\([^)]*\))?\s*VALUES\s*/gi;
+  // Find hver INSERT-start (uden den greedy regex' semicolon-trap).
+  // Trin 1 (rettelse 20): data_field_definitions er flyttet fra public til
+  // core_compliance. Begge schemas accepteres så historiske migrations stadig
+  // matches.
+  const startRe = /INSERT\s+INTO\s+(?:public|core_compliance)\.data_field_definitions\s*(?:\([^)]*\))?\s*VALUES\s*/gi;
   let m;
   while ((m = startRe.exec(cleaned)) !== null) {
     const startOfValues = m.index + m[0].length;

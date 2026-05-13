@@ -11,12 +11,17 @@ const ROOT = process.cwd();
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", ".git", "coverage"]);
 const MIGRATIONS_DIR = "supabase/migrations";
 
-// D6: tabeller der eksisterede før D6's dedup-key-check landede.
-// Disse er master-tabeller / config-tabeller / audit-infrastruktur og har
-// ikke ingestion-flow der kræver dedup_key. Nye tabeller efter D6 skal
-// enten erklære dedup_key eller eksplicit opt-out med
-// `-- no-dedup-key: <reason>` i CREATE TABLE-blokken.
+// Master-tabeller / config-tabeller / audit-infrastruktur uden ingestion-flow
+// der kræver dedup_key. Nye tabeller skal enten erklære dedup_key eller
+// eksplicit opt-out med `-- no-dedup-key: <reason>` i CREATE TABLE-blokken.
+//
+// Public-tabeller er fra fase 0 (C2-D5) — DB-tabellerne er droppet i trin 1
+// (rettelse 20), men migration-filerne bevares som historik og fanges stadig
+// af fitness-checks. De forbliver grandfathered.
+//
+// Core_*-tabeller er fra trin 1 (rettelse 20).
 const GRANDFATHERED_NO_DEDUP_KEY = new Set([
+  // Historisk (public, droppet i trin 1):
   "public.audit_log",
   "public.cron_heartbeats",
   "public.pay_period_settings",
@@ -30,23 +35,28 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
   "public.role_page_permissions",
   "public.clients",
   "public.client_field_definitions",
+  "public.org_units",
+  "public.teams",
+  "public.employee_teams",
+  "public.client_teams",
+  // Trin 1 (core-schemas):
+  "core_compliance.audit_log",
+  "core_compliance.cron_heartbeats",
+  "core_compliance.data_field_definitions",
+  "core_identity.employees",
+  "core_identity.roles",
+  "core_identity.role_page_permissions",
 ]);
 
-// D6: tabeller der har immutability-trigger (BEFORE UPDATE/DELETE block).
-// De SKAL også have BEFORE TRUNCATE-blokering, da TRUNCATE bypassser
-// row-level triggers.
-const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
-  "public.audit_log",
-  "public.commission_snapshots",
-  "public.salary_corrections",
-  "public.cancellations",
-];
+// Tabeller der har immutability-trigger (BEFORE UPDATE/DELETE block).
+// De SKAL også have BEFORE TRUNCATE-blokering, da TRUNCATE bypasser
+// row-level triggers. Trin 1: kun audit_log er immutable; lønperiode-snapshots
+// genskabes i trin 7.
+const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = ["core_compliance.audit_log"];
 
-// D6: migrationsfiler oprettet før D6's set-config-discipline-check.
-// Disse pre-D6-filer kan indeholde top-level INSERT/UPDATE uden
-// session-vars. Migrationsfiler er historik og modificeres ikke
-// retroaktivt — grandfather-listen dokumenterer eksplicit hvilke
-// filer der er undtaget. Nye migrations skal opfylde checkken.
+// Migrationsfiler der er undtaget fra set-config-discipline-check.
+// Pre-D6-filer kan indeholde top-level INSERT/UPDATE uden session-vars.
+// Migration-filer er historik og modificeres ikke retroaktivt.
 const GRANDFATHERED_NO_SETCONFIG_DISCIPLINE = new Set([
   "20260511165543_c4_pay_periods_template.sql", // singleton-config-INSERT uden top-level session-vars
 ]);
@@ -226,7 +236,11 @@ async function migrationSetConfigDiscipline() {
     // CREATE FUNCTION-body eksekverer først ved runtime og er ikke
     // migration-tidens mutation.
     const cleaned = stripDollarQuoted(stripSqlComments(sql));
-    const hasMutation = /\b(INSERT\s+INTO|UPDATE\s+|DELETE\s+FROM)\s+public\./i.test(cleaned);
+    // Mutation i public eller core_* (alle feature-tabeller).
+    const hasMutation =
+      /\b(INSERT\s+INTO|UPDATE\s+|DELETE\s+FROM)\s+(public|core_compliance|core_identity|core_money|app_\w+)\./i.test(
+        cleaned,
+      );
     if (!hasMutation) continue;
     const hasSourceType = /set_config\s*\(\s*'stork\.source_type'/i.test(cleaned);
     const hasChangeReason = /set_config\s*\(\s*'stork\.change_reason'/i.test(cleaned);
