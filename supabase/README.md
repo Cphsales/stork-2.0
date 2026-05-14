@@ -242,7 +242,7 @@ når email-provider er valgt. Indtil da: failures synlige i
 ## Period-lock-template (lag C4)
 
 Generic mønster for "tal låses, data må ikke" der bruges på tværs af
-domæner (løn implementeret nu; KPI og bogføring senere).
+domæner (løn implementeret nu; KPI senere).
 
 **Fire dele pr. domæne:**
 

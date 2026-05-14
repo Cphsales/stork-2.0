@@ -189,10 +189,12 @@ Sammenkobling eksplicit + rettigheder der virker = man kan altid se hvem gjorde 
 - Én universel audit-tabel — append-only, immutable
 - BEFORE UPDATE/DELETE/TRUNCATE blokeret af triggers
 - Pr. row: target, actor, source-type (manual / cron / webhook / trigger_cascade / service_role / unknown / migration), change_reason, schema_version, changed_columns, old_values, new_values
-- Universel audit-trigger attaches pr. mutable tabel
+- Universel audit-trigger attaches pr. mutable tabel, bortset fra eksplicitte audit-undtagelser nedenfor
 - PII-filter: pii_level='direct' hashes til sha256 før audit
 - jsonb-walker for klient-felt-bag (rekursiv hash pr. key efter felt-definitions)
 - Audit auditerer ikke sig selv. raw_payload-kategori auditeres ikke
+
+**Audit-undtagelse for snapshot-tabeller:** `core_money.commission_snapshots` og fremtidige `kpi_snapshots` + payroll-linjer (trin 22) har ingen per-row audit-trigger. Aggregeret audit via `pay_period_candidate_runs` (én audit-row pr. compute med row-tællere + checksum) og `pay_periods.status='locked'` (én audit-row pr. lock) erstatter per-row spor. Snapshot-rows er computational byproducts under auditerede aggregat-handlinger, ikke selvstændige forretnings-mutationer. Direkte INSERT/UPDATE/DELETE blokeres via FORCE RLS + conditional immutability-trigger; mutation sker kun gennem lock-pipeline. Allowlist håndhævet statisk i `scripts/fitness.mjs` (`AUDIT_EXEMPT_SNAPSHOT_TABLES`) — tilføjelse kræver kode-commit. **Bemærk:** `salary_corrections` er IKKE i undtagelsen (princip 9 — rå data med per-row audit).
 
 ### §1.4 Anonymisering
 
@@ -297,29 +299,41 @@ Periode-grænser er data, ikke hardkodet.
 
 **Atomar lock-pipeline — forberedt-aggregat-mønster (to-fase):**
 
-Lock-pipeline garanteres at være hurtig uafhængigt af data-volumen via candidate-snapshot-mønster:
+Lock-pipeline garanteres at være hurtig uafhængigt af data-volumen via candidate/final-flag-mønster:
 
 **Fase 1 — Candidate-beregning (asynkron, før lock):**
 
 - Cron-job kører fx 30 minutter før `recommended_lock_date`
-- Beregner alle aggregater, formel-evalueringer, KPI-snapshots til **candidate-tabeller** parallelt med live drift
-- Candidate-tabeller er identiske med final-tabeller men med `is_candidate=true`-flag (eller separat suffix `_candidate`)
-- Audit fanger candidate-beregning som operationel handling
-- Kan re-genereres ubegrænset uden at påvirke live data eller seneste authoritative snapshot
+- Beregner alle aggregater, formel-evalueringer, KPI-snapshots som **candidate-rows** (`is_candidate=true`) i de samme snapshot-tabeller, parallelt med live drift
+- Snapshot-tabeller har `is_candidate boolean NOT NULL DEFAULT true` + `candidate_run_id uuid` der refererer `pay_period_candidate_runs`
+- Candidate-rows og final-rows lever i samme tabel; compute opretter/opdaterer candidate-rows, promotion flipper flag, opretter ikke nye rows og kopierer ikke
+- UNIQUE-constraints identificerer den logiske row uden hensyn til run (fx `period_id + sale_id + employee_id` for `commission_snapshots`)
+- Re-compute er idempotent: samme logiske row har højst én current candidate-row pr. periode; compute upserter candidate-rows til at matche current data state
+- Audit fanger candidate-beregning som operationel handling via `pay_period_candidate_runs` (ikke per-row på snapshot-tabel)
+- Kan re-genereres ubegrænset uden at påvirke final-rows eller seneste authoritative snapshot
 
 **Fase 2 — Promovering (atomar, ved lock):**
 
 1. `pay_period_lock(period_id, change_reason)` validerer at candidate findes og er current (sammenligner candidate's underliggende data-checksums med live data)
 2. Hvis candidate er stale (data er ændret siden candidate-beregning) → re-generér candidate inline, derefter promovér
-3. Promovér candidate-rows til final immutable resultat-tabeller (UPDATE flag eller MOVE-mellem-tabeller)
+3. Promovér candidate-rows til final immutable resultat: `UPDATE snapshot SET is_candidate=false WHERE candidate_run_id=v_run.id`. Ingen INSERT, ingen kopi, ingen MOVE.
 4. Lønperiode-rækken UPDATE'es med status=locked
 5. Hele promoveringen kører i én transaktion — rolles tilbage hvis nogen del fejler
 
 **Lock-pipeline SLA:**
 
 - **<10 sekunder** for største periode-type ved Stork's forventede skala (130-500 medarbejdere, 1M+ sales)
-- Garanteret af candidate-mønstret — promoveringen er kun UPDATE af pre-beregnede rows + status-skifte
+- Garanteret af candidate/final-flag-mønstret — promoveringen er kun UPDATE af pre-beregnede rows + status-skifte
 - Hvis candidate-beregningen i fase 1 tager længere (5-30 min) er det acceptabelt fordi det sker asynkront uden lock-contention
+
+**Audit-strategi for snapshot-tabeller:**
+
+1. `pay_period_candidate_runs` auditeres pr. compute-handling og indeholder row-tællere + checksum.
+2. `pay_periods.status='locked'` auditeres pr. lock-handling.
+3. Per-row mutationer på `commission_snapshots` (og fremtidige `kpi_snapshots`, payroll-linjer ved trin 22) er interne compute/promotion-steps under de aggregerede audit-events, ikke selvstændige forretnings-mutationer.
+4. Snapshot-tabellerne har ingen per-row audit-trigger; tabet kompenseres af conditional immutability (kun `is_candidate=true→false` flag-flip og idempotent recompute tilladt), FORCE RLS og lock-pipeline-disciplin.
+
+**legacy_snapshots har per-row audit:** Importerede historiske sales fra 1.0 (`legacy_snapshots` i core_compliance, trin 14) er almindelig data-import, ikke compute-output. De har per-row audit-trigger som almindelige forretnings-tabeller — IKKE samme aggregat-strategi som commission_snapshots. **salary_corrections** følger samme regel: rå data (modpost ved annullering), per-row audit, ikke snapshot-undtagelse.
 
 **Benchmark-test i CI:**
 
@@ -500,6 +514,10 @@ Rådata → Beregning → Output
 - expression jsonb (AST)
 - input_variables jsonb
 - permission_level (gælder KPI'er)
+- `audit_level text` NULL default — opgraderer snapshot fra aggregat (default) til per-row audit hvis admin aktivt vælger
+- `anonymization_strategy text` NULL default — FK til `core_compliance.anonymization_strategies.strategy_name`; tom hvis output ikke skal anonymiseres
+- `retention_override jsonb` NULL default — pr-instans retention; hvis NULL bruges snapshot-tabellens default
+- `status text` — lifecycle: draft → tested → approved → active (princip 17)
 
 **Pricing er IKKE et output_type** — det er en beregning hvis resultat bliver input til lønart (provision).
 **Klient-tid-betaling er IKKE et output_type** — det er en beregning hvis resultat kan blive både KPI- og lønart-input.
@@ -582,20 +600,19 @@ Stork 2.0's egen juridiske ramme:
 - `gdpr_cleanup_log` — pr. retroaktiv sletnings-operation (forudsætter `gdpr_retroactive_remove`-RPC, post-lag-E)
 - `amo_audit_log` — AMO-specifik audit-trail (når AMO-tabeller bygges)
 
-**Afgrænsning — Stork har INGEN bogføringspligt:**
+**Afgrænsning — retention-styring:**
 
-- Bogføringsloven gælder e-conomic, ikke Stork
-- E-conomic-fakturaer (når integration tilføjes i 2.1+) har 5-års lovgivnings-trigger pålagt af e-conomic-systemet, ikke af Stork selv
-- Stork's eget data (sales, payroll, etc.) har ikke lovbestemt min-retention. Retention styres af forretnings-behov og GDPR-formål
+- Stork's data (sales, payroll, etc.) har ikke lovbestemt min-retention. Retention styres af forretnings-behov og GDPR-formål.
 
 **Konsekvens for klassifikation:**
 
-- Default retention-type: `time_based` (forretnings-styret)
-- `legal` retention-type reserveret til lovgivnings-bundne entiteter (e-conomic-fakturaer i 2.1+, evt. AMO-dokumentation)
+- Default retention-type ved bootstrap: NULL (admin vælger eksplicit pr. kolonne i UI; migration-gate blokerer prod indtil valgt)
+- retention_type-enum: `time_based`, `event_based`, `manual`, `permanent`
+- `permanent` håndhæves via positiv allowlist (DB-trigger + IMMUTABLE allowlist-funktion `is_permanent_allowed`) — kun system-meta-kolonner (PK'er, singleton-konfig, audit-struktur, system-cron-config) kvalificerer. Allowlist-ændringer kræver kode-commit + review.
 
 **Konsekvens for permissions:**
 
-- `is_compliance_officer()` helper-funktion (stærkere end `is_admin()`) — krævet for retroaktiv sletning, AI-instruktions-ændringer, AMO-rettelser. Implementeres når relevant RPC bygges; design-spor klar fra fundamentet
+- `is_compliance_officer()` helper-funktion (stærkere end superadmin) — krævet for retroaktiv sletning, AI-instruktions-ændringer, AMO-rettelser. Implementeres når relevant RPC bygges; design-spor klar fra fundamentet
 
 ### §1.14 Driftstabilitet
 
@@ -1025,7 +1042,7 @@ Fire veje (resten udskudt til 2.1+):
 3. **Manuel UI-registrering** — FM-salg + andre ikke-dialer-salg
 4. **Excel-upload** — klient-CRM-feedback (alle fire feedback-typer)
 
-Drop fra fase 0: e-conomic, Twilio, Microsoft 365 (uden for auth-provider). Adapter-arkitekturen skal kunne udvides uden refactor når 2.1 tilføjer dem.
+Drop fra fase 0: eksterne integrationer udover Adversus/Enreach/Excel/manuel UI/Microsoft Entra ID (auth). Adapter-arkitekturen skal kunne udvides uden refactor når 2.1 tilføjer dem.
 
 **Adversus sync-job (ekstra sikkerhedslag mod data-tab):**
 
@@ -1439,7 +1456,7 @@ Pre-commit-hook kræver "ZONE: red"-prefix for ændringer i `core_*`-schemas, `@
 | 4    | Klassifikations-registry + migration-gate Phase 1                                                                                                                                                                                                                                                                                                                                                                                      | core_compliance                                                               |
 | 5    | Identitet del 1 (medarbejdere + auth + roller + permissions + is_admin) **+ migration: discovery-script for 1.0-medarbejdere + udtræks-SQL-skabelon + upload-script til core_identity.employees**                                                                                                                                                                                                                                      | core_identity                                                                 |
 | 6    | Anonymisering (anonymization_state-tabel + RPC'er pr. core-schema + replay_anonymization + verify_anonymization_consistency + retention-cron-skeleton)                                                                                                                                                                                                                                                                                 | anonymization_state i core_compliance; RPC'er pr. core_identity og core_money |
-| 7    | Periode-skabelon (lønperioder + lock-trigger + commission-snapshots + salary-corrections + cancellations-skabelon + **candidate-snapshot-tabeller** for forberedt-aggregat-mønster + **lock-pipeline benchmark-test** med SLA <10s)                                                                                                                                                                                                    | core_money                                                                    |
+| 7    | Periode-skabelon (lønperioder + lock-trigger + commission-snapshots + salary-corrections + cancellations-skabelon + **is_candidate-flag på commission_snapshots-tabel** for forberedt-aggregat-mønster + **lock-pipeline benchmark-test** med SLA <10s)                                                                                                                                                                                | core_money                                                                    |
 | 7b   | Pay-period-auto-lock-cron + **candidate-pre-compute-cron** (30 min før recommended_lock_date)                                                                                                                                                                                                                                                                                                                                          | Cron i core_compliance kalder RPC i core_money                                |
 | 7c   | **break_glass_requests-tabel** + RPC-skabelon (`break_glass_request`/`approve`/`reject`/`execute`) + `break_glass_operation_types`-konfig-tabel + expires-cron                                                                                                                                                                                                                                                                         | core_compliance                                                               |
 | 8    | Migration-gate Phase 2 strict aktivering                                                                                                                                                                                                                                                                                                                                                                                               | CI                                                                            |
@@ -1521,17 +1538,17 @@ Hvis planen følges:
 
 ### Fundament
 
-| Område                | Afgørelse                                                             |
-| --------------------- | --------------------------------------------------------------------- |
-| Database-princip      | Stamme = database. Beregning = over databasen                         |
-| Tre principper        | Én sandhed, styr på data, sammenkobling eksplicit                     |
-| Stack                 | React + TypeScript + Supabase                                         |
-| Auth                  | Microsoft Entra ID som eneste login for medarbejdere. Ingen backdoor  |
-| Schema-arkitektur     | core_identity / core_money / core_compliance fra trin 1               |
-| Forretningslogik      | TypeScript-pakke @stork/core. Ikke PL/pgSQL                           |
-| Apps                  | Eget schema app*<navn>. Kun via SECURITY DEFINER RPC'er til core*\*   |
-| Juridisk ramme        | GDPR + EU AI Act + Arbejdsmiljøloven. Stork har INGEN bogføringspligt |
-| FORCE RLS undtagelser | audit_log + cron_heartbeats. Læsning via RPC                          |
+| Område                | Afgørelse                                                            |
+| --------------------- | -------------------------------------------------------------------- |
+| Database-princip      | Stamme = database. Beregning = over databasen                        |
+| Tre principper        | Én sandhed, styr på data, sammenkobling eksplicit                    |
+| Stack                 | React + TypeScript + Supabase                                        |
+| Auth                  | Microsoft Entra ID som eneste login for medarbejdere. Ingen backdoor |
+| Schema-arkitektur     | core_identity / core_money / core_compliance fra trin 1              |
+| Forretningslogik      | TypeScript-pakke @stork/core. Ikke PL/pgSQL                          |
+| Apps                  | Eget schema app*<navn>. Kun via SECURITY DEFINER RPC'er til core*\*  |
+| Juridisk ramme        | GDPR + EU AI Act + Arbejdsmiljøloven                                 |
+| FORCE RLS undtagelser | audit_log + cron_heartbeats. Læsning via RPC                         |
 
 ### Adgang
 
@@ -1632,7 +1649,7 @@ Hvis planen følges:
 | Område        | Afgørelse                                                     |
 | ------------- | ------------------------------------------------------------- |
 | Scope 2.0     | Adversus webhook + Enreach polling + Manuel UI + Excel-upload |
-| Drop til 2.1+ | e-conomic, Twilio, M365 (uden for auth)                       |
+| Drop til 2.1+ | Twilio, M365 (uden for auth)                                  |
 | Salg          | ASAP (1. prioritet). Berigelse 2. prioritet                   |
 | Drøm          | Salg <3 min, data <15 min                                     |
 | Opkalds-data  | call_records-tabel. Alle outcomes registreres                 |
@@ -1776,6 +1793,30 @@ Hvis planen følges:
 
 ---
 
+## Cutover-blockers (rettelse 28)
+
+Ingen cutover til produktion uden disse er bevisbart løst:
+
+| #   | Blocker                                        | Success-kriterium (verificerbart artefakt)                                                                                                                                                                                         |
+| --- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Lag 3 page/tabs-audit bygget                   | `page_access_log` + RPC + minimum 1 page klassificeret følsom i `page_audit_config` + smoke-test verificerer log-row oprettes ved RPC-kald                                                                                         |
+| 2   | G001 audit_filter_values strict-flip aktiveret | `stork.audit_filter_strict='true'` sat som DB-default (eller app-bootstrap); negativ test: INSERT på syntetisk tabel uden klassifikation → exception                                                                               |
+| 3   | GDPR-compliance audit gennemført               | Dokument `docs/gdpr-compliance.md` signeret af aktuel `gdpr_responsible` (UI-valgt) lister Art. 15/17/18/30 + formålsbegrænsning + dataminimering + behandlingsgrundlag med konkret implementation eller eksplicit acceptabelt hul |
+| 4   | PITR aktiveret                                 | Supabase Management API verificerer `pitr_enabled=true`                                                                                                                                                                            |
+| 5   | Backup-retention verificeret                   | Antal dage dokumenteret i `CLAUDE.md` + Supabase Management API verificerer faktisk værdi                                                                                                                                          |
+| 6   | Test-artefakter ryddet (G017)                  | `select count(*) from core_money.pay_periods where start_date < '2000-01-01'` = 0 OG `select count(*) from core_money.salary_corrections where description='smoke test'` = 0                                                       |
+| 7   | Scope-rensning verificeret                     | `pnpm scope:check` returnerer 0 hits (kommandoen kører `git grep` mod foruddefineret pattern-liste i `scripts/scope-cleanup-patterns.txt`)                                                                                         |
+| 8   | Dependabot-sårbarheder håndteret (H001)        | 0 høj/kritisk-sårbarheder på default branch                                                                                                                                                                                        |
+| 9   | GHAS-beslutning (H002)                         | Aktiveret eller eksplicit Mathias-godkendt undtagelse dokumenteret                                                                                                                                                                 |
+| 10  | CodeQL-beslutning (H003)                       | Aktiveret eller eksplicit Mathias-godkendt undtagelse dokumenteret                                                                                                                                                                 |
+| 11  | Migration TODO-markører løst (H006)            | 0 TODO-markører i migration-filer                                                                                                                                                                                                  |
+
+**Plus pre-cutover-step (ikke selv blocker, men forudsætning):**
+
+- Bootstrap-strategier (`anonymization_strategies`) aktiveret af `gdpr_responsible` via UI. Audit-spor via faktisk auth.uid. Indtil aktivering kan anonymize-RPC ikke kaldes.
+
+---
+
 ## Appendix C: Rettelses-historik
 
 Rettelser anvendt på master-planen i kronologisk rækkefølge:
@@ -1785,7 +1826,7 @@ Rettelser anvendt på master-planen i kronologisk rækkefølge:
 | 1   | Sales status-enum: afventer / godkendt / annulleret / afvist (4 værdier). Drop pricing_failed                                                                                                                                                                                                                                                                                                                              |
 | 2   | Annullering-fradrag: VALGFRI åben lønperiode (bruger vælger, ikke effekt-dato)                                                                                                                                                                                                                                                                                                                                             |
 | 3   | Lønunderskud forbliver underskud. Ingen rollover, ingen afskrivning                                                                                                                                                                                                                                                                                                                                                        |
-| 4   | Ingest scope: Adversus + Enreach + Excel + manuel UI. Drop e-conomic/Twilio/M365 til 2.1+                                                                                                                                                                                                                                                                                                                                  |
+| 4   | Ingest scope: Adversus + Enreach + Excel + manuel UI. Drop Twilio/M365 til 2.1+                                                                                                                                                                                                                                                                                                                                            |
 | 5   | FM og TM deler salgs-logik fuldt ud. FM-salg er kanonisk salg                                                                                                                                                                                                                                                                                                                                                              |
 | 6   | Gateway-lag ikke obligatorisk. RLS + schemas giver sikkerheden                                                                                                                                                                                                                                                                                                                                                             |
 | 7   | Annulleret vs afvist ontologisk forskellige. Separate veje                                                                                                                                                                                                                                                                                                                                                                 |
@@ -1809,12 +1850,22 @@ Rettelser anvendt på master-planen i kronologisk rækkefølge:
 | 25  | SELECT-policy for løn-relaterede tabeller: samme scope-model som sales                                                                                                                                                                                                                                                                                                                                                     |
 | 26  | Lønart-permission-niveau pr. payroll-line med samme scope-model som sales                                                                                                                                                                                                                                                                                                                                                  |
 | 27  | Superadmin-floor: BEFORE UPDATE/DELETE-trigger sikrer min N admin-medarbejdere                                                                                                                                                                                                                                                                                                                                             |
-| 28  | Juridisk ramme (§1.13): GDPR + EU AI Act + Arbejdsmiljøloven. Ingen bogføringspligt. Compliance-entiteter listed                                                                                                                                                                                                                                                                                                           |
+| 28  | Juridisk ramme (§1.13): GDPR + EU AI Act + Arbejdsmiljøloven. Compliance-entiteter listed                                                                                                                                                                                                                                                                                                                                  |
 | 29  | Display-navn på sale_items uddybet: konfig-tabel pr. (produkt × klient × kampagne) + snapshot ved INSERT                                                                                                                                                                                                                                                                                                                   |
 | 18  | Driftstabilitets-afgørelser samlet: Pro-tier fra start, partitionering fra dag ét (audit_log + call_records + external_events), anonymization_state-tabel for backup-paradox, Adversus sync-job, eksternt monitoring-integration-punkter. Plus lukninger: shift_client_attribution som relations-tabel, pricing_pending som kø-tabel, client_crm_match_id som dedikeret kolonne                                            |
 | 19  | Performance og resilience: org_unit_closure-tabel for subtree-RLS (erstatter rekursiv CTE; generelt princip), frontend som kosmetisk preview (@stork/core deployment-sync), forberedt-aggregat-mønster for lock-pipeline med SLA <10s, generisk break_glass_requests-tabel med two-actor approval (ny §1.15). Benchmark-test som CI-blockers i §3                                                                          |
 | 20  | Migration-strategi indlejret: ny §0.5 med grundprincip (udtræk + upload, ikke ETL), Model B modificeret implementation (manuel skygge-sammenligning, ingen adapter-dobbelt-skriv), legacy_snapshots + legacy_audit i core_compliance, migration-leverancer integreret i eksisterende byggetrin (trin 5, 9, 10, 10b, 14, 21) + nyt trin 31 (cutover). Rådata-omfang styres ved import. 1.0's tal bevares uden re-evaluering |
 | 21  | Konsistens-fix fra trin 1 bygning: (a) §1.3 audit-`source_type`-enum udvidet med `migration`-værdi (§0.5/rettelse 20 specificerede værdien men §1.3's liste i rettelse 18 manglede den). (b) `employees_active_idx` defineret som `(id, termination_date) WHERE anonymized_at IS NULL` — `current_date` kan ikke indgå i index-prædikat (skal være IMMUTABLE), så termination-filter sker ved query-tid.                   |
+| 22  | PII-styring uden hardcoded regler: anonymization-RPC generisk via dynamic UPDATE; strategy-implementations som data via `anonymization_strategies`-registry med DB-trigger-validation (schema, navn-præfiks `_anon_strategy_`, signatur, return-type, IMMUTABLE/STABLE). Coverage-check: anonymize-RPC verificerer at alle pii_level='direct'-kolonner er dækket.                                                          |
+| 23  | Audit-undtagelse via statisk allowlist (`AUDIT_EXEMPT_SNAPSHOT_TABLES` i `scripts/fitness.mjs`). Ingen admin-konfigurerbar tabel. Tilføjelse til listen kræver kode-commit. Initial: `core_money.commission_snapshots`.                                                                                                                                                                                                    |
+| 24  | `legal` retention-type fjernes fra systemet. retention_type-enum reduceres til {time_based, event_based, manual, permanent} + NULL tilladt. C001-backfill omskrives: alle `legal`-rows konverteres baseret på `is_permanent_allowed`-allowlist (system-meta → permanent; resten → NULL).                                                                                                                                   |
+| 25  | Eksterne lovgivnings-bundne integrations-referencer udelades fuldstændig. Stork har ingen lovbestemt min-retention på forretningsdata. Retention styres af forretnings-behov og GDPR-formål.                                                                                                                                                                                                                               |
+| 26  | Eksplicitte hardkodnings-undtagelser fra "alt drift i UI"-princippet: (a) audit-hash-algoritme `sha256` (audit-integritet kræver konsistens); (b) `superadmin`-rolle og `is_admin()`/`is_superadmin()`-helper (fundament for permission-systemet; eneste hardkodede rolle pr. vision-princip 2).                                                                                                                           |
+| 27  | Lifecycle for konfigurerbare data-håndtering-objekter (vision-princip 5): tabeller med klassifikations-styring får status-felt `draft → tested → approved → active` med separate permissions pr. overgang. INSERT/UPDATE-til-active uden gennem activate-RPC blokeres af DB-trigger. Bootstrap-strategier får status `approved` ved seed; aktivering via UI som pre-cutover-step.                                          |
+| 28  | Hard cutover-blockers (11 punkter) — se Cutover-blocker-sektion. Operationaliseret med konkrete success-kriterier pr. blocker.                                                                                                                                                                                                                                                                                             |
+| 29  | Permanent retention via DB-trigger + IMMUTABLE allowlist-funktion `is_permanent_allowed(schema, table, column)`. Trigger på `data_field_definitions` BEFORE INSERT OR UPDATE håndhæver allowlist. Allowlist-ændringer kræver kode-commit + review.                                                                                                                                                                         |
+| 30  | Anonymization*strategies-tabel med streng validation: schema=core_compliance, navn-præfiks `\_anon_strategy*`, signatur (text, text) returns text, IMMUTABLE eller STABLE. DB-trigger + UI-RPC defense-in-depth.                                                                                                                                                                                                           |
+| 31  | UI-permissions erstatter `is_admin()` på 22 RPC'er. Kun `superadmin_settings_update` bevarer `is_admin()` (superadmin-anker). `has_permission(page_key, tab_key, can_edit)`-helper indført. Permissions bootstrap'es til superadmin-rolle ON CONFLICT DO NOTHING.                                                                                                                                                          |
 
 ---
 
@@ -1852,7 +1903,7 @@ Hvert C-område havde 2-4 forslag i `performance-resilience-undersoegelse.md`. H
 
 ### C3 — Lock-pipeline: Forslag B (forberedt-aggregat-mønster)
 
-**Valgt:** Two-fase candidate-snapshot-mønster. Asynkron candidate-beregning før lock; atomar promovering ved lock. SLA <10s.
+**Valgt:** Two-fase candidate/final-flag-mønster. Asynkron candidate-beregning før lock; atomar promovering ved lock. SLA <10s.
 
 **Afvist:** Forslag A (SLA + benchmark uden candidate) og Forslag C (stegvis ikke-atomar lock).
 
@@ -1863,7 +1914,8 @@ Hvert C-område havde 2-4 forslag i `performance-resilience-undersoegelse.md`. H
 - Candidate-mønstret garanterer lock-pipeline-tid uafhængigt af volumen — promoveringen er kun UPDATE af pre-beregnede rows + status-skifte.
 - SLA strammes fra <60s til <10s fordi forberedt-aggregat gør det opnåeligt.
 - Forslag C (stegvis) bryder atomicitet — uacceptabelt fordi periode kunne være halv-låst ved fejl.
-- Trade-off: ekstra candidate-tabeller + pre-compute-cron. Pris værd for forudsigelig lock-tid uafhængigt af skala.
+- Trade-off: `is_candidate`-flag på snapshot-tabeller + pre-compute-cron + audit-undtagelse på snapshots. Pris værd for forudsigelig lock-tid uafhængigt af skala.
+- **Implementations-disciplin:** candidate og final er én tabel med flag. Separat-tabel-design er afvist fordi det gør "kun UPDATE"-promotion arkitektonisk umulig.
 
 ### C4 — Break-glass: Forslag A (generisk break_glass_requests)
 
