@@ -175,6 +175,25 @@
 - **Risiko hvis glemt:** Lav — credibility
 - **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
 
+### [G021] HØJ — `pay_period` SECURITY DEFINER current_user-fallback (LØST i C004)
+
+- **Beskrivelse:** `pay_period_lock`, `pay_period_compute_candidate`, `pay_period_lock_attempt` brugte `if not is_admin() and current_user not in ('service_role', ...)`-fallback. Inde i SECURITY DEFINER er current_user = definer = postgres → authenticated user kalder → check passerer. Enhver authenticated user kunne dermed låse perioder.
+- **Vision-svækkelse:** §1.7 (permission-baseret rolle-check) + §1.1 (default deny).
+- **Introduceret:** Trin 4 (`20260514150005_t7_lock_pipeline.sql:108, 224`)
+- **Opdaget:** Codex-review 2026-05-14 (C004)
+- **Status:** **LØST i `20260514170000_c004_pay_period_rpc_security.sql`** — split-pattern:
+  - `_pay_period_*_internal(...)` — intern helper uden permission-check; GRANT TO service_role only
+  - `pay_period_*(...)` — public admin-RPC med strict `is_admin()`; GRANT TO authenticated
+  - `pay_period_*_via_cron(...)` — service_role only via REVOKE/GRANT; ingen current_user-check
+  - `pay_period_lock_attempt(...)` — service_role only; kalder `pay_period_lock_via_cron`
+  - Cron-body for `pay_period_candidate_precompute_daily` rescheduled til at kalde `_via_cron`-variant
+- **Verifikation:**
+  - 10 declarative permission-checks via `has_function_privilege` (authenticated kan ikke kalde via_cron/attempt/internal; service_role kan ikke kalde admin-RPC'er)
+  - Runtime negative test: `pay_period_lock` raises 42501 fra non-admin context
+  - Runtime negative test: `pay_period_compute_candidate` samme
+  - Runtime positive test: `pay_period_compute_candidate_via_cron` udført som service_role → succeeded
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
 ### [G019] LAV — `stork_audit` antog uuid PK; singletons med smallint/integer PK var ikke testet
 
 - **Beskrivelse:** Audit-trigger castede `to_jsonb(new)->>'id'` til uuid uden type-tjek. `pay_period_settings.id` (smallint) og `superadmin_settings.id` (integer) var bootstrappet før audit-trigger blev attached, så bug'en blev ikke opdaget før første UPDATE.
