@@ -175,6 +175,21 @@
 - **Risiko hvis glemt:** Lav — credibility
 - **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
 
+### [G022] HØJ — Admin-floor count + trigger inkluderede ikke termination_date (LØST i C005)
+
+- **Beskrivelse:** `enforce_admin_floor()` count'ede admins via `anonymized_at IS NULL` alene, mens `is_admin()` også filtrerer `termination_date`. Trigger lyttede ikke på `termination_date`-UPDATE. Resultat: terminere en admin (uden anonymize) reducerede ikke floor-count → systemet kunne ende under minimum aktive admins uden at trigger fyrede.
+- **Vision-svækkelse:** §1.7 (superadmin-floor). Floor var symbolsk, ikke reel for termination-path.
+- **Introduceret:** Trin 2 (`20260514130000_t2_superadmin_floor.sql:69, 91`)
+- **Opdaget:** Codex-review 2026-05-14 (C005)
+- **Status:** **LØST i `20260514170001_c005_admin_floor_termination.sql`**:
+  - Count i `enforce_admin_floor()` matcher nu `is_admin()`-semantik: `(termination_date IS NULL OR termination_date >= current_date)`
+  - Trigger `employees_enforce_admin_floor` udvidet med `termination_date` i OF-liste
+- **Verifikation:**
+  - Negative test: forsøg `UPDATE termination_date = current_date - 1` på mg@ (én af to admins, min=2) → P0001 superadmin-floor + state intakt (termination_date forblev NULL)
+  - Positive test: `UPDATE termination_date = current_date + 30` på mg@ (stadig admin idag) → lykkedes
+  - Declarative: `pg_trigger.tgname` viser nu `UPDATE OF role_id, anonymized_at, termination_date OR DELETE`
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
 ### [G021] HØJ — `pay_period` SECURITY DEFINER current_user-fallback (LØST i C004)
 
 - **Beskrivelse:** `pay_period_lock`, `pay_period_compute_candidate`, `pay_period_lock_attempt` brugte `if not is_admin() and current_user not in ('service_role', ...)`-fallback. Inde i SECURITY DEFINER er current_user = definer = postgres → authenticated user kalder → check passerer. Enhver authenticated user kunne dermed låse perioder.
