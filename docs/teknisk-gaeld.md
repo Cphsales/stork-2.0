@@ -280,6 +280,21 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   - Runtime positive test: `pay_period_compute_candidate_via_cron` udført som service_role → succeeded
 - **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
 
+### [G031] MELLEM — Lock-pipeline-benchmark mangler (R8b post-lag-E)
+
+- **Beskrivelse:** Master-plan §1.14 + Codex Fund 18 kræver benchmark der måler lock_pipeline SLA &lt;10s gennem fuld pipeline. R8 deferred fordi sales-tabel ikke eksisterer pre-lag-E; compute på 0 rows er ikke et meningsfuldt benchmark.
+- **Vision-svækkelse:** §1.14 (driftstabilitet). SLA er udokumenteret indtil real-volume benchmark eksisterer.
+- **Introduceret:** DEL 8 R8 deferral 2026-05-15
+- **Opdaget:** Codex Fund 18 + R5b/G030-context
+- **Skal løses:** R8b — efter sales-tabel + realistic data-volume (lag E / trin 9+, ideelt før cutover-blocker-listen)
+- **Risiko hvis glemt:** Mellem. CI-blocker (§3) kan ikke håndhæves uden benchmark-test. Real-volume kan afsløre uventede flaskehalse.
+- **Plan (R8b):**
+  1. Bygg `core_sales.sales`-tabel + realistic seed (~5000 rows/periode)
+  2. R8b-test: kør `pay_period_compute_candidate` + `pay_period_lock` på simuleret data
+  3. Mål: total varighed &lt;10s (master-plan §1.14 SLA)
+  4. Hvis SLA overskrides: profilér + indekser/optimisér før cutover
+  5. Tilføj som CI-blocker pr. master-plan §3 (kør på hver PR der ændrer lock-pipeline-kode)
+
 ### [G030] MELLEM — `commission_snapshots.sale_id` er `gen_random_uuid()`-placeholder (R5b post-lag-E)
 
 - **Beskrivelse:** R5 (Fund 6) implementerede `FOR UPDATE`-locking i compute_candidate, men **deferred** Fund 5 (deterministic sale_id). `_pay_period_compute_candidate_internal` INSERT'er commission_snapshots-rows med `sale_id := gen_random_uuid()` som placeholder. Reel sale_id er FK til `core_sales.sales` (eksisterer ikke før lag E / trin 9+).
