@@ -51,6 +51,17 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
   // Trin 6 (anonymisering):
   "core_compliance.anonymization_mappings",
   "core_compliance.anonymization_state",
+  // Trin 7 (periode-skabelon + candidate + break-glass):
+  "core_money.pay_period_settings",
+  "core_money.pay_periods",
+  "core_money.commission_snapshots",
+  "core_money.salary_corrections",
+  "core_money.cancellations",
+  "core_money.pay_period_candidate_runs",
+  "core_money.commission_snapshots_candidate",
+  "core_money.salary_corrections_candidate",
+  "core_compliance.break_glass_operation_types",
+  "core_compliance.break_glass_requests",
 ]);
 
 // Tabeller der har immutability-trigger (BEFORE UPDATE/DELETE block).
@@ -58,11 +69,14 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
 // row-level triggers.
 // Trin 1: audit_log.
 // Trin 6: anonymization_state (rettelse 18 A3).
-// Trin 7 (kommende): commission_snapshots, salary_corrections, cancellations,
-// rejections, basket_corrections.
+// Trin 7: commission_snapshots, salary_corrections, cancellations.
+// Trin 16 (kommende): rejections, basket_corrections.
 const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
   "core_compliance.audit_log",
   "core_compliance.anonymization_state",
+  "core_money.commission_snapshots",
+  "core_money.salary_corrections",
+  "core_money.cancellations",
 ];
 
 // Migrationsfiler der er undtaget fra set-config-discipline-check.

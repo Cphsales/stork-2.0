@@ -2,7 +2,7 @@
 
 **Formål:** Sporing af §4 byggerækkefølge fra master-planen. Opdateres efter hvert trin.
 
-**Sidste opdatering:** 14. maj 2026
+**Sidste opdatering:** 14. maj 2026 (efter trin 4 — periode-skabelon + auto-lock + break-glass)
 
 ---
 
@@ -16,9 +16,9 @@
 | 4       | Klassifikations-registry + migration-gate Phase 1       | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
 | 5       | Identitet del 1 (medarbejdere, roller, permissions)     | ✓ Godkendt           | Trin 2     | 14dd814 | 14. maj |
 | 6       | Anonymisering (anonymization_state + replay)            | ✓ Godkendt           | Trin 3     | fd2ba48 | 14. maj |
-| 7       | Periode-skabelon + lock-pipeline benchmark              | ⏳ Næste             | —          | —       | —       |
-| 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ⏳ Næste             | —          | —       | —       |
-| 7c      | break_glass_requests + RPC-skabelon                     | ⏳ Næste             | —          | —       | —       |
+| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)   | ✓ Godkendt           | Trin 4     | —       | 14. maj |
+| 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ✓ Godkendt           | Trin 4     | —       | 14. maj |
+| 7c      | break_glass_requests + RPC-skabelon                     | ✓ Godkendt           | Trin 4     | —       | 14. maj |
 | 8       | Migration-gate Phase 2 strict                           | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
 | 9       | Identitet del 2 (org-træ, closure-tabel, subtree-RLS)   | ⌛ Udestående        | —          | —       | —       |
 | 10      | Klient-skabelon + felt-definitions                      | ⌛ Udestående        | —          | —       | —       |
@@ -64,15 +64,18 @@
 
 ## Action-items (ikke-blokerende)
 
-| Punkt                            | Beskrivelse                                                                                                                                | Skal håndteres før                                    |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| PITR-aktivering                  | Admin-handling i Supabase dashboard                                                                                                        | §4 trin 14 (sales-stamme)                             |
-| Backup-retention                 | Verificér Pro-default 14 dage                                                                                                              | §4 trin 14                                            |
-| retention_cleanup_daily          | Refactoreres til generisk evaluator                                                                                                        | Når flere entities har retention-deadlines (trin 10+) |
-| replay_anonymization             | Udvides med branches per entity                                                                                                            | §4 trin 10 (clients) + trin 15 (identitets-master)    |
-| Migration TODO-markører          | Erstattes med faktiske 1.0-skema-referencer                                                                                                | Når Mathias kører discovery mod 1.0                   |
-| Anonymization-revert break-glass | Bygges sammen med break-glass-tabel                                                                                                        | §4 trin 7c                                            |
-| Dependabot-sårbarheder           | 28 sårbarheder på default branch (13 high, 13 moderate, 2 low). Skal håndteres før produktion. Liste de kritiske til Mathias når relevant. | Før produktion                                        |
+| Punkt                            | Beskrivelse                                                                                                                                                                                                             | Skal håndteres før                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| PITR-aktivering                  | Admin-handling i Supabase dashboard                                                                                                                                                                                     | §4 trin 14 (sales-stamme)                             |
+| Backup-retention                 | Verificér Pro-default 14 dage                                                                                                                                                                                           | §4 trin 14                                            |
+| retention_cleanup_daily          | Refactoreres til generisk evaluator                                                                                                                                                                                     | Når flere entities har retention-deadlines (trin 10+) |
+| replay_anonymization             | Udvides med branches per entity                                                                                                                                                                                         | §4 trin 10 (clients) + trin 15 (identitets-master)    |
+| Migration TODO-markører          | Erstattes med faktiske 1.0-skema-referencer                                                                                                                                                                             | Når Mathias kører discovery mod 1.0                   |
+| Anonymization-revert break-glass | Bygges sammen med break-glass-tabel                                                                                                                                                                                     | §4 trin 7c                                            |
+| Dependabot-sårbarheder           | 28 sårbarheder på default branch (13 high, 13 moderate, 2 low). Skal håndteres før produktion. Liste de kritiske til Mathias når relevant.                                                                              | Før produktion                                        |
+| Lock-pipeline fuld benchmark     | Trin 7's skeleton-benchmark var 61ms@130 candidate-rows. Fuld benchmark (500 medarbejdere × 100k sales × <10s SLA, master-plan §1.6/rettelse 19 C3) udskydes til trin 14 (sales) og trin 22 (aggregater) som CI-blocker | §4 trin 22 senest                                     |
+| pay_period_unlock re-lock        | Break-glass-unlock bevarer commission_snapshots (immutable). Re-lock skal håndtere overskrivning via ON CONFLICT DO NOTHING. Formaliseres når sales eksisterer                                                          | §4 trin 14                                            |
+| Benchmark-artifacts i prod-DB    | Skeleton-benchmark efterlod 1 syntetisk pay_period (2020-01-15→2020-02-14, locked), 260 commission_snapshots og 1 salary_correction (description='smoke test', amount=-100). Ufarligt men kosmetisk støj                | Inden produktions-go-live                             |
 
 ---
 
@@ -162,12 +165,78 @@
 
 ---
 
+### Vores trin 4 — Periode-skabelon + auto-lock + break-glass (§4 trin 7+7b+7c)
+
+**Dato:** 14. maj 2026
+**Branch:** `claude/trin-1-fundament`
+**Status:** ✓ Godkendt
+**SLA-justering inden start:** Master-plan rettelse 19 C3 fastlåser SLA <10s (ikke <60s som i Mathias' første prompt). Skeleton-benchmark på trin 7's data-skala; fuld 500×100k benchmark som CI-blocker udskudt til trin 14/22 (action-item).
+
+**Bygget (trin 7):**
+
+- `pay_period_settings` (singleton; UI-redigerbar) med `recommended_lock_date_rule` + `auto_lock_enabled` (rettelse 16)
+- `pay_periods` i core_money med open/locked livscyklus, EXCLUDE-constraint mod overlap, BEFORE UPDATE/DELETE-trigger der blokerer mutationer på låst periode
+- `commission_snapshots` (immutable, FORCE RLS, INSERT-only) med UNIQUE(period_id, sale_id, employee_id) for provision-split
+- `salary_corrections` (immutable) med reason-enum + sign-CHECK pr. reason + target_period_open-validering
+- `cancellations`-skeleton (immutable, INSERT-only, reason-enum: kunde_annullering/match_rettelse, reverses_cancellation_id self-FK) — ingen RPC'er endnu, kommer trin 16
+- Candidate-mønster (rettelse 19 C3): `pay_period_candidate_runs` (tracker med data_checksum), `commission_snapshots_candidate`, `salary_corrections_candidate` (mutable, CASCADE-delete)
+- `pay_period_compute_candidate(period_id, change_reason)` — TRIN 7 SKELETON: genererer placeholder candidate-rows (1 per aktiv medarbejder, amount=0). Fuld compute-logik tilføjes trin 14/22 hvor sales+aggregater eksisterer
+- `pay_period_lock(period_id, change_reason)` — atomar to-fase: validér candidate, re-compute hvis stale, promovér rows + UPDATE status='locked'. statement_timeout='5min'
+- `pay_period_lock_attempt(period_id)` — cron-wrapper med fejl-logging til pay_periods.consecutive_lock_failures + last_lock_error
+- `pay_period_unlock_via_break_glass(period_id, change_reason)` — kun callable fra break_glass_execute-dispatcher (validerer stork.break_glass_dispatch='true')
+- `period_recommended_lock_date(period_id)` helper med 3 regel-værdier (month_last_calendar_day default)
+- `_compute_period_data_checksum(period_id)` intern helper — udvides trin 14+ med sales-state
+
+**Bygget (trin 7b):**
+
+- `consecutive_failure_count` kolonne på cron_heartbeats + opdateret `cron_heartbeat_record` (reset ved 'ok', +1 ved 'failure')
+- `healthcheck()` udvidet med `cron_jobs_consecutive_failures_critical` (≥3)
+- Cron `pay_period_auto_lock_daily` (02:45 UTC) — låser perioder hvor recommended_lock_date ≤ today; partial_failure-status hvis blandet succes/fejl
+- Cron `pay_period_candidate_precompute_daily` (01:30 UTC) — pre-computer candidate 1-2 dage før recommended_lock_date
+- Cron `ensure_pay_periods_daily` (01:00 UTC) — sikrer fremtidige pay_periods buffer
+
+**Bygget (trin 7c):**
+
+- `break_glass_operation_types` (UI-redigerbar konfig, seedet med `pay_period_unlock` + `gdpr_retroactive_remove`)
+- `break_glass_requests` (audit-tabel; CHECK requested_by≠approved_by + consistency-checks; expires_at default 24t)
+- RPC'er: `break_glass_request` / `break_glass_approve` / `break_glass_reject` / `break_glass_execute` (dispatcher via `internal_rpc` + stork.break_glass_dispatch='true' session-var) / `break_glass_requests_read`
+- Cron `break_glass_expire_pending` (02:00 UTC) — pending → expired efter 24t
+- Audit-trigger AFTER INSERT/UPDATE på begge tabeller
+
+**Inline-fixes:**
+
+- `pay_periods_locked_consistency` CHECK relaxet — locked_by NULLABLE i locked-state. auth.uid() returnerer NULL for service-role/cron-locks; CHECK blokerede ellers automatiseret lock. Migration: `20260514150010_t7_inline_fix_locked_by_nullable.sql`
+
+**Lock-pipeline skeleton-benchmark (trin 7):**
+
+- Setup: 130 syntetiske candidate-rows for past period (2020-01-15→2020-02-14)
+- **Resultat: lock-pipeline = 61 ms** vs. SLA <10000 ms — passerer med ~164× margin
+- Setup (130 INSERT'er): 21 ms
+- Caveat: skeleton tester KUN promotion-fase. Compute-fase (candidate-beregning) er stub fordi sales/payroll-formler ikke findes endnu
+- Fuld benchmark (500 medarbejdere × 100k sales × <10s SLA) udskudt til trin 14/22 som CI-blocker (master-plan §1.6 + rettelse 19 C3)
+
+**Smoke-tests grøn:**
+
+- `salary_corrections` UPDATE/DELETE blokeret (immutable)
+- `salary_corrections` sign-CHECK blokerer positiv amount med reason='cancellation'
+- `commission_snapshots` 130 candidate-rows promoteret atomisk
+- 7 crons aktive (3 nye fra trin 7b/7c)
+- 2 break_glass_operation_types seedet
+
+**Observationer:**
+
+- Trin 7 har ingen sales/payroll-formler — candidate-compute er bevidst skeleton. Det er forventet og dokumenteret i RPC-comment.
+- Break-glass end-to-end-test kræver faktisk auth (mg@ requester, km@ approver). RPC-mekanik er verificeret strukturelt; runtime-test sker via UI når lag F (auth-mapping) er klar.
+- 1 smoke-test-correction (-100.00, description='smoke test') og 1 syntetisk locked 2020-periode efterladt — ufarligt, dokumenteret som action-items.
+
+**Verifikation:** Fitness-checks grøn (9 checks). Migration-gate Phase 2 strict: alle 40 migrations grøn. 193 klassificerede kolonner (76 nye i core_money + 26 nye i core_compliance).
+
+---
+
 ## Næste op
 
-**Vores trin 4 = §4 trin 7+7b+7c:**
+**Vores trin 5 = §4 trin 9 (identitet del 2):**
 
-- 7: Periode-skabelon med lock-pipeline benchmark (SLA <60s)
-- 7b: Auto-lock-cron + candidate-pre-compute-cron
-- 7c: break_glass_requests + RPC-skabelon
-
-**Vigtigt:** Trin 7 indeholder første performance-disciplin-test (rettelse 19 C3). Hvis SLA <60s ikke kan holdes, skal Code flagge og foreslå design-split.
+- Org-træ + closure-tabel + subtree-RLS-helper
+- Subtree-RLS benchmark-test (rettelse 19 C1: <5ms pr. row, ingen rekursion i EXPLAIN)
+- Migration-scripts: discovery + udtræk + upload for teams + klient-team-historik fra 1.0
