@@ -85,6 +85,16 @@
 - **Risiko hvis glemt:** Lav
 - **Plan:** Upload-script læser rolle-mapping fra konfig-tabel når lag F leverer rolle-konfig
 
+### [G028] MELLEM — C002/C003-commit klassificerede ikke nye dispatcher-kolonner (LØST som disciplin-fix)
+
+- **Beskrivelse:** C002+C003-commit (`d40922a`) udvidede `anonymization_mappings` med 4 dispatcher-felter (`internal_rpc_anonymize`, `internal_rpc_apply`, `anonymized_check_column`, `retention_event_column`) via ALTER TABLE, men glemte tilsvarende klassifikations-rows i `data_field_definitions`. Migration-gate Phase 1 (warn-only) advarede; Phase 2 strict (CI) blokerede merge.
+- **Vision-svækkelse:** §0 + §1.2 (klassifikation + retention på hver kolonne).
+- **Introduceret:** Commit `d40922a` (C002+C003).
+- **Opdaget:** Selv-tjek under arbejds-disciplin-opgaven; strict migration-gate fangede uklassificeret kolonne. Indikerer hul i selv-tjek-proceduren (warn vs strict) — tages med næste gang arbejds-disciplinen revideres.
+- **Status:** **LØST i `20260514180000_g028_classify_anonymization_dispatcher_columns.sql`** — 4 kolonner klassificeret som `konfiguration` / `pii_level='none'` / `retention_type='permanent'` (system-meta).
+- **Verifikation:** Migration-gate Phase 2 strict grøn (48 migrations, 340 klassificerede kolonner).
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
 ### [G026] HØJ — Replay-anonymisering brugte live mapping + INSERT'ede state-row (LØST i C002/C003)
 
 - **Beskrivelse:** `replay_anonymization` itererede `anonymization_state` og kaldte `anonymize_employee`, som forsøgte INSERT ny `anonymization_state`-row → UNIQUE-conflict på `(entity_type, entity_id)`. Brugte også LIVE `anonymization_mappings.field_strategies` istedet for `state_row.field_mapping_snapshot`. Backup-paradoks (rettelse 18 A3) var ikke løst.
