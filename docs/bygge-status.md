@@ -16,9 +16,9 @@
 | 4       | Klassifikations-registry + migration-gate Phase 1       | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
 | 5       | Identitet del 1 (medarbejdere, roller, permissions)     | ✓ Godkendt           | Trin 2     | 14dd814 | 14. maj |
 | 6       | Anonymisering (anonymization_state + replay)            | ✓ Godkendt           | Trin 3     | fd2ba48 | 14. maj |
-| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)   | ✓ Godkendt           | Trin 4     | —       | 14. maj |
-| 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ✓ Godkendt           | Trin 4     | —       | 14. maj |
-| 7c      | break_glass_requests + RPC-skabelon                     | ✓ Godkendt           | Trin 4     | —       | 14. maj |
+| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)   | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7c      | break_glass_requests + RPC-skabelon                     | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 8       | Migration-gate Phase 2 strict                           | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
 | 9       | Identitet del 2 (org-træ, closure-tabel, subtree-RLS)   | ⌛ Udestående        | —          | —       | —       |
 | 10      | Klient-skabelon + felt-definitions                      | ⌛ Udestående        | —          | —       | —       |
@@ -168,7 +168,7 @@
 ### Vores trin 4 — Periode-skabelon + auto-lock + break-glass (§4 trin 7+7b+7c)
 
 **Dato:** 14. maj 2026
-**Branch:** `claude/trin-1-fundament`
+**Commit:** bc57ae0 på branch `claude/trin-1-fundament`
 **Status:** ✓ Godkendt
 **SLA-justering inden start:** Master-plan rettelse 19 C3 fastlåser SLA <10s (ikke <60s som i Mathias' første prompt). Skeleton-benchmark på trin 7's data-skala; fuld 500×100k benchmark som CI-blocker udskudt til trin 14/22 (action-item).
 
