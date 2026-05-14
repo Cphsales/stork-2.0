@@ -34,3 +34,6 @@ supabase/.branches/
 *.njsproj
 *.sln
 *.sw?
+
+# Windows alternate-data-stream artefakter (overført fra NTFS via WSL)
+*:Zone.Identifier
