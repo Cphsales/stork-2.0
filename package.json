@@ -23,7 +23,7 @@
     "schema:check": "bash scripts/schema-check.sh",
     "migration:check": "node scripts/migration-gate.mjs",
     "fitness": "node scripts/fitness.mjs",
-    "scope:check": "bash -c 'patterns=$(paste -sd\"|\" scripts/scope-cleanup-patterns.txt); git grep -iE \"$patterns\" -- docs/ supabase/ scripts/ ; if [ $? -eq 0 ]; then exit 1; else exit 0; fi'",
+    "scope:check": "bash -c 'patterns=$(paste -sd\"|\" scripts/scope-cleanup-patterns.txt); hits=$(git grep -iE \"$patterns\" -- docs/ supabase/ scripts/ \":(exclude)scripts/scope-cleanup-patterns.txt\"); if [ -n \"$hits\" ]; then echo \"$hits\"; exit 1; else exit 0; fi'",
     "prepare": "husky"
   },
   "devDependencies": {
