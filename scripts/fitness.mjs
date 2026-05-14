@@ -46,13 +46,24 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
   "core_identity.employees",
   "core_identity.roles",
   "core_identity.role_page_permissions",
+  // Trin 2 (identitet del 1):
+  "core_compliance.superadmin_settings",
+  // Trin 6 (anonymisering):
+  "core_compliance.anonymization_mappings",
+  "core_compliance.anonymization_state",
 ]);
 
 // Tabeller der har immutability-trigger (BEFORE UPDATE/DELETE block).
 // De SKAL også have BEFORE TRUNCATE-blokering, da TRUNCATE bypasser
-// row-level triggers. Trin 1: kun audit_log er immutable; lønperiode-snapshots
-// genskabes i trin 7.
-const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = ["core_compliance.audit_log"];
+// row-level triggers.
+// Trin 1: audit_log.
+// Trin 6: anonymization_state (rettelse 18 A3).
+// Trin 7 (kommende): commission_snapshots, salary_corrections, cancellations,
+// rejections, basket_corrections.
+const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
+  "core_compliance.audit_log",
+  "core_compliance.anonymization_state",
+];
 
 // Migrationsfiler der er undtaget fra set-config-discipline-check.
 // Pre-D6-filer kan indeholde top-level INSERT/UPDATE uden session-vars.
