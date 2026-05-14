@@ -6,10 +6,10 @@
 -- UI-redigerbar via lag F's superadmin-side (roadmap-post-fase-0.md).
 -- Forkert default → ret i UI, ikke i ny migration.
 --
--- Bemærk: Stork fører ingen bogføring (e-conomic er bogføring). Derfor
--- bruger vi 'time_based', ikke 'legal', på løn-tabeller. 'legal' er
--- reserveret til felter hvor specifik lovgivning dikterer fast tidsfrist
--- uden mulighed for forlængelse.
+-- Bemærk: Stork har ingen lovbestemt min-retention på forretningsdata.
+-- retention-type afgøres af forretnings-behov og GDPR-formål, ikke lovkrav.
+-- Pr. rettelse 24 fjernes 'legal' helt fra retention_type-enum; eksisterende
+-- rows konverteres.
 --
 -- Migrations-mekanik:
 --   - Session-vars sættes inden INSERT for audit-berigelse + RLS-bypass

@@ -14,7 +14,7 @@
 -- 4. retention_consistency-CHECK strammet: permanent → value NULL; øvrige → value required
 --
 -- BACKFILL-REGLER (begrundet pr. tabel):
--- - audit_log + break_glass_requests:           legal {2555d} (7 års bogføringslov)
+-- - audit_log + break_glass_requests:           legal {2555d} (7 år, sikkerheds-historik)
 -- - cron_heartbeats (eks. last_error):          time_based {730d} (drift-data)
 -- - data_field_definitions, *_settings, roles,
 --   role_page_permissions, anonymization_*,
@@ -103,7 +103,7 @@ select set_config('stork.change_reason',
   'C001: backfill retention_type på 189 eksisterende klassificeringer',
   false);
 
--- audit_log → legal 7 år (bogføringslov)
+-- audit_log → legal 7 år (sikkerheds-historik; konverteres senere pr. rettelse 24)
 update core_compliance.data_field_definitions
    set retention_type = 'legal', retention_value = '{"max_days": 2555}'::jsonb
  where (table_schema, table_name) = ('core_compliance', 'audit_log')

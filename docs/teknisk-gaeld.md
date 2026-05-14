@@ -88,10 +88,10 @@
 ### [G029] MELLEM — C001-backfill bruger legal retention mod master-plan-reservation
 
 - **Beskrivelse:** C001-fix (commit `71ab37f`) klassificerede `pay_periods`, `commission_snapshots`, `salary_corrections`, `cancellations`, `audit_log`, `break_glass_requests` som `retention_type='legal'` med 2555 dage (7 år).
-- **Konflikt:** Master-plan reserverer eksplicit `legal` retention til e-conomic-fakturaer (kommer i 2.1+) og AMO-dokumentation. Stork har ingen bogføring (e-conomic er bogføring). Løn-tabeller skulle klassificeres som `time_based`, ikke `legal`.
-- **Vision-svækkelse:** "Styr på data" + "alt drift styres i UI" — klassifikation på fundamentet matcher ikke master-plan-reglen.
+- **Konflikt:** `legal` retention-type fjernes helt fra systemet pr. rettelse 24. Stork har ingen lovbestemt min-retention på forretningsdata. Løn-tabeller skal klassificeres som `time_based` (admin vælger værdi via UI) eller `NULL` (ikke valgt — migration-gate blokerer prod).
+- **Vision-svækkelse:** "Styr på data" + "alt drift styres i UI" — klassifikation på fundamentet matcher ikke vision-princippet om data-kontrol i UI.
 - **Introduceret:** Trin 1 (commit `71ab37f`, C001-fix).
-- **Opdaget:** Master-plan status-verifikation 2026-05-14 (e-conomic-scanning fandt master-plan-formuleringen "legal retention-type reserveret til lovgivnings-bundne entiteter (e-conomic-fakturaer i 2.1+, evt. AMO-dokumentation)").
+- **Opdaget:** Master-plan status-verifikation 2026-05-14.
 - **Skal løses:** Før trin 5 startes ELLER samtidig med refactor-pakke for §1.6 (audit-strategi).
 - **Risiko hvis glemt:** Slette/anonym-regler får forkert default. UI-styret retention-mekanisme får 7-årig låsning på data der reelt skulle være drift-retention.
 - **Plan:** Konvertér løn-tabeller fra `legal` til `time_based` med retention-værdi afgjort af Mathias. Princip: "alle slette og anonym-regler styres i UI".
