@@ -85,32 +85,46 @@
 - **Risiko hvis glemt:** Lav
 - **Plan:** Upload-script læser rolle-mapping fra konfig-tabel når lag F leverer rolle-konfig
 
-### [G009] HØJ — `retention_cleanup_daily` HARDKODER 1825 dage for employees
+### [G026] HØJ — Replay-anonymisering brugte live mapping + INSERT'ede state-row (LØST i C002/C003)
 
-- **Beskrivelse:** Cron beregner cutoff som `current_date - interval '1825 days'`. Værdien 1825 er parallel til `data_field_definitions` (event_based, days_after=1825), men cron læser IKKE fra definitions — den hardkoder.
-- **Vision-svækkelse:** **DIREKTE BRUD på "alt drift styres i UI"**. Hvis admin ændrer retention_value i UI fra 1825 → 1095, har det INGEN effekt på cron.
-- **Introduceret:** Trin 3 (`20260514140002_t6_anonymization_crons.sql:79`)
-- **Skal løses:** Trin 5 (kombineret med G010 + G011 til dispatcher-mønster) eller senest trin 10 (clients tilføjer ny retention-værdi)
-- **Risiko hvis glemt:** Høj. PII anonymiseres efter forkert tidsrum sammenlignet med konfig. Compliance-risiko (GDPR-rådgiver ser konfig, ikke kode).
-- **Plan:** Generisk retention-evaluator der læser `data_field_definitions` pr. tabel og evaluerer event_based + time_based + legal-regler. Master-plan §1.4 specificerer designet. Kombineres med G010+G011 til dispatcher-mønster. **Planlagt løsning: trin 5.**
+- **Beskrivelse:** `replay_anonymization` itererede `anonymization_state` og kaldte `anonymize_employee`, som forsøgte INSERT ny `anonymization_state`-row → UNIQUE-conflict på `(entity_type, entity_id)`. Brugte også LIVE `anonymization_mappings.field_strategies` istedet for `state_row.field_mapping_snapshot`. Backup-paradoks (rettelse 18 A3) var ikke løst.
+- **Vision-svækkelse:** §1.4 (anonymisering bevarer audit) + rettelse 18 A3 (post-restore replay korrekt).
+- **Introduceret:** Trin 3 (`20260514140001_t6_anonymization_rpcs.sql:224`)
+- **Opdaget:** Codex-review 2026-05-14 (C003)
+- **Status:** **LØST i `20260514170004_c002_c003_anonymization_dispatcher.sql`** — replay dispatcher:
+  - Læser `state_row.field_mapping_snapshot` (snapshot, ikke live mapping)
+  - Dispatcher til `mapping.internal_rpc_apply` (UPDATE-only)
+  - INGEN INSERT i `anonymization_state` (idempotent)
+  - Generisk for alle entity-typer via mapping-dispatcher
+- **Verifikation:** Simulér restore (clear anonymized_at + PII tilbage) → kald `_anonymize_employee_apply` med snapshot → master re-anonymiseret + state-rows uændret (idempotent test bestået)
+- **Note:** Flyttes til arkiv ved næste revision.
 
-### [G010] MELLEM — `replay_anonymization` kun har employee-branch
+### [G025] HØJ — `retention_cleanup_daily` cron-vej kunne ikke kalde anonymize-RPC (LØST i C002/C003)
 
-- **Beskrivelse:** Else-grenen `v_skipped := v_skipped + 1` for ikke-employee entity-typer. clients (trin 10) og identity-master (trin 15) replay'er ikke.
-- **Vision-svækkelse:** "Anonymisering bevarer audit" — efter restore vil clients/identities falde tilbage til pre-anonymized state hvis ikke replay udvides.
-- **Introduceret:** Trin 3 (`20260514140001_t6_anonymization_rpcs.sql:208-236`)
-- **Skal løses:** Trin 5 (kombineret med G009 til dispatcher-mønster)
-- **Risiko hvis glemt:** Mellem indtil trin 10/15. Lav nu (kun employees eksisterer).
-- **Plan:** Dispatcher-mønster: registry-tabel `anonymization_dispatch` der mapper entity_type → anonymize-RPC. replay læser fra registry. **Planlagt løsning: trin 5.**
+- **Beskrivelse:** Cron kaldte `core_identity.anonymize_employee`, som krævede `is_admin()`. Cron har ingen `auth.uid()` → `is_admin()` returnerede false → fejl ved første kandidat. Hele retention-vejen var død i drift.
+- **Vision-svækkelse:** §1.4 + §1.5 (driftsikkert).
+- **Introduceret:** Trin 3 (`20260514140002_t6_anonymization_crons.sql:88`)
+- **Opdaget:** Codex-review 2026-05-14 (C002)
+- **Status:** **LØST i `20260514170004_c002_c003_anonymization_dispatcher.sql`** — split-pattern:
+  - `_anonymize_employee_apply(uuid, jsonb, text)` — pure UPDATE, service_role only
+  - `_anonymize_employee_log_state(uuid, text, jsonb, integer)` — state-INSERT, service_role only
+  - `anonymize_employee(uuid, text)` — admin-vej, strict is_admin, kalder apply + log_state
+  - `anonymize_employee_internal(uuid, text)` — cron-vej, service_role only via REVOKE/GRANT, kalder apply + log_state
+  - Generisk dispatcher-cron læser `anonymization_mappings` + `data_field_definitions`
+- **Verifikation:** Indsat termineret synth employee (6 år siden) → `anonymize_employee_internal` kald → anonymized_at sat + first_name='[anonymized]' ✓
+- **Note:** Flyttes til arkiv ved næste revision.
 
-### [G011] MELLEM — `verify_anonymization_consistency` kun har employee-branch
+### [G011] MELLEM — `verify_anonymization_consistency` kun har employee-branch (LØST i C002/C003)
 
-- **Beskrivelse:** Samme som G010 — kun employee-grenen verificerer master-row vs. anonymization_state.
-- **Vision-svækkelse:** Samme som G010
-- **Introduceret:** Trin 3 (`20260514140001_t6_anonymization_rpcs.sql:281-298`)
-- **Skal løses:** Trin 5 (sammen med G009 + G010)
-- **Risiko hvis glemt:** Mellem indtil trin 10/15
-- **Plan:** Samme dispatcher-mønster som G010. **Planlagt løsning: trin 5.**
+Generaliseret via dispatcher samme commit som G025/G026. Verify læser nu `anonymization_mappings.anonymized_check_column` og dispatcher dynamic SQL pr. entity_type.
+
+### [G010] MELLEM — `replay_anonymization` kun har employee-branch (LØST i C002/C003)
+
+Generaliseret via dispatcher samme commit som G025/G026. Replay læser nu `anonymization_mappings.internal_rpc_apply` og dispatcher pr. entity_type. Forward-kompat for clients (trin 10) + identity-master (trin 15).
+
+### [G009] HØJ — `retention_cleanup_daily` HARDKODER 1825 dage for employees (LØST i C002/C003)
+
+Generisk evaluator implementeret samme commit som G025/G026. retention-cron læser nu `data_field_definitions.retention_value->>'days_after'` pr. tabel (max over alle event_based-kolonner). Hardkodning fjernet — "alt drift styres i UI" overholdt.
 
 ### [G012] HØJ — `pay_period_compute_candidate` er SKELETON → fejl-låst prod-periode-risiko
 
