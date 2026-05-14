@@ -79,6 +79,25 @@ const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
   "core_money.cancellations",
 ];
 
+// R2 (master-plan rettelse 23): Snapshot-tabeller der er bevidst undtaget
+// fra stork_audit-trigger. Tilføjelse til listen kræver kode-commit + review.
+// Ingen admin-konfigurerbar version af denne liste — det er kerne-disciplin.
+//
+// Initial:
+// - commission_snapshots: efter R3 (UPDATE-flag refactor) bærer den ikke
+//   stork_audit-trigger; status-overgange spores via flag-kolonner +
+//   periode-audit. (Pre-R3 har den stadig trigger; check er one-way.)
+// - commission_snapshots_candidate + salary_corrections_candidate: legacy
+//   candidate-tabeller (droppes i R6); de er scratch-buffers uden audit.
+const AUDIT_EXEMPT_SNAPSHOT_TABLES = new Set([
+  "core_money.commission_snapshots",
+  "core_money.commission_snapshots_candidate",
+  "core_money.salary_corrections_candidate",
+]);
+
+// Audit-tabellen + dens partitioner auditer ikke sig selv (uendelig rekursion).
+const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_default)?$/;
+
 // Migrationsfiler der er undtaget fra set-config-discipline-check.
 // Pre-D6-filer kan indeholde top-level INSERT/UPDATE uden session-vars.
 // Migration-filer er historik og modificeres ikke retroaktivt.
@@ -471,6 +490,59 @@ async function dbRlsPolicies() {
   return { name: "db-rls-policies", violations };
 }
 
+// R2 check: audit-trigger-coverage. Hver core_*-tabel skal enten have en
+// stork_audit-trigger ELLER stå i AUDIT_EXEMPT_SNAPSHOT_TABLES. Det forhindrer
+// at man ved et uheld opretter en feature-tabel uden audit-spor.
+//
+// One-way: tabeller i allowlisten må have trigger (det er ikke en fejl); men
+// tabeller udenfor allowlisten skal have triggeren. Dvs. master-plan rettelse
+// 23 sikrer eksplicit dokumentation når audit udelades; tilstedeværelsen af
+// trigger på en allowlistet tabel er stadig OK (overkill, ikke under-coverage).
+async function auditTriggerCoverage() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  const allCleaned = migrations.map((m) => stripSqlComments(m.sql)).join("\n");
+
+  // Find alle CREATE TABLE i core_*-schemas
+  const createTableRe =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(/gi;
+  const tables = new Set();
+  let m;
+  while ((m = createTableRe.exec(allCleaned)) !== null) {
+    const schema = (m[1] || "public").toLowerCase();
+    const table = m[2].toLowerCase();
+    if (schema.startsWith("core_")) tables.add(`${schema}.${table}`);
+  }
+
+  for (const qualified of tables) {
+    if (AUDIT_LOG_SELF_EXCLUSION_RE.test(qualified)) continue;
+    if (AUDIT_EXEMPT_SNAPSHOT_TABLES.has(qualified)) continue;
+    // Skal have stork_audit-trigger et eller andet sted i migrations.
+    // Pattern: CREATE TRIGGER <name> (BEFORE|AFTER) ... ON <qualified> ... stork_audit
+    const triggerRe = new RegExp(
+      `CREATE\\s+TRIGGER\\s+\\w+\\s+(?:BEFORE|AFTER)\\s+[\\s\\S]*?ON\\s+${qualified.replace(".", "\\.")}\\b[\\s\\S]*?stork_audit`,
+      "i",
+    );
+    if (!triggerRe.test(allCleaned)) {
+      violations.push(
+        `${qualified}: mangler stork_audit-trigger (tilfoej audit-trigger i migration ELLER placer tabellen i AUDIT_EXEMPT_SNAPSHOT_TABLES med kode-commit + review)`,
+      );
+    }
+  }
+
+  // Verificér at allowlist-entries faktisk eksisterer i CREATE TABLE
+  // (forhindrer drift: liste-entry for tabel der ikke længere oprettes)
+  for (const qualified of AUDIT_EXEMPT_SNAPSHOT_TABLES) {
+    if (!tables.has(qualified)) {
+      violations.push(
+        `${qualified}: er i AUDIT_EXEMPT_SNAPSHOT_TABLES men ingen CREATE TABLE-statement findes — fjern fra allowlist`,
+      );
+    }
+  }
+
+  return { name: "audit-trigger-coverage", violations };
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
 const checks = [
@@ -483,6 +555,7 @@ const checks = [
   dedupKeyOrOptOut,
   truncateBlockedOnImmutable,
   cronChangeReason,
+  auditTriggerCoverage,
   dbRlsPolicies,
 ];
 
