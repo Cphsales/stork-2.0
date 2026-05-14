@@ -175,6 +175,26 @@
 - **Risiko hvis glemt:** Lav — credibility
 - **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
 
+### [G024] HØJ — Klassifikations-registry tillod NULL retention på hver kolonne (LØST i C001)
+
+- **Beskrivelse:** `data_field_definitions.retention_type` var NULLABLE; CHECK tillod (NULL, NULL). 189 ud af 193 eksisterende klassificeringer havde NULL retention. Master-plan §0 kræver "klassifikation + retention på hver kolonne".
+- **Vision-svækkelse:** §0 (styr på data + slette-regler). "Styr på data" var symbolsk for de fleste kolonner.
+- **Introduceret:** Trin 1 (`20260514120005_t1_data_field_definitions.sql:18`)
+- **Opdaget:** Codex-review 2026-05-14 (C001)
+- **Status:** **LØST i `20260514170003_c001_retention_not_null.sql`**:
+  - Tilføjet retention_type='permanent' (semantisk: ingen sletning, eksplicit)
+  - Backfill 189 rows: legal 7y for audit/regnskab, time_based 1-2y for drift, permanent for system-meta, event_based for PII koblet til termination
+  - retention_consistency CHECK strammet: permanent → value NULL; øvrige → value NOT NULL
+  - ALTER COLUMN retention_type SET NOT NULL
+  - validate_retention-trigger udvidet med 'permanent'-branch
+- **Distribution efter backfill:** 71 legal + 71 permanent + 44 time_based + 7 event_based = 193
+- **Verifikation:**
+  - `count(*) where retention_type IS NULL` = 0 ✓
+  - Negative: INSERT med retention_type=NULL → not_null_violation ✓
+  - Negative: INSERT med time_based + retention_value=NULL → check_violation ✓
+  - Positive: INSERT med permanent + retention_value=NULL → accepteret ✓
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
 ### [G023] MELLEM — Break-glass dispatcher fri-tekst + inactive RPC-seed (LØST i C006)
 
 - **Beskrivelse:** (1) `gdpr_retroactive_remove` seedet med `is_active=true`, men `core_compliance.gdpr_retroactive_remove_via_break_glass` findes ikke (bygges post-fase-E pr. §1.13). Requester kunne lave request, men execute fejlede sent med obskur fejl. (2) `break_glass_execute` byggede SQL via `format('select %s($1,$2)', internal_rpc)` fra fri-tekst-konfig — skadeligt indhold ville eksekvere som SECURITY DEFINER (postgres-privilegier).
