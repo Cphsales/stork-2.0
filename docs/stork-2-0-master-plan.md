@@ -601,10 +601,11 @@ Stork 2.0's egen juridiske ramme:
 
 **Tier-strategi:**
 
-- Stork 2.0 kører på Supabase **Pro-tier fra start**
+- Stork 2.0 kører på Supabase **Pro-tier** (bekræftet aktivt pr. 14. maj 2026, organisation `csasxnonvjrgijqohodl`)
 - 130+ medarbejdere kræver headroom: ~240 direkte forbindelser, ~800 via pgbouncer
-- PITR-mulighed tilgængelig som tilkøb på Pro-tier (aktiveres i lag F)
-- Konfiguration sker i lag F; design-spor klar fra fundamentet
+- PITR er tilgængelig som tilkøb på Pro-tier; aktivering er admin-handling i Supabase dashboard. Status: **ikke aktiveret endnu** — flag før kritiske forretningsdata lander (lag E sales-stamme trin 14)
+- Backup-retention bør være Pro-default 14 dage. Verificeres i dashboard
+- Connection-pool kan udnyttes (relevant for cron + RPC-orchestrering)
 
 **Partitionering fra dag ét:**
 Tre højvækst-tabeller oprettes som `PARTITIONED TABLES` fra første migration:
