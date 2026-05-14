@@ -85,6 +85,18 @@
 - **Risiko hvis glemt:** Lav
 - **Plan:** Upload-script læser rolle-mapping fra konfig-tabel når lag F leverer rolle-konfig
 
+### [G029] MELLEM — C001-backfill bruger legal retention mod master-plan-reservation
+
+- **Beskrivelse:** C001-fix (commit `71ab37f`) klassificerede `pay_periods`, `commission_snapshots`, `salary_corrections`, `cancellations`, `audit_log`, `break_glass_requests` som `retention_type='legal'` med 2555 dage (7 år).
+- **Konflikt:** Master-plan reserverer eksplicit `legal` retention til e-conomic-fakturaer (kommer i 2.1+) og AMO-dokumentation. Stork har ingen bogføring (e-conomic er bogføring). Løn-tabeller skulle klassificeres som `time_based`, ikke `legal`.
+- **Vision-svækkelse:** "Styr på data" + "alt drift styres i UI" — klassifikation på fundamentet matcher ikke master-plan-reglen.
+- **Introduceret:** Trin 1 (commit `71ab37f`, C001-fix).
+- **Opdaget:** Master-plan status-verifikation 2026-05-14 (e-conomic-scanning fandt master-plan-formuleringen "legal retention-type reserveret til lovgivnings-bundne entiteter (e-conomic-fakturaer i 2.1+, evt. AMO-dokumentation)").
+- **Skal løses:** Før trin 5 startes ELLER samtidig med refactor-pakke for §1.6 (audit-strategi).
+- **Risiko hvis glemt:** Slette/anonym-regler får forkert default. UI-styret retention-mekanisme får 7-årig låsning på data der reelt skulle være drift-retention.
+- **Plan:** Konvertér løn-tabeller fra `legal` til `time_based` med retention-værdi afgjort af Mathias. Princip: "alle slette og anonym-regler styres i UI".
+- **Berørt af C001:** 71 rows klassificeret som `legal` (audit_log 15 + break_glass_requests 17 + pay_periods 11 + commission_snapshots 7 + salary_corrections 10 + cancellations 11). Beslutning om scope af konvertering (alle 71 eller kun løn-relaterede tabeller) afventer afgørelse.
+
 ### [G028] MELLEM — C002/C003-commit klassificerede ikke nye dispatcher-kolonner (LØST som disciplin-fix)
 
 - **Beskrivelse:** C002+C003-commit (`d40922a`) udvidede `anonymization_mappings` med 4 dispatcher-felter (`internal_rpc_anonymize`, `internal_rpc_apply`, `anonymized_check_column`, `retention_event_column`) via ALTER TABLE, men glemte tilsvarende klassifikations-rows i `data_field_definitions`. Migration-gate Phase 1 (warn-only) advarede; Phase 2 strict (CI) blokerede merge.
