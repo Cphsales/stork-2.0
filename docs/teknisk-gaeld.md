@@ -175,6 +175,21 @@
 - **Risiko hvis glemt:** Lav — credibility
 - **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
 
+### [G023] MELLEM — Break-glass dispatcher fri-tekst + inactive RPC-seed (LØST i C006)
+
+- **Beskrivelse:** (1) `gdpr_retroactive_remove` seedet med `is_active=true`, men `core_compliance.gdpr_retroactive_remove_via_break_glass` findes ikke (bygges post-fase-E pr. §1.13). Requester kunne lave request, men execute fejlede sent med obskur fejl. (2) `break_glass_execute` byggede SQL via `format('select %s($1,$2)', internal_rpc)` fra fri-tekst-konfig — skadeligt indhold ville eksekvere som SECURITY DEFINER (postgres-privilegier).
+- **Vision-svækkelse:** §1.15 (break-glass-flow) + §1.1 (sikkerheds-disciplin).
+- **Introduceret:** Trin 4 (`20260514150008_t7c_break_glass.sql:83, 382`)
+- **Opdaget:** Codex-review 2026-05-14 (C006)
+- **Status:** **LØST i `20260514170002_c006_break_glass_allowlist.sql`**:
+  - `gdpr_retroactive_remove.is_active=false` + opdateret description med re-aktiverings-plan
+  - `break_glass_execute` validerer `internal_rpc` via `regprocedure`-cast FØR EXECUTE. PG's eget type-system bliver allowlisten; cast fejler med 42883 hvis funktionen ikke findes eller signaturen er forkert
+- **Verifikation:**
+  - `select operation_type, is_active from break_glass_operation_types` viser gdpr=false, pay_period_unlock=true
+  - regprocedure-cast på nonexistent RPC → undefined_function (42883) ✓
+  - regprocedure-cast på `core_money.pay_period_unlock_via_break_glass` → succeeds ✓
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
 ### [G022] HØJ — Admin-floor count + trigger inkluderede ikke termination_date (LØST i C005)
 
 - **Beskrivelse:** `enforce_admin_floor()` count'ede admins via `anonymized_at IS NULL` alene, mens `is_admin()` også filtrerer `termination_date`. Trigger lyttede ikke på `termination_date`-UPDATE. Resultat: terminere en admin (uden anonymize) reducerede ikke floor-count → systemet kunne ende under minimum aktive admins uden at trigger fyrede.
