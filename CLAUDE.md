@@ -90,9 +90,16 @@ Inline-fix-autoritet gælder for tekniske constraints-fixes (CHECK-relaxering, t
 
 ---
 
+## Arbejds-disciplin
+
+Trin-cyklus, scope-krav, selv-tjek, AI-arbejdsdeling og Codex-fund-håndtering er dokumenteret i `docs/arbejds-disciplin.md`. Læs den før hvert trin startes.
+
+---
+
 ## Filer at konsultere før design-beslutninger
 
 - `docs/stork-2-0-master-plan.md` — autoritativ for arkitektur og §4-byggerækkefølge
+- `docs/arbejds-disciplin.md` — trin-cyklus + AI-arbejdsdeling + Codex-fund-håndtering
 - `docs/teknisk-gaeld.md` — kendt gæld; tilføj nye G-numre når kompromiset tages
 - `docs/bygge-status.md` — sporing pr. trin; opdateres efter hver bygning
 - `docs/lag-e-beregningsmotor-krav.md` + `docs/lag-e-tidsregistrering-krav.md` — forretnings-detaljer for lag E
