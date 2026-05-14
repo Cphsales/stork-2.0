@@ -1,7 +1,7 @@
 -- D1 + D2 (atomisk): drop 'legal' fra retention_type-CHECK + konvertér 71 legal-rows.
 --
 -- BAGGRUND (master-plan rettelser 24 + 25):
--- - Stork har ingen bogføring/lovbestemt min-retention på forretningsdata.
+-- - Stork har ingen lovbestemt min-retention på forretningsdata.
 -- - 'legal' retention-type fjernes; retention_type-enum bliver
 --   {time_based, event_based, manual, permanent} + NULL tilladt.
 -- - 71 eksisterende 'legal'-rows konverteres:
