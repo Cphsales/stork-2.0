@@ -58,8 +58,7 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
   "core_money.salary_corrections",
   "core_money.cancellations",
   "core_money.pay_period_candidate_runs",
-  "core_money.commission_snapshots_candidate",
-  "core_money.salary_corrections_candidate",
+  // R6: commission_snapshots_candidate + salary_corrections_candidate droppet
   "core_compliance.break_glass_operation_types",
   "core_compliance.break_glass_requests",
 ]);
@@ -91,8 +90,7 @@ const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
 //   candidate-tabeller (droppes i R6); de er scratch-buffers uden audit.
 const AUDIT_EXEMPT_SNAPSHOT_TABLES = new Set([
   "core_money.commission_snapshots",
-  "core_money.commission_snapshots_candidate",
-  "core_money.salary_corrections_candidate",
+  // R6: commission_snapshots_candidate + salary_corrections_candidate droppet
 ]);
 
 // Audit-tabellen + dens partitioner auditer ikke sig selv (uendelig rekursion).
@@ -512,6 +510,15 @@ async function auditTriggerCoverage() {
     const schema = (m[1] || "public").toLowerCase();
     const table = m[2].toLowerCase();
     if (schema.startsWith("core_")) tables.add(`${schema}.${table}`);
+  }
+
+  // Fjern tabeller der senere er droppet (DROP TABLE schema.name).
+  const dropTableRe =
+    /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\b/gi;
+  while ((m = dropTableRe.exec(allCleaned)) !== null) {
+    const schema = (m[1] || "public").toLowerCase();
+    const table = m[2].toLowerCase();
+    tables.delete(`${schema}.${table}`);
   }
 
   for (const qualified of tables) {

@@ -280,6 +280,21 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   - Runtime positive test: `pay_period_compute_candidate_via_cron` udført som service_role → succeeded
 - **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
 
+### [G030] MELLEM — `commission_snapshots.sale_id` er `gen_random_uuid()`-placeholder (R5b post-lag-E)
+
+- **Beskrivelse:** R5 (Fund 6) implementerede `FOR UPDATE`-locking i compute_candidate, men **deferred** Fund 5 (deterministic sale_id). `_pay_period_compute_candidate_internal` INSERT'er commission_snapshots-rows med `sale_id := gen_random_uuid()` som placeholder. Reel sale_id er FK til `core_sales.sales` (eksisterer ikke før lag E / trin 9+).
+- **Vision-svækkelse:** §0 (én sandhed) + §1.6 (snapshot = frosset state). Placeholder sale_id giver illusorisk dependency-tracking — rekompute med samme period_id+employee_id+amount producerer FORSKELLIGE sale_id'er hver gang.
+- **Introduceret:** Trin 4 (`20260514150005_t7_lock_pipeline.sql`) + bevaret i R3/R5
+- **Opdaget:** Codex Fund 5 (DEL 8 R5 forberedelse)
+- **Skal løses:** R5b — efter sales-tabel eksisterer (lag E, ~trin 9+)
+- **Risiko hvis glemt:** Mellem. Snapshot mister dependency-link til underliggende sale. Recompute kan ikke verificere "samme input → samme output" på sale-niveau.
+- **Plan (R5b):**
+  1. Bygg `core_sales.sales`-tabel i lag E (trin 9 eller senere)
+  2. R5b-migration: refactor `_pay_period_compute_candidate_internal` til at iterere over `core_sales.sales` for perioden og bruge `sales.id` direkte
+  3. ALTER TABLE commission_snapshots ADD FOREIGN KEY sale_id → core_sales.sales(id)
+  4. Backfill: hvis pre-cutover skal locked snapshots bevares, kortlæg placeholder→real sale_id; pre-cutover er det fint at slette test-rows og rekomputere
+  5. Fitness-check: forbyde `gen_random_uuid()` i compute-internal-funktioner
+
 ### [G019] LAV — `stork_audit` antog uuid PK; singletons med smallint/integer PK var ikke testet
 
 - **Beskrivelse:** Audit-trigger castede `to_jsonb(new)->>'id'` til uuid uden type-tjek. `pay_period_settings.id` (smallint) og `superadmin_settings.id` (integer) var bootstrappet før audit-trigger blev attached, så bug'en blev ikke opdaget før første UPDATE.
