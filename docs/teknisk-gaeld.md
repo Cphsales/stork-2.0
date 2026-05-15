@@ -310,6 +310,114 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   4. Backfill: hvis pre-cutover skal locked snapshots bevares, kortlæg placeholder→real sale_id; pre-cutover er det fint at slette test-rows og rekomputere
   5. Fitness-check: forbyde `gen_random_uuid()` i compute-internal-funktioner
 
+### [G033] MELLEM — Varig fitness-check for regprocedure-callable-regressioner mangler
+
+- **Beskrivelse:** R7a fixer regprocedure::text-bug i 3 pg_proc-funktioner + 1 cron-body. Ingen aktuel fitness-check fanger fremtidige regressioner. D5 dækker is_active-readers, IKKE regprocedure-pattern. R-runde-2-plan v2 indeholdt false claim om at D5 fanger dette — rettet 2026-05-15.
+- **Vision-svækkelse:** Drift-disciplin (§3). Anti-pattern kan re-introduceres uden CI-block.
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #5 HØJ
+- **Skal løses:** Efter R-runde-2 er færdig (R7a-T1 anvendt)
+- **Risiko hvis glemt:** Mellem. Fremtidig RPC med regprocedure::text-bug slipper igennem CI.
+- **Plan (G033):**
+  1. Ny fitness-check `regprocedure-callable-pattern` i `scripts/fitness.mjs`
+  2. Live `pg_get_functiondef` + `cron.job.command`-introspection (samme pattern som D5)
+  3. Detect: `::regprocedure` efterfulgt af `::text` i samme function/cron-body uden mellemliggende `pg_proc`-lookup
+  4. Skip-when-no-token (CI-only, samme pattern som db-rls-policies + D4 + D5)
+
+### [G034] LAV — V2-recon-scanner matcher kun literal `is_active = true`
+
+- **Beskrivelse:** V2.2-recon-query bruger regex `is_active\s*=\s*true`. Misser semantisk ækvivalente former: `is_active IS TRUE`, `coalesce(is_active, false) = true`, alias-baseret `m.is_active = true`. Hvis fremtidig RPC bruger anden syntaks, slipper den igennem V2 + D5 fitness-check.
+- **Vision-svækkelse:** Drift-disciplin (§3). Scanner-præcision.
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #1 MELLEM
+- **Skal løses:** Vurder når relevant; ikke kritisk for R-runde-2 (live recon dækker aktuel state). Hvis fremtidig RPC bruger non-literal pattern: opdatér scanner.
+- **Plan (G034):** Udvid V2.2-pattern + D5-pattern til at også matche `IS TRUE`, `coalesce(_, ...) = true`, eller migrér til AST-baseret PG-parser hvis kompleksitet stiger.
+
+### [G035] LAV — D5 checker globalt pr. function-body, ikke pr. occurrence
+
+- **Beskrivelse:** D5-pattern: `pg_get_functiondef(...) ~* 'is_active.*true' AND !~* 'status.*active'`. False-negative hvis én funktion har ÉN compliant reader (`status='active' AND is_active=true`) og ÉN non-compliant reader (kun `is_active=true`). Function-body som helhed matcher begge mønstre → check passerer.
+- **Vision-svækkelse:** Drift-disciplin (§3). Granulariteten af checken.
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #5 MELLEM
+- **Skal løses:** Vurder når relevant; aktuelt har vi ingen funktion med mixed pattern (R7d normaliserer alle readers).
+- **Plan (G035):** Per-occurrence-detection via AST eller regex split af SELECT/WHERE-blokke. Eller: kør D5 + dokumentér antagelsen om at funktioner enten har alle compliant eller ingen.
+
+### [G036] MELLEM — R7a+R7d cron-reschedule race-window
+
+- **Beskrivelse:** R7a opdaterer `retention_cleanup_daily` cron-body (regprocedure fix). R7d opdaterer samme cron-body igen (is_active+status). Hvis cron fyrer i mellem to migrations, kan den ramme partial state. Sandsynlighed lav (cron kører kl. 02:30, migrations anvendes typisk udenfor cron-window) men ikke nul.
+- **Vision-svækkelse:** Driftstabilitet (§1.14).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #2 MELLEM
+- **Skal løses:** Vurder i implementation. Option A: kombinér cron-body-ændringer i én migration (én cron.unschedule + cron.schedule). Option B: cron.unschedule jobid=10 først; reschedule til sidst.
+- **Plan (G036):** Implementér Option A — kombinér R7a's cron-body-fix + R7d's reader-fix i ét cron.unschedule + cron.schedule kald. Eller flag som G036-deferred hvis implementation viser at to separate migrations er nødvendige af andre grunde.
+
+### [G037] MELLEM — R7d backfill mangler session-vars for audit-spor
+
+- **Beskrivelse:** R7d-backfill skitse bruger ikke fuldt session-var-mønster (stork.allow\_\*\_write, source_type, change_reason) der etableret i P2/P3. Backfill-UPDATE kører som migration med implicit context, hvilket gør audit-trail svagere end runtime-mønstret.
+- **Vision-svækkelse:** Audit-bevares (§1.3).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #4 MELLEM
+- **Skal løses:** I R7d-implementation. Tilføj eksplicit session-var-block før UPDATE.
+- **Plan (G037):** R7d-migration starter med:
+  ```sql
+  select set_config('stork.source_type', 'migration', false);
+  select set_config('stork.allow_anonymization_mappings_write', 'true', false);
+  select set_config('stork.allow_break_glass_operation_types_write', 'true', false);
+  select set_config('stork.change_reason', 'R7d: ryd is_active drift (Codex Fund #3)', false);
+  -- så UPDATE'er
+  ```
+
+### [G038] LAV — cron.unschedule via navn-lookup vs jobid-lookup
+
+- **Beskrivelse:** R7a + R7d bruger `cron.unschedule('retention_cleanup_daily')` — navn-baseret. Hvis cron-extension API ændrer eller jobname duplikerer, kan unschedule fejle eller ramme forkert job. jobid-lookup (`select jobid from cron.job where jobname = ... limit 1`) er mere robust.
+- **Vision-svækkelse:** Driftstabilitet (§1.14).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #2 MELLEM (første del)
+- **Skal løses:** I R7a/R7d-implementation. Brug jobid-lookup hvor muligt; håndtér missing job-case eksplicit.
+- **Plan (G038):** Pattern:
+  ```sql
+  do $$ declare v_id bigint;
+  begin
+    select jobid into v_id from cron.job where jobname = 'retention_cleanup_daily' limit 1;
+    if v_id is not null then perform cron.unschedule(v_id); end if;
+  end $$;
+  ```
+
+### [G039] LAV — V1 PostgREST-test bør køres med både anon og authenticated
+
+- **Beskrivelse:** Codex v2 anbefaler at V1 PostgREST-eksponerings-test køres både med anon-key OG authenticated JWT. Aktuelt plan-beskrivelse nævner kun anon. authenticated kan have anderledes attack-surface (RLS-context, JWT-claims).
+- **Vision-svækkelse:** Sikkerheds-disciplin (§1.1).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #6 MELLEM
+- **Skal løses:** Mathias kører HTTP-test efter implementation med begge auth-modes.
+- **Plan (G039):** V1 curl-instruks udvides med to kald — anon + authenticated JWT — begge mod `/rest/v1/rpc/set_config`. Forventet output: 404 fra begge. Hvis ikke: stop-protokol.
+
+### [G040] LAV — Option D PostgREST-schema-isolation skal verificere faktisk deployed API config
+
+- **Beskrivelse:** Stop-protokol Option D antager PostgREST kun eksponerer `public, graphql_public` schemas. Det er repo-antagelse baseret på Supabase-defaults, ikke verificeret mod deployed API config. Hvis Supabase project-config ændrer `db-schemas` til at inkludere pg_catalog (usandsynligt men muligt), så er antagelsen ugyldig.
+- **Vision-svækkelse:** Sikkerheds-disciplin (§1.1).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #7 MELLEM
+- **Skal løses:** Vurder i Option D-aktivering. Verificér Supabase API-config via management API: `GET /v1/projects/<ref>/api`.
+- **Plan (G040):** Hvis V1 afslører eksponering OG Option D aktiveres: tilføj fitness-check der scanner deployed API-config + alerter hvis pg_catalog tilføjes til db-schemas.
+
+### [G041] LAV — Retention cron e2e-test bør eksekvere faktisk scheduled command
+
+- **Beskrivelse:** `smoke/r7a_retention_cleanup_cron_e2e.sql` (planlagt i T1) eksekverer kopieret helper-logic, ikke selve cron.job-command'en. Hvis cron-body afviger fra helper (fx. error-handling-block), kan test passere mens reel cron fejler.
+- **Vision-svækkelse:** Test-coverage (§3 — CI-disciplin).
+- **Introduceret:** R-runde-2 planlægning 2026-05-15
+- **Opdaget:** Codex v2-validering Fund #8 MELLEM
+- **Skal løses:** I T1-implementation. Test skal hente cron.job.command via SELECT og eksekvere den, ikke kopiere.
+- **Plan (G041):** Test-pattern:
+  ```sql
+  do $$ declare v_command text;
+  begin
+    select command into v_command from cron.job where jobname = 'retention_cleanup_daily';
+    execute v_command;  -- eksekver selve cron-bodyen
+    -- verificér side-effects
+  end $$;
+  ```
+
 ### [G019] LAV — `stork_audit` antog uuid PK; singletons med smallint/integer PK var ikke testet
 
 - **Beskrivelse:** Audit-trigger castede `to_jsonb(new)->>'id'` til uuid uden type-tjek. `pay_period_settings.id` (smallint) og `superadmin_settings.id` (integer) var bootstrappet før audit-trigger blev attached, så bug'en blev ikke opdaget før første UPDATE.
