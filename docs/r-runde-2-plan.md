@@ -213,7 +213,9 @@ select jobid, jobname from cron.job where command ~* 'is_active\s*=\s*true';
 - **`core_identity.anonymize_employee_internal`** ← Codex Fund #3
 - **`cron.job` jobid=10 `retention_cleanup_daily`** ← Codex Fund #3+#4
 
-**V2-output bestemmer R7a + R7d's omfang. Hvis senere migrations tilføjer ny RPC med samme bug, fanger D5 (live fitness-check) det.**
+**V2-output bestemmer R7a + R7d's omfang.**
+
+**Bemærk om fremtidig drift-detection:** D5 (fitness-check, se 4.10) fanger _is_active-reader_-regressioner, IKKE regprocedure::text-regressioner. Hvis senere migrations introducerer ny RPC med regprocedure::text-bug, fanger ingen fitness-check det aktuelt. **G033** sporer behovet for en varig fitness-check der scanner pg_proc + cron.job.command for regprocedure-callable-anti-patterns; bygges som separat check efter R-runde-2 er færdig.
 
 ---
 
