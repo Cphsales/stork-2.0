@@ -96,11 +96,44 @@ const AUDIT_EXEMPT_SNAPSHOT_TABLES = new Set([
 // Audit-tabellen + dens partitioner auditer ikke sig selv (uendelig rekursion).
 const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_default)?$/;
 
+// D3 (master-plan princip 15): Bootstrap-INSERTs i klassifikations- og
+// konfig-tabeller skal være idempotente. ON CONFLICT DO NOTHING (eller
+// DO UPDATE) sikrer at replay ikke duplikerer eller fejler. Direkte
+// INSERT uden ON CONFLICT er drift.
+//
+// Tabeller der bootstrappes via migration:
+const BOOTSTRAP_CONFIG_TABLES = new Set([
+  "core_compliance.data_field_definitions",
+  "core_compliance.anonymization_mappings",
+  "core_compliance.anonymization_strategies",
+  "core_compliance.break_glass_operation_types",
+  "core_compliance.superadmin_settings",
+  "core_identity.roles",
+  "core_identity.role_page_permissions",
+  "core_identity.employee_active_config",
+  "core_money.pay_period_settings",
+]);
+
 // Migrationsfiler der er undtaget fra set-config-discipline-check.
 // Pre-D6-filer kan indeholde top-level INSERT/UPDATE uden session-vars.
 // Migration-filer er historik og modificeres ikke retroaktivt.
 const GRANDFATHERED_NO_SETCONFIG_DISCIPLINE = new Set([
   "20260511165543_c4_pay_periods_template.sql", // singleton-config-INSERT uden top-level session-vars
+]);
+
+// D3 grandfather: 9 migration-filer pre-D3 har INSERTs uden ON CONFLICT.
+// Migration-filer er historik og modificeres ikke retroaktivt. Disciplin
+// gælder fremadrettet — alle nye migrations skal have ON CONFLICT-klausul.
+const GRANDFATHERED_NO_ON_CONFLICT = new Set([
+  "20260514120008_t1_classify_trin_1.sql",
+  "20260514130000_t2_superadmin_floor.sql",
+  "20260514130002_t2_classify.sql",
+  "20260514140000_t6_anonymization_tables.sql",
+  "20260514140003_t6_classify.sql",
+  "20260514150000_t7_pay_periods.sql",
+  "20260514150008_t7c_break_glass.sql",
+  "20260514150009_t7_classify.sql",
+  "20260514180000_g028_classify_anonymization_dispatcher_columns.sql",
 ]);
 
 async function walk(dir, exts) {
@@ -550,6 +583,71 @@ async function auditTriggerCoverage() {
   return { name: "audit-trigger-coverage", violations };
 }
 
+// D3 check: bootstrap-INSERT'er i klassifikations-/konfig-tabeller skal være
+// idempotente via ON CONFLICT-klausul (DO NOTHING eller DO UPDATE). Direkte
+// INSERT i bootstrap-tabel uden ON CONFLICT er drift — replay vil enten
+// duplikere eller fejle.
+//
+// Pragmatisk per-statement-tjek: for hver INSERT INTO bootstrap-table-statement,
+// scan resten af statementet (frem til afsluttende `;`) for ON CONFLICT.
+// Statement-grænser respekteres ved at scanne fra match til næste top-level `;`
+// (depth-tracking på parentheses + ignore semicolons i strings/dollar-quoted).
+async function migrationOnConflictDiscipline() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  for (const { file, path, sql } of migrations) {
+    if (GRANDFATHERED_NO_ON_CONFLICT.has(file)) continue;
+    // Strip kommentarer + dollar-quoted (function-bodies eksekverer ved runtime,
+    // ikke migration-tid; deres INSERT'er er ikke "bootstrap").
+    const cleaned = stripDollarQuoted(stripSqlComments(sql));
+
+    const insertRe = /INSERT\s+INTO\s+([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)/gi;
+    let m;
+    while ((m = insertRe.exec(cleaned)) !== null) {
+      const qualified = `${m[1].toLowerCase()}.${m[2].toLowerCase()}`;
+      if (!BOOTSTRAP_CONFIG_TABLES.has(qualified)) continue;
+
+      // Find slutningen af INSERT-statement (næste top-level `;`)
+      let i = m.index + m[0].length;
+      let depth = 0;
+      let inSingleQuote = false;
+      while (i < cleaned.length) {
+        const ch = cleaned[i];
+        if (inSingleQuote) {
+          if (ch === "'") {
+            if (cleaned[i + 1] === "'") {
+              i += 2;
+              continue;
+            }
+            inSingleQuote = false;
+          }
+          i++;
+          continue;
+        }
+        if (ch === "'") {
+          inSingleQuote = true;
+          i++;
+          continue;
+        }
+        if (ch === "(") depth++;
+        else if (ch === ")") depth--;
+        else if (ch === ";" && depth === 0) break;
+        i++;
+      }
+      const stmt = cleaned.slice(m.index, i);
+      if (!/ON\s+CONFLICT\b/i.test(stmt)) {
+        // Find line-number
+        const upto = cleaned.slice(0, m.index);
+        const line = (upto.match(/\n/g) || []).length + 1;
+        violations.push(
+          `${rel(path)}:${line}: INSERT INTO ${qualified} uden ON CONFLICT-klausul (bootstrap-tabel kraever DO NOTHING/DO UPDATE for replay-idempotence)`,
+        );
+      }
+    }
+  }
+  return { name: "migration-on-conflict-discipline", violations };
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
 const checks = [
@@ -563,6 +661,7 @@ const checks = [
   truncateBlockedOnImmutable,
   cronChangeReason,
   auditTriggerCoverage,
+  migrationOnConflictDiscipline,
   dbRlsPolicies,
 ];
 
