@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv plan. H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit-hash der skrives ind her efter samle-commit.
+**Aktuel:** `docs/coordination/H020-plan.md` — V1 udkast på branch `claude/h020-plan`. Codex-review afventes; feedback leveres i `docs/coordination/plan-feedback/H020-V1-codex.md`.
 
 Når ny plan starter:
 
