@@ -37,6 +37,15 @@ Besvar disse fire spørgsmål eksplicit, inden migration-fil oprettes:
 
 Migration-kommentar bør indeholde svaret på 1+2 i kort form (ikke alle fire — det er disciplin-tjek, ikke dokumentationskrav). Større designvalg dokumenteres i vision-tjek-sektion i trin-rapporten.
 
+### Plan-leverance er kontrakt
+
+Hvis Mathias har leveret en eksplicit plan-leverance med konkrete elementer (antal strategier, navne, return-værdier, signaturer, kolonner), er den **kontrakt**, ikke oplæg. Hver afvigelse — selv "harmløs forenkling" — skal flagges og godkendes **før** implementation, ikke efter.
+
+- Hvis planen siger 3 strategier og du kun ser brug for 2, **spørg først**. "Den tredje virker overflødig" er ikke implementations-autoritet.
+- Hvis planen siger en konkret værdi (`'[anonymized]'`, sha256, P0002), brug den værdi. Hvis en anden virker bedre, spørg først.
+- Forskellen mellem løse tanker og plan-leverance: løse tanker har ord som "vi skal have", "jeg tænker". Plan-leverancer har **lister, tabelnavne, signatur-specs, konkrete return-types**. Den signal er kontrakt.
+- Modsat retning: hvis Mathias siger noget retning-givende uden konkrete elementer, behandl det som retning — ikke specifikation. Spørg før der bygges ovenpå.
+
 ---
 
 ## Vision-tjek-skabelon — i hver trin-rapport
