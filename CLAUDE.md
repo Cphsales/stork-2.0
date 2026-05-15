@@ -46,6 +46,20 @@ Hvis Mathias har leveret en eksplicit plan-leverance med konkrete elementer (ant
 - Forskellen mellem løse tanker og plan-leverance: løse tanker har ord som "vi skal have", "jeg tænker". Plan-leverancer har **lister, tabelnavne, signatur-specs, konkrete return-types**. Den signal er kontrakt.
 - Modsat retning: hvis Mathias siger noget retning-givende uden konkrete elementer, behandl det som retning — ikke specifikation. Spørg før der bygges ovenpå.
 
+### Destructive drops kræver preflight
+
+`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, sletning af rows via DELETE uden WHERE-clause, og lignende destructive operations kræver eksplicit preflight-check eller break-glass-godkendelse. Konkret minimum:
+
+- **Tom-check:** `select count(*) from <tabel>` skal returnere 0, eller eksplicit kvittering for hvor mange rows der tabes
+- **Reference-check:** verificér ingen FK refererer den droppede tabel/kolonne (ikke kun CASCADE-fix)
+- **Audit-spor:** session-vars `stork.source_type='migration'` + `stork.change_reason='<konkret begrundelse>'` sættes før operation
+- **Rollback-plan:** dokumentér hvordan operation kan rulles tilbage hvis nødvendigt (snapshot, backup, eller breaking-change-accepteret)
+
+Pre-cutover (ingen rigtige data): tom-check + audit-spor er minimum.
+Post-cutover: alle 4 punkter er CI-blocker; manglende preflight i migration → review-rejection.
+
+R6 (commission_snapshots_candidate + salary_corrections_candidate drops) blev anvendt uden preflight pre-cutover; pragmatisk acceptabelt fordi 132+1 rows var test-data, men patternet markeres her som ikke-skalerbart.
+
 ---
 
 ## Vision-tjek-skabelon — i hver trin-rapport
