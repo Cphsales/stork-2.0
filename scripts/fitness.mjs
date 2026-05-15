@@ -181,17 +181,17 @@ function classifyDollarBlockContext(sql, blockStart) {
   const lookbehind = sql.slice(Math.max(0, blockStart - 200), blockStart);
   // CREATE [OR REPLACE] FUNCTION/PROCEDURE ... AS $...$
   if (/CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|PROCEDURE)\b[\s\S]*?AS\s*$/i.test(lookbehind)) {
-    return "function_body";  // strip — runtime
+    return "function_body"; // strip — runtime
   }
   // cron.schedule(..., $cron$ ... $cron$)
   if (/cron\.schedule\s*\([\s\S]*?,\s*$/i.test(lookbehind)) {
-    return "cron_body";  // strip — runtime
+    return "cron_body"; // strip — runtime
   }
   // DO $$...$$ (eller DO $tag$...$tag$)
   if (/\bDO\s*$/i.test(lookbehind)) {
-    return "do_block";  // KEEP — migration-time
+    return "do_block"; // KEEP — migration-time
   }
-  return "default";  // strip — data
+  return "default"; // strip — data
 }
 
 function stripDollarQuoted(sql) {
@@ -569,8 +569,7 @@ async function auditTriggerCoverage() {
   const allCleaned = migrations.map((m) => stripSqlComments(m.sql)).join("\n");
 
   // Find alle CREATE TABLE i core_*-schemas
-  const createTableRe =
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(/gi;
+  const createTableRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\(/gi;
   const tables = new Set();
   let m;
   while ((m = createTableRe.exec(allCleaned)) !== null) {
@@ -580,8 +579,7 @@ async function auditTriggerCoverage() {
   }
 
   // Fjern tabeller der senere er droppet (DROP TABLE schema.name).
-  const dropTableRe =
-    /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\b/gi;
+  const dropTableRe = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\b/gi;
   while ((m = dropTableRe.exec(allCleaned)) !== null) {
     const schema = (m[1] || "public").toLowerCase();
     const table = m[2].toLowerCase();
@@ -831,8 +829,7 @@ async function legacyIsActiveReaders() {
 
   const rows = Array.isArray(body) ? body : body.result || body.rows || [];
   const violations = rows.map(
-    (r) =>
-      `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`,
+    (r) => `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`,
   );
   return { name: "legacy-is-active-readers", violations };
 }
