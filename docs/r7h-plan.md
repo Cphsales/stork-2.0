@@ -355,24 +355,53 @@ Pre-R7a: error caught af replay's inner exception-handler → `v_errors += 1, v_
 
 ---
 
-## Test 3 — anonymize_generic_apply via wrapper (uændret fra v1)
+## Test 3 — anonymize_generic_apply via wrapper
 
-Pattern: mock auth + BEGIN/ROLLBACK. Setup: aktivér strategier+mapping. Call: anonymize_employee. Verify: PII overskrevet.
+### R7h-runtime-finding (2026-05-15)
 
-### Pre-fix bevisførelse
+Test 3-implementation afslørede **ekstra pre-eksisterende bug i `anonymize_generic_apply` (P1b)** udover R7a regprocedure-bug:
 
-**Pre-R7a `anonymize_generic_apply`-kerne (SET-clause-bygning):**
+```sql
+-- Pre-fix INSERT (P1b):
+insert into core_compliance.anonymization_state (
+  entity_type, entity_id, anonymization_reason,     -- ← mangler table_schema + table_name
+  field_mapping_snapshot, jsonb_field_mapping_snapshot,
+  strategy_version, created_by
+) values (...);
+```
+
+`anonymization_state.table_schema` + `.table_name` er NOT NULL. Pre-R7a kunne testen ikke afsløre bug'en fordi regprocedure-fejl fandt sted tidligere i samme funktion (SET-clause EXECUTE). Post-R7a virker dynamic UPDATE → bug rammer ved INSERT.
+
+`_anonymize_employee_log_state` (Q-pakke-tid) har korrekt INSERT med hardkodet `'core_identity', 'employees'`. Bug eksisterer KUN i `anonymize_generic_apply`.
+
+**Fix (Option A — folde ind i R7h som separat fix-commit):**
+Tilføj `v_mapping.table_schema, v_mapping.table_name` til INSERT. Trivielt + matcher det Codex v2 påpegede for Test 2-seed.
+
+### Pattern
+
+Pattern: mock auth + BEGIN/ROLLBACK. Setup: aktivér strategier+mapping. Call: anonymize_employee. Verify: PII overskrevet + state-row INSERT'ed.
+
+### Pre-fix bevisførelse (to lag)
+
+**Lag 1 — pre-R7a `anonymize_generic_apply` regprocedure-kerne:**
 
 ```sql
 v_set_clauses := v_set_clauses || (format('%I = %s(%I, $1)', col, v_proc::text, col));
 -- v_proc::text = "core_compliance._anon_strategy_blank(text, text)"
 -- Resulterende UPDATE: SET first_name = core_compliance._anon_strategy_blank(text, text)(first_name, $1), ...
--- ↑ SYNTAX_ERROR
+-- ↑ SYNTAX_ERROR ved EXECUTE → PII ikke overskrevet
 ```
 
-EXECUTE af det dynamiske UPDATE fejler. anonymize_employee returnerer error. PII ikke overskrevet.
+**Lag 2 — pre-Test-3-fix anonymize_generic_apply INSERT-kerne (live-verificeret 2026-05-15):**
 
-**Post-R7a:** valid SET-clause. PII overskrevet.
+```sql
+insert into core_compliance.anonymization_state (
+  entity_type, entity_id, anonymization_reason, ...
+) values (p_entity_type, p_entity_id, ...);
+-- ↑ NOT_NULL_VIOLATION på table_schema (verificeret runtime-fejl 2026-05-15)
+```
+
+**Post (R7a + Test-3-fix):** valid SET-clause + INSERT inkluderer table_schema/table_name → PII overskrevet + state-row inserteret.
 
 ---
 
