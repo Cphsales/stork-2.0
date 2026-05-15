@@ -89,4 +89,4 @@ Når ny RPC tilføjes:
 1. Skriv RPC med `has_permission(page, tab, can_edit)`-check (eller dokumentér `is_admin()`-undtagelse i G-nummer)
 2. Tilføj seed-row til `core_identity.role_page_permissions` for superadmin via ON CONFLICT DO NOTHING
 3. `smoke/m1_permission_matrix.sql` fanger missing-rows på næste CI-run
-4. Regenérer denne fil ved at køre query i `docs/permission-matrix.md`-frontmatter
+4. Regenérer denne fil ved at køre query i `docs/teknisk/permission-matrix.md`-frontmatter

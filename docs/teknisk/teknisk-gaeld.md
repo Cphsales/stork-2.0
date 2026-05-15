@@ -204,7 +204,7 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 
 ### [G018] LAV — Bygge-status klassifikations-tal er forkerte
 
-- **Beskrivelse:** `docs/bygge-status.md` siger "207/211/233 klassificerede kolonner" efter trin 1/2/3. Aktuelt i DB: 90 før trin 7, 193 efter. Tallene stammer fra migration-gate's union-count over alle migration-file-INSERTs inkl. fase 0-filer der blev DROP CASCADE'd.
+- **Beskrivelse:** `docs/strategi/bygge-status.md` siger "207/211/233 klassificerede kolonner" efter trin 1/2/3. Aktuelt i DB: 90 før trin 7, 193 efter. Tallene stammer fra migration-gate's union-count over alle migration-file-INSERTs inkl. fase 0-filer der blev DROP CASCADE'd.
 - **Vision-svækkelse:** Lav — dokumentations-accuracy
 - **Introduceret:** Trin 1-3 (rapport-skrivning)
 - **Skal løses:** Ved næste bygge-status-revision

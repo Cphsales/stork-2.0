@@ -1,0 +1,65 @@
+name: Codex notify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/coordination/seneste-rapport.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/coordination/seneste-rapport.md"
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  notify:
+    name: Post comment to Codex review queue
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Locate tracker issue
+        id: tracker
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NUMBER=$(gh issue list --search "Codex review queue in:title" --state open --json number,title --jq '.[] | select(.title == "Codex review queue") | .number' | head -n1)
+          if [ -z "$NUMBER" ]; then
+            echo "Tracker issue 'Codex review queue' not found. Skipping (must be opened manually once)." >&2
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post review-trigger comment
+        if: steps.tracker.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.number }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          BODY=$(cat <<EOF
+          **Codex-review trigger** — \`docs/coordination/seneste-rapport.md\` ændret
+
+          - Event: \`$EVENT\`
+          - Ref: \`$REF\`
+          - Commit: \`$SHA\`
+          - Aktør: \`$ACTOR\`
+          - Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+
+          Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review.
+          EOF
+          )
+          gh issue comment "$ISSUE_NUMBER" --body "$BODY"
