@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** `docs/coordination/H020-plan.md` — V1 udkast på branch `claude/h020-plan`. Codex-review afventes; feedback leveres i `docs/coordination/plan-feedback/H020-V1-codex.md`.
+**Aktuel:** `docs/coordination/H020-plan.md` — V1 udkast på branch `claude/h020-plan` (rebased onto main efter H020.1-automation-fix). Codex-review afventes; feedback leveres i `docs/coordination/plan-feedback/H020-V1-codex.md`.
 
 Når ny plan starter:
 
