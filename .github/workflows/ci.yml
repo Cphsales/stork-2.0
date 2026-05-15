@@ -71,3 +71,7 @@ jobs:
       - name: Schema drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm schema:check
+
+      - name: DB tests
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: pnpm db:test

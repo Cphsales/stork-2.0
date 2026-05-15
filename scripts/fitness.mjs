@@ -119,6 +119,7 @@ const BOOTSTRAP_CONFIG_TABLES = new Set([
 // Migration-filer er historik og modificeres ikke retroaktivt.
 const GRANDFATHERED_NO_SETCONFIG_DISCIPLINE = new Set([
   "20260511165543_c4_pay_periods_template.sql", // singleton-config-INSERT uden top-level session-vars
+  "20260514120007_t1_bootstrap_admins.sql", // R7g afslørede DO-block-INSERT pre-D6
 ]);
 
 // D3 grandfather: 9 migration-filer pre-D3 har INSERTs uden ON CONFLICT.
@@ -134,6 +135,7 @@ const GRANDFATHERED_NO_ON_CONFLICT = new Set([
   "20260514150008_t7c_break_glass.sql",
   "20260514150009_t7_classify.sql",
   "20260514180000_g028_classify_anonymization_dispatcher_columns.sql",
+  "20260514120007_t1_bootstrap_admins.sql", // R7g afslørede DO-block-INSERT pre-D3
 ]);
 
 async function walk(dir, exts) {
@@ -167,6 +169,31 @@ function stripSqlComments(sql) {
 // Strip dollar-quoted-strings ($$...$$, $tag$...$tag$). Brugt til checks
 // der vurderer migration-tidens mutationer — funktion-bodies eksekverer
 // først ved runtime, ikke ved apply.
+//
+// R7g: differentier mellem dollar-quoted-kontekster:
+// - CREATE FUNCTION/PROCEDURE: body eksekverer ved runtime → strip
+// - DO: eksekverer ved migration-tid → KEEP (mutation skal scannes)
+// - cron.schedule: body eksekverer ved cron-run, ikke ved migration-apply → strip
+// - default (string-literaler i SELECT/INSERT): strip (data, ikke kode)
+//
+// Differentiering via 200-char preceding context før $tag$-start.
+function classifyDollarBlockContext(sql, blockStart) {
+  const lookbehind = sql.slice(Math.max(0, blockStart - 200), blockStart);
+  // CREATE [OR REPLACE] FUNCTION/PROCEDURE ... AS $...$
+  if (/CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|PROCEDURE)\b[\s\S]*?AS\s*$/i.test(lookbehind)) {
+    return "function_body";  // strip — runtime
+  }
+  // cron.schedule(..., $cron$ ... $cron$)
+  if (/cron\.schedule\s*\([\s\S]*?,\s*$/i.test(lookbehind)) {
+    return "cron_body";  // strip — runtime
+  }
+  // DO $$...$$ (eller DO $tag$...$tag$)
+  if (/\bDO\s*$/i.test(lookbehind)) {
+    return "do_block";  // KEEP — migration-time
+  }
+  return "default";  // strip — data
+}
+
 function stripDollarQuoted(sql) {
   let out = "";
   let i = 0;
@@ -176,13 +203,19 @@ function stripDollarQuoted(sql) {
       const tag = m[0];
       const endIdx = sql.indexOf(tag, i + tag.length);
       if (endIdx === -1) {
-        // unbalanced — bevar resten som-er
         out += sql.slice(i);
         break;
       }
-      // Erstat blocken med whitespace for at bevare linje-numre
       const block = sql.slice(i, endIdx + tag.length);
-      out += block.replace(/[^\n]/g, " ");
+      const context = classifyDollarBlockContext(sql, i);
+      if (context === "do_block") {
+        // KEEP: DO-block er migration-time. Skal scannes for INSERTs/UPDATEs.
+        out += block;
+      } else {
+        // Strip (function body / cron body / data-literal): erstat med whitespace
+        // for at bevare linje-numre
+        out += block.replace(/[^\n]/g, " ");
+      }
       i = endIdx + tag.length;
     } else {
       out += sql[i];
@@ -465,6 +498,7 @@ async function dbRlsPolicies() {
     return { name: "db-rls-policies", violations: [], skipped: "SUPABASE_ACCESS_TOKEN ikke sat" };
   }
 
+  // R7f: udvidet fra kun 'public' til alle stork-schemas
   const query = `
     SELECT n.nspname AS schema, c.relname AS table_name,
            (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policy_count
@@ -472,7 +506,7 @@ async function dbRlsPolicies() {
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind = 'r'
       AND c.relrowsecurity = true
-      AND n.nspname = 'public'
+      AND n.nspname IN ('public', 'core_compliance', 'core_identity', 'core_money', 'core_time')
     ORDER BY 1, 2;
   `;
 
@@ -648,6 +682,161 @@ async function migrationOnConflictDiscipline() {
   return { name: "migration-on-conflict-discipline", violations };
 }
 
+// D4 check (R-runde-2): aktive anonymization_mappings.table_name skal have
+// en RLS-policy paa target-tabellen der bruger stork.allow_<table>_write
+// som session-var-gate. Forhindrer fremtidig drift hvor ny entity_type
+// tilfoejes uden matching write-policy.
+//
+// Live-query via Management API. Skip-when-no-token (samme pattern som
+// db-rls-policies). Polcmd ∈ {a,w,d,*} = INSERT/UPDATE/DELETE/ALL.
+async function writePolicySessionVarConsistency() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+  if (!token) {
+    return {
+      name: "write-policy-session-var-consistency",
+      violations: [],
+      skipped: "SUPABASE_ACCESS_TOKEN ikke sat",
+    };
+  }
+
+  const query = `
+    WITH active_mappings AS (
+      SELECT table_schema, table_name
+      FROM core_compliance.anonymization_mappings
+      WHERE status = 'active' AND is_active = true
+    ),
+    target_policies AS (
+      SELECT
+        n.nspname AS schema_name,
+        c.relname AS table_name,
+        array_agg(DISTINCT m[1]) FILTER (WHERE m[1] IS NOT NULL) AS write_vars
+      FROM pg_policy p
+      JOIN pg_class c ON c.oid = p.polrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      LEFT JOIN LATERAL regexp_matches(
+        coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+        coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''),
+        'stork\\.allow_(\\w+)_write', 'g'
+      ) m ON true
+      WHERE p.polcmd IN ('a', 'w', 'd', '*')
+      GROUP BY n.nspname, c.relname
+    )
+    SELECT m.table_schema, m.table_name,
+           coalesce(tp.write_vars, ARRAY[]::text[]) AS write_vars,
+           m.table_name = ANY(coalesce(tp.write_vars, ARRAY[]::text[])) AS has_expected_var
+    FROM active_mappings m
+    LEFT JOIN target_policies tp
+      ON tp.schema_name = m.table_schema AND tp.table_name = m.table_name;
+  `;
+
+  let body;
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) {
+      return {
+        name: "write-policy-session-var-consistency",
+        violations: [`Management API returned ${res.status}; check skipped`],
+        soft: true,
+      };
+    }
+    body = await res.json();
+  } catch (err) {
+    return {
+      name: "write-policy-session-var-consistency",
+      violations: [`Network fejl: ${err.message}; check skipped`],
+      soft: true,
+    };
+  }
+
+  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  const violations = [];
+  for (const row of rows) {
+    if (!row.has_expected_var) {
+      violations.push(
+        `${row.table_schema}.${row.table_name}: aktiv mapping mangler write-policy med stork.allow_${row.table_name}_write (har: ${JSON.stringify(row.write_vars)})`,
+      );
+    }
+  }
+  return { name: "write-policy-session-var-consistency", violations };
+}
+
+// D5 check (R-runde-2): readers af lifecycle-tabeller skal læse med BÅDE
+// status='active' AND is_active=true. Live introspection via
+// pg_get_functiondef + cron.job.command. Skip-when-no-token.
+//
+// Pattern: hver function-body / cron-body med `is_active = true` skal
+// også indeholde `status = 'active'`. False-positives accepteret hvis
+// patterns lever i samme function-body — per-occurrence-detection er G035.
+async function legacyIsActiveReaders() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+  if (!token) {
+    return {
+      name: "legacy-is-active-readers",
+      violations: [],
+      skipped: "SUPABASE_ACCESS_TOKEN ikke sat",
+    };
+  }
+
+  const query = `
+    WITH functions AS (
+      SELECT n.nspname || '.' || p.proname AS site,
+             pg_get_function_arguments(p.oid) AS args,
+             pg_get_functiondef(p.oid) AS body
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname IN ('core_identity','core_compliance','core_money','core_time')
+        AND p.prokind = 'f'
+    ),
+    cron_bodies AS (
+      SELECT 'cron.' || jobname AS site, '' AS args, command AS body
+      FROM cron.job
+    )
+    SELECT site, args FROM functions
+    WHERE body ~* '(?:where|and)\\s+[\\w\\.]*is_active\\s*=\\s*true'
+      AND body !~* 'status\\s*=\\s*''active'''
+    UNION ALL
+    SELECT site, args FROM cron_bodies
+    WHERE body ~* '(?:where|and)\\s+[\\w\\.]*is_active\\s*=\\s*true'
+      AND body !~* 'status\\s*=\\s*''active''';
+  `;
+
+  let body;
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) {
+      return {
+        name: "legacy-is-active-readers",
+        violations: [`Management API returned ${res.status}; check skipped`],
+        soft: true,
+      };
+    }
+    body = await res.json();
+  } catch (err) {
+    return {
+      name: "legacy-is-active-readers",
+      violations: [`Network fejl: ${err.message}; check skipped`],
+      soft: true,
+    };
+  }
+
+  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  const violations = rows.map(
+    (r) =>
+      `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`,
+  );
+  return { name: "legacy-is-active-readers", violations };
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
 const checks = [
@@ -663,6 +852,8 @@ const checks = [
   auditTriggerCoverage,
   migrationOnConflictDiscipline,
   dbRlsPolicies,
+  writePolicySessionVarConsistency,
+  legacyIsActiveReaders,
 ];
 
 async function main() {
