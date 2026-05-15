@@ -201,3 +201,24 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 - **Begrundelse:** Fundet under H010 PR CI-fail. G043+G044 dokumenterer det fulde billede. Test-suite ikke idempotent på `pay_periods` — INSERT'er stale-rows der ikke kan ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger (vision-princip 9). Skal løses før CI-grøn er pålideligt signal.
 - **Plan-reference:** `docs/teknisk/teknisk-gaeld.md` G043 + G044
+
+### 2026-05-15 — H022: G043 minimal-patch (fixed-shift, valg A)
+
+- **Begrundelse:** 3 blokerede merges på én dag (H010, H010-followup, H021) etablerede empirisk grundlag for at unblokke H021 + tillade I001-plan-arbejde uden at vente på dato-vindue-skift. Valg A (fixed-shift "5 years" → "6 years 6 months") vurderet som teknisk renest pga. minimal diff. **Vurderingen var forkert** — se H022.1.
+- **Plan-reference:** PR #14, merge-commit `3ff21f8`
+- **Note:** Reel G043+G044-løsning skal stadig adresseres. I001-plan argumenterer for om scope skal udvides til at inkludere det.
+
+### 2026-05-15 — H022.1: G043 random-offset (erstat fixed-shift, valg B)
+
+- **Begrundelse:** H022's fixed-shift havde levetids-vurdering 18 måneder; faktisk levetid var én CI-kørsel — H022's egen CI efterlod ny stale-row der umiddelbart blokerede H021. 4 datapunkter samme dag (H010, H010-followup, H021 før H022, H021 efter H022) viste at fixed-dato-shift bare flytter problemet. Random-offset (base 10y + spread 0-3650d → range 2036-2046) er robust minimal-patch. Selvkritik fra Code: defensiv "minimal diff er bedre" over teknisk korrekthed var anti-pattern; plan-leverance-disciplin gælder også for valg af patch-strategi.
+- **Plan-reference:** PR #15, merge-commit `5a57d33`
+
+### 2026-05-15 — H021 merged efter H022.1-unblok
+
+- **Begrundelse:** H021 (plan-review-automation) blev unblokt af H022.1's random-offset-patch. Mergede uden `--admin` efter naturligt grøn CI — eksplicit demonstration af at G043+G044-omgåelse er korrekt vej, ikke `--admin`-bypass.
+- **Plan-reference:** PR #13, merge-commits `2358100` + `d15b7f3`
+
+### 2026-05-15 — Codex-review-prompt-skabelon: 4 strategi-blok-typer aktive
+
+- **Begrundelse:** H021's udvidede codex-notify-action differentierer mellem 6 trigger-typer (ny-plan-version, codex-feedback, code-feedback, plan-approved, plan-blokeret, slut-rapport). Krav-dokument-disciplin etableret med 4 brud-typer der udløser stop-signal via `<pakke>-V<n>-blokeret.md`. Plan-flow for I-pakker dokumenteret med 10-step round-trip-loop.
+- **Plan-reference:** PR #13 (H021)
