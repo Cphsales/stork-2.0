@@ -185,3 +185,8 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 - **Begrundelse:** Navigation-filen peger ind i undermapperne. Hvis den selv lå i en undermappe, blev læsefølge-rækkefølgen selv-refererende.
 - **Plan-reference:** `docs/strategi/arbejdsmetode-og-repo-struktur.md` (Repo-struktur-sektion)
+
+### 2026-05-15 — H010 committed (single samle-commit, 12 leverancer)
+
+- **Begrundelse:** Etablering af arbejdsmetode + repo-struktur leveret atomisk som single commit; efterfølgende pakker arbejder mod konsistent struktur fra start. Slut-rapport leveret pr. rapport-skabelon i `docs/coordination/rapport-historik/2026-05-15-h010.md`.
+- **Plan-reference:** commit `a0ccdf1`

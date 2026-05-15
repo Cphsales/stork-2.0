@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** opdateres efter H010-commit med sti til H010-slut-rapport (forventet placering: `docs/coordination/rapport-historik/<dato>-h010.md`).
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-15-h010.md` (commit `a0ccdf1`)
 
 Når ny rapport leveres:
 
