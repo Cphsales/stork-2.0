@@ -26,7 +26,7 @@ begin
     raise exception 'TEST FAILED: authenticated mangler EXECUTE-grant på has_permission';
   end if;
   if has_function_privilege('anon', 'core_identity.has_permission(text, text, boolean)', 'EXECUTE') then
-    raise exception 'TEST FAILED: anon har EXECUTE-grant på has_permission (skal være REVOKE'd)';
+    raise exception 'TEST FAILED: anon har EXECUTE-grant paa has_permission (skal vaere REVOKE-d)';
   end if;
 end;
 $test$;
