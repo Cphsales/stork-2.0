@@ -444,6 +444,7 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   a) Transaction-rollback i test-fixture (hvis ikke allerede)
   b) Break-glass-operation_type `test_cleanup` med audit-spor (se G044 retning b)
   c) Dato-randomisering i tests så kollision aldrig sker mellem to runs samme dag
+- **2026-05-15:** Minimal-patch via H022 flytter dato-vindue fra `current_date + interval '5 years'` til `'6 years 6 months'` så stale 2031-05-15-row ikke længere kolliderer. G043's underliggende problem (mangler cleanup-mekanisme) består — kollisionen er blot flyttet 18 måneder. 3 datapunkter samme dag (H010, H010-follow-up, H021) understøtter prioritets-hævning. I001-plan-arbejde argumenterer for om G043+G044 skal hæves ind i I001's scope trods oprindelig "ikke i scope"-afgrænsning.
 
 ### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme
 
