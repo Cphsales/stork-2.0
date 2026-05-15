@@ -432,6 +432,32 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   end $$;
   ```
 
+### [G043] MELLEM — r3_commission_snapshots_immutability test mangler cleanup-strategi
+
+- **Symptom:** INSERT pay_period med `current_date + interval '5 years 30 days'` konflikter med stale data ved gentagne kørsler samme dag.
+- **Reproduktion:** Anden CI-kørsel på samme dato fejler med 23P01 exclusion constraint violation på `pay_periods_no_overlap` (key `daterange(start_date, end_date, '[]'::text)` collision på dato-range 2031-05-15 → 2031-06-14 i denne kørsel).
+- **Konsekvens:** CI bliver pålideligt rød efter første grønne kørsel hver dag på testens dato-vindue. Manuel DB-cleanup er ikke mulig pga. DELETE-trigger (se G044).
+- **Introduceret:** Trin 3 / R3 (commission_snapshots UPDATE-flag refactor) — test-pattern arvet uden idempotens-tjek.
+- **Opdaget:** 2026-05-15 i H010 PR CI-fail (PR #10).
+- **Skal løses:** Før CI-grøn kan bruges som disciplin-signal.
+- **Forslags-retninger:**
+  a) Transaction-rollback i test-fixture (hvis ikke allerede)
+  b) Break-glass-operation_type `test_cleanup` med audit-spor (se G044 retning b)
+  c) Dato-randomisering i tests så kollision aldrig sker mellem to runs samme dag
+
+### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme
+
+- **Symptom:** Tests der INSERT'er i `core_money.pay_periods` kan ikke ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger der raiser `P0001: DELETE altid blokeret`. Triggeren håndhæver vision-princip 9 ("statusmodeller bevarer historik").
+- **Berørte tests (kendt):** `r3_commission_snapshots_immutability`, `r4_salary_corrections_cleanup`. Sandsynligvis flere som ikke er ramt endnu fordi dato-kollision ikke er sket.
+- **Konsekvens:** Test-suite er ikke idempotent på `pay_periods`. Latent issue der rammer ved hver dato-kollision. Manuel cleanup kræver enten trigger-disable (bryder invariant uden audit) eller break-glass (mangler op-type i seed).
+- **Introduceret:** Trin 4 / C4 (pay_periods + period-lock-template). Trigger var design, men ingen test-cleanup-strategi medfulgte.
+- **Opdaget:** 2026-05-15 i H010 PR CI-fail. DELETE-forsøg blokerede via MCP-cleanup-attempt.
+- **Skal løses:** Sammen med G043 — samme rod-årsag.
+- **Forslags-retninger:**
+  a) Transaction-rollback i test-fixture (foretrukken — hvis testene allerede kører i tx, behøver intet ekstra; ellers wrap i `begin ... rollback`)
+  b) Break-glass-op-type `test_cleanup` med whitelist-RPC der DELETE'er pay_periods kun for test-dato-range (audit-spor + 2-actor flow)
+  c) Dato-randomisering så kollision aldrig kan ske inden for dag
+
 ### [G019] LAV — `stork_audit` antog uuid PK; singletons med smallint/integer PK var ikke testet
 
 - **Beskrivelse:** Audit-trigger castede `to_jsonb(new)->>'id'` til uuid uden type-tjek. `pay_period_settings.id` (smallint) og `superadmin_settings.id` (integer) var bootstrappet før audit-trigger blev attached, så bug'en blev ikke opdaget før første UPDATE.
