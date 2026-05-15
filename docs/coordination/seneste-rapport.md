@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-15-h022.md` (commits `3ff21f8` + `5a57d33` + H021 unblokt som `d15b7f3`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-15-h020-1.md` (commit `db90cc7`)
 
 Når ny rapport leveres:
 

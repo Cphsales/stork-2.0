@@ -222,3 +222,9 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 - **Begrundelse:** H021's udvidede codex-notify-action differentierer mellem 6 trigger-typer (ny-plan-version, codex-feedback, code-feedback, plan-approved, plan-blokeret, slut-rapport). Krav-dokument-disciplin etableret med 4 brud-typer der udløser stop-signal via `<pakke>-V<n>-blokeret.md`. Plan-flow for I-pakker dokumenteret med 10-step round-trip-loop.
 - **Plan-reference:** PR #13 (H021)
+
+### 2026-05-15 — H020.1: fix automation-trigger (datapunkt #2 for plan-leverance-disciplin)
+
+- **Begrundelse:** branches-filter `branches: [main]` i push-event blokerede plan-iteration-automation. Plan-leverance fra H021-prompt specificerede yaml ordret uden branches-filter; H021-implementation tilføjede `branches: [main]` som defensiv konvention. Plan-leverance-disciplin: yaml-spec i prompt er kontrakt, ikke retning. Anden datapunkt på 2 dage (efter H022) for at "minimal/defensiv tolkning over teknisk korrekthed" er anti-pattern.
+- **Plan-reference:** PR #17, merge-commit `db90cc7`
+- **Konsekvens:** H020 plan-iteration genoptaget. Codex-notify verificeret virker på feature-branch-push (run `25944136495`, comment "Ny plan-version" til tracker-issue #12 kl. 22:20:09).
