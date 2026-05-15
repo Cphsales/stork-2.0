@@ -23,7 +23,7 @@
 -- RE-AKTIVERING: Når trin 14 (sales-stamme) og trin 22 (medarbejder-aggregater
 -- + payroll-linjer) er færdige OG G013 (re-lock idempotency) er løst, skal
 -- denne switch flippes til true via UI eller pay_period_settings_update-RPC.
--- Tracking: docs/teknisk-gaeld.md [G012].
+-- Tracking: docs/teknisk/teknisk-gaeld.md [G012].
 
 select set_config('stork.source_type', 'migration', false);
 select set_config('stork.change_reason',
