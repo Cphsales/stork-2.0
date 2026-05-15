@@ -5,11 +5,13 @@
 --  T3: DELETE af locked row (is_candidate=false) blokeres med P0001
 --  T4: DELETE af candidate row (is_candidate=true) lykkes
 --
--- Minimal-patch H022 — dato-vindue flyttet fra "5 years" til "6 years 6 months"
--- for at undgå kollision med stale prod-row (2031-05-15 → 2031-06-14) der blev
--- efterladt af tidligere CI-kørsler. Reel cleanup-mekanisme for pay_periods-
--- test-artefakter hører til G043+G044's fulde løsning. Denne patch er ikke
--- G043-fix; den er G043-omgåelse der unblokker CI mens fuld løsning planlægges.
+-- H022.1: random-offset for at undgå dato-kollision mellem CI-kørsler.
+-- Hver kørsel INSERT'er forskellig dato; sandsynlighed for kollision mellem
+-- samtidige kørsler er minimal. Base 10 år + spread 0-10 år (~3650 dage) giver
+-- range 2036-05-15 → 2046-05-15. Undgår både 2031-stale (efterladt af pre-H022
+-- kørsler) og 2032-stale (efterladt af H022's egen CI-kørsel). Reel cleanup-
+-- mekanisme består stadig som G043+G044 — I001-plan argumenterer for scope-
+-- hævning. H022.1 erstatter H022's fixed-shift som var en evig-drift-patch.
 
 do $test$
 declare
@@ -18,6 +20,7 @@ declare
   v_snap_id uuid;
   v_emp_id uuid;
   v_caught text;
+  v_start_date date;
 begin
   -- Hent vilkårlig employee (test forudsætter mindst én eksisterer)
   select id into v_emp_id from core_identity.employees limit 1;
@@ -29,8 +32,13 @@ begin
   perform set_config('stork.allow_pay_periods_write', 'true', true);
   perform set_config('stork.change_reason', 'R3 smoke setup', true);
 
+  -- H022.1: random offset 0-3650 dage fra base 10 år → range 2036-2046.
+  -- Random gør samtidige CI-kørsler usandsynligt kolliderende (30/3650 = 0.8% pr. par).
+  -- Compute start_date først så end_date = start_date + 30d (konsistent vindue).
+  v_start_date := (current_date + interval '10 years' + ((random() * 3650)::int * interval '1 day'))::date;
+
   insert into core_money.pay_periods (start_date, end_date, status)
-  values (current_date + interval '6 years 6 months', current_date + interval '6 years 6 months 30 days', 'open')
+  values (v_start_date, v_start_date + 30, 'open')
   returning id into v_period_id;
 
   perform set_config('stork.allow_pay_period_candidate_runs_write', 'true', true);

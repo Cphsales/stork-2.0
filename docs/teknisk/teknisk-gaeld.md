@@ -445,6 +445,7 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   b) Break-glass-operation_type `test_cleanup` med audit-spor (se G044 retning b)
   c) Dato-randomisering i tests så kollision aldrig sker mellem to runs samme dag
 - **2026-05-15:** Minimal-patch via H022 flytter dato-vindue fra `current_date + interval '5 years'` til `'6 years 6 months'` så stale 2031-05-15-row ikke længere kolliderer. G043's underliggende problem (mangler cleanup-mekanisme) består — kollisionen er blot flyttet 18 måneder. 3 datapunkter samme dag (H010, H010-follow-up, H021) understøtter prioritets-hævning. I001-plan-arbejde argumenterer for om G043+G044 skal hæves ind i I001's scope trods oprindelig "ikke i scope"-afgrænsning.
+- **2026-05-15 H022.1:** Random-offset erstatter fixed-shift fra H022. H022's vurdering 18 måneders levetid var forkert — levetiden var én CI-kørsel: H022's egen CI-kørsel efterlod 2032-11-15-stale-row der umiddelbart blokerede H021. Random-offset (base 10y + spread 0-3650d → range 2036-2046) er robust minimal-patch fordi hver kørsel INSERT'er forskellig dato. Kollisions-sandsynlighed mellem to vilkårlige kørsler: ~0.8% (30-dages window i 3650-dages range). 4 datapunkter for G043 samme dag (H010, H010-followup, H021 før H022, H021 efter H022). Stadig ikke arkitektur-fix.
 
 ### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme
 
