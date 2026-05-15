@@ -299,13 +299,16 @@ begin
   -- Strategi A: seed anonymization_state direkte med LEGACY FLAT-shape
   -- der matcher hvad _anonymize_employee_apply forventer.
   -- (Replay-shape-mismatch er G042-territorie, ikke R7h's scope.)
+  --
+  -- Bemærk: table_schema + table_name er NOT NULL i anonymization_state
+  -- (verificeret 2026-05-15 via information_schema). Codex v3 fang.
   perform set_config('stork.allow_anonymization_state_write', 'true', true);
   insert into core_compliance.anonymization_state (
-    entity_type, entity_id, anonymization_reason,
+    entity_type, table_schema, table_name, entity_id, anonymization_reason,
     field_mapping_snapshot, jsonb_field_mapping_snapshot,
     strategy_version, created_by
   ) values (
-    'employee', v_test_emp_id, 'r7h replay test',
+    'employee', 'core_identity', 'employees', v_test_emp_id, 'r7h replay test',
     '{"first_name":"blank","last_name":"blank","email":"hash_email"}'::jsonb,
     '{"first_name":"blank","last_name":"blank","email":"hash_email"}'::jsonb,
     1, (select id from core_identity.employees where auth_user_id = v_mg_auth_id)
@@ -584,6 +587,31 @@ rollback;
 - **Plan:** Separat migration der enten (a) opdaterer \_anonymize_employee_apply til at læse begge shapes, eller (b) opdaterer replay_anonymization til at konvertere nested→flat før call, eller (c) drop \_anonymize_employee_apply helt og refactorerer replay til at kalde anonymize_generic_apply direkte.
 
 Tilføjes til `docs/teknisk-gaeld.md` ved næste teknisk-gæld-revision.
+
+---
+
+## Implementation-disciplin-noter (Codex v3-flag, ikke planændringer)
+
+Disse er code-time-checks under implementation — flag som disciplin i selve tests.
+
+**Test 1 (break_glass_execute):** Far-future pay_period (`current_date + 100`) kan ramme overlap-constraint hvis perioden allerede findes. Implementation skal enten:
+
+- Bruge ON CONFLICT DO NOTHING + lookup for at finde eksisterende periode, eller
+- Generere unik dato-range med fx. `current_date + (random() * 10000)::int` indenfor BEGIN/ROLLBACK
+
+**Test 6 + 7 (R7d mapping/op_type setup):** UPDATE-statement skal eksplicit assert'e rammet row, så test ikke passerer pga "row mangler"-error i stedet for at fange R7d-invarianten. Pattern:
+
+```sql
+update core_compliance.anonymization_mappings
+   set is_active = true
+ where entity_type = 'employee';
+get diagnostics v_rows = row_count;
+if v_rows <> 1 then
+  raise exception 'r7h test SETUP FAIL: forventet 1 row opdateret, fik %', v_rows;
+end if;
+```
+
+Samme pattern for break_glass_operation_types UPDATE i Test 7.
 
 ---
 
