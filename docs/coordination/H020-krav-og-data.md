@@ -175,8 +175,8 @@ Verifikation: G019 forekommer ikke længere i "Åben gæld"-sektion
 **M13 — Bygge-status sidste-opdatering-dato**
 Fil: `docs/strategi/bygge-status.md`
 Find: "Sidste opdatering 14. maj"
-Erstat med: faktisk dato (15. maj 2026)
-Verifikation: dato afspejler nyeste tilføjelse i filen
+Erstat med: faktisk dato hvor rettelsen udføres (ikke 14. maj som er stale)
+Verifikation: dato matcher commit-dato for selve H020-rettelses-commit'en
 
 **M15 — README workflow-omtale**
 Fil: `README.md`
@@ -211,8 +211,8 @@ Verifikation: krav-dok-tekst matcher master-plan §2.2
 **M21 — Teknisk-gaeld sidste-opdatering-dato**
 Fil: `docs/teknisk/teknisk-gaeld.md`
 Find: "Sidste opdatering: 14. maj 2026 (efter retroaktiv gennemgang trin 1-4)"
-Erstat med: faktisk dato + opdatérings-beskrivelse (15. maj 2026 + reference til seneste tilføjelser fx G031-G044)
-Verifikation: dato afspejler nyeste tilføjelse i filen
+Erstat med: faktisk dato hvor rettelsen udføres + opdatérings-beskrivelse der reflekterer seneste tilføjelser (fx G031-G044)
+Verifikation: dato matcher commit-dato for selve H020-rettelses-commit'en
 
 **M22 — Teknisk-gaeld schema-navn**
 Fil: `docs/teknisk/teknisk-gaeld.md`
