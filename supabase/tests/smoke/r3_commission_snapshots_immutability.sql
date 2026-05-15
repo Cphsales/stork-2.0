@@ -4,6 +4,12 @@
 --  T2: UPDATE af non-flag-kolonne (amount) blokeres med P0001
 --  T3: DELETE af locked row (is_candidate=false) blokeres med P0001
 --  T4: DELETE af candidate row (is_candidate=true) lykkes
+--
+-- Minimal-patch H022 — dato-vindue flyttet fra "5 years" til "6 years 6 months"
+-- for at undgå kollision med stale prod-row (2031-05-15 → 2031-06-14) der blev
+-- efterladt af tidligere CI-kørsler. Reel cleanup-mekanisme for pay_periods-
+-- test-artefakter hører til G043+G044's fulde løsning. Denne patch er ikke
+-- G043-fix; den er G043-omgåelse der unblokker CI mens fuld løsning planlægges.
 
 do $test$
 declare
@@ -24,7 +30,7 @@ begin
   perform set_config('stork.change_reason', 'R3 smoke setup', true);
 
   insert into core_money.pay_periods (start_date, end_date, status)
-  values (current_date + interval '5 years', current_date + interval '5 years 30 days', 'open')
+  values (current_date + interval '6 years 6 months', current_date + interval '6 years 6 months 30 days', 'open')
   returning id into v_period_id;
 
   perform set_config('stork.allow_pay_period_candidate_runs_write', 'true', true);
