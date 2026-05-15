@@ -57,7 +57,7 @@
 | `core_compliance.gdpr_responsible_set`                | gdpr_responsible            | manage               | true     | has_permission                                              |
 | `core_compliance.replay_anonymization`                | anonymization               | replay               | true     | has_permission                                              |
 | `core_compliance.superadmin_settings_update`          | —                           | —                    | —        | **is_admin (retained)**                                     |
-| `core_compliance.verify_anonymization_consistency`    | audit                       | verify_anonymization | false    | has_permission _(R7c — cron-bypass for source_type='cron')_ |
+| `core_compliance.verify_anonymization_consistency`    | audit                       | verify_anonymization | false    | has*permission *(R7c — cron-bypass for source*type='cron')* |
 | `core_identity.anonymize_employee`                    | employees                   | anonymize            | true     | has_permission                                              |
 | `core_identity.employee_active_config_update`         | employee_active_config      | manage               | true     | has_permission                                              |
 | `core_identity.employee_terminate`                    | employees                   | terminate            | true     | has_permission                                              |
