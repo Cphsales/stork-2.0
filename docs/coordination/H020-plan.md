@@ -1,9 +1,11 @@
-# H020-plan V1
+# H020-plan V2
 
 **Aktør:** Code
 **Branch:** `claude/h020-plan`
-**Krav-dokument:** `docs/coordination/H020-krav-og-data.md`
+**Krav-dokument:** `docs/coordination/H020-krav-og-data.md` (commit `a335f42` — M23-fix)
 **Dato:** 2026-05-16
+
+**V2-ændring (svar på Codex' V1-blokering):** M23 omklassificeret. Krav-dokumentet siger nu eksplicit at `seneste-rapport.md` er dynamisk pegepind der ikke skal røres som separat fix — den opdateres naturligt af H020's egen slut-rapport-leverance (flow-trin 11). Plan-V1's "hash matcher faktisk HEAD efter H022-rebase" var brud mod opdateret krav. V2 fjerner M23-row fra implementations-rækkefølge. Antal fil-clusters: 17 → 16. Antal rettelser med separat commit: 29 → 28. M23 leveres som flow-konsekvens, ikke separat handling.
 
 ---
 
@@ -17,7 +19,7 @@
 
 ## Scope
 
-**I scope:** Alle 29 rettelser i Rettelses-listen i krav-dokumentet (K1 + K7 + 21 M-rettelser + 5 KS + 1 B-rettelse).
+**I scope:** Alle 29 rettelser i Rettelses-listen i krav-dokumentet (K1 + K7 + 21 M-rettelser + 5 KS + 1 B-rettelse). Bemærk: M23 er ikke en separat-commit-rettelse (krav-dok M23-formulering post-`a335f42`); leveres som flow-konsekvens ved H020's slut-rapport (se flow-trin 11). Antal separate-commit-rettelser: 28.
 
 **IKKE i scope:**
 
@@ -37,7 +39,7 @@
 - Lettere verifikation efter hver fil-blok
 - Hvis en rettelse i en fil afslører kobling: blokeret-fil på fil-niveau, ikke per-fund-niveau
 
-Total filer at røre: 17 filer/fil-clusters med 29 rettelser. Indenfor hver fil-cluster udføres rettelserne i én commit.
+Total filer at røre: 16 filer/fil-clusters med 28 separate-commit-rettelser. M23 er flow-konsekvens (ikke i tabel). Indenfor hver fil-cluster udføres rettelserne i én commit.
 
 ---
 
@@ -62,7 +64,7 @@ Hvis en "åbenlys" rettelse alligevel viser sig at kræve valg eller har komplik
 
 ---
 
-## Implementations-rækkefølge (fil-cluster, 17 commits)
+## Implementations-rækkefølge (fil-cluster, 16 commits + 1 flow-konsekvens)
 
 | #   | Fil(er)                                                     | Rettelser                                                                                     | Verifikation                                                                                                    |
 | --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -78,13 +80,16 @@ Hvis en "åbenlys" rettelse alligevel viser sig at kræve valg eller har komplik
 | 10  | `docs/teknisk/teknisk-gaeld.md`                             | M12 + M21 + M22 (G019-arkiv, sidste-opdatering, schema-navn)                                  | G019 ikke i åben-sektion; dato 2026-05-15+; ingen `core_sales`-forekomster                                      |
 | 11  | `docs/strategi/stork-2-0-master-plan.md`                    | M18 + KS3 (rettelses-tælling, fjern migration-strategi-analyse-ref)                           | tal matcher faktisk Appendix C-count; ingen `migration-strategi-analyse`                                        |
 | 12  | `docs/teknisk/lag-e-tidsregistrering-krav.md`               | M20 + B4 (fravær-tekst, §-reference)                                                          | ferie-vs-sygefravær præciseret; §1.7 erstatter §5                                                               |
-| 13  | `docs/coordination/seneste-rapport.md`                      | M23 (commit-hash)                                                                             | hash matcher faktisk HEAD efter H022-rebase                                                                     |
-| 14  | `supabase/migrations/20260514150005_t7_lock_pipeline.sql`   | M24 (kommentar)                                                                               | kommentar matcher flag-UPDATE-mønster post-R3/R4                                                                |
-| 15  | `supabase/tests/README.md`                                  | M26 (script-kommando)                                                                         | `pnpm db:test` erstatter `pnpm test:db`                                                                         |
-| 16  | `docs/skabeloner/rapport-skabelon.md`                       | KS4 (vision-tjek-lokation)                                                                    | reference peger på `docs/strategi/arbejds-disciplin.md` "Vision-tjek-skabelon"-sektionen                        |
-| 17  | `docs/coordination/arkiv/r-runde-2-plan.md` + `r7h-plan.md` | KS5 (gammel sti)                                                                              | `docs/permission-matrix.md` erstattet med `docs/teknisk/permission-matrix.md` i begge filer                     |
+| 13  | `supabase/migrations/20260514150005_t7_lock_pipeline.sql`   | M24 (kommentar)                                                                               | kommentar matcher flag-UPDATE-mønster post-R3/R4                                                                |
+| 14  | `supabase/tests/README.md`                                  | M26 (script-kommando)                                                                         | `pnpm db:test` erstatter `pnpm test:db`                                                                         |
+| 15  | `docs/skabeloner/rapport-skabelon.md`                       | KS4 (vision-tjek-lokation)                                                                    | reference peger på `docs/strategi/arbejds-disciplin.md` "Vision-tjek-skabelon"-sektionen                        |
+| 16  | `docs/coordination/arkiv/r-runde-2-plan.md` + `r7h-plan.md` | KS5 (gammel sti)                                                                              | `docs/permission-matrix.md` erstattet med `docs/teknisk/permission-matrix.md` i begge filer                     |
 
-**Single PR med 17 commits** — én commit pr. fil-cluster for clean git-historie. Alternativt: én commit hvis Codex foretrækker monolitisk. Foreslået: 17 commits for granular reverteringsmulighed.
+**Flow-konsekvens (ikke separat commit):**
+
+| - | `docs/coordination/seneste-rapport.md` | M23 (dynamisk pegepind) | Opdateres af H020's slut-rapport-leverance (flow-trin 11); peger derefter på `rapport-historik/<dato>-h020.md`; codex-notify trigger fyrer automatisk ved samme opdatering |
+
+**Single PR med 16 commits** — én commit pr. fil-cluster for clean git-historie. M23 håndteres som flow-konsekvens uden separat commit. Alternativt: én commit hvis Codex foretrækker monolitisk. Foreslået: 16 commits for granular reverteringsmulighed.
 
 ---
 
@@ -101,7 +106,7 @@ Verifikation pr. rettelse er specificeret i krav-dokumentet og opsummeret i Impl
 - **Grep-baseret verifikation:** K1, KS2, KS3, KS5, M22 — kan automatiseres som CI-check hvis ønsket (ikke i scope nu)
 - **DB-state verifikation:** M8 (klassifikations-tal), M9 (is_admin-funktioner) — udført via Supabase MCP
 - **Indholds-konsistens:** K7, M1, M2, M16, M17, M20, M24 — manuel læsning mod kilde-tekst
-- **Dato/hash-akkuratesse:** M3, M10, M13, M21, M23 — git log / merge-commit-verifikation
+- **Dato/hash-akkuratesse:** M3, M10, M13, M21 — git log / merge-commit-verifikation. M23 håndteres af slut-rapport-flow.
 
 Ingen nye tests skrives. Ingen eksisterende tests ændres.
 
@@ -151,6 +156,6 @@ Hvis flow-fejl: dokumentér i `plan-feedback/H020-flow-fejl.md` per krav-dokumen
 
 ## Konklusion
 
-29 åbenlyse rettelser i 17 fil-clusters. Lav risiko, ingen design-valg, ingen migrations. Single PR med granulære commits. Plan er konsistent med krav-dokumentet og styrker vision-elementer.
+29 åbenlyse rettelser: 28 i 16 fil-clusters + 1 flow-konsekvens (M23). Lav risiko, ingen design-valg, ingen migrations. Single PR med granulære commits. Plan er konsistent med krav-dokumentet (post-`a335f42` M23-formulering) og styrker vision-elementer.
 
 Klar til Codex-review-runde V1.

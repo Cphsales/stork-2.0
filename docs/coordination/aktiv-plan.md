@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** `docs/coordination/H020-plan.md` — V1 udkast på branch `claude/h020-plan` (rebased onto main efter H020.1-automation-fix). Codex-review afventes; feedback leveres i `docs/coordination/plan-feedback/H020-V1-codex.md`.
+**Aktuel:** `docs/coordination/H020-plan.md` — **V2** på branch `claude/h020-plan` (rebased onto main `a335f42` med M23-fix). V1 blokeret af Codex (`plan-feedback/H020-V1-blokeret.md`) for M23-brud; V2 omklassificerer M23 som flow-konsekvens. Codex-review V2 afventes.
 
 Når ny plan starter:
 
