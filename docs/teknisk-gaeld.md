@@ -401,6 +401,20 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Skal løses:** Vurder i Option D-aktivering. Verificér Supabase API-config via management API: `GET /v1/projects/<ref>/api`.
 - **Plan (G040):** Hvis V1 afslører eksponering OG Option D aktiveres: tilføj fitness-check der scanner deployed API-config + alerter hvis pg_catalog tilføjes til db-schemas.
 
+### [G042] MELLEM — Replay-shape mismatch: nested (P1b) vs flat (`_anonymize_employee_apply`)
+
+- **Beskrivelse:** `anonymize_generic_apply` (P1b) gemmer `anonymization_state.field_mapping_snapshot` i nested shape (`{"first_name":{"strategy":"blank","strategy_id":"..."}}`). `_anonymize_employee_apply` (legacy; kaldt af replay_anonymization via `anonymization_mappings.internal_rpc_apply`) læser flat shape (`p_strategies->>'first_name'` skal returnere `'blank'`).
+- **Reel impact:** Replay af anonymization der er udført via post-P1c flow (anonymize_employee → anonymize_generic_apply) vil fejle — `->>` returnerer JSON-string-værdi, ikke strategy-name → `apply_field_strategy` får forkert input. Replay af pre-P1c-state (eller test-seeded legacy shape) virker.
+- **Pre-cutover-state:** Ingen produktion-data; ingen aktuelle nested-state-rows. Bug er latent.
+- **Introduceret:** P1b (anonymize_generic_apply gemmer nested shape) + Q-pakke (mappings.internal_rpc_apply peger stadig på legacy `_anonymize_employee_apply`)
+- **Opdaget:** R7h Test 2 plan-arbejde 2026-05-15 (Codex v2 Fund #4 om snapshot-shape)
+- **Skal løses:** Før første post-cutover replay-kørsel hvor anonymization er udført via post-P1c flow.
+- **Plan:** Tre options:
+  1. Opdatér `_anonymize_employee_apply` til at læse begge shapes (legacy flat + nested) via shape-detection
+  2. Opdatér `replay_anonymization` til at konvertere nested→flat før dispatcher-call
+  3. Drop `_anonymize_employee_apply` helt og refactorér replay til at kalde `anonymize_generic_apply` direkte (kræver signatur-alignment + er ny entry-vej for nested-readable)
+- **R7h-håndtering:** Test 2 bruger Strategi A (seed legacy flat-shape direkte i anonymization_state) for at isolere R7a regprocedure-fix. Replay-shape-bug testes IKKE i R7h.
+
 ### [G041] LAV — Retention cron e2e-test bør eksekvere faktisk scheduled command
 
 - **Beskrivelse:** `smoke/r7a_retention_cleanup_cron_e2e.sql` (planlagt i T1) eksekverer kopieret helper-logic, ikke selve cron.job-command'en. Hvis cron-body afviger fra helper (fx. error-handling-block), kan test passere mens reel cron fejler.
