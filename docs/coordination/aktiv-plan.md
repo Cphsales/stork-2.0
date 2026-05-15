@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** `docs/coordination/H020-plan.md` — **V2** på branch `claude/h020-plan` (rebased onto main `a335f42` med M23-fix). V1 blokeret af Codex (`plan-feedback/H020-V1-blokeret.md`) for M23-brud; V2 omklassificerer M23 som flow-konsekvens. Codex-review V2 afventes.
+**Aktuel:** `docs/coordination/H020-plan.md` — **V3** på branch `claude/h020-plan` (rebased onto main `9b288ed` med M13+M21-præcisering). V1 blokeret af Codex (`plan-feedback/H020-V1-blokeret.md`) for M23-brud; V2 omklassificerede M23 som flow-konsekvens, men Codex V2-review konvergens-status `ikke-enig` (`plan-feedback/H020-V2-codex.md`) pga. M13+M21 dato-determinisme. V3 strammer M13+M21-verifikation til commit-dato-match og tilføjer eksplicit Lukningskriterium for flow-trin 11. Codex-review V3 afventes.
 
 Når ny plan starter:
 

@@ -1,9 +1,11 @@
-# H020-plan V2
+# H020-plan V3
 
 **Aktør:** Code
 **Branch:** `claude/h020-plan`
-**Krav-dokument:** `docs/coordination/H020-krav-og-data.md` (commit `a335f42` — M23-fix)
+**Krav-dokument:** `docs/coordination/H020-krav-og-data.md` (commit `9b288ed` — M13+M21 dato-formulering præciseret)
 **Dato:** 2026-05-16
+
+**V3-ændring (svar på Codex' V2-feedback, status `ikke-enig`):** M13+M21 dato-verifikation strammet til at matche krav-dokumentets opdaterede formulering (commit `9b288ed`). Krav-dok siger nu eksplicit: "Erstat med: faktisk dato hvor rettelsen udføres" + "Verifikation: dato matcher commit-dato for selve H020-rettelses-commit'en". Plan-V2's tabel-verifikation (`dato 2026-05-15 eller -16` / `dato 2026-05-15+`) gav plan-frihed der kunne afvige fra krav. V3-tabel viser nu deterministisk verifikation: `git show --format=%cd <fil-cluster-commit>` skal matche datoen indsat i filen. Codex' V2-risiko (H020 må ikke lukkes før flow-trin 11 har opdateret `seneste-rapport.md`) adresseret som eksplicit Lukningskriterium-sektion. Ingen ændring i scope eller antal commits (16 fil-clusters + 1 flow-konsekvens).
 
 **V2-ændring (svar på Codex' V1-blokering):** M23 omklassificeret. Krav-dokumentet siger nu eksplicit at `seneste-rapport.md` er dynamisk pegepind der ikke skal røres som separat fix — den opdateres naturligt af H020's egen slut-rapport-leverance (flow-trin 11). Plan-V1's "hash matcher faktisk HEAD efter H022-rebase" var brud mod opdateret krav. V2 fjerner M23-row fra implementations-rækkefølge. Antal fil-clusters: 17 → 16. Antal rettelser med separat commit: 29 → 28. M23 leveres som flow-konsekvens, ikke separat handling.
 
@@ -66,24 +68,24 @@ Hvis en "åbenlys" rettelse alligevel viser sig at kræve valg eller har komplik
 
 ## Implementations-rækkefølge (fil-cluster, 16 commits + 1 flow-konsekvens)
 
-| #   | Fil(er)                                                     | Rettelser                                                                                     | Verifikation                                                                                                    |
-| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 1   | `.github/BRANCH_PROTECTION.md` + `.github/CODEOWNERS`       | K1 (org-handle)                                                                               | `grep -r "copenhagensales" .github/ docs/` → 0 hits                                                             |
-| 2   | `docs/teknisk/lag-e-beregningsmotor-krav.md`                | K7 (annullerings-fradrag)                                                                     | tekst matcher master-plan rettelse 2 (bruger vælger target_period_id)                                           |
-| 3   | `README.md`                                                 | M1 + M15 + KS2 (lint-coverage præcis, codex-notify omtale, fjern code-forstaaelse-samlet-ref) | grep `code-forstaaelse-samlet` → 0; codex-notify nævnt; lint-staged-blok-konsistens                             |
-| 4   | `CLAUDE.md`                                                 | M2 (H-nummer-claim)                                                                           | `grep -i "H-numre" CLAUDE.md` returnerer ingen claim om teknisk-gaeld.md-indhold                                |
-| 5   | `docs/coordination/mathias-afgoerelser.md`                  | M3 + M4 (memory-datoer, Q-pakke 22 RPC'er)                                                    | `git log --diff-filter=A` for hver memory-fil verificerer datoer; "22" matcher TaskList #33                     |
-| 6   | `docs/strategi/arbejdsmetode-og-repo-struktur.md`           | M5 + M6 + M16 + M17 (status, mappetræ, Codex-status, Action-status)                           | status-felt = "Aktiveret via H010"; mappetræ matcher `ls docs/`; ingen "senere"-tekst om Codex-CLI eller Action |
-| 7   | `docs/strategi/bygge-status.md`                             | M8 + M13 (klassifikations-tal, sidste-opdatering)                                             | tal=202 matcher MCP-query; dato 2026-05-15 eller -16                                                            |
-| 8   | `docs/teknisk/permission-matrix.md`                         | M9 + KS1 (2 is_admin-funktioner, fjern frontmatter-instruks)                                  | "2 funktioner" + liste; ingen self-referential frontmatter-tekst                                                |
-| 9   | `docs/coordination/aktiv-plan.md`                           | M10 (H010 commit-hash)                                                                        | hash `3c6bc0b` til stede; ingen "skrives ind"-placeholder                                                       |
-| 10  | `docs/teknisk/teknisk-gaeld.md`                             | M12 + M21 + M22 (G019-arkiv, sidste-opdatering, schema-navn)                                  | G019 ikke i åben-sektion; dato 2026-05-15+; ingen `core_sales`-forekomster                                      |
-| 11  | `docs/strategi/stork-2-0-master-plan.md`                    | M18 + KS3 (rettelses-tælling, fjern migration-strategi-analyse-ref)                           | tal matcher faktisk Appendix C-count; ingen `migration-strategi-analyse`                                        |
-| 12  | `docs/teknisk/lag-e-tidsregistrering-krav.md`               | M20 + B4 (fravær-tekst, §-reference)                                                          | ferie-vs-sygefravær præciseret; §1.7 erstatter §5                                                               |
-| 13  | `supabase/migrations/20260514150005_t7_lock_pipeline.sql`   | M24 (kommentar)                                                                               | kommentar matcher flag-UPDATE-mønster post-R3/R4                                                                |
-| 14  | `supabase/tests/README.md`                                  | M26 (script-kommando)                                                                         | `pnpm db:test` erstatter `pnpm test:db`                                                                         |
-| 15  | `docs/skabeloner/rapport-skabelon.md`                       | KS4 (vision-tjek-lokation)                                                                    | reference peger på `docs/strategi/arbejds-disciplin.md` "Vision-tjek-skabelon"-sektionen                        |
-| 16  | `docs/coordination/arkiv/r-runde-2-plan.md` + `r7h-plan.md` | KS5 (gammel sti)                                                                              | `docs/permission-matrix.md` erstattet med `docs/teknisk/permission-matrix.md` i begge filer                     |
+| #   | Fil(er)                                                     | Rettelser                                                                                     | Verifikation                                                                                                                                                                                                           |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `.github/BRANCH_PROTECTION.md` + `.github/CODEOWNERS`       | K1 (org-handle)                                                                               | `grep -r "copenhagensales" .github/ docs/` → 0 hits                                                                                                                                                                    |
+| 2   | `docs/teknisk/lag-e-beregningsmotor-krav.md`                | K7 (annullerings-fradrag)                                                                     | tekst matcher master-plan rettelse 2 (bruger vælger target_period_id)                                                                                                                                                  |
+| 3   | `README.md`                                                 | M1 + M15 + KS2 (lint-coverage præcis, codex-notify omtale, fjern code-forstaaelse-samlet-ref) | grep `code-forstaaelse-samlet` → 0; codex-notify nævnt; lint-staged-blok-konsistens                                                                                                                                    |
+| 4   | `CLAUDE.md`                                                 | M2 (H-nummer-claim)                                                                           | `grep -i "H-numre" CLAUDE.md` returnerer ingen claim om teknisk-gaeld.md-indhold                                                                                                                                       |
+| 5   | `docs/coordination/mathias-afgoerelser.md`                  | M3 + M4 (memory-datoer, Q-pakke 22 RPC'er)                                                    | `git log --diff-filter=A` for hver memory-fil verificerer datoer; "22" matcher TaskList #33                                                                                                                            |
+| 6   | `docs/strategi/arbejdsmetode-og-repo-struktur.md`           | M5 + M6 + M16 + M17 (status, mappetræ, Codex-status, Action-status)                           | status-felt = "Aktiveret via H010"; mappetræ matcher `ls docs/`; ingen "senere"-tekst om Codex-CLI eller Action                                                                                                        |
+| 7   | `docs/strategi/bygge-status.md`                             | M8 + M13 (klassifikations-tal, sidste-opdatering)                                             | tal=202 matcher MCP-query; M13-dato matcher commit-dato (`git show --format=%cd HEAD` på fil-cluster #7-commit)                                                                                                        |
+| 8   | `docs/teknisk/permission-matrix.md`                         | M9 + KS1 (2 is_admin-funktioner, fjern frontmatter-instruks)                                  | "2 funktioner" + liste; ingen self-referential frontmatter-tekst                                                                                                                                                       |
+| 9   | `docs/coordination/aktiv-plan.md`                           | M10 (H010 commit-hash)                                                                        | hash `3c6bc0b` til stede; ingen "skrives ind"-placeholder                                                                                                                                                              |
+| 10  | `docs/teknisk/teknisk-gaeld.md`                             | M12 + M21 + M22 (G019-arkiv, sidste-opdatering, schema-navn)                                  | G019 ikke i åben-sektion; M21-dato matcher commit-dato (`git show --format=%cd HEAD` på fil-cluster #10-commit) + opdaterings-beskrivelse refererer seneste tilføjelser (fx G031-G044); ingen `core_sales`-forekomster |
+| 11  | `docs/strategi/stork-2-0-master-plan.md`                    | M18 + KS3 (rettelses-tælling, fjern migration-strategi-analyse-ref)                           | tal matcher faktisk Appendix C-count; ingen `migration-strategi-analyse`                                                                                                                                               |
+| 12  | `docs/teknisk/lag-e-tidsregistrering-krav.md`               | M20 + B4 (fravær-tekst, §-reference)                                                          | ferie-vs-sygefravær præciseret; §1.7 erstatter §5                                                                                                                                                                      |
+| 13  | `supabase/migrations/20260514150005_t7_lock_pipeline.sql`   | M24 (kommentar)                                                                               | kommentar matcher flag-UPDATE-mønster post-R3/R4                                                                                                                                                                       |
+| 14  | `supabase/tests/README.md`                                  | M26 (script-kommando)                                                                         | `pnpm db:test` erstatter `pnpm test:db`                                                                                                                                                                                |
+| 15  | `docs/skabeloner/rapport-skabelon.md`                       | KS4 (vision-tjek-lokation)                                                                    | reference peger på `docs/strategi/arbejds-disciplin.md` "Vision-tjek-skabelon"-sektionen                                                                                                                               |
+| 16  | `docs/coordination/arkiv/r-runde-2-plan.md` + `r7h-plan.md` | KS5 (gammel sti)                                                                              | `docs/permission-matrix.md` erstattet med `docs/teknisk/permission-matrix.md` i begge filer                                                                                                                            |
 
 **Flow-konsekvens (ikke separat commit):**
 
@@ -106,7 +108,7 @@ Verifikation pr. rettelse er specificeret i krav-dokumentet og opsummeret i Impl
 - **Grep-baseret verifikation:** K1, KS2, KS3, KS5, M22 — kan automatiseres som CI-check hvis ønsket (ikke i scope nu)
 - **DB-state verifikation:** M8 (klassifikations-tal), M9 (is_admin-funktioner) — udført via Supabase MCP
 - **Indholds-konsistens:** K7, M1, M2, M16, M17, M20, M24 — manuel læsning mod kilde-tekst
-- **Dato/hash-akkuratesse:** M3, M10, M13, M21 — git log / merge-commit-verifikation. M23 håndteres af slut-rapport-flow.
+- **Dato/hash-akkuratesse:** M3, M10 — git log / merge-commit-verifikation. M13, M21 — dato indsat i filen skal matche commit-dato for samme fil-cluster-commit (verificeres med `git show --format=%cd <commit>`); M23 håndteres af slut-rapport-flow.
 
 Ingen nye tests skrives. Ingen eksisterende tests ændres.
 
@@ -154,8 +156,22 @@ Hvis flow-fejl: dokumentér i `plan-feedback/H020-flow-fejl.md` per krav-dokumen
 
 ---
 
+## Lukningskriterium (adresserer Codex V2-risiko)
+
+H020 må IKKE markeres færdig før følgende er verificeret i nævnte rækkefølge:
+
+1. Alle 16 fil-cluster-commits er på `claude/h020-plan` og CI grøn pr. commit.
+2. PR merget til `main`.
+3. Slut-rapport committet til `docs/coordination/rapport-historik/<dato>-h020.md`.
+4. `docs/coordination/seneste-rapport.md` opdateret til at pege på slut-rapport-filen i samme commit eller efterfølgende commit (flow-trin 11 — M23 flow-konsekvens).
+5. codex-notify trigger fyret automatisk ved seneste-rapport.md-push (verificeres via tracker-issue #12-comment).
+
+Hvis trin 4 ikke sker spontant via flow-disciplin, er det H020-fejl, ikke fremtidig opgave. Plan er først leveret når M23 er reelt opfyldt via flow.
+
+---
+
 ## Konklusion
 
-29 åbenlyse rettelser: 28 i 16 fil-clusters + 1 flow-konsekvens (M23). Lav risiko, ingen design-valg, ingen migrations. Single PR med granulære commits. Plan er konsistent med krav-dokumentet (post-`a335f42` M23-formulering) og styrker vision-elementer.
+29 åbenlyse rettelser: 28 i 16 fil-clusters + 1 flow-konsekvens (M23). Lav risiko, ingen design-valg, ingen migrations. Single PR med granulære commits. Plan er konsistent med krav-dokumentet (post-`9b288ed` M13+M21-præcisering, post-`4a14819` M23-formulering) og styrker vision-elementer.
 
-Klar til Codex-review-runde V1.
+Klar til Codex-review-runde V3.
