@@ -156,6 +156,50 @@ Efter R-runde-2 er færdig:
 
 ---
 
+## Plan-flow for I-pakker
+
+I-pakker (Infrastruktur) bruger commit-baseret plan-runde-loop frem for chat-baseret. Round-trip-feedback håndteres via `docs/coordination/plan-feedback/`-mappen og Codex-notify-action.
+
+### Aktør-rækkefølge
+
+1. **Claude.ai** leverer krav-og-data-dokument (`docs/coordination/<pakke>-krav-og-data.md`) med formål, scope, Mathias' afgørelser, og tekniske valg overladt til Code. Krav-dokumentet er **kontrakt**.
+2. **Code** skriver `docs/coordination/<pakke>-plan.md` per `docs/skabeloner/plan-skabelon.md` baseret på krav-dokumentet. Code argumenterer for de tekniske valg.
+3. **Code** opdaterer `docs/coordination/aktiv-plan.md` til at pege på plan-filen → Codex-notify trigger "ny-plan-version" comment til tracker-issue.
+4. **Codex** reviewer planen og committer `docs/coordination/plan-feedback/<pakke>-V1-codex.md` → Codex-notify trigger "codex-feedback" comment.
+5. **Code** svarer enten med `<pakke>-V2-code.md` ELLER opdaterer plan-filen direkte → trigger ny review-runde.
+6. Loop indtil **Codex** committer `<pakke>-approved.md` → Codex-notify trigger "plan-approved" comment.
+7. **Mathias + Claude.ai** validerer plan mod krav-dokumentet.
+8. **Code** bygger.
+9. **Code** leverer slut-rapport jf. eksisterende flow.
+10. Plan-filen flyttes til `docs/coordination/plan-historik/` (hvis omdøbning fra `arkiv/` er gennemført, ellers `arkiv/`).
+
+### Konvergens-signal
+
+Codex committer `<pakke>-approved.md` med én linje:
+
+```
+Plan godkendt fra Codex' side. Klar til Mathias-validering.
+```
+
+Ingen andre filer i `plan-feedback/<pakke>-*` skal ændres efter approved-fil eksisterer.
+
+### Krav-dokument-disciplin
+
+Krav-dokumentet er **kontrakt**. Detaljer + brud-typer dokumenteret i `docs/strategi/arbejds-disciplin.md` sektion "Krav-dokument-disciplin". Hvis et plan-forslag ville modsige krav-dokumentet, committes `<pakke>-V<n>-blokeret.md` og runden stoppes — argumentation hører i ny krav-dokument-runde, ikke i plan-runden.
+
+### Filnavngivning
+
+| Fil                        | Skrevet af       | Trigger-comment  |
+| -------------------------- | ---------------- | ---------------- |
+| `<pakke>-V<n>-codex.md`    | Codex            | "codex-feedback" |
+| `<pakke>-V<n>-code.md`     | Code             | "code-feedback"  |
+| `<pakke>-approved.md`      | Codex            | "plan-approved"  |
+| `<pakke>-V<n>-blokeret.md` | Code eller Codex | "plan-blokeret"  |
+
+Detaljer: `docs/coordination/plan-feedback/README.md`.
+
+---
+
 ## Ikke-i-scope
 
 - Auto-block / auto-merge baseret på Codex-output (for risikabelt — Mathias afgør altid)

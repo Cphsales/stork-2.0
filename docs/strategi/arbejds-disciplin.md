@@ -301,6 +301,47 @@ Konkret:
 Hvis pull viser uventede commits: STOP, rapportér til Mathias før
 arbejdet fortsætter.
 
+## Krav-dokument-disciplin
+
+Når en I-pakke (eller anden pakke med eksplicit krav-dokument fra Claude.ai)
+kører plan-runde-loop: krav-dokumentet er **kontrakt**, ikke oplæg.
+
+Krav-dokumentet leveres som `docs/coordination/<pakke>-krav-og-data.md` og
+indeholder typisk: formål, scope (i/ikke i), Mathias' afgørelser, og
+tekniske valg overladt til Code. Plan-filen Code skriver SKAL være
+konsistent med krav-dokumentet.
+
+### Stop-signal (brud)
+
+Hvis Code eller Codex under plan-runden bemærker at deres egne forslag
+ville modsige krav-dokumentet: de **STOPPER** runden, committer
+`docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret
+reference til den linje/sektion i krav-dokumentet der ville blive brudt,
+og flagger til Mathias.
+
+De **argumenterer ikke** sig videre inden for runden. Argumentation for
+ændring af krav-dokumentet hører til en ny krav-dokument-runde (ny
+Claude.ai-input), ikke til plan-fasen.
+
+### Brud-typer der udløser stop
+
+- Forslag der modsiger Mathias' eksplicitte afgørelser i krav-dokumentet
+- Scope-udvidelse udover krav-dokumentets "I scope"-liste
+- Reklassificering af "IKKE i scope" til scope
+- Ændring af pakke-struktur (samlet vs splittet)
+
+### Forskel fra "Plan-leverance er kontrakt"
+
+"Plan-leverance er kontrakt" (se sektion længere nede) handler om at
+Code/Codex skal følge en konkret plan-leverance fra Mathias. Krav-
+dokument-disciplin handler om at plan-fasen ikke må ændre selve
+krav-rammen — krav-dokumentet kan kun ændres af Mathias eller via
+eksplicit ny Claude.ai-runde.
+
+Plan-leverance er kontrakt nedad (Code respekterer Mathias' specifikation).
+Krav-dokument-disciplin er kontrakt opad (plan-fasen ændrer ikke krav-
+rammen). De gælder samtidig.
+
 ## Disciplin-tjekliste — før hver migration skrives
 
 Besvar disse fire spørgsmål eksplicit, inden migration-fil oprettes:
