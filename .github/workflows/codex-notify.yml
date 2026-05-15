@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "docs/coordination/aktiv-plan.md"
+      - "docs/coordination/plan-feedback/*.md"
       - "docs/coordination/seneste-rapport.md"
   pull_request:
     branches: [main]
@@ -22,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Locate tracker issue
         id: tracker
@@ -39,27 +41,124 @@ jobs:
             echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Post review-trigger comment
+      - name: Detect trigger type
+        id: trigger
+        if: steps.tracker.outputs.skip != 'true'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = "pull_request" ]; then
+            # Pre-merge slut-rapport-trigger; paths-filteret garanterer seneste-rapport.md er ramt.
+            echo "type=slut-rapport-pr" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Push-event: brug git diff til at finde ændrede filer.
+          changed=$(git diff --name-only HEAD~1 HEAD || true)
+          echo "changed files:" >&2
+          echo "$changed" >&2
+
+          plan_feedback_changed=$(echo "$changed" | grep -E '^docs/coordination/plan-feedback/.+\.md$' | head -n1 || true)
+          aktiv_plan_changed=$(echo "$changed" | grep -E '^docs/coordination/aktiv-plan\.md$' || true)
+          seneste_rapport_changed=$(echo "$changed" | grep -E '^docs/coordination/seneste-rapport\.md$' || true)
+
+          if [ -n "$plan_feedback_changed" ]; then
+            echo "feedback_file=$plan_feedback_changed" >> "$GITHUB_OUTPUT"
+            case "$plan_feedback_changed" in
+              *-approved.md)
+                echo "type=plan-approved" >> "$GITHUB_OUTPUT"
+                ;;
+              *-blokeret.md)
+                echo "type=plan-blokeret" >> "$GITHUB_OUTPUT"
+                ;;
+              *-codex.md)
+                echo "type=codex-feedback" >> "$GITHUB_OUTPUT"
+                ;;
+              *-code.md)
+                echo "type=code-feedback" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "type=plan-feedback-other" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
+          elif [ -n "$aktiv_plan_changed" ]; then
+            echo "type=ny-plan-version" >> "$GITHUB_OUTPUT"
+          elif [ -n "$seneste_rapport_changed" ]; then
+            echo "type=slut-rapport-push" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=ukendt" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compose comment body
+        id: body
+        if: steps.tracker.outputs.skip != 'true'
+        env:
+          TYPE: ${{ steps.trigger.outputs.type }}
+          FEEDBACK_FILE: ${{ steps.trigger.outputs.feedback_file }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          case "$TYPE" in
+            ny-plan-version)
+              HEADER="**Ny plan-version** — \`docs/coordination/aktiv-plan.md\` ændret"
+              ACTION="Code's tur er forbi. Codex skal reviewe planen som aktiv-plan peger på. Læs \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review."
+              ;;
+            codex-feedback)
+              HEADER="**Codex-feedback leveret** — \`$FEEDBACK_FILE\`"
+              ACTION="Codex's tur er forbi. Code skal læse feedback og levere V<n+1> (enten ny \`-code.md\` eller opdateret plan-fil)."
+              ;;
+            code-feedback)
+              HEADER="**Code-feedback leveret** — \`$FEEDBACK_FILE\`"
+              ACTION="Code har svaret. Codex's tur — committ næste \`-codex.md\` eller \`-approved.md\` hvis konvergens nået."
+              ;;
+            plan-approved)
+              HEADER="**Plan godkendt fra Codex' side** — \`$FEEDBACK_FILE\`"
+              ACTION="Plan godkendt fra Codex. Klar til Mathias-validering. Mathias + Claude.ai tjekker plan mod krav-dokument."
+              ;;
+            plan-blokeret)
+              HEADER="**Plan-blokeret — krav-dokument-brud** — \`$FEEDBACK_FILE\`"
+              ACTION="Forslag i runden modsiger krav-dokument. Aktør (Code eller Codex) har stoppet runden. Mathias eskaleres."
+              ;;
+            plan-feedback-other)
+              HEADER="**Plan-feedback ændret** — \`$FEEDBACK_FILE\`"
+              ACTION="Manuelt review nødvendigt. Filnavnet matcher ikke standard-pattern (\`-codex.md\` / \`-code.md\` / \`-approved.md\` / \`-blokeret.md\`)."
+              ;;
+            slut-rapport-pr|slut-rapport-push)
+              HEADER="**Codex-review trigger** — \`docs/coordination/seneste-rapport.md\` ændret"
+              ACTION="Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review."
+              ;;
+            *)
+              HEADER="**Codex-notify trigger** — ukendt fil-type ramt"
+              ACTION="Tjek run-log for at se hvilke filer der trigger'ede. Sandsynligvis konfig-fejl i \`codex-notify.yml\`."
+              ;;
+          esac
+
+          {
+            echo "body<<NOTIFY_EOF"
+            echo "$HEADER"
+            echo ""
+            echo "$ACTION"
+            echo ""
+            echo "- Event: \`${{ github.event_name }}\`"
+            echo "- Ref: \`$REF\`"
+            echo "- Commit: \`$SHA\`"
+            echo "- Aktør: \`$ACTOR\`"
+            echo "- Run: <$RUN_URL>"
+            echo "NOTIFY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post comment
         if: steps.tracker.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ steps.tracker.outputs.number }}
-          EVENT: ${{ github.event_name }}
-          SHA: ${{ github.sha }}
-          REF: ${{ github.ref }}
-          ACTOR: ${{ github.actor }}
+          BODY: ${{ steps.body.outputs.body }}
         run: |
           set -euo pipefail
-          BODY=$(cat <<EOF
-          **Codex-review trigger** — \`docs/coordination/seneste-rapport.md\` ændret
-
-          - Event: \`$EVENT\`
-          - Ref: \`$REF\`
-          - Commit: \`$SHA\`
-          - Aktør: \`$ACTOR\`
-          - Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
-
-          Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review.
-          EOF
-          )
           gh issue comment "$ISSUE_NUMBER" --body "$BODY"
