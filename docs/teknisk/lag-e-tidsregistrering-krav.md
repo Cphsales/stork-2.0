@@ -88,13 +88,13 @@ To akser, hierarkisk:
 ## Vagt-validering
 
 - Vagter må ikke kunne overlappe i tid for samme medarbejder
-- Vagt-redigerings-rettigheder håndteres af rettigheds-systemet (§5)
+- Vagt-redigerings-rettigheder håndteres af rettigheds-systemet (§1.7)
 
 ## Fravær
 
 - Fraværs-typer er data (minimum: ferie, sygdom — udvideligt)
 - Fravær kan være hel dag eller del af dag
-- Fravær har approval-workflow
+- Ferie har approval-workflow; sygefravær har ikke (per master-plan §2.2)
 - Status-overgange logges
 
 ## Sygeløn
