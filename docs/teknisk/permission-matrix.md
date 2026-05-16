@@ -6,6 +6,11 @@
 
 **Total: 32 RPC'er** — 31 bruger `has_permission(page, tab, can_edit)`, 1 beholder `is_admin()` som superadmin-anker (master-plan rettelse 26 + 31).
 
+**Funktioner i is_admin-mønster: 2** (Supabase MCP-query mod pg_proc):
+
+- `core_identity.is_admin` — helper-funktion (eneste hardkodede rolle-anker per vision-princip 2)
+- `core_compliance.superadmin_settings_update` — eneste RPC der kalder `is_admin()` direkte i stedet for `has_permission()`
+
 ## Distribution
 
 | Auth-type             | Antal |
@@ -89,4 +94,4 @@ Når ny RPC tilføjes:
 1. Skriv RPC med `has_permission(page, tab, can_edit)`-check (eller dokumentér `is_admin()`-undtagelse i G-nummer)
 2. Tilføj seed-row til `core_identity.role_page_permissions` for superadmin via ON CONFLICT DO NOTHING
 3. `smoke/m1_permission_matrix.sql` fanger missing-rows på næste CI-run
-4. Regenérer denne fil ved at køre query i `docs/teknisk/permission-matrix.md`-frontmatter
+4. Regenérer denne fil ved at køre `pg_proc`-introspection mod live DB og opdatere RPC-tabellen ovenfor manuelt
