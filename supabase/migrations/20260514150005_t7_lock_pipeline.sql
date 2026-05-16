@@ -338,15 +338,13 @@ begin
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'break_glass_unlock: ' || p_change_reason, true);
 
-  -- Slet promoverede final commission_snapshots så de kan re-promoveres ved re-lock.
-  -- Vi skal bypasse immutability-trigger med session-var; vi har ingen sådan
-  -- mekanisme i trin 7 — i stedet bevarer vi snapshots, og re-lock vil
-  -- fejle på UNIQUE-constraint hvis samme (period, sale, employee) findes.
-  -- Pragmatisk: forhåndsgodkendt break-glass-unlock antager at re-lock vil
-  -- ske med samme keys; INSERT bruger ON CONFLICT DO NOTHING ved re-lock.
-  -- (Forenkles i trin 14+ hvor sales eksisterer og snapshot-overskrivning
-  -- har klar semantik. For trin 7 skeleton accepterer vi at unlock + re-lock
-  -- vil bevare første lock's commission-snapshots.)
+  -- Final commission_snapshots bevares ved break-glass unlock.
+  -- Post-R3/R4: commission_snapshots bruger flag-UPDATE-mønster (is_candidate
+  -- flag på samme tabel; lock UPDATE'er flag fra true → false). Re-lock efter
+  -- break-glass-unlock genberegner candidate-rows (DELETE is_candidate=true
+  -- + ny INSERT) og UPDATE'er flag på de promoverede rows tilbage til false.
+  -- Idempotens sikres via candidate_run_id-tracking + DELETE-før-INSERT i
+  -- compute (R5). Ingen ON CONFLICT-mønster nødvendig.
 
   update core_money.pay_periods
      set status = 'open',
@@ -360,7 +358,7 @@ end;
 $$;
 
 comment on function core_money.pay_period_unlock_via_break_glass(uuid, text) is
-  'Master-plan §1.6 + §1.15: intern RPC kun callable via break_glass_execute-dispatcher (sætter stork.break_glass_dispatch=true). Sætter pay_periods.status=open. Final commission_snapshots bevares — re-lock skal håndtere overskrivning via ON CONFLICT DO NOTHING (formaliseres trin 14+).';
+  'Master-plan §1.6 + §1.15: intern RPC kun callable via break_glass_execute-dispatcher (sætter stork.break_glass_dispatch=true). Sætter pay_periods.status=open. Final commission_snapshots bevares; re-lock håndteres via R3/R4 flag-UPDATE-mønster (compute DELETE+INSERT candidate-rows; lock UPDATE is_candidate=false).';
 
 revoke all on function core_money.pay_period_unlock_via_break_glass(uuid, text) from public;
 grant execute on function core_money.pay_period_unlock_via_break_glass(uuid, text) to service_role;
