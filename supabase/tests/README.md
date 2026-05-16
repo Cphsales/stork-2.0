@@ -1,6 +1,6 @@
 # supabase/tests/
 
-DB-level tests der køres som CI-blocker via `pnpm test:db`.
+DB-level tests der køres som CI-blocker via `pnpm db:test`.
 
 ## Format
 
@@ -39,8 +39,8 @@ Tests uden side-effekter (rene queries / regprocedure-cast) behøver ikke explic
 `scripts/run-db-tests.mjs` itererer alle `.sql`-filer i `supabase/tests/`, sender hver til Supabase Management API, fail-fast ved første test-fejl.
 
 ```bash
-pnpm test:db                    # kør alle tests
-pnpm test:db -- --dir benchmark # kun benchmark-tests
+pnpm db:test                    # kør alle tests
+pnpm db:test -- --dir benchmark # kun benchmark-tests
 ```
 
 Kræver `SUPABASE_ACCESS_TOKEN` env-var (samme som fitness `db-rls-policies`-check). I CI: secret i workflow.
