@@ -450,7 +450,7 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 ### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme
 
 - **Symptom:** Tests der INSERT'er i `core_money.pay_periods` kan ikke ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger der raiser `P0001: DELETE altid blokeret`. Triggeren håndhæver vision-princip 9 ("statusmodeller bevarer historik").
-- **Berørte tests (kendt):** `r3_commission_snapshots_immutability`, `r4_salary_corrections_cleanup`. Sandsynligvis flere som ikke er ramt endnu fordi dato-kollision ikke er sket.
+- **Berørte tests (kendt):** `r3_commission_snapshots_immutability` (`supabase/tests/smoke/`). G017 prod-DB-row er den eneste salary_corrections-test-artefakt (description='smoke test', amount=-100, oprindelse trin 4 verifikation); der findes ikke en dedikeret salary_corrections-test-fil. R4 (commit `484c134`) var compute-cleanup af `salary_corrections_candidate` dead-code, ikke en test-leverance. Tidligere note refererede fejlagtigt til `r4_salary_corrections_cleanup` som test-fil.
 - **Konsekvens:** Test-suite er ikke idempotent på `pay_periods`. Latent issue der rammer ved hver dato-kollision. Manuel cleanup kræver enten trigger-disable (bryder invariant uden audit) eller break-glass (mangler op-type i seed).
 - **Introduceret:** Trin 4 / C4 (pay_periods + period-lock-template). Trigger var design, men ingen test-cleanup-strategi medfulgte.
 - **Opdaget:** 2026-05-15 i H010 PR CI-fail. DELETE-forsøg blokerede via MCP-cleanup-attempt.
