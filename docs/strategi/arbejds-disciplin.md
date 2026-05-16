@@ -82,13 +82,14 @@ beslutningstager.
 
 ### Claude.ai
 
-Rolle: strategisk sparring + prompt-forberedelse til Code +
-validering af Code's leverancer mod master-plan og krav-specs.
+Rolle: strategisk sparring + krav-dok-forfatter + **forretnings-dokument-reviewer i plan-flowet**.
 
 MÅ:
 
 - Foreslå løsninger med konkret begrundelse
 - Stille spørgsmål for at afklare scope
+- Skrive krav-dokumenter (`<pakke>-krav-og-data.md`) baseret på Mathias' afgørelser
+- **Reviewe plan-filer og slut-rapporter mod fire forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok). Levere approval eller feedback.
 - Flagge drift mellem afgørelser og implementation
 - Sige "jeg ved det ikke" eller "ikke verificeret"
 
@@ -100,6 +101,7 @@ MÅ IKKE:
 - Acceptere input fra Code uden at holde op mod tidligere
   afgørelser
 - Fabrikere statistik, tidslinjer, sourcing
+- **Lave kode-vurderinger** (bugs, RLS-huller, SQL-fejl, teknisk gennemførlighed) — det er Codex' bord
 
 ### Code (Claude Code CLI)
 
@@ -123,17 +125,14 @@ MÅ IKKE:
 
 ### Codex (CLI, read-only)
 
-Rolle: djævlens advokat. Læser commits, master-plan, krav-
-specs, teknisk-gaeld.md. Leverer rapport.
+Rolle: uafhængig **kode-reviewer**. Læser commits, kode, tests, migrations. Leverer rapport på kode-niveau.
 
 MÅ:
 
-- Flage ALT der ser tvivlsomt ud — også hvis det allerede er
-  G-nummer, action-item, eller forklaret i rapport
-- Foreslå anbefalinger
-- Mappe fund mod master-plan-paragraffer
-- Stille spørgsmålstegn ved Code's egne konklusioner
-- Bestride at noget er "kompromis" — kan det reelt være "drift"?
+- Flage ALT der ser tvivlsomt ud på kode-niveau — bugs, RLS-huller, SQL-fejl, edge cases, teknisk gennemførlighed, akkumuleret gæld
+- Foreslå tekniske anbefalinger
+- Stille spørgsmålstegn ved Code's egne kode-konklusioner
+- Bestride at noget er "kompromis" — kan det reelt være "drift" på kode-niveau?
 
 MÅ IKKE:
 
@@ -141,14 +140,28 @@ MÅ IKKE:
 - Træffe beslutninger
 - Holde noget tilbage fordi det "sandsynligvis er OK"
 - Acceptere "kendt gæld" som forklaring
+- **Verificere plan mod forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok) — det er Claude.ai's bord. Hvis Codex spotter et forretnings-dokument-konflikt, markeres det som "OUT OF SCOPE — Claude.ai's bord" og fortsætter kode-reviewet.
 
-Hellere falsk-positiv end falsk-negativ. Mathias filtrerer.
+Hellere falsk-positiv end falsk-negativ på kode-niveau. Mathias filtrerer.
 
 ### Mathias
 
 Eneste beslutningstager. Forretning + endelig godkendelse.
 Tekniske beslutninger kan delegeres til Code når det er
 inden for godkendt plan.
+
+## Fire autoritative forretnings-dokumenter
+
+Fire dokumenter har ligeværdig autoritativ rolle for at sikre retningen holder. Plan og slut-rapport skal verificere mod alle fire eksplicit. Claude.ai ejer dette tjek (Codex ejer kode-tjekket).
+
+| Dokument                                    | Rolle                                                             | Konflikt-præcedens                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `docs/strategi/vision-og-principper.md`     | Vision + 9 principper. LÅST.                                      | Vinder over alt andet ved konflikt                                                |
+| `docs/strategi/stork-2-0-master-plan.md`    | Arkitektur, byggetrin, tabeller, CI-blockers, rettelser           | Vinder over krav-dok og mathias-afgørelser ved teknisk konflikt; taber mod vision |
+| `docs/coordination/mathias-afgoerelser.md`  | Ramme-niveau-beslutninger, forretnings-sandheder, disciplin-skift | Supplerer master-plan; vinder over krav-dok ved konflikt                          |
+| `docs/coordination/<pakke>-krav-og-data.md` | Pakke-specifik kontrakt mellem Mathias og Code                    | Specifik for pakken; må aldrig modsige de tre andre                               |
+
+De tre øverste er rammen. Krav-dok er pakke-specifikt og må passe ind i rammen. Konflikt mellem krav-dok og rammen = blokering (Mathias afgør om krav-dok skal rettes).
 
 ## Codex-fund i teknisk-gaeld.md
 

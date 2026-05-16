@@ -67,6 +67,26 @@ Følger `docs/strategi/arbejds-disciplin.md` sektionen "Vision-tjek-skabelon —
 
 ---
 
+## Fire-dokument-verifikation
+
+**Obligatorisk sektion** (fra disciplin-skift 2026-05-16). Verificerer at den leverede pakke holder linjen mod alle fire forretnings-dokumenter, ikke kun mod vision. Spejler plan-filens "Fire-dokument-konsultation"-tabel, med tilføjet status post-build.
+
+| Dokument                                    | Plan-konsultation | Post-build status   | Afvigelse                                         |
+| ------------------------------------------- | ----------------- | ------------------- | ------------------------------------------------- |
+| `docs/strategi/vision-og-principper.md`     | [ref. fra plan]   | overholdt / afveget | [hvis afveget: link til Plan-afvigelser nedenfor] |
+| `docs/strategi/stork-2-0-master-plan.md`    | [ref. fra plan]   | overholdt / afveget | [link hvis afveget]                               |
+| `docs/coordination/mathias-afgoerelser.md`  | [ref. fra plan]   | overholdt / afveget | [link hvis afveget]                               |
+| `docs/coordination/<pakke>-krav-og-data.md` | [ref. fra plan]   | overholdt / afveget | [link hvis afveget]                               |
+
+**Regler:**
+
+- Status "overholdt" kræver at de plan-refererede paragraffer/principper/afgørelser/krav reelt er leveret i koden — ikke kun nævnt i plan
+- Status "afveget" kræver konkret reference til Plan-afvigelser-sektionen med tilhørende godkendelse fra Mathias
+- Hvis pakken introducerer ny rammeniveau-beslutning (typisk strategisk retning-skift): entry i `docs/coordination/mathias-afgoerelser.md` skal være del af pakkens commits, og det dokumenteres her
+- Claude.ai's slut-rapport-review verificerer denne tabel mod commits
+
+---
+
 ## G-numre / H-numre
 
 - **Tilføjet:** [liste med kort beskrivelse + henvisning til `docs/teknisk/teknisk-gaeld.md`]
