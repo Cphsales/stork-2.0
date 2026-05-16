@@ -1,5 +1,7 @@
 # Stork 2.0 — Vision og principper
 
+> **LÅST DOKUMENT.** Dette er grundstenen i Stork 2.0. Ændringer kræver eksplicit godkendelse fra Mathias via PR. CODEOWNERS håndhæver at kun Mathias kan approve ændringer. Dokumentet er autoritativ kilde for vision og principper — ved konflikt mellem dette dokument og master-plan/andre dokumenter, vinder dette.
+
 ## Vision
 
 Stork 2.0 bygges til at holde. Vi tager ikke nemme løsninger, hardkodede

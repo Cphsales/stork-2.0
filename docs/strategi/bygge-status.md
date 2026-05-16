@@ -2,7 +2,9 @@
 
 **Formål:** Sporing af §4 byggerækkefølge fra master-planen. Opdateres efter hvert trin.
 
-**Sidste opdatering:** 16. maj 2026 (efter H020 dokument-konsistens — M8 klassifikations-tal + M13 dato)
+**Scope:** Kun §4 byggetrin. H-pakker (H010, H016, H020, H020.1, H021, H022, H022.1, dokument-roller-pakken, master-plan sandheds-audit m.fl.) er disciplin/dokument-pakker uden for §4 og spores via commit-history + slut-rapporter i `docs/coordination/rapport-historik/`. Tekniske G-numre (gæld) spores i `docs/teknisk/teknisk-gaeld.md`.
+
+**Sidste opdatering:** 16. maj 2026 (efter master-plan sandheds-audit — trin 9 markeret PAUSET, jf. mathias-afgoerelser 2026-05-15)
 
 ---
 
@@ -20,7 +22,7 @@
 | 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 7c      | break_glass_requests + RPC-skabelon                     | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 8       | Migration-gate Phase 2 strict                           | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
-| 9       | Identitet del 2 (org-træ, closure-tabel, subtree-RLS)   | ⌛ Udestående        | —          | —       | —       |
+| 9       | Identitet del 2 (org-træ, closure-tabel, subtree-RLS)   | ⏸ PAUSET             | —          | —       | —       |
 | 10      | Klient-skabelon + felt-definitions                      | ⌛ Udestående        | —          | —       | —       |
 | 10b     | Lokations-skabelon                                      | ⌛ Udestående        | —          | —       | —       |
 | 11      | UDGÅR (schema-grænser fra trin 1)                       | —                    | —          | —       | —       |
@@ -57,6 +59,7 @@
 - ✓ Godkendt — bygget, verificeret, accepteret af Mathias
 - 🔨 Under bygning — Code arbejder
 - ⏳ Næste — klar til at starte
+- ⏸ PAUSET — byggetrin pauset af Mathias (se mathias-afgoerelser)
 - ⌛ Udestående — venter på tidligere trin
 - — UDGÅR / UDSKUDT
 
@@ -64,18 +67,20 @@
 
 ## Action-items (ikke-blokerende)
 
-| Punkt                            | Beskrivelse                                                                                                                                                                                                             | Skal håndteres før                                    |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| PITR-aktivering                  | Admin-handling i Supabase dashboard                                                                                                                                                                                     | §4 trin 14 (sales-stamme)                             |
-| Backup-retention                 | Verificér Pro-default 14 dage                                                                                                                                                                                           | §4 trin 14                                            |
-| retention_cleanup_daily          | Refactoreres til generisk evaluator                                                                                                                                                                                     | Når flere entities har retention-deadlines (trin 10+) |
-| replay_anonymization             | Udvides med branches per entity                                                                                                                                                                                         | §4 trin 10 (clients) + trin 15 (identitets-master)    |
-| Migration TODO-markører          | Erstattes med faktiske 1.0-skema-referencer                                                                                                                                                                             | Når Mathias kører discovery mod 1.0                   |
-| Anonymization-revert break-glass | Bygges sammen med break-glass-tabel                                                                                                                                                                                     | §4 trin 7c                                            |
-| Dependabot-sårbarheder           | 28 sårbarheder på default branch (13 high, 13 moderate, 2 low). Skal håndteres før produktion. Liste de kritiske til Mathias når relevant.                                                                              | Før produktion                                        |
-| Lock-pipeline fuld benchmark     | Trin 7's skeleton-benchmark var 61ms@130 candidate-rows. Fuld benchmark (500 medarbejdere × 100k sales × <10s SLA, master-plan §1.6/rettelse 19 C3) udskydes til trin 14 (sales) og trin 22 (aggregater) som CI-blocker | §4 trin 22 senest                                     |
-| pay_period_unlock re-lock        | Break-glass-unlock bevarer commission_snapshots (immutable). Re-lock skal håndtere overskrivning via ON CONFLICT DO NOTHING. Formaliseres når sales eksisterer                                                          | §4 trin 14                                            |
-| Benchmark-artifacts i prod-DB    | Skeleton-benchmark efterlod 1 syntetisk pay_period (2020-01-15→2020-02-14, locked), 260 commission_snapshots og 1 salary_correction (description='smoke test', amount=-100). Ufarligt men kosmetisk støj                | Inden produktions-go-live                             |
+| Punkt                            | Beskrivelse                                                                                                                                                                                                                                                                                                                                               | Skal håndteres før                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| PITR-aktivering                  | Admin-handling i Supabase dashboard                                                                                                                                                                                                                                                                                                                       | §4 trin 14 (sales-stamme)                                  |
+| Backup-retention                 | Verificér Pro-default 14 dage                                                                                                                                                                                                                                                                                                                             | §4 trin 14                                                 |
+| retention_cleanup_daily          | Refactoreres til generisk evaluator                                                                                                                                                                                                                                                                                                                       | Når flere entities har retention-deadlines (trin 10+)      |
+| replay_anonymization             | Udvides med branches per entity                                                                                                                                                                                                                                                                                                                           | §4 trin 10 (clients) + trin 15 (identitets-master)         |
+| Migration TODO-markører          | Erstattes med faktiske 1.0-skema-referencer                                                                                                                                                                                                                                                                                                               | Når Mathias kører discovery mod 1.0                        |
+| Anonymization-revert break-glass | Bygges sammen med break-glass-tabel                                                                                                                                                                                                                                                                                                                       | §4 trin 7c                                                 |
+| Dependabot-sårbarheder           | 4 sårbarheder på default branch (3 moderate, 1 low) pr. 2026-05-16. Skal håndteres før produktion. Liste de kritiske til Mathias når relevant.                                                                                                                                                                                                            | Før produktion                                             |
+| Lock-pipeline fuld benchmark     | Trin 7's skeleton-benchmark var 61ms@130 candidate-rows. Fuld benchmark (500 medarbejdere × 100k sales × <10s SLA, master-plan §1.6/rettelse 19 C3) udskydes til trin 14 (sales) og trin 22 (aggregater) som CI-blocker                                                                                                                                   | §4 trin 22 senest                                          |
+| pay_period_unlock re-lock        | Break-glass-unlock bevarer commission_snapshots (immutable). Re-lock skal håndtere overskrivning via ON CONFLICT DO NOTHING. Formaliseres når sales eksisterer                                                                                                                                                                                            | §4 trin 14                                                 |
+| Benchmark-artifacts i prod-DB    | Skeleton-benchmark efterlod 1 syntetisk pay_period (2020-01-15→2020-02-14, locked), 260 commission_snapshots og 1 salary_correction (description='smoke test', amount=-100). Ufarligt men kosmetisk støj. **Note:** Cutover-blocker #6 G017-tjek dækker pre-2000-perioder, ikke 2020-artefakter (åbent G-nummer-kandidat fra master-plan sandheds-audit). | Inden produktions-go-live                                  |
+| Klassifikations-tal-inkonsistens | Trin 1-3 rapporterede 202 klassificerede kolonner; trin 4 rapporterede 193. Faldet er ikke dokumenteret. Skal verificeres mod faktisk DB-state. Kan være korrekt (kolonner fjernet under trin 4) eller dokumentations-fejl.                                                                                                                               | Når trin 9+ genoptages — klassifikations-tal tjekkes på ny |
+| Frontend hosting-platform        | Master-plan rettelse 32 låste managed-service som ramme. Specifik platform (Vercel vs. Cloudflare Pages) afgøres ved tilkobling i samme pakke som første frontend-side. Selv-hosting eksplicit afvist.                                                                                                                                                    | Lag F (første frontend-side)                               |
 
 ---
 
@@ -235,8 +240,15 @@
 
 ## Næste op
 
-**Vores trin 5 = §4 trin 9 (identitet del 2):**
+**§4 trin 9 (identitet del 2) er PAUSET** pr. mathias-afgoerelser 2026-05-15 ("Huskeliste skal være på fornuftigt niveau før nye byggetrin startes. Ad-hoc-mønstret der har skabt glid skal stoppes via H010-disciplin før §4 trin 9 påbegyndes.").
+
+**Status pr. 2026-05-16:** H010-disciplin er etableret (commit `3c6bc0b`, PR #10). Overvågnings-system med qwers/qwerr/qwerg-flow er bygget. Plan-automation-flowet er testet end-to-end via H020. Dokument-roller er skarpe. Master-plan sandheds-audit er gennemført.
+
+**Forudsætning for at genoptage trin 9:** Mathias-godkendelse af at fundamentet (H010 + overvågnings-system + dokument-roller + sandheds-audit) er tilstrækkeligt at bygge videre på.
+
+**Når trin 9 genoptages — indhold:**
 
 - Org-træ + closure-tabel + subtree-RLS-helper
 - Subtree-RLS benchmark-test (rettelse 19 C1: <5ms pr. row, ingen rekursion i EXPLAIN)
 - Migration-scripts: discovery + udtræk + upload for teams + klient-team-historik fra 1.0
+- Verifikation: klassifikations-tal opdateres samtidig (G-nummer-kandidat for nuværende inkonsistens)
