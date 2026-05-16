@@ -44,7 +44,8 @@ docs/
 - **Master-plan (autoritativ teknisk plan):** `docs/strategi/stork-2-0-master-plan.md`
 - **Arbejds-disciplin (trin-cyklus, AI-arbejdsdeling, Codex-fund, formåls-immutabilitet, git-sync, disciplin-tjekliste, plan-leverance er kontrakt, destructive drops, vision-tjek-skabelon, stop-og-spørg, kommandolinje-disciplin):** `docs/strategi/arbejds-disciplin.md`
 - **Arbejdsmetode + repo-struktur (denne fils kilde):** `docs/strategi/arbejdsmetode-og-repo-struktur.md`
-- **Kendt teknisk gæld (G-numre + H-numre):** `docs/teknisk/teknisk-gaeld.md`
+- **Kendt teknisk gæld (G-numre):** `docs/teknisk/teknisk-gaeld.md`
+- **H-numre (sporbar i):** `docs/coordination/mathias-afgoerelser.md` + `docs/coordination/cutover-checklist.md`
 - **Permission-matrix (RPC → page/tab/edit):** `docs/teknisk/permission-matrix.md`
 - **Bygge-status pr. trin (vision-tjek-historik):** `docs/strategi/bygge-status.md`
 - **Lag E krav (beregning + tidsregistrering):** `docs/teknisk/lag-e-beregningsmotor-krav.md` + `docs/teknisk/lag-e-tidsregistrering-krav.md`
