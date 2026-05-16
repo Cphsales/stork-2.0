@@ -39,7 +39,7 @@ Huskeliste. Hvad maskinen skal kunne. Behov, ikke løsninger.
 
 - Hele eller del af et salg skal kunne annulleres
 - Annulleringer må ikke ændre den oprindelige salgs-linje
-- Annullerings-fradrag falder i den lønperiode hvor effekt-datoen ligger (ikke salgs-dato)
+- Annullerings-fradrag placeres i lønperiode valgt af bruger via `target_period_id`; effekt-dato er metadata og styrer ikke periode-placering (master-plan rettelse 2)
 
 ## Status og livscyklus
 
