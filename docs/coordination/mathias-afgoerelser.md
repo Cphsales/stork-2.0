@@ -228,3 +228,8 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** branches-filter `branches: [main]` i push-event blokerede plan-iteration-automation. Plan-leverance fra H021-prompt specificerede yaml ordret uden branches-filter; H021-implementation tilføjede `branches: [main]` som defensiv konvention. Plan-leverance-disciplin: yaml-spec i prompt er kontrakt, ikke retning. Anden datapunkt på 2 dage (efter H022) for at "minimal/defensiv tolkning over teknisk korrekthed" er anti-pattern.
 - **Plan-reference:** PR #17, merge-commit `db90cc7`
 - **Konsekvens:** H020 plan-iteration genoptaget. Codex-notify verificeret virker på feature-branch-push (run `25944136495`, comment "Ny plan-version" til tracker-issue #12 kl. 22:20:09).
+
+### 2026-05-16 — Frontend hosting-ramme: managed-service, ikke selv-hosting
+
+- **Begrundelse:** Infrastruktur-vedligehold (SSL, DDoS, deploy-pipeline, monitoring, OS-patches, backup, disaster recovery) har ikke plads i to-personers projekt der allerede er pressede på resource. 1.0 hostes på Lovable's platform (managed); samme model bevares for 2.0. Specifik platform (Vercel vs. Cloudflare Pages) holdt åben — afgøres ved tilkobling i samme pakke som første frontend-side, så valget baseres på reelt arbejde frem for forhåndsantagelser. Vercel attraktiv pga. React DX; Cloudflare attraktiv pga. billigere bandwidth.
+- **Plan-reference:** Master-plan rettelse 32 (§0 Stack, Appendix A, Appendix B, Appendix C).
