@@ -5,14 +5,13 @@
 --  T3: DELETE af locked row (is_candidate=false) blokeres med P0001
 --  T4: DELETE af candidate row (is_candidate=true) lykkes
 --
--- H022.1: random-offset for at undgå dato-kollision mellem CI-kørsler.
--- Hver kørsel INSERT'er forskellig dato; sandsynlighed for kollision mellem
--- samtidige kørsler er minimal. Base 10 år + spread 0-10 år (~3650 dage) giver
--- range 2036-05-15 → 2046-05-15. Undgår både 2031-stale (efterladt af pre-H022
--- kørsler) og 2032-stale (efterladt af H022's egen CI-kørsel). Reel cleanup-
--- mekanisme består stadig som G043+G044 — I001-plan argumenterer for scope-
--- hævning. H022.1 erstatter H022's fixed-shift som var en evig-drift-patch.
+-- H024: tx-rollback er nu default mønster (fitness-check håndhæver).
+-- Tidligere H022.1's random-offset (base 10y + random 0-3650d) er rullet
+-- tilbage til fixed dato '2199-01-01' (far-future, intet realistic konflikt).
+-- BEGIN/ROLLBACK sikrer at hver kørsel ikke efterlader artefakter i prod-DB,
+-- så random-offset er overflødig — fixed dato er tilstrækkelig.
 
+begin;
 do $test$
 declare
   v_period_id uuid;
@@ -20,7 +19,7 @@ declare
   v_snap_id uuid;
   v_emp_id uuid;
   v_caught text;
-  v_start_date date;
+  v_start_date date := '2199-01-01';
 begin
   -- Hent vilkårlig employee (test forudsætter mindst én eksisterer)
   select id into v_emp_id from core_identity.employees limit 1;
@@ -31,11 +30,6 @@ begin
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.allow_pay_periods_write', 'true', true);
   perform set_config('stork.change_reason', 'R3 smoke setup', true);
-
-  -- H022.1: random offset 0-3650 dage fra base 10 år → range 2036-2046.
-  -- Random gør samtidige CI-kørsler usandsynligt kolliderende (30/3650 = 0.8% pr. par).
-  -- Compute start_date først så end_date = start_date + 30d (konsistent vindue).
-  v_start_date := (current_date + interval '10 years' + ((random() * 3650)::int * interval '1 day'))::date;
 
   insert into core_money.pay_periods (start_date, end_date, status)
   values (v_start_date, v_start_date + 30, 'open')
@@ -84,3 +78,4 @@ begin
   delete from core_money.commission_snapshots where id = v_snap_id;
 end;
 $test$;
+rollback;

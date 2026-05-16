@@ -5,7 +5,12 @@
 -- T4: INSERT med disallowed status (tested) → P0001
 -- T5: Direct UPDATE status='active' uden activate-RPC session-var → 42501
 -- T6: DELETE af non-draft strategy → P0001
+--
+-- H024: tx-rollback er nu default mønster (fitness-check håndhæver).
+-- T5's INSERT (med `extract(epoch)`-suffix for unik strategy_name) bliver
+-- rollback'et — ingen prod-DB drift fra denne test.
 
+begin;
 do $test$
 declare v_caught text; v_id uuid;
 begin
@@ -58,3 +63,4 @@ begin
   if v_caught is null then raise exception 'T6 FAIL: DELETE af non-draft skal raise P0001'; end if;
 end;
 $test$;
+rollback;
