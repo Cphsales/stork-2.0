@@ -56,7 +56,7 @@ Hver afvigelse fra planen flagges her med:
 
 ## Vision-tjek
 
-Følger `CLAUDE.md`'s vision-tjek-skabelon:
+Følger `docs/strategi/arbejds-disciplin.md` sektionen "Vision-tjek-skabelon — i hver trin-rapport":
 
 - **Bygger vi den rigtige løsning, eller en workaround?** [pr. central design-beslutning]
 - **Hvis workaround: dokumenteret plan?** [G-nummer + deadline-trin]
