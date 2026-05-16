@@ -29,15 +29,9 @@ Konkrete tabel- og kolonne-navne afgøres ved bygning. Planen taler i koncepter.
 
 ## §0 Plan-grundlag
 
-### Vision
+### Vision og principper
 
-Meget data, styr på data og slette-regler, rettigheder der virker, driftsikkert, anonymisering bevarer audit, alt drift styres i UI.
-
-### Tre principper
-
-1. **Én sandhed** — én autoritativ kilde pr. fakta
-2. **Styr på data** — klassifikation + retention på hver kolonne
-3. **Sammenkobling eksplicit i modellen** — relations som data, ikke implicit
+Vision, tre bærende principper og ni operationelle principper er defineret i `docs/strategi/vision-og-principper.md`. Master-planen forudsatter dem og bygger arkitekturen ovenpå. Konflikt mellem master-plan og vision-dokument løses ved at master-planen tilrettes — vision-dokumentet er autoritativ kilde.
 
 ### Filosofi
 

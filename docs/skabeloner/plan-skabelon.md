@@ -80,6 +80,40 @@ Kompensation (generelt): hvad sker hvis hele pakken fejler under build.
 
 ---
 
+## Oprydnings- og opdaterings-strategi
+
+Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op og opdateres som konsekvens af pakkens leverance. Mangler denne sektion: plan er ikke approved.
+
+**Filer der skal flyttes til arkiv** (efter pakken er merget):
+
+- `docs/coordination/<pakke>-krav-og-data.md` → `docs/coordination/arkiv/` (standard for alle pakker)
+- `docs/coordination/<pakke>-plan.md` → `docs/coordination/arkiv/`
+- Alle `docs/coordination/plan-feedback/<pakke>-*.md` → `docs/coordination/arkiv/`
+- [Andre pakke-specifikke arbejds-artefakter]
+
+**Filer der skal slettes** (hvis pakken gør dem irrelevante):
+
+- [Liste eller "ingen"]
+
+**Dokumenter der skal opdateres** (som konsekvens af pakkens leverance):
+
+- `docs/coordination/aktiv-plan.md` → ryd til "ingen aktiv plan" eller peg på næste
+- `docs/coordination/seneste-rapport.md` → peger på ny slut-rapport (standard)
+- `docs/coordination/mathias-afgoerelser.md` → entry hvis pakken indeholder strategiske retning-skift (ikke pakke-leverancer)
+- `docs/strategi/bygge-status.md` → hvis pakken ændrer trin-status
+- `docs/strategi/stork-2-0-master-plan.md` → hvis pakken introducerer rettelse (Appendix C)
+- `docs/teknisk/teknisk-gaeld.md` → hvis pakken tilføjer/løser G-numre
+- [Andre pakke-specifikke dokument-opdateringer]
+
+**Reference-konsekvenser** (hvis pakken om-døber eller flytter filer):
+
+- [Liste over filer der refererer den om-døbte/flyttede sti, og som skal opdateres]
+- Verifikation: `grep -r "<gammel-sti>" docs/` returnerer 0 hits efter pakken
+
+**Ansvar:** Code udfører oprydning + opdatering som del af pakkens build-leverance, ikke som separat trin. Slut-rapporten verificerer at det er gjort.
+
+---
+
 ## Konsistens-tjek
 
 - **Vision:** [styrker / svækker / uændret] — kort begrundelse

@@ -20,7 +20,19 @@ Audit, rettigheder, anonymisering og retention er ikke add-ons. Det er
 fundament. De skal være på plads før systemet går i produktion, og de
 skal kunne ændres i UI når nye regler kommer.
 
-## Principper
+## Tre bærende principper
+
+De tre essentielle principper hele systemet bygges på. Alt andet leder tilbage til disse.
+
+1. **Én sandhed** — én autoritativ kilde pr. fakta. Database er sandheden; alt andet (frontend-state, edge-cache, beregningsresultater) er views af samme sandhed. Konflikt mellem to kilder er en fejl, ikke en feature.
+
+2. **Styr på data** — hver kolonne har eksplicit semantik: klassifikation, PII-niveau, retention. GDPR-compliance er indbygget, ikke add-on.
+
+3. **Sammenkobling eksplicit i modellen** — relations som data, ikke implicit i kode. FK-constraints er obligatoriske mellem relaterede entiteter.
+
+De ni operationelle principper nedenfor er konkretiseringer af disse tre.
+
+## Ni operationelle principper
 
 ### 1. Data-kontrol i UI
 

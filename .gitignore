@@ -37,3 +37,9 @@ supabase/.branches/
 
 # Windows alternate-data-stream artefakter (overført fra NTFS via WSL)
 *:Zone.Identifier
+
+# Windows NTFS Alternate Data Streams
+*:Zone.Identifier
+
+# Claude Code lokal arbejds-mappe
+.claude/

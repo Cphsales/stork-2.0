@@ -1,6 +1,10 @@
 # Mathias' afgørelser
 
-Append-only log over låste afgørelser Mathias har truffet. Format pr. entry: Dato / Beslutning (kort) / Begrundelse (kort) / Plan-reference. Begrundelse er HVORFOR beslutningen blev taget, ikke HVAD den var.
+Append-only log over **strategiske retning-skift og ramme-låsninger** Mathias har truffet. Format pr. entry: Dato / Beslutning (kort) / Begrundelse (kort) / Plan-reference. Begrundelse er HVORFOR beslutningen blev taget, ikke HVAD den var.
+
+**Hvad hører hjemme her:** beslutninger der ændrer retning, låser ramme, eller etablerer princip/disciplin der gælder på tværs af pakker.
+
+**Hvad hører IKKE hjemme her:** pakke-leverancer (bygnings-detaljer, bug-fixes, specifikke commits). Dem finder du i commit-history + slut-rapporter i `docs/coordination/rapport-historik/`.
 
 Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-entry, ikke ved historisk ændring. Hvis en begrundelse mangler i kilden: flag med `[ikke verificeret]`, fabrikér ikke.
 
@@ -19,17 +23,12 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 ### 2026-05-11 / 2026-05-15 — Tre feedback-memories aktiveret for Code's selvdisciplin
 
 - **Begrundelse:** Mathias' løse retning er ikke specifikation; Code skal vælge mindste rimelige tolkning og bekræfte, ikke spejle løse tanker til fast arkitektur. To efterfølgende memories adresserer plan-leverance-disciplin (kontrakt) og divergence-håndtering (stop og rapportér).
-- **Plan-reference:** `feedback_no_spejling.md` (2026-05-11), `feedback_plan_leverance_is_contract.md` (2026-05-15, knyttet til P1a-fix-commit `2f107b1`), `feedback_dont_fabricate_to_fit.md` (2026-05-15, knyttet til R7h-merge-iterations samme dag). Faktiske oprettelses-datoer pr. memory-fil (filsystem mtime + originSessionId).
+- **Plan-reference:** `feedback_no_spejling.md` (2026-05-11), `feedback_plan_leverance_is_contract.md` (2026-05-15), `feedback_dont_fabricate_to_fit.md` (2026-05-15).
 
 ### 2026-05-12 — Greenfield-princip i §3.4
 
 - **Begrundelse:** 1.0's anti-mønstre kopieres ikke selv hvis det går hurtigere. Workarounds uden plan er drift.
 - **Plan-reference:** `5ddc04b`
-
-### 2026-05-13 / 2026-05-14 — Trin 1-4 fundament godkendt
-
-- **Begrundelse:** §4 trin 1+2+3+4+8 (Trin 1), §4 trin 5 (Trin 2), §4 trin 6 (Trin 3), §4 trin 7+7b+7c (Trin 4) verificeret mod master-plan-paragraffer og godkendt af Mathias som fundament for resten af §4-byggerækkefølgen.
-- **Plan-reference:** `ce8c609` (Trin 1, 2026-05-14) + `14dd814` (Trin 2, 2026-05-14) + `fd2ba48` (Trin 3, 2026-05-14) + `bc57ae0` (Trin 4, 2026-05-14)
 
 ### 2026-05-14 — E-conomic udelades fuldstændig
 
@@ -46,11 +45,6 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Konsistens med vision-princip 2 — navngivning markerer eksplicit at det er eneste hardkodede rolle.
 - **Plan-reference:** `becab86` (R1b)
 
-### 2026-05-14 — has_permission-helper som fundament
-
-- **Begrundelse:** Permission-system kan ikke være UI-baseret uden generisk runtime-check. `has_permission(page, tab, can_edit)` standardiserer pattern på tværs af RPC'er.
-- **Plan-reference:** `4a33ab6` (H1)
-
 ### 2026-05-14 — Q1: "aktiv medarbejder"-definition i UI-konfig
 
 - **Begrundelse:** Aktiv-definitionen kan ikke hardkodes (princip 4 — default = intet). Skal være UI-redigerbar via `employee_active_config`.
@@ -61,31 +55,6 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Legal er bogføring-kategori; 71 legal-rows konverteres til `time_based`/`permanent`. `permanent` kræver eksplicit trigger-validering for at undgå klassifikations-drift.
 - **Plan-reference:** `8c0e70f`
 
-### 2026-05-14 — C001: retention NOT NULL + backfill 189 rows
-
-- **Begrundelse:** Codex C001 afslørede at retention-kolonnen kunne være NULL og 189 rows manglede klassifikation; migration-gate Phase 2 strict kræver NOT NULL.
-- **Plan-reference:** `b7ba4c3`
-
-### 2026-05-14 — C002+C003: anonymization-dispatcher cron-path + replay idempotent
-
-- **Begrundelse:** Codex C002+C003 afslørede at retention-cron var død i drift (cron-path-bug) og at replay ikke var idempotent (dobbelt-anonymisering risiko). Princip 7 (anonymisering bevarer audit) forudsætter at replay kan køres flere gange.
-- **Plan-reference:** `a190dbe`
-
-### 2026-05-14 — C004: pay_period RPC current_user-fallback fjernet
-
-- **Begrundelse:** Codex C004 afslørede `current_user`-fallback der bypassede `has_permission`; bryder vision-princip 2.
-- **Plan-reference:** `64b21a5`
-
-### 2026-05-14 — C005: admin-floor count + termination_date trigger
-
-- **Begrundelse:** Codex C005 afslørede at admin kunne slettes uden tjek for ≥1 aktiv tilbage (lockout-risiko); termination_date manglede automatisk is_active-flip.
-- **Plan-reference:** `7004da7`
-
-### 2026-05-14 — C006: break-glass regprocedure-allowlist + inactive gdpr
-
-- **Begrundelse:** Codex C006 afslørede at break-glass-dispatcher kunne kalde vilkårlige funktioner via tekst-lookup; regprocedure-allowlist validerer at kun seedede operation-types kan eksekveres.
-- **Plan-reference:** `ab22619`
-
 ### 2026-05-14 — Arbejds-disciplin etableret som autoritativt dokument
 
 - **Begrundelse:** Trin-cyklus + AI-arbejdsdeling + Codex-fund-håndtering må være eksplicit dokumenteret for at undgå rolle-drift mellem aktører.
@@ -93,23 +62,8 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 ### 2026-05-15 — Q-pakke: 22 RPC'er konverteret fra is_admin() til has_permission()
 
-- **Begrundelse:** Vision-princip 2-operationalisering. Hver hardkodet `is_admin()`-check skal nu validere via UI-baseret permission-tabel.
+- **Begrundelse:** Vision-princip 2-operationalisering. Hver hardkodet `is_admin()`-check skal nu validere via UI-baseret permission-tabel. Etablerer at permission-systemet er UI-styret som ramme, ikke pakke-detalje.
 - **Plan-reference:** `e3289a1`
-
-### 2026-05-15 — R2: audit-trigger-coverage fitness + AUDIT_EXEMPT_SNAPSHOT_TABLES
-
-- **Begrundelse:** Per-row audit er default (princip 6); aggregat-audit på snapshot-tabeller er bevidst undtagelse. Fitness-check forhindrer drift.
-- **Plan-reference:** `daa3106`
-
-### 2026-05-15 — R3: commission_snapshots UPDATE-flag refactor
-
-- **Begrundelse:** Snapshot-mønster bevarer historik (princip 9); UPDATE-flag (`is_candidate` + `candidate_run_id`) erstatter parallel candidate-tabel for at undgå split-state.
-- **Plan-reference:** `484c134`
-
-### 2026-05-15 — R5+R6: FOR UPDATE compute-locking + drop legacy candidate-tabeller
-
-- **Begrundelse:** FOR UPDATE erstatter advisory locks for forudsigelig konkurrence-håndtering; candidate-tabeller var pre-cutover test-artefakter (132+1 rows), kunne droppes uden produktion-impact.
-- **Plan-reference:** `b670edb`
 
 ### 2026-05-15 — Lock-mønster-arkitektur udskudt (G032)
 
@@ -118,18 +72,8 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 ### 2026-05-15 — Problem 1-4 (Mathias' låste design-afgørelser pre-R-runde-2)
 
-- **Begrundelse:** Fire centrale forretnings-/disciplin-afgørelser låstes som "Problem 1-4" inden R-runde-2-planen kunne skrives. Problem 4 verificeret konkret: "UI-aktivering kræves pre-cutover for lifecycle-tabeller (anonymization_strategies, anonymization_mappings, break_glass_operation_types)". Problem 1-3 specifikt indhold `[ikke verificeret]` — kun nævnt som blok-reference i `docs/coordination/arkiv/r-runde-2-plan.md:486` (sektion 7.1-7.3 "Vision/master-plan/Problem 1-4").
+- **Begrundelse:** Fire centrale forretnings-/disciplin-afgørelser låstes som "Problem 1-4" inden R-runde-2-planen kunne skrives. Problem 4 verificeret konkret: "UI-aktivering kræves pre-cutover for lifecycle-tabeller (anonymization_strategies, anonymization_mappings, break_glass_operation_types)". Problem 1-3 specifikt indhold `[ikke verificeret]` — kun nævnt som blok-reference.
 - **Plan-reference:** `docs/teknisk/permission-matrix.md:83` (Problem 4 eksplicit); `docs/coordination/arkiv/r-runde-2-plan.md:486` (blok-reference). Mathias bør udfylde Problem 1-3 ordret i opfølgnings-entry hvis kilde findes.
-
-### 2026-05-15 — P0+P1: gdpr_responsible-rolle + anonymization_strategies-registry
-
-- **Begrundelse:** Anonymisering er fundament (vision); strategi-registry kræves for at UI kan styre PII-erstatning pr. felt; bootstrap som `approved` (ikke `active`) lader `gdpr_responsible` aktivere som første handling.
-- **Plan-reference:** `945ac58`
-
-### 2026-05-15 — P2+P3+D3: UI-RPCs for mappings + operation_types + ON CONFLICT fitness
-
-- **Begrundelse:** Lifecycle-tabeller skal kun INSERT'es via aktiverings-RPC (draft → tested → approved → active); ON CONFLICT DO NOTHING bootstrap-princip (15) forhindrer migration-duplikat-rows.
-- **Plan-reference:** `eb699d4`
 
 ### 2026-05-15 — Plan-leverance er kontrakt (disciplin-afgørelse)
 
@@ -141,26 +85,6 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** V1-håndskrevne inventories var ufuldstændige (3 readers vs faktisk 6 + cron); live recon via `pg_get_functiondef` + `cron.job` afslørede mismatch. Skift gælder fremover for "alle steder hvor X bruges"-inventories.
 - **Plan-reference:** `c165ef1` (r-runde-2-plan v2)
 
-### 2026-05-15 — R7a-R7g: 8 kritiske bug-fixes fra Codex-review
-
-- **Begrundelse:** Lifecycle-state alignment + RLS-fitness-udvidelser + cron.schedule-aware stripDollarQuoted. Pre-cutover-kvalitets-løft som forudsætning for cutover-blockers.
-- **Plan-reference:** `967f170` + `6b9f8b5`
-
-### 2026-05-15 — M1: permission-matrix dokumentation + destructive drops disciplin
-
-- **Begrundelse:** 32 RPC'er har dokumenteret permission-binding; destructive drops kræver 4-punkt preflight (tom-check + reference-check + audit-spor + rollback-plan).
-- **Plan-reference:** `531c52c`
-
-### 2026-05-15 — R7h: 7 e2e-tests for anonymization + break-glass + retention-cron
-
-- **Begrundelse:** Pipeline har test-coverage der validerer både pre-aktivering-blokering og (post-aktivering) succes-path.
-- **Plan-reference:** `04482b9`
-
-### 2026-05-15 — Merge-strategi: rebase + admin override for trin-1-fundament
-
-- **Begrundelse:** Branch protection blokerede merge (1-godkendelse + non-pusher-rule). Rebase bevarer commit-historie; admin override begrundet i at PR allerede var Mathias-godkendt.
-- **Plan-reference:** `gh pr merge 8 --rebase --admin`
-
 ### 2026-05-15 — Stop ved divergence, fix ikke iterativt (disciplin-afgørelse)
 
 - **Begrundelse:** Når reality afviger fra forventning (input refererer ikke-eksisterende artefakt, godkendt arbejde fejler i eksekvering), stop og rapportér; skab ikke for at passe, fix ikke iterativt uden godkendelse.
@@ -168,7 +92,7 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 
 ### 2026-05-15 — Huskelisten ligger ikke i repo
 
-- **Begrundelse:** `huskeliste-stork-2-0.md` er internt arbejds-artefakt mellem Mathias og Claude.ai, ikke fælles aktør-dokumentation. Code's pre-PR-fix der oprettede stub blev revertet i working tree FØR commit for at holde grænsen ren. Repo skal kun indeholde det alle aktører konsumerer.
+- **Begrundelse:** `huskeliste-stork-2-0.md` er internt arbejds-artefakt mellem Mathias og Claude.ai, ikke fælles aktør-dokumentation. Repo skal kun indeholde det alle aktører konsumerer.
 - **Plan-reference:** Ingen commit-hash (filen blev aldrig committet); dokumenteret i `feedback_dont_fabricate_to_fit.md` "Mønster 1".
 
 ### 2026-05-15 — §4 trin 9 (identitet del 2) byggetrin pauset
@@ -186,50 +110,43 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Navigation-filen peger ind i undermapperne. Hvis den selv lå i en undermappe, blev læsefølge-rækkefølgen selv-refererende.
 - **Plan-reference:** `docs/strategi/arbejdsmetode-og-repo-struktur.md` (Repo-struktur-sektion)
 
-### 2026-05-15 — H010 committed (single samle-commit, 12 leverancer)
+### 2026-05-15 — Test-arkitektur: pay_periods-INSERT-tests mangler cleanup (G043+G044)
 
-- **Begrundelse:** Etablering af arbejdsmetode + repo-struktur leveret atomisk som single commit; efterfølgende pakker arbejder mod konsistent struktur fra start. Slut-rapport leveret pr. rapport-skabelon i `docs/coordination/rapport-historik/2026-05-15-h010.md`.
-- **Plan-reference:** commit `a0ccdf1` lokal → rebased til `70487e0` på main efter merge
-
-### 2026-05-15 — H010 merge: --admin override (tredje --admin-brug)
-
-- **Begrundelse:** Branch protection (`enforce_admins=true`) + CI-fail blokerede merge. CI-fail verificeret som præ-eksisterende test-bug uafhængig af H010-indhold (G043 + G044). H010 docs-only + migration-kommentar verificeret isoleret. `enforce_admins` deaktiveret via gh api før merge for at lade `--admin` flag virke; re-aktiveres efter follow-up-PR er merget.
-- **Plan-reference:** PR #10, merge-commit `3c6bc0b` på main
-- **Note:** Tredje `--admin`-brug efter R7h-merge og forrige H010-direct-push-forsøg. Cementering af regel for `--admin`-brug er foreslået som H018.
-
-### 2026-05-15 — Test-arkitektur: pay_periods-INSERT-tests mangler cleanup
-
-- **Begrundelse:** Fundet under H010 PR CI-fail. G043+G044 dokumenterer det fulde billede. Test-suite ikke idempotent på `pay_periods` — INSERT'er stale-rows der ikke kan ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger (vision-princip 9). Skal løses før CI-grøn er pålideligt signal.
+- **Begrundelse:** Strategisk teknisk gæld. Test-suite ikke idempotent på `pay_periods` — INSERT'er stale-rows der ikke kan ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger (vision-princip 9). Skal løses før CI-grøn er pålideligt signal. 5 datapunkter samme dag (H010, H010-followup, H021 før+efter H022, H022.1) viste at omgåelse via dato-shift bare flytter problemet.
 - **Plan-reference:** `docs/teknisk/teknisk-gaeld.md` G043 + G044
 
-### 2026-05-15 — H022: G043 minimal-patch (fixed-shift, valg A)
+### 2026-05-15 — H022.1 disciplin-læring: defensiv minimal-diff over teknisk korrekthed er anti-pattern
 
-- **Begrundelse:** 3 blokerede merges på én dag (H010, H010-followup, H021) etablerede empirisk grundlag for at unblokke H021 + tillade I001-plan-arbejde uden at vente på dato-vindue-skift. Valg A (fixed-shift "5 years" → "6 years 6 months") vurderet som teknisk renest pga. minimal diff. **Vurderingen var forkert** — se H022.1.
-- **Plan-reference:** PR #14, merge-commit `3ff21f8`
-- **Note:** Reel G043+G044-løsning skal stadig adresseres. I001-plan argumenterer for om scope skal udvides til at inkludere det.
-
-### 2026-05-15 — H022.1: G043 random-offset (erstat fixed-shift, valg B)
-
-- **Begrundelse:** H022's fixed-shift havde levetids-vurdering 18 måneder; faktisk levetid var én CI-kørsel — H022's egen CI efterlod ny stale-row der umiddelbart blokerede H021. 4 datapunkter samme dag (H010, H010-followup, H021 før H022, H021 efter H022) viste at fixed-dato-shift bare flytter problemet. Random-offset (base 10y + spread 0-3650d → range 2036-2046) er robust minimal-patch. Selvkritik fra Code: defensiv "minimal diff er bedre" over teknisk korrekthed var anti-pattern; plan-leverance-disciplin gælder også for valg af patch-strategi.
-- **Plan-reference:** PR #15, merge-commit `5a57d33`
-
-### 2026-05-15 — H021 merged efter H022.1-unblok
-
-- **Begrundelse:** H021 (plan-review-automation) blev unblokt af H022.1's random-offset-patch. Mergede uden `--admin` efter naturligt grøn CI — eksplicit demonstration af at G043+G044-omgåelse er korrekt vej, ikke `--admin`-bypass.
-- **Plan-reference:** PR #13, merge-commits `2358100` + `d15b7f3`
+- **Begrundelse:** H022's fixed-dato-shift havde levetids-vurdering 18 måneder; faktisk levetid var én CI-kørsel. Random-offset (valg B) var teknisk korrekt; minimal-diff (valg A) var defensiv tolkning. Plan-leverance-disciplin gælder også for valg af patch-strategi.
+- **Plan-reference:** `feedback_plan_leverance_is_contract.md` (etableret som mønster-eksempel)
 
 ### 2026-05-15 — Codex-review-prompt-skabelon: 4 strategi-blok-typer aktive
 
 - **Begrundelse:** H021's udvidede codex-notify-action differentierer mellem 6 trigger-typer (ny-plan-version, codex-feedback, code-feedback, plan-approved, plan-blokeret, slut-rapport). Krav-dokument-disciplin etableret med 4 brud-typer der udløser stop-signal via `<pakke>-V<n>-blokeret.md`. Plan-flow for I-pakker dokumenteret med 10-step round-trip-loop.
 - **Plan-reference:** PR #13 (H021)
 
-### 2026-05-15 — H020.1: fix automation-trigger (datapunkt #2 for plan-leverance-disciplin)
+### 2026-05-15 — H020.1 disciplin-læring: yaml-spec i prompt er kontrakt, ikke retning (datapunkt #2)
 
-- **Begrundelse:** branches-filter `branches: [main]` i push-event blokerede plan-iteration-automation. Plan-leverance fra H021-prompt specificerede yaml ordret uden branches-filter; H021-implementation tilføjede `branches: [main]` som defensiv konvention. Plan-leverance-disciplin: yaml-spec i prompt er kontrakt, ikke retning. Anden datapunkt på 2 dage (efter H022) for at "minimal/defensiv tolkning over teknisk korrekthed" er anti-pattern.
-- **Plan-reference:** PR #17, merge-commit `db90cc7`
-- **Konsekvens:** H020 plan-iteration genoptaget. Codex-notify verificeret virker på feature-branch-push (run `25944136495`, comment "Ny plan-version" til tracker-issue #12 kl. 22:20:09).
+- **Begrundelse:** branches-filter `branches: [main]` tilføjet som defensiv konvention i H021-implementation, ikke specificeret af Mathias. Anden datapunkt på 2 dage for at "minimal/defensiv tolkning over teknisk korrekthed" er anti-pattern. Cementerer plan-leverance-disciplin.
+- **Plan-reference:** `feedback_plan_leverance_is_contract.md` + H020.1 PR #17
 
 ### 2026-05-16 — Frontend hosting-ramme: managed-service, ikke selv-hosting
 
-- **Begrundelse:** Infrastruktur-vedligehold (SSL, DDoS, deploy-pipeline, monitoring, OS-patches, backup, disaster recovery) har ikke plads i to-personers projekt der allerede er pressede på resource. 1.0 hostes på Lovable's platform (managed); samme model bevares for 2.0. Specifik platform (Vercel vs. Cloudflare Pages) holdt åben — afgøres ved tilkobling i samme pakke som første frontend-side, så valget baseres på reelt arbejde frem for forhåndsantagelser. Vercel attraktiv pga. React DX; Cloudflare attraktiv pga. billigere bandwidth.
+- **Begrundelse:** Infrastruktur-vedligehold (SSL, DDoS, deploy-pipeline, monitoring, OS-patches, backup, disaster recovery) har ikke plads i to-personers projekt der allerede er pressede på resource. 1.0 hostes på Lovable's platform (managed); samme model bevares for 2.0. Specifik platform (Vercel vs. Cloudflare Pages) holdt åben — afgøres ved tilkobling i samme pakke som første frontend-side, så valget baseres på reelt arbejde frem for forhåndsantagelser.
 - **Plan-reference:** Master-plan rettelse 32 (§0 Stack, Appendix A, Appendix B, Appendix C).
+
+### 2026-05-16 — Overvågnings-system med trigger-ord (qwers/qwerr/qwerg)
+
+- **Begrundelse:** Plan-automation-flowet etableret via H010+H016+H020+H021 manglede strukturerede trigger-ord for at undgå lange manuelle prompts pr. runde. Tre trigger-ord etableret: `qwers` aktiverer rolle, `qwerr` triggerer aktør-handling, `qwerg` er Mathias' eksplicitte byg-godkendelse. Strict approval-regel: plan er KUN approved når BÅDE Codex og Claude.ai har leveret approval. Codex og Claude.ai har forskellige roller: Codex på teknisk gennemførlighed, Claude.ai på krav-konsistens og kvik-løsning-detektion. Anti-glid-mekanisme indlejret via severity-disciplin (KRITISK/MELLEM/KOSMETISK) + runde-trapper + pakke-skala-disciplin (lille/mellem/stor).
+- **Plan-reference:** `docs/coordination/overvaagning/` (tre prompt-filer) + `docs/strategi/arbejdsmetode-og-repo-struktur.md` ("Plan-flow med overvågnings-system"-sektion).
+- **Note:** codex-notify.yml-workflow differentierer endnu ikke fuldt mellem `codex-feedback` og `claude-ai-feedback`. Code's overvågnings-prompt kompenserer ved at læse filer direkte i `plan-feedback/`. Workflow-opdatering håndteres som separat H-pakke når prioriteret.
+
+### 2026-05-16 — Mathias-afgørelser-rollen omdefineret til strict strategiske retning-skift
+
+- **Begrundelse:** Tidligere rolle (append-only log over ALT Mathias godkendte) skabte overlap med commit-history + slut-rapporter + master-plan Appendix C. Rensning: drop pakke-leverancer (bygnings-detaljer, bug-fixes), behold kun beslutninger der ændrer retning, låser ramme, eller etablerer princip/disciplin på tværs af pakker. Højere signal-to-noise. Vej A af tre muligheder (A=strict fokus, B=behold som er, C=slet helt).
+- **Plan-reference:** Denne commit (clean-up af mathias-afgoerelser.md).
+
+### 2026-05-16 — Oprydnings- og opdaterings-disciplin: obligatorisk i hver plan
+
+- **Begrundelse:** Coordination-mappen vokser ukontrolleret med arbejds-artefakter fra afsluttede pakker; relaterede dokumenter glider ud af synkron uden eksplicit ansvar. Løsning: hver plan skal indeholde "Oprydnings- og opdaterings-strategi"-sektion (obligatorisk; manglende sektion = KRITISK feedback fra reviewers). Code udfører oprydning som DEL af build, ikke separat trin. Slut-rapport verificerer udførelse i ny "Oprydning + opdatering udført"-sektion. Ankret 4 steder: plan-skabelon, rapport-skabelon, Code's overvågnings-prompt (qwerg-fasen), arbejdsmetode-dokument.
+- **Plan-reference:** Denne commit. Første implementering: H020-krav-og-data.md flyttet til `docs/coordination/arkiv/` retroaktivt.
