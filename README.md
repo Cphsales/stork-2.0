@@ -23,7 +23,7 @@ stork-2.0/
 
 | Tool         | Version | Pinning                                                                            |
 | ------------ | ------- | ---------------------------------------------------------------------------------- |
-| Node         | 22 LTS  | `.nvmrc`, `.tool-versions`, `package.json#engines`                                 |
+| Node         | 24 LTS  | `.nvmrc`, `.tool-versions`, `package.json#engines`                                 |
 | pnpm         | 10.33.0 | `package.json#packageManager` (Corepack), `.tool-versions`, `package.json#engines` |
 | Turborepo    | 2.x     | `package.json#devDependencies`                                                     |
 | Supabase CLI | 2.98.x  | workspace devDep, downloadet via postinstall                                       |
@@ -35,7 +35,7 @@ Node- eller pnpm-version ligger uden for engines-range.
 
 ```bash
 # Hvis du bruger nvm
-nvm install            # læser .nvmrc → 22
+nvm install            # læser .nvmrc → 24
 
 # Hvis du bruger asdf/mise
 asdf install           # læser .tool-versions
