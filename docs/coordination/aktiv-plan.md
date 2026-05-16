@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv plan.
+**Aktuel:** `docs/coordination/H024-plan.md` (V1) — test-idempotens + artefakt-cleanup + Node 24. Branch `claude/H024-plan`. Krav-dok merged i `a15caff`.
 
 **Historisk:**
 
