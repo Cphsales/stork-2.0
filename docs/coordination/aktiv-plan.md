@@ -2,7 +2,12 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv plan. H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
+**Aktuel:** ingen aktiv plan.
+
+**Historisk:**
+
+- H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
+- H020 (28 åbenlyse dokument-rettelser + plan-automation-flow-test) afsluttet ved commit-range `7c0c83d..70d8857` (PR #20 rebase-merged 2026-05-16). Plan + feedback arkiveret i `docs/coordination/arkiv/` (filnavne `H020-*`). Slut-rapport: `rapport-historik/2026-05-16-h020.md`.
 
 Når ny plan starter:
 
