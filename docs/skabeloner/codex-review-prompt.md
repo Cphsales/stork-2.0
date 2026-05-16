@@ -15,18 +15,28 @@ Hver Codex-review-prompt indledes med følgende prefix. Kopieres
 ordret ind før den runde-specifikke instruks:
 
 ```
-SCOPE-KRAV:
+SCOPE-KRAV (kode-niveau, fra fire-dokument-disciplinen 2026-05-16):
 
-Du svarer KUN på: leverer koden formålet, er der bugs,
-sikkerhedshuller, RLS-huller, SQL-fejl, edge cases,
-disciplin-overholdelse
-Du svarer IKKE på: skulle formålet have været anderledes,
-mangler features, er funktionalitet rigtig, bedre
-forretnings-løsninger
-Hvis du opdager funktions-spørgsmål: marker dem som
-"OUT OF SCOPE — kræver Mathias-runde" og fortsæt review
+Du svarer KUN på kode-niveau:
+- Leverer koden formålet teknisk?
+- Er der bugs, sikkerhedshuller, RLS-huller, SQL-fejl?
+- Er der edge cases der bryder formålet på kode-niveau?
+- Akkumulerer planen teknisk gæld?
+- Følger koden disciplin-pakken (CI-blockers, fitness-checks)?
+
+Du svarer IKKE på:
+- Skulle formålet have været anderledes
+- Mangler features, er funktionalitet rigtig, bedre forretnings-løsninger
+- Lever planen op til vision, master-plan, mathias-afgørelser, eller krav-dok på forretnings-niveau — dette er Claude.ai's bord (parallelt review)
+
+Hvis du opdager funktions-spørgsmål: marker som
+"OUT OF SCOPE — kræver Mathias-runde" og fortsæt kode-review
+
+Hvis du opdager forretnings-dokument-konflikt: marker som
+"OUT OF SCOPE — Claude.ai's bord" og fortsæt kode-review
 
 Funktions-beslutninger hører hos Mathias.
+Forretnings-dokument-verifikation hører hos Claude.ai.
 RUNDE-NUMMER: [1 | 2 | 3]
 
 Runde 1: alle fund vurderes
@@ -35,9 +45,9 @@ Runde 3: kun KRITISKE fund stopper. Resten → G-numre
 
 FORMÅL FOR DENNE PAKKE: [indsættes fra plan-skabelonens
 Formål-sektion]
-Vurder fund mod formålet:
+Vurder kode-fund mod formålet:
 
-Bringer fundet os tættere på formålet? → ACCEPT
+Bringer fundet os tættere på formålet teknisk? → ACCEPT
 Er fundet uafhængigt af formålet? → G-nummer, ikke blocker
 ```
 

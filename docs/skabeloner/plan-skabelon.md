@@ -116,9 +116,29 @@ Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op 
 
 ## Konsistens-tjek
 
-- **Vision:** [styrker / svækker / uændret] — kort begrundelse
-- **Master-plan:** [paragraf-referencer + om planen modsiger noget]
+**Bemærk:** Konsistens-tjek-sektionen er den ældre version af kilde-verifikation. Med fire-dokument-disciplinen (2026-05-16) er den bredere verifikation flyttet til **Fire-dokument-konsultation**-sektionen nedenfor (obligatorisk). Denne sektion bevares for disciplin-pakke-referencen.
+
 - **Disciplin-pakke:** [referencer formålet, holder afsnit 1-4 fra `docs/strategi/arbejds-disciplin.md`]
+
+---
+
+## Fire-dokument-konsultation
+
+**Obligatorisk sektion.** Hver plan skal eksplicit dokumentere konsultation af de fire autoritative forretnings-dokumenter (defineret i `docs/strategi/arbejds-disciplin.md` sektionen "Fire autoritative forretnings-dokumenter"). Mangler denne sektion eller har "nej" på konsulteret-kolonnen: Claude.ai blokerer planen med severity KRITISK.
+
+| Dokument                                    | Konsulteret | Relevante referencer                                                                   | Konflikt med plan? |
+| ------------------------------------------- | ----------- | -------------------------------------------------------------------------------------- | ------------------ |
+| `docs/strategi/vision-og-principper.md`     | ja / nej    | [konkrete princip-numre, fx "princip 1, 7, 9"]                                         | ja / nej           |
+| `docs/strategi/stork-2-0-master-plan.md`    | ja / nej    | [konkrete paragraf-numre + rettelser, fx "§1.7, §3, §4 trin 9, rettelse 19 C1"]        | ja / nej           |
+| `docs/coordination/mathias-afgoerelser.md`  | ja / nej    | [konkrete datoer + emner, fx "2026-05-16 (forretningssandhed), 2026-05-15 (T9 pause)"] | ja / nej           |
+| `docs/coordination/<pakke>-krav-og-data.md` | ja / nej    | [hele filen, eller specifikke sektioner]                                               | ja / nej           |
+
+**Regler:**
+
+- "Konsulteret = nej" på nogen række = plan blokeret af Claude.ai
+- "Referencer" må ikke være "hele filen" som dovent svar på vision/master-plan/mathias-afgørelser — skal være konkrete (paragraf-numre, princip-numre, datoer)
+- "Konflikt = ja" på nogen række kræver eksplicit håndtering i Strukturel beslutning-sektionen ovenfor med konkret beskrivelse af konflikt og hvordan planen håndterer den
+- Konflikt mellem rammen (vision, master-plan, mathias-afgørelser) og krav-dok = automatisk blokering. Mathias afgør om krav-dok skal rettes før plan kan fortsætte
 
 ---
 

@@ -72,6 +72,26 @@ En plan er KUN approved når BÅDE Codex og Claude.ai har leveret approved.
 
 Du må ikke begynde build før Mathias eksplicit har godkendt approved plan.
 
+**Rolle-rensning (fra fire-dokument-disciplinen 2026-05-16):**
+
+- **Codex** reviewer kode-niveau: bugs, RLS-huller, SQL-fejl, edge cases, teknisk gæld
+- **Claude.ai** reviewer forretnings-dokument-konsistens: lever planen op til vision, master-plan, mathias-afgørelser, krav-dok
+
+Naturligt parallelt review: to forskellige bord, samme plan.
+
+## Plan-skabelon-krav: Fire-dokument-konsultations-tabel
+
+Når du skriver en plan, **skal** den indeholde "Fire-dokument-konsultation"-sektionen fra `docs/skabeloner/plan-skabelon.md` med konkret udfyldt firekolonne-tabel:
+
+| Dokument                                    | Konsulteret | Relevante referencer                  | Konflikt med plan? |
+| ------------------------------------------- | ----------- | ------------------------------------- | ------------------ |
+| `docs/strategi/vision-og-principper.md`     | ja          | [konkrete princip-numre]              | ja/nej             |
+| `docs/strategi/stork-2-0-master-plan.md`    | ja          | [konkrete paragraf-numre + rettelser] | ja/nej             |
+| `docs/coordination/mathias-afgoerelser.md`  | ja          | [konkrete datoer + emner]             | ja/nej             |
+| `docs/coordination/<pakke>-krav-og-data.md` | ja          | [sektioner]                           | ja/nej             |
+
+**Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Claude.ai blokere planen med KRITISK feedback.** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
+
 ## Hvad du gør når Mathias paster `qwerg`
 
 1. **Pull main** + **pull plan-branch** (`claude/<pakke>-plan`)
