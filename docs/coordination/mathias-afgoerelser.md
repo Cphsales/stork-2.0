@@ -157,6 +157,11 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Plan-reference:** Denne commit. Master-plan rettelse 33 i Appendix C. Bygge-status trin 9 markeret PAUSET (jf. mathias-afgoerelser 2026-05-15).
 - **G-nummer-kandidater identificeret i audit (ikke i denne commit):** Bygge-status klassifikations-tal-inkonsistens (202 vs 193); Cutover-blocker #6 G017 dækker ikke 2020-benchmark-artefakter; §0 Filosofi-overlap med §5; Cutover-blocker H-numre kobling til cutover-checklist ikke eksplicit.
 
+### 2026-05-16 — Tx-rollback er default mønster for DB-tests; fitness-check håndhæver
+
+- **Begrundelse:** G043+G044 viste at non-idempotente tests (uden BEGIN/ROLLBACK) skaber permanent prod-DB-drift på DELETE-blokerede tabeller. Workaround-rute (H022/H022.1's random-offset) flyttede kun problemet. Arkitektur-fix: alle DB-tests der INSERT'er i immutability + lifecycle-DELETE-restricted tabeller skal bruge `begin; ... rollback;`-wrap. Fitness-check `db-test-tx-wrap-on-immutable-insert` er CI-blocker; falsk-negativ for RPC-side-effects er kendt afgrænsning (G-nummer for senere Mønster D-udvidelse). DISABLE TRIGGER-pattern (engangs cleanup-migration) er one-shot pre-cutover, ikke vedvarende mekanisme — fitness-check sikrer at fremtidige tests aldrig opbygger drift.
+- **Plan-reference:** H024 (plan V2, qwerg 2026-05-16). Etablerer test-skrivnings-disciplin der binder Lag E's test-arkitektur.
+
 ### 2026-05-16 — CLI-automation-niveau for Code og Codex: sprørgsmål-flaskehals fjernet
 
 - **Begrundelse:** Code og Codex spurgte om hver enkelt kommando (sleep, git status, git commit) hvilket gjorde Mathias til konstant flaskehals og dræbte automation-effekten. Sikkerheden ligger ikke i CLI-approval-prompts men i proces-laget: krav-dok-kontrakten i main, qwerg-godkendelse før build-start, lag-boundary-godkendelse, CI-blockers, branch protection, Codex-review-loop. Disse er uberørt.

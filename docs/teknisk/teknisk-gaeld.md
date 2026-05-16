@@ -193,14 +193,14 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Risiko hvis glemt:** Lav
 - **Plan:** Hvis system-employee-konvention etableres ("system" employee i core_identity der ejer cron-handlinger), kan locked_by sættes til dens UUID. Ikke akut.
 
-### [G017] LAV — Test-artefakter i prod-DB
+### [G017] LAV — Test-artefakter i prod-DB (LØST i H024)
 
-- **Beskrivelse:** 1 syntetisk locked pay_period (2020-01-15→2020-02-14) + 260 commission_snapshots (immutable) + 1 salary_correction (description='smoke test', amount=-100, i 2026-04-15→2026-05-14)
-- **Vision-svækkelse:** "Stamme = database" — prod-DB indeholder ikke-prod-data uden klar separation. Smoke-correction vil dukke op som -100 fradrag for en medarbejder når compute er reel.
-- **Introduceret:** Trin 4 (verifikations-test)
-- **Skal løses:** Før trin 14 (compute bliver reel)
-- **Risiko hvis glemt:** Lav-mellem. Skævvrider beregninger fra trin 14+.
-- **Plan:** Engangs-cleanup-migration før trin 14 eller break-glass-RPC der bypasser immutability for klart-markerede test-rækker.
+- **Beskrivelse:** 1 syntetisk locked pay_period (2020-01-15→2020-02-14) + 260 commission_snapshots (immutable) + 1 salary_correction (description='smoke test', amount=-100, i 2026-04-15→2026-05-14) + udvidet under afdækning: 1 anonymization_state (C002 test) + 1 anonymized test-employee.
+- **Vision-svækkelse:** "Stamme = database" — prod-DB indeholder ikke-prod-data uden klar separation.
+- **Introduceret:** Trin 4 (verifikations-test) + C002 (anonymisering-verifikation).
+- **Status:** **LØST i H024 build-PR** — engangs cleanup-migration `20260516200000_h024_test_artifact_cleanup.sql` rydder G017-cluster atomically (1 pay_period + 1 candidate_run + 260 snapshots + 1 salary_correction + 1 anonymization_state + 1 anonymized employee) via marker-based DELETE + DISABLE/ENABLE TRIGGER pattern. Mathias-godkendt one-shot pre-cutover-mekanisme (qwerg 2026-05-16). G017-cluster tolkning (b) bekræftet: hele G017-clusteret er test-artefakt, krav-dok's "2 reelle candidate_runs" var faktuelt forkert (kun 1 reel — e8070819 paired med f4c86616).
+- **Verifikation:** Migration har pre/post-precondition-assertions; runtime RAISE EXCEPTION hvis count afviger fra forventet eller hvis reelle rows utilsigtet rammes.
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
 
 ### [G018] LAV — Bygge-status klassifikations-tal er forkerte
 
@@ -432,33 +432,33 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   end $$;
   ```
 
-### [G043] MELLEM — r3_commission_snapshots_immutability test mangler cleanup-strategi
+### [G043] MELLEM — r3_commission_snapshots_immutability test mangler cleanup-strategi (LØST i H024)
 
 - **Symptom:** INSERT pay_period med `current_date + interval '5 years 30 days'` konflikter med stale data ved gentagne kørsler samme dag.
-- **Reproduktion:** Anden CI-kørsel på samme dato fejler med 23P01 exclusion constraint violation på `pay_periods_no_overlap` (key `daterange(start_date, end_date, '[]'::text)` collision på dato-range 2031-05-15 → 2031-06-14 i denne kørsel).
-- **Konsekvens:** CI bliver pålideligt rød efter første grønne kørsel hver dag på testens dato-vindue. Manuel DB-cleanup er ikke mulig pga. DELETE-trigger (se G044).
-- **Introduceret:** Trin 3 / R3 (commission_snapshots UPDATE-flag refactor) — test-pattern arvet uden idempotens-tjek.
-- **Opdaget:** 2026-05-15 i H010 PR CI-fail (PR #10).
-- **Skal løses:** Før CI-grøn kan bruges som disciplin-signal.
-- **Forslags-retninger:**
-  a) Transaction-rollback i test-fixture (hvis ikke allerede)
-  b) Break-glass-operation_type `test_cleanup` med audit-spor (se G044 retning b)
-  c) Dato-randomisering i tests så kollision aldrig sker mellem to runs samme dag
-- **2026-05-15:** Minimal-patch via H022 flytter dato-vindue fra `current_date + interval '5 years'` til `'6 years 6 months'` så stale 2031-05-15-row ikke længere kolliderer. G043's underliggende problem (mangler cleanup-mekanisme) består — kollisionen er blot flyttet 18 måneder. 3 datapunkter samme dag (H010, H010-follow-up, H021) understøtter prioritets-hævning. I001-plan-arbejde argumenterer for om G043+G044 skal hæves ind i I001's scope trods oprindelig "ikke i scope"-afgrænsning.
-- **2026-05-15 H022.1:** Random-offset erstatter fixed-shift fra H022. H022's vurdering 18 måneders levetid var forkert — levetiden var én CI-kørsel: H022's egen CI-kørsel efterlod 2032-11-15-stale-row der umiddelbart blokerede H021. Random-offset (base 10y + spread 0-3650d → range 2036-2046) er robust minimal-patch fordi hver kørsel INSERT'er forskellig dato. Kollisions-sandsynlighed mellem to vilkårlige kørsler: ~0.8% (30-dages window i 3650-dages range). 4 datapunkter for G043 samme dag (H010, H010-followup, H021 før H022, H021 efter H022). Stadig ikke arkitektur-fix.
+- **Konsekvens:** CI bliver pålideligt rød efter første grønne kørsel hver dag på testens dato-vindue.
+- **Introduceret:** Trin 3 / R3 — test-pattern arvet uden idempotens-tjek.
+- **Opdaget:** 2026-05-15 i H010 PR CI-fail.
+- **Status:** **LØST i H024 build-PR** — arkitektur-fix (a) valgt: r3-testen wrappet i `begin; ... rollback;`. H022.1 random-offset rullet tilbage til fixed dato `'2199-01-01'` (far-future, tx-rollback sikrer ingen persistens). Ny fitness-check `db-test-tx-wrap-on-immutable-insert` håndhæver tx-wrap-disciplin fremover (CI-blocker 20 i master-plan §3, rettelse 34). Random-offset workaround droppet — arkitektur-fix er valid.
+- **Historik:** H022 fixed-shift (`'5 years'` → `'6 years 6 months'`) flyttede problem 18 måneder. H022.1 random-offset (base 10y + spread 0-3650d) reducerede kollisions-sandsynlighed til ~0.8% pr. par men var stadig workaround. Begge erstattet af H024's tx-rollback + fitness-check.
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
 
-### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme
+### [G044] MELLEM — pay_periods-INSERT-tests har ingen cleanup-mekanisme (LØST i H024)
 
-- **Symptom:** Tests der INSERT'er i `core_money.pay_periods` kan ikke ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger der raiser `P0001: DELETE altid blokeret`. Triggeren håndhæver vision-princip 9 ("statusmodeller bevarer historik").
-- **Berørte tests (kendt):** `r3_commission_snapshots_immutability` (`supabase/tests/smoke/`). G017 prod-DB-row er den eneste salary_corrections-test-artefakt (description='smoke test', amount=-100, oprindelse trin 4 verifikation); der findes ikke en dedikeret salary_corrections-test-fil. R4 (commit `484c134`) var compute-cleanup af `salary_corrections_candidate` dead-code, ikke en test-leverance. Tidligere note refererede fejlagtigt til `r4_salary_corrections_cleanup` som test-fil.
-- **Konsekvens:** Test-suite er ikke idempotent på `pay_periods`. Latent issue der rammer ved hver dato-kollision. Manuel cleanup kræver enten trigger-disable (bryder invariant uden audit) eller break-glass (mangler op-type i seed).
-- **Introduceret:** Trin 4 / C4 (pay_periods + period-lock-template). Trigger var design, men ingen test-cleanup-strategi medfulgte.
-- **Opdaget:** 2026-05-15 i H010 PR CI-fail. DELETE-forsøg blokerede via MCP-cleanup-attempt.
-- **Skal løses:** Sammen med G043 — samme rod-årsag.
-- **Forslags-retninger:**
-  a) Transaction-rollback i test-fixture (foretrukken — hvis testene allerede kører i tx, behøver intet ekstra; ellers wrap i `begin ... rollback`)
-  b) Break-glass-op-type `test_cleanup` med whitelist-RPC der DELETE'er pay_periods kun for test-dato-range (audit-spor + 2-actor flow)
-  c) Dato-randomisering så kollision aldrig kan ske inden for dag
+- **Symptom:** Tests der INSERT'er i `core_money.pay_periods` kan ikke ryddes op via DELETE pga. `pay_periods_lock_and_delete_check`-trigger der raiser `P0001`. Triggeren håndhæver vision-princip 9.
+- **Berørte tests (kendt):** `r3_commission_snapshots_immutability` (G017's salary_correction er prod-DB-rest, ikke fra dedikeret test). Tidligere fejl-reference til `r4_salary_corrections_cleanup` rettet.
+- **Introduceret:** Trin 4 / C4.
+- **Status:** **LØST i H024 build-PR** — samme rod-årsag som G043, samme løsning: tx-rollback wraps test-INSERTs så DELETE-blokering aldrig trigges. Cleanup-migration rydder eksisterende stale rows (inkl. 28 pay_periods-test-artefakter). Fitness-check fremover.
+- **Også berørt af samme fix:** p1a*anonymization_strategies-test (skabte 38 stale `p1a_smoke_t5*\*`-strategier pr. CI-kørsel pga. samme manglende tx-wrap; identificeret under H024-afdækning).
+- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
+
+### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
+
+- **Beskrivelse:** H024's nye fitness-check (CI-blocker 20) scanner direkte `INSERT INTO <immutable-tabel>` i `supabase/tests/**/*.sql`. Tests der INSERT'er indirekte via RPC-kald (fx `perform core_identity.anonymize_employee(...)` der internt INSERT'er i `anonymization_state`, eller `perform core_compliance.break_glass_execute(...)` der INSERT'er i `break_glass_requests`) bliver IKKE fanget.
+- **Vision-svækkelse:** Drift-disciplin (§3). En non-idempotent test der bruger RPC-side-effects kan smutte ind uden CI-blokering. Reduceret af konvention: alle r7a-tests bruger RPC + er allerede tx-wrappede.
+- **Introduceret:** H024 (kendt afgrænsning fra plan-fasen).
+- **Skal løses:** Vurder når relevant. Lag E's tests vil sandsynligvis bruge RPC'er; udvidelse til Mønster D (RPC-side-effect-scan) kan blive nødvendigt.
+- **Risiko hvis glemt:** Lav-mellem. Tx-rollback-konvention etableret; reviewer-disciplin fanger sandsynligvis manglende wrap i RPC-tests.
+- **Plan (Mønster D):** Parse pg_proc-bodies via PG-parser eller live introspection af RPC-graf; identificér RPC'er der INSERT'er i immutable tabeller; tilføj allowlist. Implementation-kompleksitet: HØJ. Falsk-positiv-risiko: lav. Falsk-negativ-risiko: lav (med vedligeholdt allowlist).
 
 ---
 
