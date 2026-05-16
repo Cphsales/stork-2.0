@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-16-h020.md` (PR #20 merge-HEAD `70d8857`; rapport-fil committed i denne push)
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-16-h024.md` (PR #26 merge-HEAD `30fbdf4`; build-range `8f46615..30fbdf4`)
 
 Når ny rapport leveres:
 
