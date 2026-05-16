@@ -24,7 +24,9 @@ Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-ad
    **Plan-fase tilstande (tracker-comment-baseret):**
    - `ny-plan-version` → vent (Codex + Claude.ai's tur). Du paster bare "venter på review"
    - `codex-feedback` → læs feedback-fil i `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`, lav V<n+1>
-   - `claude-ai-feedback` → læs feedback-fil i `docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md`, lav V<n+1>
+   - `claude-ai-feedback` → Claude.ai's feedback-fil. To muligheder:
+     - **Fil committet på plan-branch** (`docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` synlig efter `git pull`): læs, lav V<n+1>
+     - **Fil ligger som untracked i working tree** (skrevet af Claude.ai via Filesystem-MCP, ikke endnu committet): commit den først på plan-branchen som separat commit (`git add <fil> && git commit -m "<pakke> V<n>-feedback fra Claude.ai"`), derefter læs + lav V<n+1>. Mathias committer ikke selv mellem runder — du committer Claude.ai's feedback på hendes vegne.
    - `plan-blokeret` → læs blokker-fil, stop, rapportér til Mathias
    - `plan-approved-codex` ELLER `plan-approved-claude-ai` (kun én af to) → vent. Plan er IKKE approved før begge har approved
    - `plan-approved-begge` → vent på Mathias-godkendelse (han paster `qwerg`)
@@ -40,7 +42,18 @@ Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-ad
    - Codex har approved slut-rapport → vent på Mathias-merge
 
    **Ingen aktiv pakke:**
-   - Hvis Mathias har committet ny krav-dok siden sidste handling → læs krav-dokumentet, lav plan V1
+   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai skriver krav-dok via Filesystem-MCP direkte til working tree — den ligger initialt som untracked, ikke committet. Hvis fundet:
+     1. Læs krav-dokumentet (formål + scope + Mathias' afgørelser + tekniske valg)
+     2. Branch fra main: `git checkout -b claude/<pakke>-krav-og-data`
+     3. Commit: `git add <fil> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
+     4. Push: `git push origin claude/<pakke>-krav-og-data`
+     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument. Plan-arbejde startes når denne er merget."`
+     6. CI grøn → merge med `--rebase`. Hvis markdown-only-PR rammer branch-protection (kendt issue): retry CI, eller STOP og rapportér til Mathias. Aldrig `--admin`.
+     7. Cleanup: `git checkout main && git pull && git branch -D claude/<pakke>-krav-og-data && git push origin --delete claude/<pakke>-krav-og-data`
+     8. Rapportér til Mathias mellem hvert skridt (commit-hash, PR-link, merge-status)
+     9. Derefter: start plan-arbejde V1 (se næste bullet)
+   - Hvis krav-dok er på main (enten lige merged ovenfor, eller committet i tidligere session) → læs krav-dokumentet, lav plan V1 på `claude/<pakke>-plan`-branch
+   - Hvis hverken untracked krav-dok-fil eller nyligt committet krav-dok på main → ingenting at gøre. Rapportér: "ingen aktiv pakke, ingen krav-dok at handle på"
 
 5. **Eksékver** den relevante handling
 6. **Push** til relevant branch:

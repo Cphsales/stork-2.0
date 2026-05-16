@@ -27,15 +27,20 @@ Din specifikke fokus: **"Er det her teknisk gennemførligt og rigtigt?"**
 2. **Pull aktiv plan-branch** hvis du allerede ved hvilken (typisk `claude/<pakke>-plan` eller `claude/<pakke>-slut-rapport`)
 3. **Læs tracker-issue #12** (`gh issue view 12 --comments`) — find seneste comment fra `codex-notify`-workflow
 4. **Læs comment-body** — type-felt fortæller hvad du skal:
+
+   **VIGTIGT — scan tracker baglæns, ikke kun seneste comment.** Du skal finde seneste comment der KRÆVER DIN HANDLING, ikke nødvendigvis allerseneste. Hvis seneste er en du skal ignorere (claude-ai-feedback, plan-blokeret, codex-feedback), scan baglæns for `ny-plan-version` eller `slut-rapport-*` du endnu ikke har leveret review for.
+
+   **Krydscheck-mønster (obligatorisk før du konkluderer "ingen opgave"):** Åbn plan-fil (`docs/coordination/<pakke>-plan.md`), se version-header (fx "Plan-version: V2"), og sammenlign med dine egne committed review-filer i `docs/coordination/plan-feedback/`. Hvis plan er V2 og din seneste review er V1: V2 mangler review, lever den.
    - `ny-plan-version` → læs plan-fil + krav-dok, lever review
-   - `codex-feedback` → ignorer (din egen, allerede leveret)
-   - `claude-ai-feedback` → ignorer (Claude.ai's, ikke din opgave)
+   - `codex-feedback` → ignorer (din egen, allerede leveret) — men scan baglæns for ny-plan-version under denne
+   - `claude-ai-feedback` → ignorer (Claude.ai's, ikke din opgave) — men scan baglæns for ny-plan-version under denne
    - `plan-blokeret` → ignorer (Mathias' opgave at afgøre)
    - `slut-rapport-push` → læs slut-rapport, lever review
    - `slut-rapport-pr` → læs slut-rapport (PR-version), lever review
+
 5. **Eksekvér** den relevante review
 6. **Commit feedback eller approval** til en af disse filer:
-   - Plan-review: `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md` (feedback) ELLER `docs/coordination/plan-feedback/<pakke>-approved-codex.md` (approval)
+   - Plan-review: `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md` (feedback) ELLER `docs/coordination/plan-feedback/<pakke>-V<n>-approved-codex.md` (approval)
    - Slut-rapport-review: `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<n>.md`
 7. **Push** til samme branch som planen bor på
 8. **Rapportér til Mathias kort** — hvad du fandt, commit-hash
