@@ -60,10 +60,15 @@ Fra repo-rod:
 
 ## Disciplin-mekanismer
 
-- **Pre-commit:** Husky + lint-staged kører Prettier og ESLint på
-  staged files (`.husky/pre-commit`)
+- **Pre-commit:** Husky + lint-staged. Prettier kører på alle staged
+  tekst-filer (`*.{ts,tsx,js,jsx,json,md,yml,yaml,css,html}`); ESLint
+  kører kun på `apps/web/**/*.{ts,tsx}` (jf. `package.json#lint-staged`).
+  Hook-konfiguration i `.husky/pre-commit`.
 - **CI:** GitHub Actions kører hele pipelinen på PRs
   (`.github/workflows/ci.yml`)
+- **Codex-notify:** GitHub Action poster comment på tracker-issue når
+  plan-/feedback-/rapport-filer pushes (`.github/workflows/codex-notify.yml`,
+  etableret i H010.7, udvidet med plan-paths i H021)
 - **Branch-protection:** Påkrævede checks + review + linear history.
   Konfiguration dokumenteret i `.github/BRANCH_PROTECTION.md`
 - **ESLint:** Delt config i `@stork/eslint-config` med Stork-regler
@@ -73,5 +78,4 @@ Fra repo-rod:
 
 ## Status
 
-Fase 0 — fundament. Se forrige sessions
-`code-forstaaelse-samlet.md` for kontekst og A1-A10-plan.
+Fase 0 — fundament.
