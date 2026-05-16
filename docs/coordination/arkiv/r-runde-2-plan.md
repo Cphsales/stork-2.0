@@ -43,31 +43,31 @@
 
 ### Beslutninger på implementations-sub-spørgsmål (4 nye)
 
-| #   | Beslutning                                                         | Konsekvens                                                      |
-| --- | ------------------------------------------------------------------ | --------------------------------------------------------------- |
-| 6   | unlock_pay_period deaktivering → **Option C**                      | `status='approved', is_active=false`. Ingen lifecycle-konflikt. |
-| 7   | D4 fitness-check → **live-query med skip-when-no-token**           | Samme pattern som `db-rls-policies`.                            |
-| 8   | T1 untracked tests → **cleanup EFTER R7a-d**                       | Tests reflekterer fixed state.                                  |
-| 9   | M1 permission matrix → **separat fil** `docs/permission-matrix.md` | Auto-genereret fra pg_proc + role_page_permissions.             |
+| #   | Beslutning                                                                 | Konsekvens                                                      |
+| --- | -------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 6   | unlock_pay_period deaktivering → **Option C**                              | `status='approved', is_active=false`. Ingen lifecycle-konflikt. |
+| 7   | D4 fitness-check → **live-query med skip-when-no-token**                   | Samme pattern som `db-rls-policies`.                            |
+| 8   | T1 untracked tests → **cleanup EFTER R7a-d**                               | Tests reflekterer fixed state.                                  |
+| 9   | M1 permission matrix → **separat fil** `docs/teknisk/permission-matrix.md` | Auto-genereret fra pg_proc + role_page_permissions.             |
 
 ---
 
 ## Sektion 2: Migrations-rækkefølge (v2)
 
-| Step   | Type           | Filnavn                                                                     | Sigte                                                                                                                                                     | Afhængigheder                                  |
-| ------ | -------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **V1** | recon          | (ingen migration)                                                           | `has_function_privilege` + PostgREST-eksponering-test for `set_config`                                                                                    | —                                              |
-| **V2** | recon          | (ingen migration)                                                           | **Live DB-inventory**: alle funktioner + cron-bodies med (a) `regprocedure::text`, (b) `is_active = true`-read uden `status='active'`                     | —                                              |
-| R7a    | migration      | `r7a_regprocedure_callable_fix.sql`                                         | Fix alle steder fra V2's inventory (a). Inkluderer cron.job-bodies.                                                                                       | V1 ikke-blokerende, V2                         |
-| R7b    | migration      | `r7b_has_permission_can_view_required.sql`                                  | Fix has_permission: kræv `can_view=true` altid                                                                                                            | V1 ikke-blokerende                             |
-| R7c    | migration      | `r7c_verify_anonymization_consistency_permission.sql`                       | Tilføj has_permission til verify_anonymization_consistency + Q-SEED                                                                                       | R7b                                            |
-| R7d    | migration      | `r7d_is_active_status_alignment.sql`                                        | (a) Backfill is_active=false hvor status<>'active'; (b) Opdatér ALLE readers fra V2's inventory (b); (c) cron.unschedule+reschedule med opdaterede bodies | R7a (regprocedure-fix før reader-refactor), V2 |
-| R7f    | fitness-update | `scripts/fitness.mjs`                                                       | db-rls-policies udvidet til core\_\*-schemas                                                                                                              | —                                              |
-| R7g    | fitness-update | `scripts/fitness.mjs`                                                       | stripDollarQuoted differentier DO vs CREATE FUNCTION vs cron.schedule                                                                                     | —                                              |
-| D4     | fitness-add    | `scripts/fitness.mjs`                                                       | Live-query: aktive mappings.table_name → matching write-policy session-var                                                                                | R7d                                            |
-| D5     | fitness-add    | `scripts/fitness.mjs`                                                       | **Live `pg_get_functiondef` + cron.job-introspection** (ikke migration-grep): readers af lifecycle-tabeller skal have status='active'                     | R7d                                            |
-| **T1** | tests          | `supabase/tests/**/*.sql` + `scripts/run-db-tests.mjs` + CI-kald            | Cleanup + nye e2e-tests + test-runner wiring                                                                                                              | R7a-d                                          |
-| **M1** | dokumentation  | `docs/permission-matrix.md`, `docs/teknisk-gaeld.md` G031/G032, `CLAUDE.md` | Auto-genereret matrix fra pg_proc + G-numre + CLAUDE.md disciplin                                                                                         | R7a-d + T1                                     |
+| Step   | Type           | Filnavn                                                                             | Sigte                                                                                                                                                     | Afhængigheder                                  |
+| ------ | -------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **V1** | recon          | (ingen migration)                                                                   | `has_function_privilege` + PostgREST-eksponering-test for `set_config`                                                                                    | —                                              |
+| **V2** | recon          | (ingen migration)                                                                   | **Live DB-inventory**: alle funktioner + cron-bodies med (a) `regprocedure::text`, (b) `is_active = true`-read uden `status='active'`                     | —                                              |
+| R7a    | migration      | `r7a_regprocedure_callable_fix.sql`                                                 | Fix alle steder fra V2's inventory (a). Inkluderer cron.job-bodies.                                                                                       | V1 ikke-blokerende, V2                         |
+| R7b    | migration      | `r7b_has_permission_can_view_required.sql`                                          | Fix has_permission: kræv `can_view=true` altid                                                                                                            | V1 ikke-blokerende                             |
+| R7c    | migration      | `r7c_verify_anonymization_consistency_permission.sql`                               | Tilføj has_permission til verify_anonymization_consistency + Q-SEED                                                                                       | R7b                                            |
+| R7d    | migration      | `r7d_is_active_status_alignment.sql`                                                | (a) Backfill is_active=false hvor status<>'active'; (b) Opdatér ALLE readers fra V2's inventory (b); (c) cron.unschedule+reschedule med opdaterede bodies | R7a (regprocedure-fix før reader-refactor), V2 |
+| R7f    | fitness-update | `scripts/fitness.mjs`                                                               | db-rls-policies udvidet til core\_\*-schemas                                                                                                              | —                                              |
+| R7g    | fitness-update | `scripts/fitness.mjs`                                                               | stripDollarQuoted differentier DO vs CREATE FUNCTION vs cron.schedule                                                                                     | —                                              |
+| D4     | fitness-add    | `scripts/fitness.mjs`                                                               | Live-query: aktive mappings.table_name → matching write-policy session-var                                                                                | R7d                                            |
+| D5     | fitness-add    | `scripts/fitness.mjs`                                                               | **Live `pg_get_functiondef` + cron.job-introspection** (ikke migration-grep): readers af lifecycle-tabeller skal have status='active'                     | R7d                                            |
+| **T1** | tests          | `supabase/tests/**/*.sql` + `scripts/run-db-tests.mjs` + CI-kald                    | Cleanup + nye e2e-tests + test-runner wiring                                                                                                              | R7a-d                                          |
+| **M1** | dokumentation  | `docs/teknisk/permission-matrix.md`, `docs/teknisk-gaeld.md` G031/G032, `CLAUDE.md` | Auto-genereret matrix fra pg_proc + G-numre + CLAUDE.md disciplin                                                                                         | R7a-d + T1                                     |
 
 **Total:** 2 recon + 4 SQL-migrations + 4 fitness-ændringer + 1 test-pakke + 1 dok-pakke. R7e udgår.
 
@@ -105,7 +105,7 @@ Uændret fra v1 — se v1's tabel. Stale: 1 (benchmark). Opdatér: 11. Commit so
 Leveres som **auto-genereret** fil. SQL-template:
 
 ```sql
--- docs/permission-matrix.md genereres via:
+-- docs/teknisk/permission-matrix.md genereres via:
 copy (
   select n.nspname || '.' || p.proname as rpc,
          /* parse pg_get_functiondef for has_permission(...,...,...) */
