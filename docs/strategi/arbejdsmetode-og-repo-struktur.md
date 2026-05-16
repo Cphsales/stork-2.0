@@ -1,6 +1,6 @@
 # Stork 2.0 — Arbejdsmetode og repo-struktur
 
-**Status:** Plan, ikke aktiveret. Etableres efter R-runde-2 er færdig.
+**Status:** Aktiveret via H010 (commit `3c6bc0b`).
 
 ---
 
@@ -25,12 +25,14 @@ docs/
 │   ├── vision-og-principper.md
 │   ├── stork-2-0-master-plan.md
 │   ├── arbejds-disciplin.md
+│   ├── arbejdsmetode-og-repo-struktur.md
 │   └── bygge-status.md
 │
 ├── coordination/          # aktiv arbejds-state
 │   ├── aktiv-plan.md
 │   ├── seneste-rapport.md
 │   ├── mathias-afgoerelser.md
+│   ├── cutover-checklist.md
 │   ├── codex-reviews/
 │   ├── rapport-historik/
 │   └── arkiv/
@@ -43,7 +45,8 @@ docs/
 │
 └── skabeloner/            # genbrugelige skabeloner
     ├── plan-skabelon.md
-    └── rapport-skabelon.md
+    ├── rapport-skabelon.md
+    └── codex-review-prompt.md
 ```
 
 **Princip:** én sti til alt. Sporing via git, ikke chat-arkæologi.
@@ -117,15 +120,16 @@ Tre red flags hver aktør selv skal spotte.
 
 ## To høj-værdi-tiltag
 
-### 1. Automatiseret Codex-trigger
+### 1. Codex notification-trigger (etableret via H010.7, udvidet via H021)
 
-GitHub Action der trigger på commits til `docs/coordination/seneste-rapport.md`.
+GitHub Action `codex-notify.yml` trigger på commits til plan-/feedback-/rapport-filer.
 
-- Action kører Codex CLI mod rapport + diff'et siden sidste validering
-- Output committes som `docs/coordination/codex-reviews/<timestamp>.md`
-- Ingen auto-block, ingen auto-merge — Mathias ser begge rapporter og afgør
+- Nuværende state: **notification-only**. Action poster comment til tracker-issue #12 når relevante filer pushes (`aktiv-plan.md`, `plan-feedback/*.md`, `seneste-rapport.md`).
+- Codex CLI eksekverer IKKE automatisk. Codex læser manuelt efter session-start og leverer review via plan-feedback-commits.
+- Plan-paths-udvidelse leveret i H021 (round-trip-loop for plan-iterationer).
+- Ingen auto-block, ingen auto-merge — Mathias afgør altid.
 
-**Værdi:** fjerner manuel paste-cyklus. Codex bliver konsistent del af workflow uden manuel aktivering.
+**Værdi:** notification fjerner behov for manuel paste-cyklus mellem aktører. Auto-eksekvering af Codex CLI overvejes ikke (kræver API-key-konfig + monitorering — ikke prioriteret).
 
 ### 2. Beslutnings-log
 
@@ -152,7 +156,7 @@ Efter R-runde-2 er færdig:
 
 3. **Code opdaterer `arbejds-disciplin.md`** med disciplin-pakken (afsnit 1-4 ovenfor).
 
-4. **GitHub Action + Codex-trigger** sættes op som separat lille pakke. Kan kræve API-key-konfig — håndteres når relevant.
+4. **GitHub Action + Codex-trigger** er etableret i H010.7 som `.github/workflows/codex-notify.yml` (notification-only til tracker-issue #12) og udvidet med plan-paths i H021.
 
 ---
 
