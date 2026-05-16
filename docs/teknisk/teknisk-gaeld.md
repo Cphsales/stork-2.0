@@ -8,7 +8,7 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 14. maj 2026 (efter retroaktiv gennemgang trin 1-4)
+**Sidste opdatering:** 16. maj 2026 (H020 dokument-konsistens — M12 G019-arkivering, M21 dato, M22 schema-navn; afspejler seneste tilføjelser G031-G044 fra R-runde-5..R8 + Q-pakke + H016/H020-audit)
 
 ---
 
@@ -289,7 +289,7 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Skal løses:** R8b — efter sales-tabel + realistic data-volume (lag E / trin 9+, ideelt før cutover-blocker-listen)
 - **Risiko hvis glemt:** Mellem. CI-blocker (§3) kan ikke håndhæves uden benchmark-test. Real-volume kan afsløre uventede flaskehalse.
 - **Plan (R8b):**
-  1. Bygg `core_sales.sales`-tabel + realistic seed (~5000 rows/periode)
+  1. Bygg `core_money.sales`-tabel + realistic seed (~5000 rows/periode)
   2. R8b-test: kør `pay_period_compute_candidate` + `pay_period_lock` på simuleret data
   3. Mål: total varighed &lt;10s (master-plan §1.14 SLA)
   4. Hvis SLA overskrides: profilér + indekser/optimisér før cutover
@@ -297,16 +297,16 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 
 ### [G030] MELLEM — `commission_snapshots.sale_id` er `gen_random_uuid()`-placeholder (R5b post-lag-E)
 
-- **Beskrivelse:** R5 (Fund 6) implementerede `FOR UPDATE`-locking i compute_candidate, men **deferred** Fund 5 (deterministic sale_id). `_pay_period_compute_candidate_internal` INSERT'er commission_snapshots-rows med `sale_id := gen_random_uuid()` som placeholder. Reel sale_id er FK til `core_sales.sales` (eksisterer ikke før lag E / trin 9+).
+- **Beskrivelse:** R5 (Fund 6) implementerede `FOR UPDATE`-locking i compute_candidate, men **deferred** Fund 5 (deterministic sale_id). `_pay_period_compute_candidate_internal` INSERT'er commission_snapshots-rows med `sale_id := gen_random_uuid()` som placeholder. Reel sale_id er FK til `core_money.sales` (eksisterer ikke før lag E / trin 9+).
 - **Vision-svækkelse:** §0 (én sandhed) + §1.6 (snapshot = frosset state). Placeholder sale_id giver illusorisk dependency-tracking — rekompute med samme period_id+employee_id+amount producerer FORSKELLIGE sale_id'er hver gang.
 - **Introduceret:** Trin 4 (`20260514150005_t7_lock_pipeline.sql`) + bevaret i R3/R5
 - **Opdaget:** Codex Fund 5 (DEL 8 R5 forberedelse)
 - **Skal løses:** R5b — efter sales-tabel eksisterer (lag E, ~trin 9+)
 - **Risiko hvis glemt:** Mellem. Snapshot mister dependency-link til underliggende sale. Recompute kan ikke verificere "samme input → samme output" på sale-niveau.
 - **Plan (R5b):**
-  1. Bygg `core_sales.sales`-tabel i lag E (trin 9 eller senere)
-  2. R5b-migration: refactor `_pay_period_compute_candidate_internal` til at iterere over `core_sales.sales` for perioden og bruge `sales.id` direkte
-  3. ALTER TABLE commission_snapshots ADD FOREIGN KEY sale_id → core_sales.sales(id)
+  1. Bygg `core_money.sales`-tabel i lag E (trin 9 eller senere)
+  2. R5b-migration: refactor `_pay_period_compute_candidate_internal` til at iterere over `core_money.sales` for perioden og bruge `sales.id` direkte
+  3. ALTER TABLE commission_snapshots ADD FOREIGN KEY sale_id → core_money.sales(id)
   4. Backfill: hvis pre-cutover skal locked snapshots bevares, kortlæg placeholder→real sale_id; pre-cutover er det fint at slette test-rows og rekomputere
   5. Fitness-check: forbyde `gen_random_uuid()` i compute-internal-funktioner
 
@@ -460,17 +460,15 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   b) Break-glass-op-type `test_cleanup` med whitelist-RPC der DELETE'er pay_periods kun for test-dato-range (audit-spor + 2-actor flow)
   c) Dato-randomisering så kollision aldrig kan ske inden for dag
 
+---
+
+## Løst gæld (arkiv)
+
 ### [G019] LAV — `stork_audit` antog uuid PK; singletons med smallint/integer PK var ikke testet
 
 - **Beskrivelse:** Audit-trigger castede `to_jsonb(new)->>'id'` til uuid uden type-tjek. `pay_period_settings.id` (smallint) og `superadmin_settings.id` (integer) var bootstrappet før audit-trigger blev attached, så bug'en blev ikke opdaget før første UPDATE.
 - **Vision-svækkelse:** "Anonymisering bevarer audit" + "Én sandhed" — singletons kunne ikke opdateres uden audit-bypass.
 - **Introduceret:** Trin 1 (`20260514120003_t1_audit_partitioned.sql:143`)
 - **Opdaget:** 2026-05-14 ved G012-mitigation (UPDATE på pay_period_settings)
-- **Status i denne commit:** **LØST i `20260514160000_t1_inline_fix_audit_non_uuid_id.sql`** — TRY/CATCH omkring uuid-cast. record_id=NULL ved non-uuid PK; id-værdien bevares i old/new_values jsonb. Audit-trail intakt.
-- **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision (efter Mathias-godkendelse af denne commit).
-
----
-
-## Løst gæld (arkiv)
-
-_Ingen endnu. G019 flyttes hertil ved næste revision._
+- **Løst:** `20260514160000_t1_inline_fix_audit_non_uuid_id.sql` — TRY/CATCH omkring uuid-cast. record_id=NULL ved non-uuid PK; id-værdien bevares i old/new_values jsonb. Audit-trail intakt.
+- **Arkiveret:** 2026-05-16 (H020 M12).
