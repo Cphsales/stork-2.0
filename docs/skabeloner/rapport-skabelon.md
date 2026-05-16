@@ -75,6 +75,28 @@ Følger `docs/strategi/arbejds-disciplin.md` sektionen "Vision-tjek-skabelon —
 
 ---
 
+## Oprydning + opdatering udført
+
+Verifikation mod plan-filens "Oprydnings- og opdaterings-strategi"-sektion. Hver punkt:
+
+**Filer flyttet til arkiv:**
+
+- [fil-sti] → [arkiv-sti] (commit-hash)
+- [...]
+
+**Filer slettet:** [liste eller "ingen"]
+
+**Dokumenter opdateret:**
+
+- [dokument-sti]: [hvad blev ændret] (commit-hash)
+- [...]
+
+**Reference-konsekvenser håndteret:** [liste eller "ikke relevant"]
+
+**Verifikation:** alle `grep`-tjek fra planen returnerer 0 hits. Hvis afvigelse: dokumentér i Plan-afvigelser ovenfor.
+
+---
+
 ## Næste skridt
 
 - **Næste pakke:** [navn + kort beskrivelse]
