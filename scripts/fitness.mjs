@@ -68,14 +68,38 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
 // row-level triggers.
 // Trin 1: audit_log.
 // Trin 6: anonymization_state (rettelse 18 A3).
-// Trin 7: commission_snapshots, salary_corrections, cancellations.
+// Trin 7: commission_snapshots, salary_corrections, cancellations, pay_periods.
 // Trin 16 (kommende): rejections, basket_corrections.
+//
+// H024: pay_periods tilføjet (Codex sidefund #3 — pay_periods har
+// `DELETE altid blokeret` via lock_and_delete_check, men manglede TRUNCATE-
+// blok-check).
 const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
   "core_compliance.audit_log",
   "core_compliance.anonymization_state",
   "core_money.commission_snapshots",
   "core_money.salary_corrections",
   "core_money.cancellations",
+  "core_money.pay_periods",
+];
+
+// H024: Tabeller hvor DB-tests der INSERT'er skal bruge BEGIN/ROLLBACK wrap.
+// Strict immutability + conditional immutability + lifecycle-DELETE-restricted.
+// Fitness-check `db-test-tx-wrap-on-immutable-insert` håndhæver disciplin.
+// Allowlist-kommentar `-- no-transaction-needed: <reason>` undertrykker check pr. fil.
+const TX_WRAP_REQUIRED_FOR_TEST_INSERT = [
+  // Strict immutability (RAISE'r ubetinget på UPDATE/DELETE)
+  "core_compliance.audit_log",
+  "core_compliance.anonymization_state",
+  "core_money.cancellations",
+  "core_money.salary_corrections",
+  // Conditional immutability (lock-and-delete-mønster)
+  "core_money.commission_snapshots",
+  "core_money.pay_periods",
+  // Lifecycle-DELETE-restricted (status<>'draft' blokerer DELETE)
+  "core_compliance.anonymization_strategies",
+  "core_compliance.anonymization_mappings",
+  "core_compliance.break_glass_operation_types",
 ];
 
 // R2 (master-plan rettelse 23): Snapshot-tabeller der er bevidst undtaget
@@ -834,6 +858,58 @@ async function legacyIsActiveReaders() {
   return { name: "legacy-is-active-readers", violations };
 }
 
+// H024: DB-tests der INSERT'er i immutable/lifecycle-DELETE-blokerede tabeller
+// skal bruge BEGIN/ROLLBACK wrap. Forhindrer non-idempotente tests (G043/G044
+// grundårsag). Falsk-negativ-afgrænsning: fanger ikke RPC-side-effects der
+// INSERT'er indirekte (G-nummer for senere Mønster D-udvidelse).
+//
+// Allowlist: `-- no-transaction-needed: <reason>` linje i fil-toppen undertrykker
+// check for hele filen.
+async function dbTestTxWrapOnImmutableInsert() {
+  const violations = [];
+  const testsDir = "supabase/tests";
+  const files = await collectSqlFiles(testsDir);
+  // Byg regex for hver tabel: matcher "insert into <schema>.<table>" case-insensitive
+  const insertPatterns = TX_WRAP_REQUIRED_FOR_TEST_INSERT.map((qname) => ({
+    qname,
+    re: new RegExp(`insert\\s+into\\s+${qname.replace(".", "\\.")}\\b`, "i"),
+  }));
+  for (const file of files) {
+    const content = await readFile(join(ROOT, file), "utf8");
+    // Allowlist-eskap
+    if (/^\s*--\s*no-transaction-needed\s*:/im.test(content)) continue;
+    const hits = insertPatterns.filter((p) => p.re.test(content));
+    if (hits.length === 0) continue;
+    // Krav: filen har eksplicit `begin;` OG `rollback;` på linje-niveau
+    const hasBegin = /^\s*begin\s*;\s*$/im.test(content);
+    const hasRollback = /^\s*rollback\s*;\s*$/im.test(content);
+    if (hasBegin && hasRollback) continue;
+    const tableList = hits.map((h) => h.qname).join(", ");
+    violations.push(`${file}: INSERT i [${tableList}] uden BEGIN/ROLLBACK wrap`);
+  }
+  return { name: "db-test-tx-wrap-on-immutable-insert", violations };
+}
+
+async function collectSqlFiles(dir) {
+  const out = [];
+  async function recurse(d) {
+    let entries;
+    try {
+      entries = await readdir(join(ROOT, d), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (SKIP_DIRS.has(e.name)) continue;
+      const sub = `${d}/${e.name}`;
+      if (e.isDirectory()) await recurse(sub);
+      else if (e.name.endsWith(".sql")) out.push(sub);
+    }
+  }
+  await recurse(dir);
+  return out;
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
 const checks = [
@@ -851,6 +927,7 @@ const checks = [
   dbRlsPolicies,
   writePolicySessionVarConsistency,
   legacyIsActiveReaders,
+  dbTestTxWrapOnImmutableInsert,
 ];
 
 async function main() {
