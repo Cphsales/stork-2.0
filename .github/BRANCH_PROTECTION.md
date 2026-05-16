@@ -31,7 +31,7 @@ gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
-  /repos/copenhagensales/stork-2.0/branches/main/protection \
+  /repos/Cphsales/stork-2.0/branches/main/protection \
   --input - <<'EOF'
 {
   "required_status_checks": {
@@ -57,7 +57,7 @@ Succesfuld response ser ud som:
 
 ```json
 {
-  "url": "https://api.github.com/repos/copenhagensales/stork-2.0/branches/main/protection",
+  "url": "https://api.github.com/repos/Cphsales/stork-2.0/branches/main/protection",
   "required_status_checks": { "strict": true, "contexts": ["Lint, typecheck, test, build"], ... },
   "enforce_admins": { "enabled": true, ... },
   ...
@@ -66,7 +66,7 @@ Succesfuld response ser ud som:
 
 ## Metode B — UI
 
-1. Gå til https://github.com/copenhagensales/stork-2.0/settings/branches
+1. Gå til https://github.com/Cphsales/stork-2.0/settings/branches
 2. Under "Branch protection rules" klik **Add classic branch protection rule**
    - (Hvis kun "Add ruleset" vises: brug Metode A i stedet — UI har skiftet til rulesets-only på dit repo. Resultatet er funktionelt identisk)
 3. **Branch name pattern:** `main`
@@ -140,7 +140,7 @@ git push origin --delete main
 ### Test 4 (positivt) — protection er aktiv ifølge API
 
 ```bash
-gh api /repos/copenhagensales/stork-2.0/branches/main/protection \
+gh api /repos/Cphsales/stork-2.0/branches/main/protection \
   | jq '{
       linear_history: .required_linear_history.enabled,
       force_push: .allow_force_pushes.enabled,
