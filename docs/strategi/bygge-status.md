@@ -2,7 +2,7 @@
 
 **Formål:** Sporing af §4 byggerækkefølge fra master-planen. Opdateres efter hvert trin.
 
-**Sidste opdatering:** 14. maj 2026 (efter trin 4 — periode-skabelon + auto-lock + break-glass)
+**Sidste opdatering:** 16. maj 2026 (efter H020 dokument-konsistens — M8 klassifikations-tal + M13 dato)
 
 ---
 
@@ -104,7 +104,7 @@
 - source_type-enum udvidet med 'migration' (§0.5 brugte det, men §1.3 manglede)
 - employees_active_idx ændret til (id, termination_date) WHERE anonymized_at IS NULL fordi current_date ikke er IMMUTABLE
 
-**Verifikation:** 10 fitness-checks grøn, 207 klassificerede kolonner
+**Verifikation:** 10 fitness-checks grøn, 202 klassificerede kolonner
 
 ---
 
@@ -131,7 +131,7 @@
 - Anonymize_employee hører til trin 6
 - Migration-scripts har TODO-markører for 1.0-skema
 
-**Verifikation:** Alle CI-blockers grøn, 211 klassificerede kolonner
+**Verifikation:** Alle CI-blockers grøn, 202 klassificerede kolonner
 
 ---
 
@@ -151,7 +151,7 @@
 - Crons: verify_anonymization_daily (02:15 UTC) + retention_cleanup_daily (02:30 UTC)
 - Pro-tier bekræftet i master-plan §1.14
 
-**Verifikation:** Alle CI-blockers grøn, 233 klassificerede kolonner
+**Verifikation:** Alle CI-blockers grøn, 202 klassificerede kolonner
 
 ---
 
