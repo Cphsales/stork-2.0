@@ -16,10 +16,10 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Andre roller skal være UI-baserede via `role_page_permissions`. Hardkodet `is_admin()` bryder "alt drift styres i UI".
 - **Plan-reference:** `94e6cbb` (D4)
 
-### 2026-05-11 — Tre feedback-memories aktiveret for Code's selvdisciplin (no-spejling)
+### 2026-05-11 / 2026-05-15 — Tre feedback-memories aktiveret for Code's selvdisciplin
 
-- **Begrundelse:** Mathias' løse retning er ikke specifikation; Code skal vælge mindste rimelige tolkning og bekræfte, ikke spejle løse tanker til fast arkitektur.
-- **Plan-reference:** `feedback_no_spejling.md` (2026-05-11)
+- **Begrundelse:** Mathias' løse retning er ikke specifikation; Code skal vælge mindste rimelige tolkning og bekræfte, ikke spejle løse tanker til fast arkitektur. To efterfølgende memories adresserer plan-leverance-disciplin (kontrakt) og divergence-håndtering (stop og rapportér).
+- **Plan-reference:** `feedback_no_spejling.md` (2026-05-11), `feedback_plan_leverance_is_contract.md` (2026-05-15, knyttet til P1a-fix-commit `2f107b1`), `feedback_dont_fabricate_to_fit.md` (2026-05-15, knyttet til R7h-merge-iterations samme dag). Faktiske oprettelses-datoer pr. memory-fil (filsystem mtime + originSessionId).
 
 ### 2026-05-12 — Greenfield-princip i §3.4
 
@@ -91,7 +91,7 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Trin-cyklus + AI-arbejdsdeling + Codex-fund-håndtering må være eksplicit dokumenteret for at undgå rolle-drift mellem aktører.
 - **Plan-reference:** `9413d09`
 
-### 2026-05-15 — Q-pakke: 20 RPC'er konverteret fra is_admin() til has_permission()
+### 2026-05-15 — Q-pakke: 22 RPC'er konverteret fra is_admin() til has_permission()
 
 - **Begrundelse:** Vision-princip 2-operationalisering. Hver hardkodet `is_admin()`-check skal nu validere via UI-baseret permission-tabel.
 - **Plan-reference:** `e3289a1`
