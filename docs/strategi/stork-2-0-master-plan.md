@@ -1,6 +1,6 @@
 # Stork 2.0 — Master-plan
 
-**Status:** Komplet med 17 rettelser indlejret
+**Status:** Komplet med 43 rettelser indlejret (Appendix C — bemærk at tabel-numrene 18-29 er duplikerede pga. to lag af nummerering; antallet refererer faktiske row-entries)
 **Dato:** 13. maj 2026
 **Skopus:** Fundament + Lag E (forretnings-domæner)
 **Grundlag:** Behov, krav-dokumenter, FM deep dive, 17 strategiske afgørelser
@@ -139,10 +139,6 @@ Mathias eksekverer manuelt når han er klar.
 - `audit_log` (2.0's universelle) fanger upload-handlingerne
 - 1.0's audit-historik importeres separat til `legacy_audit` — ikke blandes med 2.0's audit_log
 - Cutover-handling auditeres som operationel handling med detaljeret reason
-
-### Reference
-
-Detaljeret migration-analyse i `docs/migration-strategi-analyse.md` bevares som baggrund. **Master-planen er autoritativ; analyse-dokumentet er kun reference.** Ved konflikt: master-planen overrules.
 
 ---
 
