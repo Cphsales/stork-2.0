@@ -20,8 +20,8 @@
 --   - anonymization_strategies: AFTER INSERT/UPDATE/DELETE-trigger fyrer ✓.
 --   - employees: AFTER INSERT/UPDATE/DELETE-trigger fyrer ✓.
 
-set local stork.source_type = 'migration';
-set local stork.change_reason = 'H024: pre-cutover test-artefakt cleanup';
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'H024: pre-cutover test-artefakt cleanup', false);
 
 -- =========================================================================
 -- Step 1: Capture clean-target pay_period IDs til temp-table
