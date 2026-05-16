@@ -4,9 +4,9 @@
 # Den sidst-matchende regel vinder.
 
 # Default — alt review af Mathias (repo-ejer)
-*       @copenhagensales
+*       @Cphsales
 
 # Disciplin-mekanismer (lag B kommer) — kræver ekstra opmærksomhed
-# /supabase/migrations/        @copenhagensales
-# /packages/core/              @copenhagensales
-# /.github/                    @copenhagensales
+# /supabase/migrations/        @Cphsales
+# /packages/core/              @Cphsales
+# /.github/                    @Cphsales
