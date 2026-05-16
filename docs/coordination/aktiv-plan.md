@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv plan. H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit-hash der skrives ind her efter samle-commit.
+**Aktuel:** ingen aktiv plan. H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
 
 Når ny plan starter:
 
