@@ -388,6 +388,9 @@ $$;
 revoke execute on function core_identity.pending_change_apply(uuid) from public, anon;
 
 -- ─── Seed undo_settings for nye change_types ─────────────────────────────
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'T9 Step 2: seed undo_settings for org_node_*', false);
+
 insert into core_identity.undo_settings (change_type, undo_period_seconds)
 values
   ('org_node_upsert', 24 * 3600),

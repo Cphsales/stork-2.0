@@ -7,6 +7,10 @@
 --
 -- Migration-gate parser VALUES-statements; eksplicit listet pr. kolonne.
 
+select set_config('stork.allow_data_field_definitions_write', 'true', false);
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'T9 Step 13: classify alle T9-kolonner', false);
+
 insert into core_compliance.data_field_definitions
   (table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose) values
 

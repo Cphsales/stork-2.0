@@ -4,6 +4,7 @@
 -- arve-via-resolve-helper, helpers læser kun using(true)-tabeller.
 
 -- ─── role_permission_grants ─────────────────────────────────────────────
+-- no-dedup-key: konfig-tabel; unique index på (role_id, area/page/tab) er natural key.
 create table core_identity.role_permission_grants (
   id uuid primary key default gen_random_uuid(),
   role_id uuid not null references core_identity.roles(id) on delete cascade,

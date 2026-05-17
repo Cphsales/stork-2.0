@@ -4,6 +4,7 @@
 -- Direkte CRUD (ikke pending — krav-dok 4.5 specificerer ikke gældende dato).
 
 -- ─── permission_areas (top-niveau) ───────────────────────────────────────
+-- no-dedup-key: konfig-tabel; name er natural key (UNIQUE).
 create table core_identity.permission_areas (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
@@ -27,6 +28,7 @@ create trigger permission_areas_audit
   for each row execute function core_compliance.stork_audit();
 
 -- ─── permission_pages (FK areas) ─────────────────────────────────────────
+-- no-dedup-key: konfig-tabel; (area_id, name) er natural key (UNIQUE).
 create table core_identity.permission_pages (
   id uuid primary key default gen_random_uuid(),
   area_id uuid not null references core_identity.permission_areas(id) on delete restrict,
@@ -52,6 +54,7 @@ create trigger permission_pages_audit
   for each row execute function core_compliance.stork_audit();
 
 -- ─── permission_tabs (FK pages) ──────────────────────────────────────────
+-- no-dedup-key: konfig-tabel; (page_id, name) er natural key (UNIQUE).
 create table core_identity.permission_tabs (
   id uuid primary key default gen_random_uuid(),
   page_id uuid not null references core_identity.permission_pages(id) on delete restrict,

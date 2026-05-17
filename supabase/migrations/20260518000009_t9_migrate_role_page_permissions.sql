@@ -8,6 +8,9 @@
 -- (team-scope udgår per V5 mathias-afgoerelser pkt 14 + krav-dok 3.2.3).
 
 -- ─── Seed areas (page_key prefix-grupperinger + nye T9-areas) ───────────
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'T9 Step 11: seed permission-elementer + grants migration', false);
+
 insert into core_identity.permission_areas (name, sort_order) values
   ('identity', 1),
   ('permissions', 2),

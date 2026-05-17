@@ -407,6 +407,8 @@ select cron.schedule(
       v_failure integer := 0;
       v_started timestamptz := clock_timestamp();
     begin
+      perform set_config('stork.source_type', 'cron', true);
+      perform set_config('stork.change_reason', 'pending_changes_apply_due cron', true);
       for v_change_id in
         select id from core_identity.pending_changes
         where status = 'approved'
