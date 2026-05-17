@@ -2,11 +2,11 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** Ingen plan endnu. Krav-dokument klar:
-`docs/coordination/T9-krav-og-data.md` (godkendt af Mathias 2026-05-17). Pakke:
+**Aktuel:** `docs/coordination/T9-plan.md` (V1, claude/T9-plan-branch). Pakke:
 §4 trin 9 — Identitet del 2 (organisations-træet + permission-fundament +
-fortrydelses-mekanisme + import fra 1.0). Afventer at Code laver T9-plan V1
-på ny branch.
+fortrydelses-mekanisme + import fra 1.0). Krav-dok:
+`docs/coordination/T9-krav-og-data.md` (godkendt af Mathias 2026-05-17).
+Afventer Codex-review + Claude.ai-review.
 
 **Historisk:**
 
