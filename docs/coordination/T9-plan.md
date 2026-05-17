@@ -1,12 +1,30 @@
-# T9 — Plan V4
+# T9 — Plan V5
 
 **Pakke:** §4 trin 9 — Identitet del 2 (organisations-træet + permission-fundament + fortrydelses-mekanisme + import fra 1.0)
 **Krav-dok:** `docs/coordination/T9-krav-og-data.md` (merged 2026-05-17 i kommit `15ff4ee`)
-**Plan-version:** V4
+**Plan-version:** V5
 **Dato:** 2026-05-17
 **Disciplin-baseline:** Modsigelses-disciplin + Codex-opgraderings-rolle aktiv fra commit `09d3afb` (2026-05-17).
 
-**Revision V4 (denne version):** V4 addresserer 1 KRITISK fund fra Codex V3 (`docs/coordination/plan-feedback/T9-V3-codex.md`, commit `5db31cf`) + Claude.ai's V2-tilbagetrækning + KRITISK-feedback (`docs/coordination/plan-feedback/T9-V2-claude-ai.md`, commit `408ebf9`). Begge fund er samme klasse problem: temporal model skal versioneres på business effective_from, ikke på fysisk apply-tid.
+**Revision V5 (denne version):** V5 er systematisk sweep af V4's nye arkitektur gennem hele planen — ingen arkitektur-ændring, ren konsistens-rettelse. Adresserer 1 KRITISK fund fra både Codex V4 (`docs/coordination/plan-feedback/T9-V4-codex.md`, commit `977c64f`) og Claude.ai V4 (`docs/coordination/plan-feedback/T9-V4-claude-ai.md`, commit `f6e22df`) — begge identificerede samme problem: V4 introducerede effective-date-modellen i Beslutning 13 men efterlod gamle SQL-kontrakter (Valg 1's tabel-liste, Beslutning 1, Valg 2's cycle-detection, Valg 12's seed, Valg 13's `org_tree_read()`, Mathias-mapping) der refererer til den gamle mutable `org_nodes`-model. Inkonsistens betyder krav-dok 6.1 + 4.1 + 4.2 ikke entydigt leveres.
+
+**V5 sweep:**
+
+- **Beslutning 1:** rewritten — `org_nodes` er identity-only; mutable felter (name, parent_id, node_type, is_active) lever på `org_node_versions`. Cycle-detect i versions effective at NEW.effective_from
+- **Valg 1's tabel-liste:** `org_nodes` reduceret til identity-only (id, created_at, updated_at); `org_node_versions` har de mutable felter
+- **Valg 2:** AFTER-trigger flyttet fra `org_nodes` til `org_node_versions` (på rows effektive at current_date); cycle-detect over versions
+- **Valg 12 (seed):** opretter identity-row i `org_nodes` + initial version-row i `org_node_versions` med effective_from = '2026-05-17' (bootstrap-dato)
+- **Valg 13's `org_tree_read()`:** rewritten til `org_tree_read_at(current_date)`-pattern — recursive CTE over `org_node_versions`
+- **Mathias-mapping-tabel pkt 1, 2, 6, 10:** opdateret til at referere `org_node_versions` for mutable felter
+- **Nyt fitness-check** `org_nodes_no_mutable_columns_in_sql`: grep-baseret CI-blocker (sweep af `supabase/migrations/`) der fejler hvis nye SQL-kontrakter refererer `org_nodes.name|parent_id|node_type|is_active`. Per Codex+Claude.ai V4-anbefaling
+
+**Anti-glid runde 3+-status:** Vi er nu i runde 4-iteration (V5 er femte version). Per runde-3-disciplin stopper kun KRITISKE — det gjorde de igen i V4-runden, og fundet er samme problem-klasse som V2+V3. V5 er konsistens-sweep, ikke ny arkitektur. Hvis V5 stadig har inkonsistens: STOP og rapportér til Mathias.
+
+**Codex OPGRADERING-fund i V4:** Ingen.
+
+---
+
+**Revision V4 (historik):** V4 addresserede 1 KRITISK fund fra Codex V3 (`docs/coordination/plan-feedback/T9-V3-codex.md`, commit `5db31cf`) + Claude.ai's V2-tilbagetrækning + KRITISK-feedback (`docs/coordination/plan-feedback/T9-V2-claude-ai.md`, commit `408ebf9`). Begge fund er samme klasse problem: temporal model skal versioneres på business effective_from, ikke på fysisk apply-tid.
 
 - **Codex V3 KRITISK (effective_from vs updated_at):** V3's `org_node_history`-trigger skrev `version_started/version_ended` baseret på `NEW.updated_at` (fysisk mutation-tid). Det er forkert for future-dated changes (apply-tid ≠ effective_from-tid). V4 restrukturerer:
   - **`org_nodes`** bliver identity-only (id, created_at, updated_at) — uden mutable forretnings-felter
@@ -85,13 +103,13 @@
 
 ## Strukturel beslutning
 
-**Beslutning 1: Ét organisations-træ med node_type-felt (afdeling/team).**
+**Beslutning 1: Ét organisations-træ med node_type-felt (afdeling/team) — identity + versions-split (V4+V5).**
 
-Per krav-dok sektion 2 + pkt 28 (ét træ, ikke to). Tabellen `org_nodes` har self-refererende `parent_id` + `node_type ENUM ('department', 'team')`. Constraint: team-knuder kan ikke have børn (teams er løv-knuder for ejerskab; afdelinger kan have afdelinger + teams under). Vilkårligt antal niveauer (pkt 2 + krav-dok 3.1.2).
+Per krav-dok sektion 2 + pkt 28 (ét træ, ikke to). **V4-arkitektur (Beslutning 13):** `org_nodes` er identity-only-tabel (id, created_at, updated_at); mutable forretnings-felter (`name`, `parent_id`, `node_type`, `is_active`) lever på `org_node_versions`. parent_id på versions er self-refererende til `org_nodes.id` (identity stable på tværs af versions). Constraint: team-knuder kan ikke have børn — checked via versions effective at NEW.effective_from. Vilkårligt antal niveauer (pkt 2 + krav-dok 3.1.2). node_type-værdier `('department', 'team')` på versions, ikke på identity-row.
 
-**Beslutning 2: Materialiseret closure-table for subtree-evaluering.**
+**Beslutning 2: Materialiseret closure-table for subtree-evaluering (V4+V5).**
 
-Per master-plan rettelse 19 C1 + §1.7's princip "ingen rekursive CTE'er i RLS-policy-prædikater". Tabel `org_node_closure(ancestor_id, descendant_id, depth)` vedligeholdes af AFTER-trigger på `org_nodes`. Helpers læser closure direkte for Hiraki-evaluering.
+Per master-plan rettelse 19 C1 + §1.7's princip "ingen rekursive CTE'er i RLS-policy-prædikater". Tabel `org_node_closure(ancestor_id FK org_nodes, descendant_id FK org_nodes, depth)` vedligeholdes af AFTER-trigger på **`org_node_versions`** (ikke org_nodes direkte — V5-sweep). Closure rebuilds når versions effektive på current_date ændres; repræsenterer aldrig future-dated structure. Helpers læser closure direkte for Hiraki-evaluering (current-state path); historiske queries bygger via recursive CTE over versions for given dato (acceptabelt — sjældent, ingen perf-budget for historisk).
 
 **Beslutning 3: Versioneret placering (medarbejder + klient).**
 
@@ -231,37 +249,37 @@ Gælder ALLE places der spørger "current placement":
 
 Alle 32 afgørelser fra krav-dok sektion 10 honoreres 1:1. Konkret mapping af de centrale:
 
-| Krav-dok # | Afgørelse                                                               | Plan-element                                                                                                                                                                      |
-| ---------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------- |
-| 1          | Ejerskabs-kæde Cph Sales → afdelinger → teams → relationer              | `org_nodes.node_type` + parent_id-hierarki. CHECK: team kan ikke have børn                                                                                                        |
-| 2          | Afdelinger ændres sjældent; historik bevares                            | Versionerede placements + audit-trigger på org_nodes                                                                                                                              |
-| 3          | Team kan ophøre; medarbejdere bliver knude-løse                         | Step 5's `team_close`-RPC lukker alle åbne placements på teamet + sætter is_active=false; medarbejder-rows urørte                                                                 |
-| 4          | Klient kan aldrig dræbe et team                                         | Ingen CASCADE fra clients til org_nodes; client_node_placements har ON DELETE RESTRICT mod node                                                                                   |
-| 5          | Klient ejer sin egen data; følger klienten ved team-skift               | Konsekvens for trin 14+ (sales attribution via client_id, ikke team_id). Dokumenteres i bygge-status                                                                              |
-| 6          | is_active-flag på knuder                                                | `org_nodes.is_active` + trigger blokerer nye placements på inactive node                                                                                                          |
-| 7          | Én medarbejder på én knude ad gangen; også stab                         | Partial UNIQUE på `employee_node_placements (employee_id) WHERE effective_to IS NULL`; ingen stab-undtagelse                                                                      |
-| 8          | Cross-team-adgang via rolle/synlighed                                   | Beslutning 8 — synlighed evalueres i RPC-laget via `permission_resolve` + `acl_subtree_employees`; ingen flerdoblede placements understøttes                                      |
-| 9          | Ingen hardkodet horizon for migration                                   | Step 8 upload-script har `--from-date <date>` parameter; default = alt                                                                                                            |
-| 10         | Teams/afdelinger anonymiseres ikke                                      | Klassifikations-registry-rækker for alle org_nodes-kolonner: `pii_level='none'`                                                                                                   |
-| 11+12      | Permission-elementer er data i DB i tre niveauer                        | Beslutning 4 — tre tabeller (`permission_areas`/`pages`/`tabs`) med CRUD-RPC'er                                                                                                   |
-| 13         | To akser pr. (rolle × element): kan_se/tilgå + kan_skrive, og synlighed | Beslutning 5 — `role_permission_grants` med `can_access`/`can_write`/`visibility` kolonner                                                                                        |
-| 14         | Tre synligheds-værdier (Sig selv / Hiraki / Alt)                        | Visibility ENUM (`'self'                                                                                                                                                          | 'subtree' | 'all'`); migration mapper `'team' → 'subtree'` |
-| 15         | Hiraki udledt af placering                                              | Helper `acl_subtree_employees(employee_id)` joiner placement → node → closure → descendants. Knude-løs + synlighed=subtree returnerer tom array (krav-dok 4.9 sidste afsnit)      |
-| 16         | Synlighed pr. (rolle × element) — kan variere                           | grants-tabellen har en row pr. (rolle × niveau-id); samme rolle kan have forskellig visibility på forskellige elementer                                                           |
-| 17+18      | Superadmin = synlighed=Alt på alt; Mathias + Kasper                     | Seed-migration sætter superadmin-rolle med `visibility='all'` på alle areas+pages+tabs. Eksisterende admin-rolle fra trin 5 omdøbes til superadmin-rolle hvis ikke allerede gjort |
-| 19         | Klienter kun på team-knuder                                             | Trigger på `client_node_placements` BEFORE INSERT/UPDATE: verificér node_type='team'                                                                                              |
-| 20         | Knude-løs er gyldig tilstand                                            | Ingen NOT NULL-constraint der kræver placement; ingen trigger der forhindrer "fjern placement"                                                                                    |
-| 21         | Ingen stabs-team i 2.0                                                  | Ingen særlig node_type for stab; placeres på passende afdeling eller team                                                                                                         |
-| 22+23      | Fortrydelses-mekanisme + konfigurerbar periode                          | Beslutning 7 — `pending_changes`-tabel + `undo_settings(change_type, undo_period)` UI-redigerbar konfig                                                                           |
-| 24         | Import af træ + placeringer fra 1.0                                     | Step 8 — discovery + extract + upload-scripts                                                                                                                                     |
-| 25         | Klient-til-team-import udskydes til trin 10                             | T9 bygger kun `client_node_placements`-strukturen uden client-FK + uden import-script                                                                                             |
-| 26         | Alle navne på afdelinger/teams oprettes i UI                            | Migration seed kun root-knuden "Copenhagen Sales" + "Ejere"-afdelingen (for Mathias + Kasper, jf. pkt 18); andre knuder oprettes i UI                                             |
-| 27         | Knude/element-styring via almindelig rettighed                          | RPC'er beskyttes af `has_permission('organisations-træ', 'manage', can_write=true)` osv. — ingen særlig admin-bypass                                                              |
-| 28         | Ét træ; permission-elementer ikke et træ                                | Permission-elementer er tre separate tabeller med simple FK-kæder; ingen closure-table eller subtree-mekanik på dem                                                               |
-| 29         | Tx-rollback default for DB-tests                                        | Alle DB-tests bruger `BEGIN; ... ROLLBACK;` per CI-blocker 20; fitness-check håndhæver                                                                                            |
-| 30         | Plan-leverance er kontrakt                                              | Alle 9 funktions-grupper fra krav-dok sektion 4 leveres 1:1                                                                                                                       |
-| 31         | Fire-dokument-disciplin obligatorisk                                    | Sektion "Fire-dokument-konsultation" nederst i denne plan                                                                                                                         |
-| 32         | Oprydnings-strategi obligatorisk                                        | Sektion "Oprydnings- og opdaterings-strategi" nederst i denne plan                                                                                                                |
+| Krav-dok # | Afgørelse                                                               | Plan-element                                                                                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------- |
+| 1          | Ejerskabs-kæde Cph Sales → afdelinger → teams → relationer              | `org_node_versions.node_type` + `org_node_versions.parent_id`-hierarki (V5-sweep — mutable felter på versions, ikke org_nodes). CHECK: team kan ikke have børn — over current versions                                 |
+| 2          | Afdelinger ændres sjældent; historik bevares                            | `org_node_versions` (V4-arkitektur — Beslutning 13) bevarer hele historikken via effective_from/effective_to; audit-trigger på versions ved alle INSERT/UPDATE/DELETE                                                  |
+| 3          | Team kan ophøre; medarbejdere bliver knude-løse                         | Step 5's `team_close`-RPC lukker alle åbne placements på teamet + sætter is_active=false; medarbejder-rows urørte                                                                                                      |
+| 4          | Klient kan aldrig dræbe et team                                         | Ingen CASCADE fra clients til org_nodes; client_node_placements har ON DELETE RESTRICT mod node                                                                                                                        |
+| 5          | Klient ejer sin egen data; følger klienten ved team-skift               | Konsekvens for trin 14+ (sales attribution via client_id, ikke team_id). Dokumenteres i bygge-status                                                                                                                   |
+| 6          | is_active-flag på knuder                                                | `org_node_versions.is_active` (V5-sweep — på versions, ikke org_nodes); trigger på `employee_node_placements` + `client_node_placements` blokerer nye placements hvor target nodes current version har is_active=false |
+| 7          | Én medarbejder på én knude ad gangen; også stab                         | Partial UNIQUE på `employee_node_placements (employee_id) WHERE effective_to IS NULL`; ingen stab-undtagelse                                                                                                           |
+| 8          | Cross-team-adgang via rolle/synlighed                                   | Beslutning 8 — synlighed evalueres i RPC-laget via `permission_resolve` + `acl_subtree_employees`; ingen flerdoblede placements understøttes                                                                           |
+| 9          | Ingen hardkodet horizon for migration                                   | Step 8 upload-script har `--from-date <date>` parameter; default = alt                                                                                                                                                 |
+| 10         | Teams/afdelinger anonymiseres ikke                                      | Klassifikations-registry-rækker for alle `org_nodes` + `org_node_versions`-kolonner: `pii_level='none'` (V5-sweep — versions-tabel inkluderet)                                                                         |
+| 11+12      | Permission-elementer er data i DB i tre niveauer                        | Beslutning 4 — tre tabeller (`permission_areas`/`pages`/`tabs`) med CRUD-RPC'er                                                                                                                                        |
+| 13         | To akser pr. (rolle × element): kan_se/tilgå + kan_skrive, og synlighed | Beslutning 5 — `role_permission_grants` med `can_access`/`can_write`/`visibility` kolonner                                                                                                                             |
+| 14         | Tre synligheds-værdier (Sig selv / Hiraki / Alt)                        | Visibility ENUM (`'self'                                                                                                                                                                                               | 'subtree' | 'all'`); migration mapper `'team' → 'subtree'` |
+| 15         | Hiraki udledt af placering                                              | Helper `acl_subtree_employees(employee_id)` joiner placement → node → closure → descendants. Knude-løs + synlighed=subtree returnerer tom array (krav-dok 4.9 sidste afsnit)                                           |
+| 16         | Synlighed pr. (rolle × element) — kan variere                           | grants-tabellen har en row pr. (rolle × niveau-id); samme rolle kan have forskellig visibility på forskellige elementer                                                                                                |
+| 17+18      | Superadmin = synlighed=Alt på alt; Mathias + Kasper                     | Seed-migration sætter superadmin-rolle med `visibility='all'` på alle areas+pages+tabs. Eksisterende admin-rolle fra trin 5 omdøbes til superadmin-rolle hvis ikke allerede gjort                                      |
+| 19         | Klienter kun på team-knuder                                             | Trigger på `client_node_placements` BEFORE INSERT/UPDATE: verificér node_type='team'                                                                                                                                   |
+| 20         | Knude-løs er gyldig tilstand                                            | Ingen NOT NULL-constraint der kræver placement; ingen trigger der forhindrer "fjern placement"                                                                                                                         |
+| 21         | Ingen stabs-team i 2.0                                                  | Ingen særlig node_type for stab; placeres på passende afdeling eller team                                                                                                                                              |
+| 22+23      | Fortrydelses-mekanisme + konfigurerbar periode                          | Beslutning 7 — `pending_changes`-tabel + `undo_settings(change_type, undo_period)` UI-redigerbar konfig                                                                                                                |
+| 24         | Import af træ + placeringer fra 1.0                                     | Step 8 — discovery + extract + upload-scripts                                                                                                                                                                          |
+| 25         | Klient-til-team-import udskydes til trin 10                             | T9 bygger kun `client_node_placements`-strukturen uden client-FK + uden import-script                                                                                                                                  |
+| 26         | Alle navne på afdelinger/teams oprettes i UI                            | Migration seed kun root-knuden "Copenhagen Sales" + "Ejere"-afdelingen (for Mathias + Kasper, jf. pkt 18); andre knuder oprettes i UI                                                                                  |
+| 27         | Knude/element-styring via almindelig rettighed                          | RPC'er beskyttes af `has_permission('organisations-træ', 'manage', can_write=true)` osv. — ingen særlig admin-bypass                                                                                                   |
+| 28         | Ét træ; permission-elementer ikke et træ                                | Permission-elementer er tre separate tabeller med simple FK-kæder; ingen closure-table eller subtree-mekanik på dem                                                                                                    |
+| 29         | Tx-rollback default for DB-tests                                        | Alle DB-tests bruger `BEGIN; ... ROLLBACK;` per CI-blocker 20; fitness-check håndhæver                                                                                                                                 |
+| 30         | Plan-leverance er kontrakt                                              | Alle 9 funktions-grupper fra krav-dok sektion 4 leveres 1:1                                                                                                                                                            |
+| 31         | Fire-dokument-disciplin obligatorisk                                    | Sektion "Fire-dokument-konsultation" nederst i denne plan                                                                                                                                                              |
+| 32         | Oprydnings-strategi obligatorisk                                        | Sektion "Oprydnings- og opdaterings-strategi" nederst i denne plan                                                                                                                                                     |
 
 ---
 
@@ -273,7 +291,7 @@ Alle 32 afgørelser fra krav-dok sektion 10 honoreres 1:1. Konkret mapping af de
 
 **Tabeller (alle i `core_identity`-schema, jf. master-plan §1.11):**
 
-- `org_nodes(id, name, parent_id, node_type, is_active, created_at, updated_at)`
+- `org_nodes(id, created_at, updated_at)` (V4+V5 — identity-only; alle mutable felter på `org_node_versions`)
 - `org_node_closure(ancestor_id, descendant_id, depth)`
 - `org_node_versions(version_id, node_id, name, parent_id, node_type, is_active, effective_from, effective_to, applied_at, created_by_pending_change_id, created_at)` (V4 — Beslutning 13; renamed fra V3's `org_node_history` med ny effective-date-baseret model)
 - `employee_node_placements(id, employee_id, node_id, effective_from, effective_to, created_at, updated_at)`
@@ -343,11 +361,13 @@ For at gøre frontend-konsumeringen konsistent på tværs af aktuelle og histori
 
 **Eksisterende RPC'er fra trin 5 bevares uændret**: `employee_upsert` (håndterer rolle-tildeling via role_id-felt — jf. Claude.ai V1 MELLEM 2 + Valg 14), `role_upsert`, `role_page_permission_upsert` (sidstnævnte deprecated til fordel for `role_permission_grant_set`; T9 bevarer for backward-compat).
 
-### Valg 2 — Closure-table-vedligeholdelse på `org_nodes`
+### Valg 2 — Closure-table-vedligeholdelse på `org_node_versions` (V5-sweep)
 
-**Anbefaling:** Genberegn berørt subtree ved AFTER INSERT/UPDATE/DELETE på `org_nodes` (samme pattern som arkiveret V1-V3-plan's Valg 2). Org-mutationer er sjældne (krav-dok mathias-afgoerelser pkt 2 + master-plan §1.7); trigger-omkostning irrelevant. Tilføj `org_node_closure` til `AUDIT_EXEMPT_SNAPSHOT_TABLES`-allowlist i `scripts/fitness.mjs`.
+**Anbefaling (V5):** Genberegn berørt subtree ved AFTER INSERT/UPDATE/DELETE på **`org_node_versions`** når en row med `effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` ændres. Org-mutationer er sjældne (krav-dok mathias-afgoerelser pkt 2 + master-plan §1.7); trigger-omkostning irrelevant. Tilføj `org_node_closure` til `AUDIT_EXEMPT_SNAPSHOT_TABLES`-allowlist i `scripts/fitness.mjs`.
 
-**Cycle-detection:** BEFORE INSERT/UPDATE-trigger på `org_nodes.parent_id`. Begge triggers (cycle + closure) fyrer i samme transaktion per master-plan §1.7.
+**Cycle-detection (V5):** BEFORE INSERT/UPDATE-trigger på `org_node_versions` (på parent_id-felt der ligger på versions, ikke på org_nodes direkte). Rekursiv CTE traverserer versions effektive at NEW.effective_from. Begge triggers (cycle + closure) fyrer i samme transaktion per master-plan §1.7.
+
+**V5-fix:** V4's Valg 2-tekst sagde "AFTER-trigger på org_nodes" + "cycle-detection på org_nodes.parent_id" — det er gammel-model-tekst der ikke matcher V4's identity-only org_nodes. V5 retter at trigger sidder på `org_node_versions` (hvor mutable parent_id rent faktisk lever).
 
 ### Valg 3 — Audit-exempt-allowlist-udvidelse
 
@@ -468,15 +488,20 @@ Eksisterende `role_page_permissions`-tabel bevares som read-only (FORCE RLS + in
 
 ### Valg 12 — Seed for Mathias + Kasper
 
-**Anbefaling:** Migration `t9_seed_owners.sql` opretter:
+**Anbefaling (V5-sweep):** Migration `t9_seed_owners.sql` opretter for hver knude BÅDE identity-row og initial version-row (per V4-arkitektur):
 
-- Root-knude: `org_nodes(name='Copenhagen Sales', node_type='department', parent_id=NULL)`
-- Ejere-afdeling: `org_nodes(name='Ejere', node_type='department', parent_id=<Cph Sales>)`
-- `employee_node_placements` for mg@ og km@ (eksisterer fra trin 1 bootstrap) på Ejere-afdelingen
+- **Root-knude (Copenhagen Sales):**
+  - INSERT `org_nodes(id=<root-uuid>, created_at=now(), updated_at=now())`
+  - INSERT `org_node_versions(node_id=<root-uuid>, name='Copenhagen Sales', parent_id=NULL, node_type='department', is_active=true, effective_from='2026-05-17', effective_to=NULL, applied_at=now(), created_by_pending_change_id=NULL)` (NULL fordi bootstrap er ikke pending-baseret)
+- **Ejere-afdeling:**
+  - INSERT `org_nodes(id=<ejere-uuid>, ...)` + INSERT `org_node_versions(node_id=<ejere-uuid>, name='Ejere', parent_id=<root-uuid>, node_type='department', is_active=true, effective_from='2026-05-17', ...)`
+- `employee_node_placements` for mg@ og km@ (eksisterer fra trin 1 bootstrap) på Ejere-afdelingen med effective_from='2026-05-17'
 - Superadmin-rolle: hvis admin-rolle eksisterer (fra trin 1), omdøb til `superadmin`. Ellers opret ny.
 - `role_permission_grants` for superadmin med `visibility='all'` på alle areas + pages + tabs (seedede fra migration af role_page_permissions)
 
-Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
+Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26 — via `org_node_upsert`-wrapper, der opretter pending_changes-row med change_type='org_node_upsert' og effective_from valgt af brugeren.
+
+**V5-fix:** V4's Valg 12-tekst sagde `org_nodes(name=..., node_type=..., parent_id=...)` som gammel-model-seed. V5 retter til identity+version-split-seed.
 
 ### Valg 13 — Hent-funktioner som dedikerede read-RPCs (V2)
 
@@ -484,17 +509,17 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
 
 **RPC'er (V2):**
 
-| Krav-dok funktion              | Read-RPC                                             | Implementations-pattern                                                                                                                                                                                                                                                                                                       |
-| ------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 Hent træet                 | `org_tree_read()`                                    | `SELECT * FROM org_nodes WHERE is_active=true`. Returnerer table(id, name, parent_id, node_type, ...)                                                                                                                                                                                                                         |
-| 4.1 Hent historisk træ         | `org_tree_read_at(p_date date)`                      | **V4-implementation (Beslutning 13):** Recursive CTE over `org_node_versions` med effective-date-filter `effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`. For p_date = current_date kan optionalt bruges `org_node_closure` for hurtig path. Symmetrisk current/historisk via samme SQL-pattern |
-| 4.2 Hent placering             | `employee_placement_read(p_emp_id)`                  | **V3 (Beslutning 14):** `SELECT * FROM employee_node_placements WHERE employee_id=p_emp_id AND effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` — håndterer future-dated changes korrekt                                                                                             |
-| 4.2 Hent historisk placering   | `employee_placement_read_at(p_emp_id, p_date date)`  | `SELECT * WHERE employee_id=p_emp_id AND effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`                                                                                                                                                                                                        |
-| 4.3 Hent klients team          | `client_placement_read(p_client_id)`                 | Samme pattern som 4.2 mod client_node_placements                                                                                                                                                                                                                                                                              |
-| 4.3 Hent historisk tilknytning | `client_placement_read_at(p_client_id, p_date date)` | Samme                                                                                                                                                                                                                                                                                                                         |
-| 4.5 Hent struktur              | `permission_elements_read()`                         | Returnerer alle aktive areas/pages/tabs i strukturret form                                                                                                                                                                                                                                                                    |
-| 4.6 Hent rolles rettigheder    | `role_permissions_read(p_role_id)`                   | Returnerer alle grants for rolle, joined med element-navne                                                                                                                                                                                                                                                                    |
-| 4.7 Hent ventende ændringer    | `pending_changes_read()`                             | Returnerer pending+approved changes for caller; admin ser alle                                                                                                                                                                                                                                                                |
+| Krav-dok funktion              | Read-RPC                                             | Implementations-pattern                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 Hent træet                 | `org_tree_read()`                                    | **V5-sweep:** = `org_tree_read_at(current_date)`. Recursive CTE over `org_node_versions WHERE effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` joined med `org_nodes` for identity. Optionalt path via `org_node_closure` for performance. Returnerer table(id, name, parent_id, node_type, is_active, ...) |
+| 4.1 Hent historisk træ         | `org_tree_read_at(p_date date)`                      | **V4-implementation (Beslutning 13):** Recursive CTE over `org_node_versions` med effective-date-filter `effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`. For p_date = current_date kan optionalt bruges `org_node_closure` for hurtig path. Symmetrisk current/historisk via samme SQL-pattern                        |
+| 4.2 Hent placering             | `employee_placement_read(p_emp_id)`                  | **V3 (Beslutning 14):** `SELECT * FROM employee_node_placements WHERE employee_id=p_emp_id AND effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` — håndterer future-dated changes korrekt                                                                                                                    |
+| 4.2 Hent historisk placering   | `employee_placement_read_at(p_emp_id, p_date date)`  | `SELECT * WHERE employee_id=p_emp_id AND effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`                                                                                                                                                                                                                               |
+| 4.3 Hent klients team          | `client_placement_read(p_client_id)`                 | Samme pattern som 4.2 mod client_node_placements                                                                                                                                                                                                                                                                                                     |
+| 4.3 Hent historisk tilknytning | `client_placement_read_at(p_client_id, p_date date)` | Samme                                                                                                                                                                                                                                                                                                                                                |
+| 4.5 Hent struktur              | `permission_elements_read()`                         | Returnerer alle aktive areas/pages/tabs i strukturret form                                                                                                                                                                                                                                                                                           |
+| 4.6 Hent rolles rettigheder    | `role_permissions_read(p_role_id)`                   | Returnerer alle grants for rolle, joined med element-navne                                                                                                                                                                                                                                                                                           |
+| 4.7 Hent ventende ændringer    | `pending_changes_read()`                             | Returnerer pending+approved changes for caller; admin ser alle                                                                                                                                                                                                                                                                                       |
 
 **Begrundelse:**
 
@@ -763,7 +788,7 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
   - `docs/strategi/bygge-status.md`, `docs/teknisk/permission-matrix.md`, `docs/teknisk/teknisk-gaeld.md`, `docs/coordination/aktiv-plan.md`, `docs/coordination/seneste-rapport.md`
 - **Hvad:**
   - INSERT'er i `core_compliance.data_field_definitions` for alle nye T9-kolonner; kategori='operationel' eller 'master_data'; pii_level='none' (jf. krav-dok pkt 10)
-  - Nye fitness-checks: `org_node_closure_consistency`, `permission_grant_integrity`, `pending_changes_invariants`, `pending_changes_no_direct_writes` (verificerer at authenticated rolle ikke kan EXECUTE `_apply_*`-handlers)
+  - Nye fitness-checks: `org_node_closure_consistency`, `permission_grant_integrity`, `pending_changes_invariants`, `pending_changes_no_direct_writes` (verificerer at authenticated rolle ikke kan EXECUTE `_apply_*`-handlers), **`org_nodes_no_mutable_columns_in_sql` (V5 — Codex+Claude.ai V4-anbefaling): grep-baseret CI-blocker der scanner `supabase/migrations/**/\*.sql`for referencer til`org_nodes.name`, `org_nodes.parent_id`, `org_nodes.node_type`, `org_nodes.is_active`— fejler hvis fundet. Forhindrer regression til pre-V4 gammel mutable model. Allowlist: migration der dropper`org_nodes`-kolonner (hvis vi havde haft sådan)\*\*
   - bygge-status: trin 9 → ✓ Godkendt; PAUSET-status fjernes; 1M-sales-benchmark-action-item tilføjet (deadline trin 14)
   - permission-matrix: omskrives til den nye tre-niveau-model; auto-generated-marker opdateret
   - teknisk-gaeld: G-numre fra Codex-runder + G-nummer-kandidater for rettelse 23 + CI-blocker 19 kategori-udvidelser + krav-dok-modsigelse 18 vs 25 (Claude.ai V1 KOSMETISK 3) + ENUM-sprog-note (Claude.ai V1 KOSMETISK 4)
@@ -797,7 +822,8 @@ Fitness-checks:
 - `org_node_closure_consistency` (ny) — closure matcher tree
 - `permission_grant_integrity` (ny) — grants peger på existerende + ikke-deaktiverede elementer
 - `pending_changes_invariants` (ny) — status-livscyklus konsistent (approved før applied; applied har applied_at; undone har undone_at; undo_deadline > approved_at)
-- `pending_changes_no_direct_writes` (ny V2) — verificerer at authenticated rolle ikke har EXECUTE-grant på `_apply_*`-handlers; CI-blocker fanger hvis grant utilsigtet tilføjes
+- `pending_changes_no_direct_writes` (ny V2; udvidet V3 til pending*change_request) — verificerer at authenticated rolle ikke har EXECUTE-grant på `\_apply*\*`-handlers eller `pending_change_request`; CI-blocker fanger hvis grant utilsigtet tilføjes
+- `org_nodes_no_mutable_columns_in_sql` (ny V5) — grep-baseret CI-blocker; scanner `supabase/migrations/**/*.sql` for `org_nodes.name`, `org_nodes.parent_id`, `org_nodes.node_type`, `org_nodes.is_active`. Fejler hvis nogen findes uden for migration der dropper kolonnen. Forhindrer regression til pre-V4 gammel mutable model. Per Codex V4 + Claude.ai V4 anbefaling
 - `db-test-tx-wrap-on-immutable-insert` (eksisterende) — verificeret for nye tests
 - `audit-trigger-coverage` (eksisterende) — verificerer closure på allowlist; alle andre T9-tabeller har trigger
 - `fk-coverage` (eksisterende, CI-blocker 19) — verificerer `client_id` på allowlist med begrundelse
@@ -895,7 +921,21 @@ Fitness-checks:
 
 ## Konklusion
 
-V4-planen adresserer Codex V3's 1 KRITISKE fund + Claude.ai's V2-tilbagetrækning til KRITISK (samme problem-klasse: temporal model skal versioneres på business effective_from, ikke fysisk apply-tid). Centrale V4-ændringer:
+V5-planen er **systematisk sweep** af V4's nye arkitektur gennem hele planen. Ingen ny arkitektur-beslutning; ren konsistens-rettelse efter Codex V4 + Claude.ai V4 begge identificerede samme KRITISK problem: V4's Beslutning 13 etablerede ny model, men Beslutning 1, Valg 1, Valg 2, Valg 12, Valg 13's `org_tree_read()` og Mathias-mapping refererede stadig til gammel mutable `org_nodes`-model.
+
+V5-sweep:
+
+- **Beslutning 1, 2:** opdateret til identity+versions-split med trigger på versions
+- **Valg 1's tabel-liste:** `org_nodes` reduceret til (id, created_at, updated_at)
+- **Valg 2:** trigger og cycle-detect flyttet fra org_nodes til `org_node_versions`
+- **Valg 12 (seed):** opretter både identity-row og version-row med effective_from
+- **Valg 13's `org_tree_read()`:** rewritten som `org_tree_read_at(current_date)`-pattern via recursive CTE
+- **Mathias-mapping pkt 1, 2, 6, 10:** refererer nu `org_node_versions` for mutable felter
+- **Nyt fitness-check `org_nodes_no_mutable_columns_in_sql`:** grep-baseret CI-blocker mod regression
+
+V5 bevarer V4's centrale arkitektur (Beslutning 13 + 14 + 15 uændrede) — kun sweep af inkonsistens.
+
+V4-planen adresserede Codex V3's 1 KRITISKE fund + Claude.ai's V2-tilbagetrækning til KRITISK (samme problem-klasse: temporal model skal versioneres på business effective_from, ikke fysisk apply-tid). V4-ændringer (historik):
 
 - **Codex V3 KRITISK + Claude.ai V2-KRITISK (effective-date-versionering):** `org_nodes` bliver identity-only; `org_node_versions` er primær mutable lagring med `effective_from`/`effective_to` (renamed fra V3's history). Apply-handler skriver version-boundary fra `pending.effective_from`, ikke `now()`. Cron-filter: apply venter på BÅDE `undo_deadline <= now()` AND `effective_from <= current_date`. Closure-tabel rebuilds når versions effektive på current_date ændres — repræsenterer aldrig future-dated structure. `org_tree_read()` og `org_tree_read_at(p_date)` bruger samme effective-date filter symmetrisk. Beslutning 13 (opdateret) + ny Beslutning 15
 
@@ -927,7 +967,7 @@ V2 bevarer V1's solide elementer:
 - Modsigelses-disciplin respekteret: ingen modsigelser identificeret
 - Codex-opgraderings-rolle anerkendt: OPGRADERING-forslag håndteres i V<n+1>'s "Opgraderings-håndtering"-sektion. Codex leverede INGEN OPGRADERING-fund i V1
 
-**Codex' V1+V2+V3-fund alle adresseret. Claude.ai's V1 MELLEM-fund + V2 Finding 1 (oprindeligt MELLEM, senere opgraderet til KRITISK) alle adresseret. Plan klar til V4-review.** Begge reviewers V2-tilbagetrækning/V3-feedback gælder IKKE V4 fordi V4 introducerer materielt ny effective-date-baseret org-versioneringsmodel; ny review kræves.
+**Codex' V1+V2+V3+V4-fund alle adresseret. Claude.ai's V1 + V2-tilbagetrækning + V4 alle adresseret. Plan klar til V5-review.** V4-feedback gælder IKKE V5 fordi V5 er systematisk konsistens-sweep der opdaterer alle plan-tekst-elementer til V4-arkitektur; ny review kræves. Anti-glid runde 3+-disciplin: kun KRITISKE fund stopper. Hvis V5 stadig har inkonsistens: STOP og rapportér til Mathias (det er 4. KRITISK-iteration; videre runder kan signalere at planen kræver fundamental re-tænkning).
 
 - Oprydnings-strategi er obligatorisk og dokumenteret som DEL af build
 
