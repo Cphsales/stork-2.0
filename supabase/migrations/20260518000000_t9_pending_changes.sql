@@ -319,14 +319,11 @@ begin
   perform set_config('stork.change_reason', 'pending_change_apply', true);
 
   -- Dispatcher: switch på change_type til intern handler.
-  -- Handlers registreres i Steps 2+4+5 via CREATE OR REPLACE af denne funktion
-  -- der udvider CASE-blokken. Indtil da raises unknown_change_type for alle types.
-  case v_change.change_type
-    else
-      raise exception 'unknown_change_type: %', v_change.change_type
-        using errcode = '42883',
-              hint = 'Step 1 dispatcher har ingen handlers; Steps 2+4+5 udvider via CREATE OR REPLACE';
-  end case;
+  -- Steps 2+4+5 udvider via CREATE OR REPLACE af denne funktion med rigtige
+  -- CASE WHEN-handlers. I Step 1 er der ingen handlers, så vi raiser direkte.
+  raise exception 'unknown_change_type: %', v_change.change_type
+    using errcode = '42883',
+          hint = 'Step 1 dispatcher har ingen handlers; Steps 2+4+5 udvider via CREATE OR REPLACE';
 
   -- Når Steps 2+4+5 udvider CASE: mark applied her efter handler returnerer.
   update core_identity.pending_changes
