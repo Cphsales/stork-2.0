@@ -192,3 +192,64 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Begrundelse:** Code og Codex spurgte om hver enkelt kommando (sleep, git status, git commit) hvilket gjorde Mathias til konstant flaskehals og dræbte automation-effekten. Sikkerheden ligger ikke i CLI-approval-prompts men i proces-laget: krav-dok-kontrakten i main, qwerg-godkendelse før build-start, lag-boundary-godkendelse, CI-blockers, branch protection, Codex-review-loop. Disse er uberørt.
 - **Løsning:** Code kører `--permission-mode bypassPermissions` (fuld autonomi, ingen prompts). Codex kører `-s workspace-write -a never` (skriv kun i repo + tmp + memories, ingen prompts). Forskellen er bevidst: Code's rolle kræver mange kommando-typer (pnpm, supabase, gh, git, sql); Codex' rolle er fokuseret på read + review + push-til-egen-branch og har ikke brug for at gå uden for repo. Aliases i `~/.bashrc` gør det permanent. Bash backslash-escape (`\claude`, `\codex`) bypasser alias for én kommando hvis nødvendigt.
 - **Plan-reference:** Denne commit. Backups taget: `~/.codex/config.toml.bak.2026-05-16` + `~/.claude/settings.local.json.bak.2026-05-16`. Ingen ændring til eksisterende config-filer — aliases er additive.
+
+### 2026-05-17 — T9 omstart efter afdæknings-session: ét træ, permission-elementer, synlighed udledt af placering
+
+- **Beslutning:** T9-runden V1-V3 trækkes tilbage. Nyt krav-dokument skrives på
+  basis af dybde-afdækning. Følgende afgøres som ramme:
+  1. **Ét træ** — organisations-træet (Copenhagen Sales → afdelinger → teams →
+     medarbejdere). Permission-elementer (område, page, tab) er ikke et træ;
+     de er steder hvor rettigheder gælder, nestede i tre niveauer.
+  2. **Permission-elementer** er DATA i DB i tre niveauer: Område → Page → Tab.
+     Alle tre niveauer kan oprettes/deaktiveres i UI uden deploy.
+     Page-implementation (React-komponent) er kode; registret er data.
+     Bekræfter Mathias' tidligere afgørelse 2026-05-11 ("db skal også styre i UI").
+  3. **Permission-modellen har to akser:** (a) hvad man kan tilgå (kan_se/tilgå
+     - kan_skrive pr. område/page/tab); (b) synlighed på data (Sig selv / Hiraki /
+       Alt). Begge akser sættes UI-styret pr. (rolle × område × page × tab).
+       Samme rolle kan have forskellig synlighed på forskellige elementer.
+       Eksempel: TM-sælger har Sig selv på vagtplan-page og Hiraki på kalender-page.
+  4. **Synligheds-værdier kun tre:** Sig selv / Hiraki / Alt. Team som scope-værdi
+     udgår — Hiraki dækker det.
+  5. **Hiraki udledes af medarbejderens placering i organisations-træet.** Ser
+     egen knude og alt under. Knude-løs medarbejder + synlighed=Hiraki = ser intet.
+  6. **Klienter tilknyttes kun knuder af type team.** Aldrig afdelings-knuder.
+  7. **Knude-løs medarbejder er gyldig tilstand.** Når et team lukkes, bliver
+     medarbejdere knude-løse; de forbliver ansatte og kan tildeles ny placering
+     i UI.
+  8. **Ingen stabs-team i 2.0.** Stabs-konceptet fra 1.0 udgår fuldstændig.
+  9. **Cross-team-adgang løses via rolle med synlighed=Hiraki eller Alt,** ikke
+     ved at give medarbejdere flere placeringer.
+  10. **Superadmin = synlighed=Alt på alle elementer.** Eneste hardkodede rolle.
+      Mathias og Kasper har superadmin-rollen, placeret på en "Ejere"-afdeling
+      i træet.
+  11. **Alle navne på afdelinger og teams oprettes i UI.** Krav-dokumenter
+      specificerer ingen konkrete navne.
+  12. **Hvem der må oprette/ændre/lukke knuder styres via rettigheder i UI.**
+      Ingen særlig ledelses-handling-kategori; struktur-adgang er almindelig
+      rettighed.
+  13. **Alle ændringer med gældende dato følger fortrydelses-mekanisme:**
+      gældende dato → godkendelse → fortrydelses-periode → ændring kan rulles
+      tilbage i UI indtil periodens udløb → derefter permanent. Gælder struktur-
+      ændringer, medarbejder-placeringer, klient-flytninger.
+  14. **Fortrydelses-periodens længde konfigureres i UI.** Ingen hardkodet værdi.
+  15. **Klient-til-team-import udskydes til trin 10** (kræver klient-skabelon
+      der bygges der). T9 leverer organisations-træ-import + medarbejder-
+      placeringer.
+
+- **Begrundelse:** V1-V3 var bygget på misforstået fundament. Forretnings-
+  sandhederne om visibility-model, permission-struktur og terminologi var ikke
+  registreret samlet og blev løbende fabrikeret af Claude.ai. Disciplin-fejl:
+  Claude.ai godkendte planer der modsagde eksisterende mathias-afgørelser.
+  Disse afgørelser registreres nu som ramme-niveau-afgørelser så Code/Codex/
+  Claude.ai kan reference dem uden gætning.
+
+- **Plan-reference:** Denne commit. Nyt krav-dokument:
+  `docs/coordination/T9-krav-og-data.md`. Gamle artefakter arkiveret i
+  `docs/coordination/arkiv/T9-foraeldet-2026-05-17/`.
+
+- **Konsekvens for Claude.ai-rolle:** Læring registreret om at fire-dokument-
+  konsultations-tabellen skal verificere mod låste sektioner i tidligere
+  dokumenter (særligt §5 i stork-2-0.md som var kilde til flere af de
+  misforståede ting) — selvom de dokumenter ikke er fuldt autoritative, er
+  deres indhold ofte konsistent med Mathias' tænkning og bør konsulteres.
