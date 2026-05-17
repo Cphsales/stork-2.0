@@ -1,12 +1,31 @@
-# T9 — Plan V3
+# T9 — Plan V4
 
 **Pakke:** §4 trin 9 — Identitet del 2 (organisations-træet + permission-fundament + fortrydelses-mekanisme + import fra 1.0)
 **Krav-dok:** `docs/coordination/T9-krav-og-data.md` (merged 2026-05-17 i kommit `15ff4ee`)
-**Plan-version:** V3
+**Plan-version:** V4
 **Dato:** 2026-05-17
 **Disciplin-baseline:** Modsigelses-disciplin + Codex-opgraderings-rolle aktiv fra commit `09d3afb` (2026-05-17).
 
-**Revision V3 (denne version):** V3 addresserer 2 KRITISKE fund fra Codex V2 (`docs/coordination/plan-feedback/T9-V2-codex.md`, commit `2a57ca4`) + 1 MELLEM-finding fra Claude.ai V2 (`docs/coordination/plan-feedback/T9-V2-approved-claude-ai.md`, commit `40871ba` — i øvrigt approved).
+**Revision V4 (denne version):** V4 addresserer 1 KRITISK fund fra Codex V3 (`docs/coordination/plan-feedback/T9-V3-codex.md`, commit `5db31cf`) + Claude.ai's V2-tilbagetrækning + KRITISK-feedback (`docs/coordination/plan-feedback/T9-V2-claude-ai.md`, commit `408ebf9`). Begge fund er samme klasse problem: temporal model skal versioneres på business effective_from, ikke på fysisk apply-tid.
+
+- **Codex V3 KRITISK (effective_from vs updated_at):** V3's `org_node_history`-trigger skrev `version_started/version_ended` baseret på `NEW.updated_at` (fysisk mutation-tid). Det er forkert for future-dated changes (apply-tid ≠ effective_from-tid). V4 restrukturerer:
+  - **`org_nodes`** bliver identity-only (id, created_at, updated_at) — uden mutable forretnings-felter
+  - **`org_node_versions`** (renamed fra V3's `org_node_history`) bliver primær lagring af mutable state med `effective_from`/`effective_to` (samme pattern som placements) — IKKE version_started/version_ended baseret på fysisk apply-tid
+  - **Apply-handler** skriver version-boundary fra `pending_changes.effective_from`, ikke fra `now()`
+  - **Cron-filter** anvender `effective_from <= current_date` (i tillæg til `undo_deadline <= now()`) — apply venter på begge
+  - **`org_node_closure`** rebuilds når versions effektive på current_date ændres — closure repræsenterer aldrig future-dated structure
+  - **`org_tree_read()`** og **`org_tree_read_at(p_date)`** bruger samme effective-date filter (samme pattern som placements) — symmetrisk current/historisk
+  - Se opdateret Beslutning 13 + ny Beslutning 15
+
+- **Claude.ai V2-tilbagetrækning + KRITISK (samme problem-klasse):** Claude.ai har erkendt at hendes V2-MELLEM-finding (intern inkonsistens mellem Valg 13 og Valg 8) er KRITISK-klasse, ikke MELLEM, fordi den bryder krav-dok 6.1, 4.1, 4.2, 3.6.1 + vision-princip 1 og 9 + mathias-afgørelser 2026-05-16 pkt 2 + 2026-05-17 pkt 13. Per Modsigelses-disciplin: modsigelse mod krav-dok = plan-blokerende, ikke G-nummer-kandidat. V4's effective-date-restructure adresserer hendes KRITISK-finding fuldstændigt (samme fix som Codex V3 KRITISK).
+
+**Codex OPGRADERING-fund i V3:** Ingen.
+
+**Anti-glid runde 3-status:** Begge reviewers leverede KRITISK i V3-runden. Per runde-3-disciplin stopper kun KRITISKE fund planen — det gør de. V4 forventes.
+
+---
+
+**Revision V3 (historik):** V3 addresserede 2 KRITISKE fund fra Codex V2 (`docs/coordination/plan-feedback/T9-V2-codex.md`, commit `2a57ca4`) + 1 MELLEM-finding fra Claude.ai V2 (`docs/coordination/plan-feedback/T9-V2-approved-claude-ai.md`, commit `40871ba` — oprindelig approval; senere trukket tilbage som KRITISK pba. samme problem som Codex V3).
 
 - **Codex KRITISK 1 (pending_change_request bypass-vej):** V2's public `pending_change_request` lod authenticated caller potentielt springe wrapper-valideringer over og oprette pending-row med forged payload. V3 gør `pending_change_request` INTERN (`revoke execute from authenticated`). Public wrappers (Step 8) er SECURITY DEFINER og er ENESTE indgang. Se Beslutning 12 + opdateret Valg 8.
 - **Codex KRITISK 2a (aktiv-placement-definition):** V2 brugte `effective_to IS NULL` som "aktiv placement"-definition. Det er forkert ved future-dated changes (ny row med `effective_from > current_date` returneres som aktuel). V3 skifter overalt til `effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)`. Gælder helpers (acl*subtree*\*), read-RPCs (current-state filters), partial UNIQUE constraints, EXCLUDE constraints, og pending-apply-handlers.
@@ -131,20 +150,62 @@ Per Codex V2-fund: V2 lod `pending_change_request` være public — det skabte n
 - Wrappers udfører ALLE valideringer (permission, payload-schema, business-invariants) før de internt kalder `pending_change_request`
 - Test (V3): forged authenticated kald til `pending_change_request` for hver kendt change_type → `permission denied`. Test for hvert change_type at wrapper-valideringerne effektivt blokerer forged payload
 
-**Beslutning 13 (V3 — Codex V2 KRITISK 2b + Claude.ai V2 Finding 1): org_nodes versioneres via separate history-tabel.**
+**Beslutning 13 (V4 — Codex V3 KRITISK + Claude.ai V2-KRITISK: effective_from-baseret org-versionering): `org_nodes` er identity-only; `org_node_versions` er primær mutable state.**
 
-Per Codex V2-fund: V2's `org_nodes` havde kun current-state-kolonner. `org_tree_read_at(p_date)` antog "immutable bortset fra is_active" men Valg 8's change-type-matrix tillod UPDATE af name+parent_id. Intern inkonsistens. Krav-dok 6.1 ("gammel sandhed ændres ikke af ny sandhed") kan ikke opfyldes.
+Per Codex V3-fund: V3's `org_node_history`-trigger skrev `version_started/version_ended` baseret på `NEW.updated_at` — fysisk mutation-tid, ikke business effective_from. Det er samme klasse fejl som V2's placement-problem, bare for org-strukturen. V4 restrukturerer arkitekturen til at være effective-date-baseret end-to-end:
 
-V3 indfører `core_identity.org_node_history(history_id PK, node_id FK org_nodes, name, parent_id, node_type, is_active, version_started, version_ended)`:
+**Schema-ændring (V4):**
 
-- `org_nodes` beholder current-state-kolonner (uændret schema)
-- AFTER UPDATE-trigger på `org_nodes` indsætter row i `org_node_history` med OLD-state (alle mutable felter) + `version_started = forrige history.version_ended OR org_nodes.created_at` + `version_ended = NEW.updated_at`
-- AFTER DELETE-trigger på `org_nodes` indsætter terminerende history-row (omend DELETE er sjælden; deaktivering foretrækkes per krav-dok 4.1 + Beslutning 9)
-- `org_tree_read_at(p_date)` for hver node_id: find history-row hvor `version_started <= p_date AND version_ended > p_date`; hvis ingen match (knude oprettet før første UPDATE), brug current `org_nodes`-row hvis `created_at <= p_date`. Hvis hverken match eller created_at: knuden eksisterede ikke på p_date
-- Pre-existing rows uden history har implicit "version_started = created_at, version_ended = NULL" — current row repræsenterer "now"-versionen
-- `org_node_history` får FORCE RLS + `using (true)` + audit-exempt-allowlist (per V2 Valg 3-pattern; samme rationale: derived fra org_nodes-mutationer)
+- `core_identity.org_nodes(id PK uuid, created_at timestamptz, updated_at timestamptz)` — identity-only; ingen mutable forretnings-felter direkte. id er stable identitet for en knude på tværs af versions
+- `core_identity.org_node_versions(version_id PK uuid, node_id FK org_nodes, name text, parent_id FK org_nodes NULL, node_type text, is_active boolean, effective_from date NOT NULL, effective_to date NULL, applied_at timestamptz NOT NULL DEFAULT now(), created_by_pending_change_id FK pending_changes NULL, created_at timestamptz)` — primær lagring; én version pr. (node_id, effective_period)
+- Partial UNIQUE `(node_id) WHERE effective_to IS NULL` — kun én "open-ended" version pr. knude
+- EXCLUDE-constraint `(node_id WITH =, daterange(effective_from, coalesce(effective_to, 'infinity'::date)) WITH &&)` — ingen overlap af versioner pr. knude
+- FORCE RLS + `using (true)` for begge tabeller
+- `node_type` CHECK `IN ('department', 'team')` på versions
+- BEFORE INSERT/UPDATE-trigger på versions for cycle-detection (rekursiv CTE) + team-har-børn-blokering
 
-Alternativ afvist: append-only org_nodes med versionerede kolonner (multiple rows pr. node_id). For komplekst — parent_id FK ville pege på en specifik version i stedet for en stable identity; cascading rebuild ved hver UPDATE. History-tabel-pattern er enklere og bevarer current-state-tabel for hurtig query.
+**Apply-handler (V4):**
+
+- `_apply_org_node_upsert(payload jsonb)` med payload `{id?, name, parent_id?, node_type, is_active, effective_from}`:
+  - Hvis NY knude (id NULL eller ikke i org_nodes): INSERT org_nodes (id, created_at, updated_at); INSERT org_node_versions (node_id=new id, ..., effective_from, effective_to=NULL)
+  - Hvis EKSISTERENDE knude UPDATE: UPDATE prior open-ended version SET effective_to = NEW.effective_from; INSERT new version med effective_from = NEW.effective_from, effective_to = NULL; UPDATE org_nodes.updated_at = now()
+  - Version-boundary stammer fra `pending.effective_from`, ikke fra `now()`
+- `_apply_org_node_deactivate(payload jsonb)` med payload `{node_id, effective_from}`:
+  - UPDATE prior open-ended version SET effective_to = effective_from
+  - INSERT new version med is_active=false + effective_from + effective_to=NULL
+- `_apply_team_close(payload jsonb)` — analog: opdaterer version-row for team (is_active=false) + lukker åbne placements på samme effective_from
+
+**Cron-filter (V4 — Beslutning 15):**
+
+Apply venter på BÅDE undo-deadline OG effective-date:
+
+```sql
+SELECT * FROM pending_changes
+WHERE status='approved'
+  AND undo_deadline <= now()
+  AND effective_from <= current_date
+```
+
+Future-dated changes hænger i 'approved'-status efter undo-deadline indtil effective_from-dato kommer. Backdated changes apply'es umiddelbart efter undo-deadline (effective_from < current_date er allerede passeret).
+
+**Closure-tabel (V4):**
+
+`org_node_closure(ancestor_id, descendant_id, depth)` er current-state-derived. Trigger på `org_node_versions` rebuilds closure når versions effektive på current_date ændres. Closure repræsenterer ALDRIG future-dated structure — kun current state. Historisk-tree-queries (`org_tree_read_at(p_date)`) bygger via recursive CTE over versions for given dato (acceptabelt — historisk-queries er sjældne; perf-budget gælder kun current state).
+
+**Read-RPCs (V4 — symmetrisk current/historisk):**
+
+- `org_tree_read()` = `org_tree_read_at(current_date)`. Samme SQL-pattern; current_date som default-argument
+- `org_tree_read_at(p_date)`: recursive CTE over `org_node_versions WHERE effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)` — returnerer tree-state på p_date
+
+**Alternativ afvist:** Bevare V3's `org_node_history` med rettet apply-handler (effective_from i stedet for updated_at) men beholde `org_nodes` som current-state-tabel. Det fungerer ikke for future-dated changes — current `org_nodes` ville materialisere fremtidige tilstande før effective_from. Cron-filtreret approach kunne fungere, men tilføjer kompleksitet ift. timing-disciplin og er mere fragilt. Versions-as-primary-lagring er den robuste arkitektur.
+
+**Alternativ afvist 2:** Materialiseret current-state `org_nodes` med trigger der opdateres når versions skal "aktiveres". Kræver ekstra cron der scanner versions for "transitions" (versions hvor effective_from netop er kommet til current_date). Tilføjer kompleksitet uden gevinst.
+
+**Beslutning 15 (V4 — Codex V3 KRITISK): Cron-filter venter på MAX(undo_deadline, effective_from).**
+
+Apply-cron udfører kun pending_changes hvor BÅDE undo_deadline (fra approve_at + undo_period) OG effective_from (fra pending.effective_from) er passeret. Future-dated change: pending står som 'approved' med undo_deadline OG effective_from i fremtiden; først når effective_from <= current_date kommer ændringen ind i apply-batch. Det sikrer at temporal model aldrig viser future-dated-state som current.
+
+Test-konsekvens (V4): tests for future-dated, backdated, og same-day apply af struktur-ændring. Verificér org_tree_read() returner OLD-state indtil effective_from, ny state efter.
 
 **Beslutning 14 (V3 — Codex V2 KRITISK 2a): "Aktiv placement"-definition har eksplicit current-date-check.**
 
@@ -214,7 +275,7 @@ Alle 32 afgørelser fra krav-dok sektion 10 honoreres 1:1. Konkret mapping af de
 
 - `org_nodes(id, name, parent_id, node_type, is_active, created_at, updated_at)`
 - `org_node_closure(ancestor_id, descendant_id, depth)`
-- `org_node_history(history_id, node_id, name, parent_id, node_type, is_active, version_started, version_ended, created_at)` (V3 — Beslutning 13)
+- `org_node_versions(version_id, node_id, name, parent_id, node_type, is_active, effective_from, effective_to, applied_at, created_by_pending_change_id, created_at)` (V4 — Beslutning 13; renamed fra V3's `org_node_history` med ny effective-date-baseret model)
 - `employee_node_placements(id, employee_id, node_id, effective_from, effective_to, created_at, updated_at)`
 - `client_node_placements(id, client_id, node_id, effective_from, effective_to, created_at, updated_at)`
 - `permission_areas(id, name, is_active, sort_order, created_at, updated_at)`
@@ -423,17 +484,17 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
 
 **RPC'er (V2):**
 
-| Krav-dok funktion              | Read-RPC                                             | Implementations-pattern                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 Hent træet                 | `org_tree_read()`                                    | `SELECT * FROM org_nodes WHERE is_active=true`. Returnerer table(id, name, parent_id, node_type, ...)                                                                                                                                                                                                                                                                                                                                               |
-| 4.1 Hent historisk træ         | `org_tree_read_at(p_date date)`                      | **V3-implementation (Beslutning 13):** For hver node_id (UNION over `org_nodes` + `org_node_history`): find row hvor `version_started <= p_date AND (version_ended IS NULL OR version_ended > p_date)`. `version_started` på current `org_nodes` = `created_at`; `version_ended` = NULL. History-rows har eksplicitte version_started/version_ended fra trigger. Resultat: korrekt rekonstruktion af træet på p_date inkl. rename/move/deaktivering |
-| 4.2 Hent placering             | `employee_placement_read(p_emp_id)`                  | **V3 (Beslutning 14):** `SELECT * FROM employee_node_placements WHERE employee_id=p_emp_id AND effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` — håndterer future-dated changes korrekt                                                                                                                                                                                                                   |
-| 4.2 Hent historisk placering   | `employee_placement_read_at(p_emp_id, p_date date)`  | `SELECT * WHERE employee_id=p_emp_id AND effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`                                                                                                                                                                                                                                                                                                                              |
-| 4.3 Hent klients team          | `client_placement_read(p_client_id)`                 | Samme pattern som 4.2 mod client_node_placements                                                                                                                                                                                                                                                                                                                                                                                                    |
-| 4.3 Hent historisk tilknytning | `client_placement_read_at(p_client_id, p_date date)` | Samme                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 4.5 Hent struktur              | `permission_elements_read()`                         | Returnerer alle aktive areas/pages/tabs i strukturret form                                                                                                                                                                                                                                                                                                                                                                                          |
-| 4.6 Hent rolles rettigheder    | `role_permissions_read(p_role_id)`                   | Returnerer alle grants for rolle, joined med element-navne                                                                                                                                                                                                                                                                                                                                                                                          |
-| 4.7 Hent ventende ændringer    | `pending_changes_read()`                             | Returnerer pending+approved changes for caller; admin ser alle                                                                                                                                                                                                                                                                                                                                                                                      |
+| Krav-dok funktion              | Read-RPC                                             | Implementations-pattern                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 Hent træet                 | `org_tree_read()`                                    | `SELECT * FROM org_nodes WHERE is_active=true`. Returnerer table(id, name, parent_id, node_type, ...)                                                                                                                                                                                                                         |
+| 4.1 Hent historisk træ         | `org_tree_read_at(p_date date)`                      | **V4-implementation (Beslutning 13):** Recursive CTE over `org_node_versions` med effective-date-filter `effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`. For p_date = current_date kan optionalt bruges `org_node_closure` for hurtig path. Symmetrisk current/historisk via samme SQL-pattern |
+| 4.2 Hent placering             | `employee_placement_read(p_emp_id)`                  | **V3 (Beslutning 14):** `SELECT * FROM employee_node_placements WHERE employee_id=p_emp_id AND effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` — håndterer future-dated changes korrekt                                                                                             |
+| 4.2 Hent historisk placering   | `employee_placement_read_at(p_emp_id, p_date date)`  | `SELECT * WHERE employee_id=p_emp_id AND effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`                                                                                                                                                                                                        |
+| 4.3 Hent klients team          | `client_placement_read(p_client_id)`                 | Samme pattern som 4.2 mod client_node_placements                                                                                                                                                                                                                                                                              |
+| 4.3 Hent historisk tilknytning | `client_placement_read_at(p_client_id, p_date date)` | Samme                                                                                                                                                                                                                                                                                                                         |
+| 4.5 Hent struktur              | `permission_elements_read()`                         | Returnerer alle aktive areas/pages/tabs i strukturret form                                                                                                                                                                                                                                                                    |
+| 4.6 Hent rolles rettigheder    | `role_permissions_read(p_role_id)`                   | Returnerer alle grants for rolle, joined med element-navne                                                                                                                                                                                                                                                                    |
+| 4.7 Hent ventende ændringer    | `pending_changes_read()`                             | Returnerer pending+approved changes for caller; admin ser alle                                                                                                                                                                                                                                                                |
 
 **Begrundelse:**
 
@@ -504,30 +565,34 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
   - Undo: request → approve → undo før deadline; verificér status='undone'
   - Konfig: `undo_setting_update` ændrer undo_period; nye changes bruger ny periode
 
-### Step 2 — org_nodes + history-tabel + cycle-detection + internal apply-handlers (V2+V3)
+### Step 2 — org_nodes (identity) + org_node_versions (effective-date) + cycle-detection + internal apply-handlers (V4)
 
 - **Migration-fil:** `20260518000001_t9_org_nodes.sql`
 - **Hvad:**
-  - Tabel `core_identity.org_nodes(id, name, parent_id, node_type, is_active, created_at, updated_at)`; `node_type` CHECK `IN ('department', 'team')`; selv-refererende FK; BEFORE-trigger cycle-detection (rekursiv CTE); BEFORE-trigger blokerer team-knude med børn; FORCE RLS; SELECT `using (true)`; audit-trigger
-  - **V3: Tabel `core_identity.org_node_history(history_id, node_id, name, parent_id, node_type, is_active, version_started, version_ended, created_at)`** — append-only snapshot-tabel for historisk-træ. FORCE RLS + `using (true)`. Tilføj til `AUDIT_EXEMPT_SNAPSHOT_TABLES` allowlist (samme rationale som org_node_closure — derived fra org_nodes-mutationer)
-  - **V3: AFTER UPDATE-trigger på `org_nodes`** der INSERT'er row i `org_node_history` med OLD-values + `version_started = (forrige history.version_ended FOR node_id) OR org_nodes.created_at` + `version_ended = NEW.updated_at`
-  - **V3: AFTER DELETE-trigger på `org_nodes`** (sjælden — deaktivering foretrækkes) der INSERT'er final history-row
-  - Interne apply-handlers `_apply_org_node_upsert(payload jsonb)` + `_apply_org_node_deactivate(payload jsonb)` — `security definer`, `revoke execute from authenticated`; udfører faktisk INSERT/UPDATE (history-trigger fanger UPDATE)
+  - **V4: Tabel `core_identity.org_nodes(id PK uuid, created_at timestamptz, updated_at timestamptz)`** — identity-only; ingen mutable forretnings-felter direkte. FORCE RLS; SELECT `using (true)`; audit-trigger på opret/slet (sjælden)
+  - \*\*V4: Tabel `core_identity.org_node_versions(version_id PK uuid, node_id FK org_nodes, name text NOT NULL, parent_id FK org_nodes NULL, node_type text NOT NULL CHECK IN ('department', 'team'), is_active boolean NOT NULL, effective_from date NOT NULL, effective_to date NULL, applied_at timestamptz NOT NULL DEFAULT now(), created_by_pending_change_id uuid NULL FK pending_changes, created_at timestamptz)`; partial UNIQUE `(node_id) WHERE effective_to IS NULL`; EXCLUDE `(node_id WITH =, daterange(effective_from, coalesce(effective_to, 'infinity'::date)) WITH &&)`; FORCE RLS; SELECT `using (true)`; audit-trigger
+  - BEFORE INSERT/UPDATE-trigger på `org_node_versions` for cycle-detection (rekursiv CTE over versions effective at NEW.effective_from) + team-har-børn-blokering (check current versions for at se om denne node_id har børn af type team)
+  - Tilføj `org_node_versions` til `AUDIT_EXEMPT_SNAPSHOT_TABLES`-allowlist? **Nej** — versions ER den primære lagring (ikke derived). Bør have audit-trigger som normalt
+  - Interne apply-handlers `_apply_org_node_upsert(payload jsonb)` + `_apply_org_node_deactivate(payload jsonb)` — `security definer`, `revoke execute from authenticated`. Logik:
+    - `_apply_org_node_upsert(payload)`: hvis NEW knude (id NULL eller findes ikke): INSERT org_nodes(id, created_at, updated_at); INSERT org_node_versions med effective_from = payload.effective_from. Hvis EKSISTERENDE: UPDATE prior open-ended version SET effective_to = payload.effective_from; INSERT ny version med effective_from = payload.effective_from, effective_to = NULL; UPDATE org_nodes.updated_at = now()
+    - `_apply_org_node_deactivate(payload)`: samme luk+åbn-pattern; ny version har is_active=false
   - Udvid `pending_changes.change_type`-allowlist med `'org_node_upsert'`, `'org_node_deactivate'`
   - Registrér handlers i dispatcheren (Step 1)
   - Seed `undo_settings`-rows for nye change_types
   - **NB:** ingen public RPC for muterende; den kommer i Step 8 som tynd wrapper
-- **Hvorfor:** kræver Step 1; alle senere T9-tabeller har FK eller relation til org_nodes; history-tabel skal eksistere før trigger kan oprettes
-- **Risiko:** mellem (V3 — history-trigger korrekthed kritisk for historic-tree-read). Mitigation: dedikeret test verificerer history-row korrekt efter hver UPDATE-type (rename, move, deactivate)
+- **Hvorfor:** kræver Step 1 (pending_changes-infrastruktur); alle senere T9-tabeller har FK eller relation til org_nodes
+- **Risiko:** mellem (V4 — apply-handler-effective_from-logik kritisk for korrekt versionering). Mitigation: dedikeret test verificerer version-rows korrekte for future-dated, backdated, og same-day apply
 - **Rollback:** revert migration; pre-cutover ingen rows
-- **Tests (`supabase/tests/smoke/t9_org_nodes.sql`):**
-  - Smoke: opret root + afdeling + team (via direct INSERT i tx-rollback, ikke RPC) + verificér tree-struktur
-  - Cycle-detect: forsøg UPDATE der ville lave cycle → blokeret
-  - Team-har-børn-blokering: opret team, forsøg INSERT child → blokeret
-  - is_active=false-blokering: nye INSERT'er med parent_id pegende på inactive node → blokeret
-  - Audit: direct INSERT producerer audit_log-row
+- **Tests (`supabase/tests/smoke/t9_org_nodes.sql`, alle via direct INSERT i tx-rollback med fake pending_changes):**
+  - Smoke: opret root + afdeling + team (insertér org_nodes + org_node_versions) + verificér aktuel tree-struktur via SELECT med effective-date-filter
+  - Cycle-detect: forsøg INSERT version med parent_id der ville lave cycle → blokeret
+  - Team-har-børn-blokering: opret team, forsøg INSERT child version → blokeret
+  - is_active=false-blokering: nye versions med parent_id pegende på inactive node → blokeret (current-date-baseret)
+  - Audit-trigger fyrer på org_node_versions INSERT/UPDATE/DELETE
   - Interne handlers afvises ved authenticated-kald: `set local role authenticated; SELECT _apply_org_node_upsert('{...}'::jsonb)` → permission denied
-  - **V3-test (history):** UPDATE name → history-row med old name + version_started/ended korrekt; UPDATE parent_id → history-row med old parent_id; UPDATE is_active → history-row med old is_active. Multiple updates i sekvens → chain af history-rows med ikke-overlappende perioder
+  - **V4-test (effective_from-versionering):** UPDATE name via apply-handler med effective_from = '2026-06-01' → ny version med effective_from=2026-06-01, effective_to=NULL; gammel version sat effective_to=2026-06-01. Verificér version_started/version_ended fra payload, IKKE fra now()
+  - **V4-test (future-dated):** apply med effective_from = '2026-07-01' (fremtidig); cron skal IKKE apply'e før den dato (verificeres via Step 1's cron-filter). Test: kør cron manuelt → pending forbliver 'approved', ingen org_node_versions-row oprettet
+  - **V4-test (backdated):** apply med effective_from = '2026-01-15' (fortid); apply'es umiddelbart efter undo-deadline. Verificér version-row med effective_from=2026-01-15
 
 ### Step 3 — org_node_closure + maintain-trigger + audit-exempt-allowlist
 
@@ -741,24 +806,25 @@ Fitness-checks:
 
 ## Risiko + kompensation
 
-| Migration / Step               | Værste-case                                                                                                          | Sandsynlighed       | Rollback                                                                                                    |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Step 1 pending_changes (V2)    | Apply-dispatcher buggy; ændringer hænger i 'approved' eller applies forkert                                          | mellem              | hver handler test'es separat ved registrering; apply er idempotent; pause cron                              |
-| Step 1 cron                    | Cron pauser eller fejler; ændringer hænger i 'approved'                                                              | lav                 | manuel apply-RPC; heartbeat-fitness fanger cron-failure                                                     |
-| Step 2 org_nodes               | Cycle-detect-trigger har bug; producerer falsk-negativ                                                               | lav                 | revert migration; pre-cutover ingen rows                                                                    |
-| Step 3 closure                 | Maintain-trigger rebuild forkert; helpers får forkert data                                                           | mellem              | revert + fitness-consistency-check fanger inden cutover                                                     |
-| Step 4 placements + team_close | EXCLUDE-constraint accepterer overlap; team_close-handler ikke atomisk                                               | mellem              | revert; SQL-tests bekræfter rollback ved failure i tx-wrap                                                  |
-| Step 5 client_placements       | client_id uden FK accepterer invalid uuid                                                                            | lav                 | trin 10 FK-add fanger ved ALTER; pre-cutover ingen rows                                                     |
-| Step 6 elements                | FK-kæde brudt; tabs uden valid page                                                                                  | lav                 | revert; pre-cutover ingen seedet data                                                                       |
-| Step 7 grants + helpers        | acl_subtree_employees / acl_visibility_check returnerer forkert sæt                                                  | mellem              | revert; authenticated-rolle-fixture-tests fanger inden cutover                                              |
-| Step 8 wrappers (V2)           | Wrapper springer validering over; pending-row med invalid payload                                                    | mellem              | apply-handler re-validerer; idempotency catch                                                               |
-| Step 8 auth-grænse (V2+V3)     | Authenticated rolle kan kalde intern `_apply_*`-handler eller `pending_change_request` direkte                       | KRITISK hvis muligt | `pending_changes_no_direct_writes`-fitness-check fanger (V3 udvidet til pending_change_request); CI-blocker |
-| Step 2 history-trigger (V3)    | History-trigger fanger ikke korrekt OLD-state; historic-tree-read returnerer forkert                                 | mellem              | dedikeret test pr. UPDATE-type; fitness-check `org_node_history_consistency`                                |
-| Step 9 read-RPCs current (V3)  | "Aktiv placement"-filter mangler `effective_from <= current_date`-clause → future-dated rows returneres som aktuelle | mellem              | grep-fitness-check sikrer alle current-state-reads bruger den fulde clause                                  |
-| Step 9 read-RPCs (V2)          | Read-RPC eksponerer rows uden permission-check                                                                       | lav                 | revert; `has_permission`-check ved RPC-indgang                                                              |
-| Step 11 migration              | Eksisterende permission-tjek brudt efter migration                                                                   | mellem              | fallback i `has_permission()` til gammel tabel; m1-smoke-test fanger inden CI                               |
-| Step 12 seed                   | Eksisterende admin-rolle ikke korrekt omdøbt; floor-trigger bryder                                                   | mellem              | revert seed; trin-1-bootstrap er uberørt                                                                    |
-| Step 13 classify               | Migration-gate fejler på manglende kolonner                                                                          | lav                 | tilføj manglende entries i samme commit                                                                     |
+| Migration / Step               | Værste-case                                                                                                          | Sandsynlighed       | Rollback                                                                                                           |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Step 1 pending_changes (V2)    | Apply-dispatcher buggy; ændringer hænger i 'approved' eller applies forkert                                          | mellem              | hver handler test'es separat ved registrering; apply er idempotent; pause cron                                     |
+| Step 1 cron                    | Cron pauser eller fejler; ændringer hænger i 'approved'                                                              | lav                 | manuel apply-RPC; heartbeat-fitness fanger cron-failure                                                            |
+| Step 2 org_nodes               | Cycle-detect-trigger har bug; producerer falsk-negativ                                                               | lav                 | revert migration; pre-cutover ingen rows                                                                           |
+| Step 3 closure                 | Maintain-trigger rebuild forkert; helpers får forkert data                                                           | mellem              | revert + fitness-consistency-check fanger inden cutover                                                            |
+| Step 4 placements + team_close | EXCLUDE-constraint accepterer overlap; team_close-handler ikke atomisk                                               | mellem              | revert; SQL-tests bekræfter rollback ved failure i tx-wrap                                                         |
+| Step 5 client_placements       | client_id uden FK accepterer invalid uuid                                                                            | lav                 | trin 10 FK-add fanger ved ALTER; pre-cutover ingen rows                                                            |
+| Step 6 elements                | FK-kæde brudt; tabs uden valid page                                                                                  | lav                 | revert; pre-cutover ingen seedet data                                                                              |
+| Step 7 grants + helpers        | acl_subtree_employees / acl_visibility_check returnerer forkert sæt                                                  | mellem              | revert; authenticated-rolle-fixture-tests fanger inden cutover                                                     |
+| Step 8 wrappers (V2)           | Wrapper springer validering over; pending-row med invalid payload                                                    | mellem              | apply-handler re-validerer; idempotency catch                                                                      |
+| Step 8 auth-grænse (V2+V3)     | Authenticated rolle kan kalde intern `_apply_*`-handler eller `pending_change_request` direkte                       | KRITISK hvis muligt | `pending_changes_no_direct_writes`-fitness-check fanger (V3 udvidet til pending_change_request); CI-blocker        |
+| Step 2 versions-apply (V4)     | Apply-handler skriver forkert effective_from til version (fx now() i stedet for payload.effective_from)              | mellem              | dedikeret test pr. timing-type (future/backdated/same-day); fitness-check `org_node_versions_effective_from_match` |
+| Step 1 cron-filter (V4)        | Cron-filter mangler `effective_from <= current_date`-clause; future-dated changes apply'es for tidligt               | mellem              | fitness-check verificerer apply kun sker når begge clauses er sande                                                |
+| Step 9 read-RPCs current (V3)  | "Aktiv placement"-filter mangler `effective_from <= current_date`-clause → future-dated rows returneres som aktuelle | mellem              | grep-fitness-check sikrer alle current-state-reads bruger den fulde clause                                         |
+| Step 9 read-RPCs (V2)          | Read-RPC eksponerer rows uden permission-check                                                                       | lav                 | revert; `has_permission`-check ved RPC-indgang                                                                     |
+| Step 11 migration              | Eksisterende permission-tjek brudt efter migration                                                                   | mellem              | fallback i `has_permission()` til gammel tabel; m1-smoke-test fanger inden CI                                      |
+| Step 12 seed                   | Eksisterende admin-rolle ikke korrekt omdøbt; floor-trigger bryder                                                   | mellem              | revert seed; trin-1-bootstrap er uberørt                                                                           |
+| Step 13 classify               | Migration-gate fejler på manglende kolonner                                                                          | lav                 | tilføj manglende entries i samme commit                                                                            |
 
 **Kompensation generelt:**
 
@@ -829,7 +895,13 @@ Fitness-checks:
 
 ## Konklusion
 
-V3-planen adresserer Codex V2's 2 KRITISKE fund + Claude.ai V2's MELLEM-finding (intern V2-inkonsistens). Centrale V3-ændringer:
+V4-planen adresserer Codex V3's 1 KRITISKE fund + Claude.ai's V2-tilbagetrækning til KRITISK (samme problem-klasse: temporal model skal versioneres på business effective_from, ikke fysisk apply-tid). Centrale V4-ændringer:
+
+- **Codex V3 KRITISK + Claude.ai V2-KRITISK (effective-date-versionering):** `org_nodes` bliver identity-only; `org_node_versions` er primær mutable lagring med `effective_from`/`effective_to` (renamed fra V3's history). Apply-handler skriver version-boundary fra `pending.effective_from`, ikke `now()`. Cron-filter: apply venter på BÅDE `undo_deadline <= now()` AND `effective_from <= current_date`. Closure-tabel rebuilds når versions effektive på current_date ændres — repræsenterer aldrig future-dated structure. `org_tree_read()` og `org_tree_read_at(p_date)` bruger samme effective-date filter symmetrisk. Beslutning 13 (opdateret) + ny Beslutning 15
+
+V4 bevarer V3's solide lukninger:
+
+V3-planen adresserede Codex V2's 2 KRITISKE fund + Claude.ai V2's MELLEM-finding (intern V2-inkonsistens). V3-ændringer (historik):
 
 - **Codex V2 KRITISK 1 (pending_change_request bypass):** Beslutning 12 gør `pending_change_request` INTERN; `revoke execute from authenticated`. Public wrappers er SECURITY DEFINER og er ENESTE indgang
 - **Codex V2 KRITISK 2a (aktiv-placement-definition):** Beslutning 14 etablerer entydig definition `effective_from <= current_date AND (effective_to IS NULL OR effective_to > current_date)` overalt — håndterer future-dated changes korrekt
@@ -855,7 +927,7 @@ V2 bevarer V1's solide elementer:
 - Modsigelses-disciplin respekteret: ingen modsigelser identificeret
 - Codex-opgraderings-rolle anerkendt: OPGRADERING-forslag håndteres i V<n+1>'s "Opgraderings-håndtering"-sektion. Codex leverede INGEN OPGRADERING-fund i V1
 
-**Codex' V1+V2-fund alle adresseret. Claude.ai's V1 MELLEM-fund + V2 Finding 1 alle adresseret. Plan klar til V3-review.** Claude.ai's V2-approval (commit `40871ba`) gælder IKKE V3 fordi org_nodes-versioneringen er materielt arkitektur-ændring; ny approval kræves.
+**Codex' V1+V2+V3-fund alle adresseret. Claude.ai's V1 MELLEM-fund + V2 Finding 1 (oprindeligt MELLEM, senere opgraderet til KRITISK) alle adresseret. Plan klar til V4-review.** Begge reviewers V2-tilbagetrækning/V3-feedback gælder IKKE V4 fordi V4 introducerer materielt ny effective-date-baseret org-versioneringsmodel; ny review kræves.
 
 - Oprydnings-strategi er obligatorisk og dokumenteret som DEL af build
 
