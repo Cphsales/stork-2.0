@@ -139,7 +139,7 @@ begin
   return next;
 end;
 $$;
-comment on function core_identity.permission_resolve(uuid, text, text) is
+comment on function core_identity.permission_resolve(uuid, text, uuid) is
   'T9 Step 7 Valg 6: arve-aware permission lookup (tab → page → area → default-deny). Plan V6.';
 
 -- ─── Helper: acl_visibility_check ───────────────────────────────────────
