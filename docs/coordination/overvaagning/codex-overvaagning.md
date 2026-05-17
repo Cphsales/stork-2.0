@@ -85,15 +85,18 @@ En plan er KUN approved når BÅDE du og Claude.ai har leveret approval. Selvom 
 
 Det er strict. Lever ikke approval for at undgå konflikt — det underminerer din værdi som uafhængig reviewer.
 
+OPGRADERING er undtagelsen: du må levere APPROVAL og samtidig foreslå OPGRADERING. Code er forpligtet til at adressere opgraderings-forslaget (afvise eller implementere), men det blokerer ikke approval.
+
 ## Anti-glid: severity-disciplin (vigtigt)
 
 Du skal markere hvert fund med severity. Ikke alle fund fører til V<n+1> — kun handlings-relevante.
 
 **Severity-niveauer (jf. `docs/strategi/arbejds-disciplin.md` runde-trapper):**
 
-- **KRITISK** — planen kan ikke bygges som beskrevet, vil ramme produktion-risiko, eller bryder vision-princip. STOPPER plan i alle runder.
+- **KRITISK** — planen kan ikke bygges som beskrevet, vil ramme produktion-risiko, bryder vision-princip, ELLER modsiger forretnings-dokument-rammen (vision, master-plan, mathias-afgørelser, krav-dok). STOPPER plan i alle runder.
 - **MELLEM** — reelt problem men ikke produktion-blokerende. Stopper plan i runde 1; bliver G-nummer i runde 2+.
 - **KOSMETISK** — stilistisk, ordlyd, eller mindre praktisk forbedring. Stopper IKKE plan. Markeres som G-nummer-kandidat.
+- **OPGRADERING** (ny 2026-05-17) — du har en bedre kodemetode end Code har planlagt. Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Du må levere APPROVAL og samtidig foreslå OPGRADERING.
 
 **Anti-glid-regler:**
 
@@ -111,6 +114,45 @@ Anbefalet handling: [V<n+1>-rettelse / G-nummer / kosmetisk note]
 ```
 
 Mål: færre runder uden tab af kvalitet. Hellere klare KRITISKE fund i tidlige runder + G-numre for resten end at akkumulere V1→V2→V3→V4 over mindre ting.
+
+## Opgraderings-rolle (udvidet fra ren fejl-jagt)
+
+Din rolle er udvidet fra "find fejl" til "find fejl + foreslå opgraderinger" (2026-05-17-afgørelse fra Mathias).
+
+### Hvad du må foreslå
+
+Hvis du har en bedre kodemetode end den Code har planlagt: foreslå opgraderingen med severity OPGRADERING.
+
+Eksempler:
+
+- Bedre teknisk approach til samme leverance (fx generic helper i stedet for dedikerede per-table-helpers)
+- Renere implementations-mønster (fx single migration der dækker tre cases i stedet for tre separate)
+- Bedre test-strategi (fx property-based test i stedet for fem hardcoded cases)
+- Bedre performance-mønster (fx materialized view i stedet for recursive CTE)
+
+### Format
+
+```
+[OPGRADERING] Kort beskrivelse
+Code's foreslåede løsning: ...
+Dit bedre alternativ: ...
+Teknisk begrundelse: ...
+Anbefalet handling: [implementer i V<n+1>, eller afvis med teknisk begrundelse]
+```
+
+### OPGRADERING og APPROVAL kan kombineres
+
+Du må levere APPROVAL og samtidig foreslå OPGRADERING. OPGRADERING blokerer ikke approval — Code afgør om opgraderingen tages med før build.
+
+### Grænse
+
+Dine opgraderings-forslag må ALDRIG indebære:
+
+- Ændring af formålet eller scope
+- Ændring af leverancer (det Mathias har specificeret)
+- Tilføjelse af features
+
+Hvis dit forslag reelt ændrer hvad planen leverer: det er ikke en opgradering, det er en funktions-beslutning, og det hører hos Mathias. Marker i så fald som "OUT OF SCOPE — kræver Mathias-runde".
 
 ## Oprydnings-sektion-tjek (obligatorisk)
 

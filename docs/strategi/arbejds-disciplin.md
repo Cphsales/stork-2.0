@@ -293,6 +293,76 @@ Hvis Codex' output indeholder funktions-forslag: marker dem som
 Codex-review-prompt-skabelon (leveres i prompt 3) plus
 post-processing-scan i Code's review-modtagelse.
 
+## Codex-opgraderings-rolle (udvidet fra ren fejl-jagt)
+
+Codex' rolle er udvidet fra "find fejl" til "find fejl + foreslå opgraderinger"
+(2026-05-17-afgørelse).
+
+### Hvad Codex må foreslå
+
+Hvis Codex under plan-review har en bedre kodemetode end den Code har planlagt:
+han må foreslå opgraderingen i sit review med severity **OPGRADERING** (ny
+severity-type, separat fra KRITISK / MELLEM / KOSMETISK).
+
+Eksempler på opgraderings-forslag:
+
+- Bedre teknisk approach til samme leverance (fx generic helper i stedet for
+  dedikerede per-table-helpers)
+- Renere implementations-mønster (fx single migration der dækker tre cases
+  i stedet for tre separate)
+- Bedre test-strategi (fx property-based test i stedet for fem hardcoded
+  cases)
+- Bedre performance-mønster (fx materialized view i stedet for recursive CTE)
+
+### Format
+
+```
+[OPGRADERING] Kort beskrivelse
+Code's foreslåede løsning: ...
+Codex' bedre alternativ: ...
+Teknisk begrundelse: ...
+Anbefalet handling: [implementer i V<n+1>, eller afvis med teknisk begrundelse]
+```
+
+### Code's håndtering
+
+Code skal i sin V<n+1>-runde forholde sig til hvert OPGRADERING-forslag:
+
+- **AFVIS** med konkret teknisk begrundelse (fx "din løsning løser ikke
+  X-edge-case" eller "din løsning er ikke kompatibel med Y-eksisterende-
+  mekanisme"). Afvisning dokumenteres i V<n+1>'s åbnings-sektion under
+  "Opgraderings-håndtering".
+- **IMPLEMENTER** opgraderingen og lever V<n+1> baseret på den.
+  Implementering dokumenteres i V<n+1>'s åbnings-sektion under
+  "Opgraderings-håndtering".
+
+Code må ikke ignorere et OPGRADERING-forslag stiltiende.
+
+### OPGRADERING vs andre severities
+
+| Severity    | Konsekvens                                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| KRITISK     | Stopper plan i alle runder. Code SKAL adressere i V<n+1>                                                                                       |
+| MELLEM      | Stopper plan i runde 1. Bliver G-nummer i runde 2+                                                                                             |
+| KOSMETISK   | Stopper IKKE plan. G-nummer-kandidat                                                                                                           |
+| OPGRADERING | Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Codex må levere APPROVAL og samtidig OPGRADERING-forslag |
+
+OPGRADERING er ikke i konflikt med APPROVAL. Codex kan levere kode-approval
+af planen og samtidig foreslå opgradering. Code afgør om opgraderingen tages
+med før build.
+
+### Grænse for opgraderings-forslag
+
+Codex' opgraderings-forslag må ALDRIG indebære:
+
+- Ændring af formålet eller scope
+- Ændring af leverancer (det Mathias har specificeret)
+- Tilføjelse af features
+
+Hvis Codex' "bedre løsning" reelt ændrer hvad planen leverer: det er ikke
+en opgradering, det er en funktions-beslutning, og det hører hos Mathias.
+Marker i så fald som "OUT OF SCOPE — kræver Mathias-runde".
+
 ## Git-sync-disciplin
 
 Før enhver af de fem triggere defineret i `docs/LÆSEFØLGE.md`:
@@ -314,46 +384,54 @@ Konkret:
 Hvis pull viser uventede commits: STOP, rapportér til Mathias før
 arbejdet fortsætter.
 
-## Krav-dokument-disciplin
+## Modsigelses-disciplin (forretnings-dokumenter)
 
-Når en I-pakke (eller anden pakke med eksplicit krav-dokument fra Claude.ai)
-kører plan-runde-loop: krav-dokumentet er **kontrakt**, ikke oplæg.
+Når en pakke kører plan-runde-loop, er de fire forretnings-dokumenter
+(vision, master-plan, mathias-afgørelser, krav-dokument) **kontrakt** for
+plan-fasen. Plan-filen Code skriver SKAL være konsistent med alle fire.
 
-Krav-dokumentet leveres som `docs/coordination/<pakke>-krav-og-data.md` og
-indeholder typisk: formål, scope (i/ikke i), Mathias' afgørelser, og
-tekniske valg overladt til Code. Plan-filen Code skriver SKAL være
-konsistent med krav-dokumentet.
+### Stop-signal (modsigelse)
 
-### Stop-signal (brud)
+Hvis Code eller Codex under plan-runden bemærker en modsigelse:
 
-Hvis Code eller Codex under plan-runden bemærker at deres egne forslag
-ville modsige krav-dokumentet: de **STOPPER** runden, committer
+- Internt i krav-dokumentet
+- Mellem krav-dokumentet og vision, master-plan, eller mathias-afgørelser
+- Mellem deres egne forslag og nogen af de fire dokumenter
+
+→ de **STOPPER** runden, committer
 `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret
-reference til den linje/sektion i krav-dokumentet der ville blive brudt,
-og flagger til Mathias.
+reference til den linje/sektion der modsiges, og flagger til Mathias.
 
 De **argumenterer ikke** sig videre inden for runden. Argumentation for
-ændring af krav-dokumentet hører til en ny krav-dokument-runde (ny
-Claude.ai-input), ikke til plan-fasen.
+ændring af krav-dokumentet eller anden ramme hører til en ny Mathias-runde,
+ikke til plan-fasen.
 
-### Brud-typer der udløser stop
+For Codex specifikt: hvis han under plan-review finder en modsigelse,
+markerer han det som KRITISK feedback og lader ikke planen passere på
+trods af modsigelsen. Modsigelse er ikke kandidat til G-nummer — den er
+plan-blokerende.
+
+### Modsigelses-typer der udløser stop
 
 - Forslag der modsiger Mathias' eksplicitte afgørelser i krav-dokumentet
+  eller mathias-afgørelser.md
+- Forslag der modsiger vision-princip eller master-plan-paragraf
 - Scope-udvidelse udover krav-dokumentets "I scope"-liste
 - Reklassificering af "IKKE i scope" til scope
 - Ændring af pakke-struktur (samlet vs splittet)
+- Intern modsigelse i krav-dokumentet (Mathias afgør om den skal præciseres)
 
 ### Forskel fra "Plan-leverance er kontrakt"
 
 "Plan-leverance er kontrakt" (se sektion længere nede) handler om at
-Code/Codex skal følge en konkret plan-leverance fra Mathias. Krav-
-dokument-disciplin handler om at plan-fasen ikke må ændre selve
-krav-rammen — krav-dokumentet kan kun ændres af Mathias eller via
-eksplicit ny Claude.ai-runde.
+Code/Codex skal følge en konkret plan-leverance fra Mathias. Modsigelses-
+disciplin handler om at plan-fasen ikke må ændre selve ramme-niveauet —
+de fire dokumenter kan kun ændres af Mathias eller via eksplicit ny
+Claude.ai-runde.
 
 Plan-leverance er kontrakt nedad (Code respekterer Mathias' specifikation).
-Krav-dokument-disciplin er kontrakt opad (plan-fasen ændrer ikke krav-
-rammen). De gælder samtidig.
+Modsigelses-disciplin er kontrakt opad (plan-fasen ændrer ikke rammen).
+De gælder samtidig.
 
 ## Disciplin-tjekliste — før hver migration skrives
 
