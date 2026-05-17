@@ -193,6 +193,29 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Løsning:** Code kører `--permission-mode bypassPermissions` (fuld autonomi, ingen prompts). Codex kører `-s workspace-write -a never` (skriv kun i repo + tmp + memories, ingen prompts). Forskellen er bevidst: Code's rolle kræver mange kommando-typer (pnpm, supabase, gh, git, sql); Codex' rolle er fokuseret på read + review + push-til-egen-branch og har ikke brug for at gå uden for repo. Aliases i `~/.bashrc` gør det permanent. Bash backslash-escape (`\claude`, `\codex`) bypasser alias for én kommando hvis nødvendigt.
 - **Plan-reference:** Denne commit. Backups taget: `~/.codex/config.toml.bak.2026-05-16` + `~/.claude/settings.local.json.bak.2026-05-16`. Ingen ændring til eksisterende config-filer — aliases er additive.
 
+### 2026-05-18 — Master-plan §1.7 opdateret til at matche T9-omstart-rammen
+
+- **Beslutning:** Master-plan §1.7 "Identitet og rettigheder" omskrevet til at reflektere T9-omstart-rammen (2026-05-17 entry, 15 punkter). Pre-omsadlings-tekst fjernes som forkert fundament. Konkret fjernet/erstattet:
+  - 4-dim permission med scope (all/subtree/team/self) → 3-niveau (Område→Page→Tab) + 2 akser ((kan_tilgå/kan_skrive) × visibility (Sig selv/Hiraki/Alt))
+  - `org_unit_closure`-navn → `org_node_closure`
+  - `role_page_permissions` som primær → `role_permission_grants` som primær (legacy bevaret som readonly fallback)
+  - `acl_subtree` → `acl_subtree_org_nodes` + `acl_subtree_employees`
+  - Implicit "kan_view/kan_edit"-formulering → kan_tilgå/kan_skrive
+  - Stabs-team/stab-rolle helt fjernet (T9-omstart-rammen punkt 8)
+  - `is_compliance_officer()` fjernet (T9-omstart-rammen punkt 10 + vision-princip 2: GDPR/AMO/AI-ansvarlig er UI-rolle-tildelinger på relevante areas)
+  - Fortrydelses-mekanisme tilføjet (T9-omstart-rammen punkt 13-14)
+  - Klient-til-team-only-binding tilføjet (T9-omstart-rammen punkt 6)
+  - Knude-løs medarbejder som gyldig tilstand tilføjet (T9-omstart-rammen punkt 7)
+  - Write-mekanik-sektion tilføjet: §1.1's session-var-pattern + `stork.t9_write_authorized` for T9 write-RPCs/tabeller
+
+- **Begrundelse:** H011's §1.7-modsigelse identificeret 2026-05-15 lukkes. Pre-omsadlings-tekst om 4-dim permission, scope=team, stab-rolle, `org_unit_closure`-navn og `is_compliance_officer` var forkert fundament. T9-omstart-rammen (2026-05-17, 15 punkter) er det korrekte fundament. Master-plan og T9-kode skal være konsistente; §1.7 var den vigtigste hængende inkonsistens.
+
+  Pre-T9-leverancen byggede 6 write-tabeller med kun SELECT-policies + FORCE RLS, hvilket gjorde at SECURITY INVOKER-write-RPCs ikke kunne skrive fra authenticated-kontekst. §1.1's session-var-pattern (allerede etableret pre-T9 i R1B, P1a m.fl.) skal anvendes konsekvent i T9 også.
+
+- **Plan-reference:** Appendix C rettelse 35. Migration `supabase/migrations/20260518100000_t9_fundament_supplement.sql` implementerer §1.1's pattern (11 RPCs får session-var efter has_permission-check; 6 tabeller får INSERT + UPDATE policies).
+
+- **Konsekvens for fremtidige byggetrin:** §1.1's pattern er nu eksplicit dokumenteret i §1.7's "Write-mekanik"-sektion. Build-Code skal verificere mod §1.1 + §1.7 før hver write-RPC + write-tabel implementeres. Plan-skabelon kan udvides med pattern-checklist i senere disciplin-pakke.
+
 ### 2026-05-17 — T9 omstart efter afdæknings-session: ét træ, permission-elementer, synlighed udledt af placering
 
 - **Beslutning:** T9-runden V1-V3 trækkes tilbage. Nyt krav-dokument skrives på
