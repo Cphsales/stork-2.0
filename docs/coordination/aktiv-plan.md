@@ -2,14 +2,11 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** Ingen plan endnu. Krav-dokument klar:
-`docs/coordination/T9-krav-og-data.md` (godkendt af Mathias 2026-05-17). Pakke:
-§4 trin 9 — Identitet del 2 (organisations-træet + permission-fundament +
-fortrydelses-mekanisme + import fra 1.0). Afventer at Code laver T9-plan V1
-på ny branch.
+**Aktuel:** ingen aktiv plan.
 
 **Historisk:**
 
+- T9 (§4 trin 9 — Identitet del 2: organisations-træet + permission-fundament + fortrydelses-mekanisme + import fra 1.0) afsluttet via build-PR claude/T9-build → main. Plan + feedback (V1-V6) arkiveret i `docs/coordination/arkiv/` (filnavne `T9-*`). Krav-dok + plan + 13 plan-feedback-filer. Build i 11 migrations + 8 smoke-tests + 2 stub migration-scripts. Slut-rapport følger.
 - H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
 - H020 (28 åbenlyse dokument-rettelser + plan-automation-flow-test) afsluttet
   ved commit-range `7c0c83d..70d8857` (PR #20 rebase-merged 2026-05-16). Plan +

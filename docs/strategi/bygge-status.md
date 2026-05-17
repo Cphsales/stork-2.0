@@ -4,55 +4,55 @@
 
 **Scope:** Kun §4 byggetrin. H-pakker (H010, H016, H020, H020.1, H021, H022, H022.1, dokument-roller-pakken, master-plan sandheds-audit m.fl.) er disciplin/dokument-pakker uden for §4 og spores via commit-history + slut-rapporter i `docs/coordination/rapport-historik/`. Tekniske G-numre (gæld) spores i `docs/teknisk/teknisk-gaeld.md`.
 
-**Sidste opdatering:** 16. maj 2026 (efter master-plan sandheds-audit — trin 9 markeret PAUSET, jf. mathias-afgoerelser 2026-05-15)
+**Sidste opdatering:** 17. maj 2026 (T9 — Identitet del 2 — bygget; PAUSET-status fjernet)
 
 ---
 
 ## Status-oversigt
 
-| §4 trin | Beskrivelse                                             | Status               | Vores trin | Commit  | Dato    |
-| ------- | ------------------------------------------------------- | -------------------- | ---------- | ------- | ------- |
-| 1       | Adgangs-mekanik                                         | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
-| 2       | Audit-mønster (partitioneret)                           | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
-| 3       | Drift-skabelon (heartbeats)                             | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
-| 4       | Klassifikations-registry + migration-gate Phase 1       | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
-| 5       | Identitet del 1 (medarbejdere, roller, permissions)     | ✓ Godkendt           | Trin 2     | 14dd814 | 14. maj |
-| 6       | Anonymisering (anonymization_state + replay)            | ✓ Godkendt           | Trin 3     | fd2ba48 | 14. maj |
-| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)   | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
-| 7b      | Auto-lock-cron + candidate-pre-compute-cron             | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
-| 7c      | break_glass_requests + RPC-skabelon                     | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
-| 8       | Migration-gate Phase 2 strict                           | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
-| 9       | Identitet del 2 (org-træ, closure-tabel, subtree-RLS)   | ⏸ PAUSET             | —          | —       | —       |
-| 10      | Klient-skabelon + felt-definitions                      | ⌛ Udestående        | —          | —       | —       |
-| 10b     | Lokations-skabelon                                      | ⌛ Udestående        | —          | —       | —       |
-| 11      | UDGÅR (schema-grænser fra trin 1)                       | —                    | —          | —       | —       |
-| 12      | @stork/core skeleton                                    | ⌛ Udestående        | —          | —       | —       |
-| 13      | Formel-system                                           | ⌛ Udestående        | —          | —       | —       |
-| 14      | Salgs-stamme + legacy_snapshots                         | ⌛ Udestående        | —          | —       | —       |
-| 15      | Pricing + identitets-master + sælger-attribution        | ⌛ Udestående        | —          | —       | —       |
-| 16      | Annulleringer + corrections + reversal                  | ⌛ Udestående        | —          | —       | —       |
-| 16b     | rejections + basket_corrections + fuld dispatcher       | ⌛ Udestående        | —          | —       | —       |
-| 17      | Vagter + skabeloner + pauser                            | ⌛ Udestående        | —          | —       | —       |
-| 18      | Stempelur + corrections                                 | ⌛ Udestående        | —          | —       | —       |
-| 19      | UDSKUDT (flyttet til 21b)                               | —                    | —          | —       | —       |
-| 20a     | Fire fravær-tabeller                                    | ⌛ Udestående        | —          | —       | —       |
-| 20b     | Vagt-status enum udvidelse                              | ⌛ Udestående        | —          | —       | —       |
-| 20c     | Klient-tilhør-snapshot (relations-tabel)                | ⌛ Udestående        | —          | —       | —       |
-| 20d     | Fraværs-triggers                                        | ⌛ Udestående        | —          | —       | —       |
-| 20e     | Overtid                                                 | ⌛ Udestående        | —          | —       | —       |
-| 20f     | Sygeløn-formel + ferie-løn-formel                       | ⌛ Udestående        | —          | —       | —       |
-| 21      | Ingest-tabeller + Adversus sync-job + call_records      | ⌛ Udestående        | —          | —       | —       |
-| 21b     | Klient-fordeling-segmenter                              | ⌛ Udestående        | —          | —       | —       |
-| 22      | Medarbejder-aggregater + payroll-linjer + KPI-snapshots | ⌛ Udestående        | —          | —       | —       |
-| 23      | Dashboards + aggregat-tabeller                          | ⌛ Udestående        | —          | —       | —       |
-| 24      | FM booking-stamme                                       | ⌛ Udestående        | —          | —       | —       |
-| 25      | FM booking-assignments + auto-vagt-generering           | ⌛ Udestående        | —          | —       | —       |
-| 26      | FM hotel-booking                                        | ⌛ Udestående        | —          | —       | —       |
-| 27      | FM køretøj og mileage                                   | ⌛ Udestående        | —          | —       | —       |
-| 28      | FM diæt og oplæringsbonus                               | ⌛ Udestående        | —          | —       | —       |
-| 29      | FM leverandør-fakturering                               | ⌛ Udestående        | —          | —       | —       |
-| 30      | FM checkliste-system                                    | ⌛ Udestående        | —          | —       | —       |
-| 31      | Cutover-leverancer                                      | ⌛ Udestående        | —          | —       | —       |
+| §4 trin | Beskrivelse                                                    | Status               | Vores trin | Commit  | Dato    |
+| ------- | -------------------------------------------------------------- | -------------------- | ---------- | ------- | ------- |
+| 1       | Adgangs-mekanik                                                | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 2       | Audit-mønster (partitioneret)                                  | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 3       | Drift-skabelon (heartbeats)                                    | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 4       | Klassifikations-registry + migration-gate Phase 1              | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 5       | Identitet del 1 (medarbejdere, roller, permissions)            | ✓ Godkendt           | Trin 2     | 14dd814 | 14. maj |
+| 6       | Anonymisering (anonymization_state + replay)                   | ✓ Godkendt           | Trin 3     | fd2ba48 | 14. maj |
+| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)          | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7b      | Auto-lock-cron + candidate-pre-compute-cron                    | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7c      | break_glass_requests + RPC-skabelon                            | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 8       | Migration-gate Phase 2 strict                                  | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
+| 9       | Identitet del 2 (org-træ + permission-fundament + fortrydelse) | ✓ Godkendt           | Trin 5     | TBD     | 17. maj |
+| 10      | Klient-skabelon + felt-definitions                             | ⌛ Udestående        | —          | —       | —       |
+| 10b     | Lokations-skabelon                                             | ⌛ Udestående        | —          | —       | —       |
+| 11      | UDGÅR (schema-grænser fra trin 1)                              | —                    | —          | —       | —       |
+| 12      | @stork/core skeleton                                           | ⌛ Udestående        | —          | —       | —       |
+| 13      | Formel-system                                                  | ⌛ Udestående        | —          | —       | —       |
+| 14      | Salgs-stamme + legacy_snapshots                                | ⌛ Udestående        | —          | —       | —       |
+| 15      | Pricing + identitets-master + sælger-attribution               | ⌛ Udestående        | —          | —       | —       |
+| 16      | Annulleringer + corrections + reversal                         | ⌛ Udestående        | —          | —       | —       |
+| 16b     | rejections + basket_corrections + fuld dispatcher              | ⌛ Udestående        | —          | —       | —       |
+| 17      | Vagter + skabeloner + pauser                                   | ⌛ Udestående        | —          | —       | —       |
+| 18      | Stempelur + corrections                                        | ⌛ Udestående        | —          | —       | —       |
+| 19      | UDSKUDT (flyttet til 21b)                                      | —                    | —          | —       | —       |
+| 20a     | Fire fravær-tabeller                                           | ⌛ Udestående        | —          | —       | —       |
+| 20b     | Vagt-status enum udvidelse                                     | ⌛ Udestående        | —          | —       | —       |
+| 20c     | Klient-tilhør-snapshot (relations-tabel)                       | ⌛ Udestående        | —          | —       | —       |
+| 20d     | Fraværs-triggers                                               | ⌛ Udestående        | —          | —       | —       |
+| 20e     | Overtid                                                        | ⌛ Udestående        | —          | —       | —       |
+| 20f     | Sygeløn-formel + ferie-løn-formel                              | ⌛ Udestående        | —          | —       | —       |
+| 21      | Ingest-tabeller + Adversus sync-job + call_records             | ⌛ Udestående        | —          | —       | —       |
+| 21b     | Klient-fordeling-segmenter                                     | ⌛ Udestående        | —          | —       | —       |
+| 22      | Medarbejder-aggregater + payroll-linjer + KPI-snapshots        | ⌛ Udestående        | —          | —       | —       |
+| 23      | Dashboards + aggregat-tabeller                                 | ⌛ Udestående        | —          | —       | —       |
+| 24      | FM booking-stamme                                              | ⌛ Udestående        | —          | —       | —       |
+| 25      | FM booking-assignments + auto-vagt-generering                  | ⌛ Udestående        | —          | —       | —       |
+| 26      | FM hotel-booking                                               | ⌛ Udestående        | —          | —       | —       |
+| 27      | FM køretøj og mileage                                          | ⌛ Udestående        | —          | —       | —       |
+| 28      | FM diæt og oplæringsbonus                                      | ⌛ Udestående        | —          | —       | —       |
+| 29      | FM leverandør-fakturering                                      | ⌛ Udestående        | —          | —       | —       |
+| 30      | FM checkliste-system                                           | ⌛ Udestående        | —          | —       | —       |
+| 31      | Cutover-leverancer                                             | ⌛ Udestående        | —          | —       | —       |
 
 **Status-symboler:**
 
