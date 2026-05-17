@@ -1,10 +1,22 @@
-# T9 — Plan V1
+# T9 — Plan V2
 
 **Pakke:** §4 trin 9 — Identitet del 2 (organisations-træet + permission-fundament + fortrydelses-mekanisme + import fra 1.0)
 **Krav-dok:** `docs/coordination/T9-krav-og-data.md` (merged 2026-05-17 i kommit `15ff4ee`)
-**Plan-version:** V1
+**Plan-version:** V2
 **Dato:** 2026-05-17
 **Disciplin-baseline:** Modsigelses-disciplin + Codex-opgraderings-rolle aktiv fra commit `09d3afb` (2026-05-17).
+
+**Revision V2 (denne version):** V2 addresserer 3 fund fra Codex V1 (`docs/coordination/plan-feedback/T9-V1-codex.md`, commit `3027e2b`) + 2 MELLEM-fund fra Claude.ai V1 (`docs/coordination/plan-feedback/T9-V1-claude-ai.md`, commit `8e43b22`).
+
+- **Codex KRITISK 1 (muterende RPC'er bypassede pending_changes):** Pending_changes er nu **eneste skrivevej** for tids-baserede ændringer (struktur/placering/klient). Public RPC'er er tynde wrappers der kalder `pending_change_request`. Apply-handlere er interne (ingen authenticated EXECUTE). Permission-elementer + grants + konfig er IKKE pending-pligtige fordi krav-dok 3.6.2 begrænser "fortrydelses-mekanisme" til "ændringer med gældende dato" (strukturændringer, medarbejder-flytninger, klient-flytninger). Se ny Beslutning 11 + RPC-skrivevej-matrix.
+- **Codex KRITISK 2 (change_type-enum ikke komplet):** Komplet change-type-matrix indført med præcis én række pr. muterende RPC der er pending-pligtig: public request-funktion, intern apply-handler, payload-schema, valideringer, idempotency-regel, undo-adfærd, testnavn. Operationer uden for pending (permission-element-CRUD, grants, undo_settings) er eksplicit listet og begrundet.
+- **Codex MELLEM (can_user_see-signatur):** Helper splittet: `acl_visibility_check(p_employee_id, p_target_id, p_target_kind, p_visibility) returns boolean` (kun visibility mod org-træ) + `permission_resolve` (eksisterende) som forretnings-RPC composer separat. Smoke-test verificerer samme target synligt/usynligt afhængigt af forskellig page/tab-grant.
+- **Claude.ai MELLEM 1 (Hent-funktioner ikke eksplicit dækket):** Tilføjet dedikerede read-RPCs for alle hent-funktioner fra krav-dok sektion 4, særligt historiske (`org_tree_at`, `employee_placement_at`, `client_placement_at` osv.). Se nyt Valg 13.
+- **Claude.ai MELLEM 2 (rolle-til-medarbejder):** Eksplicit verificeret mod trin 5: `core_identity.employee_upsert` håndterer Tildel (sæt role_id) + Skift (ændre role_id) + Fjern (sæt role_id=NULL). T9 tilføjer tynde wrappers `employee_role_assign` / `employee_role_remove` for ækvivalent navngivning + audit-clarity, men de delegerer til trin 5's RPC. Rolle-tildeling er IKKE pending-pligtig (krav-dok 4.4 specificerer ikke "gældende dato"; sker umiddelbart). Se Valg 1 + Valg 14.
+- **Claude.ai KOSMETISK 3 (krav-dok intern modsigelse 18 vs 25):** Plan-Valg 12 håndterer pragmatisk (bootstrap "Ejere" + andre via UI). G-nummer-kandidat dokumenteret for Mathias-præcisering af krav-dok-tekst.
+- **Claude.ai KOSMETISK 4 (engelske ENUM-værdier):** Bevidst valg dokumenteret i Valg 1 (kode-konsistens; UI-mapping i lag F). G-nummer ikke nødvendig — kosmetisk note.
+
+**Codex OPGRADERING-fund i V1:** Ingen. Codex' rolle-prompt er udvidet 2026-05-17 til også at omfatte opgraderings-forslag, men ingen blev leveret i V1-runde.
 
 ---
 
@@ -89,6 +101,15 @@ Per krav-dok 7.2. Eksisterende `core_identity.role_page_permissions` (page_key +
 
 Eksisterende `role_page_permissions`-tabel **bevares** efter migration som read-only-fallback indtil trin 10+ skifter konsumere til ny model — derefter droppes den i særskilt pakke (G-nummer).
 
+**Beslutning 11 (V2 — Codex KRITISK 1+2): Pending_changes er eneste skrivevej for tids-baserede ændringer.**
+
+Per krav-dok 3.6.2 ("Alle ændringer med gældende dato kan fortrydes... Det gælder strukturændringer, medarbejder-flytninger, klient-flytninger") + krav-dok 6 (fortrydelses-flow). V1 byggede direkte muterende public RPC'er der bypassede pending_changes — to skriveveje i konflikt. V2 etablerer:
+
+- **Pending-pligtige operationer** (krav-dok 3.6.2-listen): alle struktur-, placering- og klient-mutationer går KUN gennem `pending_change_request` → approve → undo-vindue → `pending_change_apply` (intern). Public request-funktioner er tynde wrappers; apply-handlere er `security definer revoke from authenticated`. Ingen direkte authenticated mutation muligt
+- **Direkte operationer** (uden gældende dato): permission-element-CRUD (område/page/tab), rettighedsgrants, undo_settings, rolle-tildeling (krav-dok 4.4 specificerer ikke gældende dato) — disse muteres direkte via deres dedikerede RPC'er med `has_permission`-check. Audit-trigger fanger ændringen
+- **Komplet change_type-matrix** (Valg 8 udvidet) lister hver pending-pligtig RPC med: request-funktion, change_type-værdi, apply-handler, payload-schema, validering, idempotency-regel, undo-adfærd, testnavn
+- **Tests verificerer ENDS-paths:** authenticated kald til intern apply-handler afvises (permission denied); request opretter pending-row uden state-mutation; apply muterer state (kun via cron eller manuel `pending_change_apply`); undo før deadline efterlader state uændret; apply er idempotent
+
 ---
 
 ## Mathias' afgørelser (input til denne plan)
@@ -153,27 +174,58 @@ Alle 32 afgørelser fra krav-dok sektion 10 honoreres 1:1. Konkret mapping af de
 - `acl_subtree_org_nodes(p_employee_id uuid) returns uuid[]` — org_node-IDs i caller's subtree
 - `acl_subtree_employees(p_employee_id uuid) returns uuid[]` — employee-IDs med aktiv placement på node i caller's subtree
 - `permission_resolve(p_role_id uuid, p_element_type text, p_element_id uuid) returns (can_access boolean, can_write boolean, visibility text)` — arve-aware lookup
-- `can_user_see(p_employee_id uuid, p_target_id uuid, p_target_kind text) returns boolean` — composition over `permission_resolve` + `acl_subtree_employees` for konkret synligheds-check pr. row (kan bruges af forretnings-RPC'er fra trin 10+)
+- `acl_visibility_check(p_employee_id uuid, p_target_id uuid, p_target_kind text, p_visibility text) returns boolean` — V2: pure visibility-check mod org-træ givet en konkret visibility-værdi. Kalder IKKE permission_resolve. Forretnings-RPC composer: først `permission_resolve(role, element)` → får visibility-værdi; derefter `acl_visibility_check(employee, target, kind, visibility)` → får ja/nej. Split adresserer Codex V1 MELLEM-fund om manglende input i V1's `can_user_see`-signatur
 
-**RPC'er:**
+**RPC'er — pending-pligtige (tids-baserede ændringer; eneste skrivevej via pending_changes; jf. Beslutning 11):**
 
-- `org_node_upsert(p_id uuid, p_name text, p_parent_id uuid, p_node_type text, p_is_active boolean, p_effective_from date) returns uuid`
-- `org_node_deactivate(p_node_id uuid, p_effective_from date) returns void`
-- `team_close(p_node_id uuid, p_effective_from date) returns void` — lukker alle åbne placements + sætter is_active=false atomarisk
-- `employee_place(p_employee_id uuid, p_node_id uuid, p_effective_from date) returns uuid` — opretter placement (lukker eventuel åben først hvis flyt)
-- `employee_remove_from_node(p_employee_id uuid, p_effective_from date) returns void` — lukker åben placement uden ny
-- `client_node_place(p_client_id uuid, p_node_id uuid, p_effective_from date) returns uuid` — kun hvis node_type='team'
-- `client_node_close(p_client_id uuid, p_effective_from date) returns void`
-- `permission_area_upsert(...)`, `permission_page_upsert(...)`, `permission_tab_upsert(...)`, samt deaktiveringer
+Hver pending-pligtig public RPC er tynd wrapper der validerer + opretter `pending_changes`-row med `status='pending'`. Faktiske mutation sker i intern apply-handler kaldt af cron eller manuel `pending_change_apply`. Apply-handlere er `security definer revoke from authenticated`.
+
+- `org_node_upsert(p_id uuid, p_name text, p_parent_id uuid, p_node_type text, p_is_active boolean, p_effective_from date) returns uuid` — opretter pending-row med `change_type='org_node_upsert'`; intern handler `_apply_org_node_upsert(payload jsonb)`
+- `org_node_deactivate(p_node_id uuid, p_effective_from date) returns uuid` — `change_type='org_node_deactivate'`; intern `_apply_org_node_deactivate(payload jsonb)`
+- `team_close(p_node_id uuid, p_effective_from date) returns uuid` — `change_type='team_close'`; intern `_apply_team_close(payload jsonb)` (atomisk: is_active=false + luk alle åbne placements på team)
+- `employee_place(p_employee_id uuid, p_node_id uuid, p_effective_from date) returns uuid` — `change_type='employee_place'`; intern `_apply_employee_place(payload jsonb)` (luk eventuel åben + åbn ny)
+- `employee_remove_from_node(p_employee_id uuid, p_effective_from date) returns uuid` — `change_type='employee_remove'`; intern `_apply_employee_remove(payload jsonb)`
+- `client_node_place(p_client_id uuid, p_node_id uuid, p_effective_from date) returns uuid` — `change_type='client_place'`; intern `_apply_client_place(payload jsonb)` (validerer node_type='team')
+- `client_node_close(p_client_id uuid, p_effective_from date) returns uuid` — `change_type='client_close'`; intern `_apply_client_close(payload jsonb)`
+
+**RPC'er — direkte muterende (uden gældende dato; ikke pending-pligtige; jf. krav-dok 3.6.2 + Beslutning 11):**
+
+Disse opererer på konfiguration/struktur uden tidsdimension. Audit-trigger fanger mutationen umiddelbart. Krav-dok 4.5 + 4.6 + 4.7 specificerer ikke "gældende dato" på disse.
+
+- `permission_area_upsert(p_id uuid, p_name text, p_is_active boolean, p_sort_order integer) returns uuid`
+- `permission_area_deactivate(p_area_id uuid) returns void`
+- `permission_page_upsert(p_id uuid, p_area_id uuid, p_name text, p_is_active boolean, p_sort_order integer) returns uuid`
+- `permission_page_deactivate(p_page_id uuid) returns void`
+- `permission_tab_upsert(p_id uuid, p_page_id uuid, p_name text, p_is_active boolean, p_sort_order integer) returns uuid`
+- `permission_tab_deactivate(p_tab_id uuid) returns void`
 - `role_permission_grant_set(p_role_id uuid, p_element_type text, p_element_id uuid, p_can_access boolean, p_can_write boolean, p_visibility text) returns uuid`
 - `role_permission_grant_remove(p_role_id uuid, p_element_type text, p_element_id uuid) returns void`
-- `pending_change_request(p_change_type text, p_target_id uuid, p_payload jsonb, p_effective_from date) returns uuid`
-- `pending_change_approve(p_change_id uuid) returns void`
-- `pending_change_undo(p_change_id uuid) returns void`
-- `pending_change_apply(p_change_id uuid) returns void` — kaldes af cron eller manuelt
 - `undo_setting_update(p_change_type text, p_undo_period_seconds integer) returns void`
+- `employee_role_assign(p_employee_id uuid, p_role_id uuid) returns void` — V2: tynd wrapper omkring trin 5's `employee_upsert` for ækvivalent navngivning + audit-clarity (jf. Valg 14)
+- `employee_role_remove(p_employee_id uuid) returns void` — V2: tynd wrapper; sætter `role_id=NULL` via trin 5's `employee_upsert`
 
-**Eksisterende RPC'er fra trin 5 bevares uændret**: `employee_upsert`, `role_upsert`, `role_page_permission_upsert` (sidstnævnte vil dog blive deprecated til fordel for `role_permission_grant_set` i en senere pakke; T9 bevarer den for backward-compat).
+**RPC'er — fortrydelses-mekanisme:**
+
+- `pending_change_request(p_change_type text, p_target_id uuid, p_payload jsonb, p_effective_from date) returns uuid` — V2: internt API; public RPC'er ovenfor wrappar denne. Kan kaldes direkte for change_types ikke listet ovenfor (fremtidssikret)
+- `pending_change_approve(p_change_id uuid) returns void` — godkender; sætter `undo_deadline = now() + undo_period`
+- `pending_change_undo(p_change_id uuid) returns void` — ruller tilbage før `undo_deadline`
+- `pending_change_apply(p_change_id uuid) returns void` — flytter approved→applied; kalder intern handler. Eksekveres af cron eller manuelt af admin
+
+**RPC'er — read (V2; jf. Valg 13):**
+
+For at gøre frontend-konsumeringen konsistent på tværs af aktuelle og historiske queries:
+
+- `org_tree_read() returns table(...)` — aktuel træ-struktur (kun aktive knuder)
+- `org_tree_read_at(p_date date) returns table(...)` — træ på specifik dato
+- `employee_placement_read(p_employee_id uuid) returns table(...)` — aktuel placement
+- `employee_placement_read_at(p_employee_id uuid, p_date date) returns table(...)` — placement på dato
+- `client_placement_read(p_client_id uuid) returns table(...)` — aktuel klient-team-tilknytning
+- `client_placement_read_at(p_client_id uuid, p_date date) returns table(...)`
+- `permission_elements_read() returns table(...)` — alle aktive areas+pages+tabs
+- `role_permissions_read(p_role_id uuid) returns table(...)` — alle grants for rolle
+- `pending_changes_read() returns table(...)` — ventende changes for caller (eller alle for admin)
+
+**Eksisterende RPC'er fra trin 5 bevares uændret**: `employee_upsert` (håndterer rolle-tildeling via role_id-felt — jf. Claude.ai V1 MELLEM 2 + Valg 14), `role_upsert`, `role_page_permission_upsert` (sidstnævnte deprecated til fordel for `role_permission_grant_set`; T9 bevarer for backward-compat).
 
 ### Valg 2 — Closure-table-vedligeholdelse på `org_nodes`
 
@@ -212,13 +264,40 @@ Alle 32 afgørelser fra krav-dok sektion 10 honoreres 1:1. Konkret mapping af de
 
 **RLS-rekursion-håndtering:** Strukturelle tabeller (closure, nodes, placements) er meta-data, ikke privat forretningsdata. Forretningsdata-scope (sales, calls, payroll) får policies pr. tabel fra trin 14+ ved at konsumere `permission_resolve` + `acl_subtree_*` via SECURITY INVOKER. Ingen RLS-selvreference fordi helpers ikke læser deres egne policy-target-tabeller.
 
-### Valg 8 — Pending_changes som central tabel med change_type-diskriminering
+### Valg 8 — Pending_changes som central tabel med komplet change_type-matrix (V2)
 
-**Anbefaling:** Beslutning 7. En tabel `pending_changes` dækker alle ændringstyper (struktur, placement, klient-tilknytning, rettighed). `change_type` ENUM diskriminerer; `payload` jsonb bærer typespecifikke detaljer. Apply-handler er én RPC der dispatcher på `change_type`.
+**Anbefaling:** Beslutning 7 + 11. En tabel `pending_changes` er **eneste skrivevej** for tids-baserede ændringer (struktur, placement, klient). `change_type` ENUM diskriminerer; `payload` jsonb bærer typespecifikke detaljer. Apply-handler-dispatcher kalder type-specifik intern handler. Permission-element-CRUD + grants + konfig går UDENOM pending_changes (krav-dok 3.6.2 begrænser fortrydelse til tids-baserede ændringer).
 
-**Alternativ afvist:** separat tabel pr. ændringstype. Det giver kode-duplikation for fortrydelses-livscyklus + cron-evaluering. Generisk pattern er bedre.
+**Komplet change-type-matrix (V2 — Codex KRITISK 2-fix):**
 
-**Cron-eksekvering:** ny cron `pending_changes_apply_due` (kører hver minut) som flytter approved-rows til applied når `undo_deadline <= now()`. Cron-feilhåndtering via `cron_heartbeats` (etableret pattern fra trin 3).
+Hver pending-pligtig RPC har præcis én række. Public request-funktion + intern apply-handler + payload-schema + valideringer + idempotency + undo-adfærd + testnavn.
+
+| change_type           | Public request-RPC          | Intern apply-handler         | Payload-schema (jsonb)                          | Valideringer                                                                                                 | Idempotency                                                             | Undo-adfærd                                                                                   | Testnavn                             |
+| --------------------- | --------------------------- | ---------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `org_node_upsert`     | `org_node_upsert`           | `_apply_org_node_upsert`     | `{id?, name, parent_id?, node_type, is_active}` | parent_id er ikke et team-knude (CHECK via lookup); cycle-detect; name ikke tom                              | Same payload + same effective_from → no double-apply (PK på pending_id) | Hvis prior_state var INSERT: undo sletter row. Hvis UPDATE: undo restorer prior payload       | `t9_pending_org_node_upsert.sql`     |
+| `org_node_deactivate` | `org_node_deactivate`       | `_apply_org_node_deactivate` | `{node_id, effective_from}`                     | Node eksisterer + is_active=true; team-knude må ikke have åbne placements (eller redirect til team_close)    | Re-apply til same state = no-op                                         | Undo restorer is_active=true                                                                  | `t9_pending_org_node_deactivate.sql` |
+| `team_close`          | `team_close`                | `_apply_team_close`          | `{node_id, effective_from}`                     | Node er team-type + is_active=true                                                                           | Atomisk: is_active=false + luk alle åbne employee + client placements   | Undo restorer is_active=true + genåbn placements (sætter effective_to=NULL hvis undone match) | `t9_pending_team_close.sql`          |
+| `employee_place`      | `employee_place`            | `_apply_employee_place`      | `{employee_id, node_id, effective_from}`        | Employee eksisterer + ikke anonymized; node er ikke deaktiveret; ny placement starter på/efter eventuel åben | Same employee+node+effective_from: no-op                                | Undo lukker den nye placement + genåbner forrige                                              | `t9_pending_employee_place.sql`      |
+| `employee_remove`     | `employee_remove_from_node` | `_apply_employee_remove`     | `{employee_id, effective_from}`                 | Aktiv placement eksisterer for employee                                                                      | Re-apply til same state = no-op                                         | Undo genåbner den lukkede placement                                                           | `t9_pending_employee_remove.sql`     |
+| `client_place`        | `client_node_place`         | `_apply_client_place`        | `{client_id, node_id, effective_from}`          | Node er team-type + is_active=true                                                                           | Same client+node+effective_from: no-op                                  | Undo lukker den nye placement + genåbner forrige                                              | `t9_pending_client_place.sql`        |
+| `client_close`        | `client_node_close`         | `_apply_client_close`        | `{client_id, effective_from}`                   | Aktiv placement eksisterer for client                                                                        | Re-apply til same state = no-op                                         | Undo genåbner den lukkede placement                                                           | `t9_pending_client_close.sql`        |
+
+**Operationer UDEN for pending_changes (jf. krav-dok 3.6.2 + Beslutning 11):**
+
+| RPC                                                          | Begrundelse for undtagelse                                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `permission_area_upsert` / `permission_area_deactivate`      | Permission-element-konfiguration; krav-dok 4.5 specificerer ikke "gældende dato"; ændring er umiddelbar |
+| `permission_page_upsert` / `permission_page_deactivate`      | Samme                                                                                                   |
+| `permission_tab_upsert` / `permission_tab_deactivate`        | Samme                                                                                                   |
+| `role_permission_grant_set` / `role_permission_grant_remove` | Rettigheds-tildeling; krav-dok 4.6 ikke "gældende dato"; effekt umiddelbar                              |
+| `undo_setting_update`                                        | Meta-konfiguration                                                                                      |
+| `employee_role_assign` / `employee_role_remove`              | Rolle-tildeling; krav-dok 4.4 ikke "gældende dato" (jf. Claude.ai V1 MELLEM 2 + Valg 14)                |
+| Trin 5's `employee_upsert`, `role_upsert`                    | Eksisterende RPC'er; rolle/employee-CRUD; ikke i T9-scope at re-arkitektur                              |
+| `pending_change_request/approve/undo/apply`                  | Meta-mekanisme; selve operationen kan ikke være pending                                                 |
+
+**Cron-eksekvering:** ny cron `pending_changes_apply_due` (kører hver minut via pg_cron) som flytter approved-rows til applied når `undo_deadline <= now()`. Cron-failhåndtering via `cron_heartbeats` (etableret pattern fra trin 3).
+
+**Apply-handler-tilgang:** dispatcher er switch-statement på `change_type`. Hver intern handler er `security definer` med `revoke execute from authenticated` for at forhindre direkte kald uden om `pending_change_apply`. Tests verificerer at authenticated rolle får `permission denied` ved direkte kald til `_apply_*`-handlers.
 
 **Synkron apply efter undo-deadline (alternativt):** trigger på SELECT eller mid-RPC. Afvist — for kompleks og fragil. Cron er enklere.
 
@@ -283,78 +362,162 @@ Eksisterende `role_page_permissions`-tabel bevares som read-only (FORCE RLS + in
 
 Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
 
+### Valg 13 — Hent-funktioner som dedikerede read-RPCs (V2)
+
+**Anbefaling (V2 — adresserer Claude.ai V1 MELLEM 1):** Tilføj dedikerede read-RPCs for alle Hent-funktioner fra krav-dok sektion 4. Hybrid-tilgang: aktuel-RPCs er tynde wrappers over SELECT på `using (true)`-tabeller; historiske-RPCs anvender konsistent versionsfilter-pattern.
+
+**RPC'er (V2):**
+
+| Krav-dok funktion              | Read-RPC                                             | Implementations-pattern                                                                                                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 4.1 Hent træet                 | `org_tree_read()`                                    | `SELECT * FROM org_nodes WHERE is_active=true`. Returnerer table(id, name, parent_id, node_type, ...)                                                                                                                          |
+| 4.1 Hent historisk træ         | `org_tree_read_at(p_date date)`                      | Krav-dok 6.1: "gammel sandhed ændres ikke af ny sandhed". V2-implementation: hent alle org_nodes hvor `created_at <= p_date` (struktur-ændringer er log via audit-trail; `org_nodes`-tabel er immutable bortset fra is_active) |
+| 4.2 Hent placering             | `employee_placement_read(p_emp_id)`                  | `SELECT * FROM employee_node_placements WHERE employee_id=p_emp_id AND effective_to IS NULL`                                                                                                                                   |
+| 4.2 Hent historisk placering   | `employee_placement_read_at(p_emp_id, p_date date)`  | `SELECT * WHERE employee_id=p_emp_id AND effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)`                                                                                                         |
+| 4.3 Hent klients team          | `client_placement_read(p_client_id)`                 | Samme pattern som 4.2 mod client_node_placements                                                                                                                                                                               |
+| 4.3 Hent historisk tilknytning | `client_placement_read_at(p_client_id, p_date date)` | Samme                                                                                                                                                                                                                          |
+| 4.5 Hent struktur              | `permission_elements_read()`                         | Returnerer alle aktive areas/pages/tabs i strukturret form                                                                                                                                                                     |
+| 4.6 Hent rolles rettigheder    | `role_permissions_read(p_role_id)`                   | Returnerer alle grants for rolle, joined med element-navne                                                                                                                                                                     |
+| 4.7 Hent ventende ændringer    | `pending_changes_read()`                             | Returnerer pending+approved changes for caller; admin ser alle                                                                                                                                                                 |
+
+**Begrundelse:**
+
+- **Hvorfor dedikerede historiske RPC'er:** Frontend kan ikke konsistent konstruere versions-filter-queries pr. side. Dedikeret RPC giver én tested implementation pr. krav-dok-funktion + reducerer fejl-overflade
+- **Hvorfor aktuel-RPCs:** Konsistens med historisk-pattern; én contract pr. funktion. Implementation er trivial (SELECT med simpelt filter), så ingen overhead
+- **Permission-tjek på read-RPCs:** Read-RPCs er `security invoker`; `has_permission(<area>, <page>, can_view=true)` på indgang. Synlighed (Sig selv / Hiraki / Alt) anvendes som FILTER på returnerede rows (ikke som adgangs-spærring)
+
+**Alternativ afvist:** Pure SELECT mod `using (true)`-tabeller fra frontend uden RPC-lag. Det dækker aktuel-tilfælde men:
+
+- Frontend skal selv konstruere versions-filter-SQL for historisk (ikke trivielt)
+- Ingen permission-tjek-konsistens (PostgREST eksponerer hele tabel uden `has_permission`)
+- Krav-dok sektion 4 specificerer Hent som funktioner T9 leverer; ren PostgREST-eksponering opfylder ikke kontrakten 1:1
+
+### Valg 14 — Rolle-til-medarbejder via trin 5's employee_upsert (V2)
+
+**Anbefaling (V2 — adresserer Claude.ai V1 MELLEM 2):** Verificeret mod trin 5: `core_identity.employee_upsert(p_id uuid, p_first_name text, p_last_name text, p_email text, p_role_id uuid, ...)` dækker alle tre krav-dok 4.4-funktioner via `role_id`-parameter:
+
+- **Tildel rolle:** kald `employee_upsert(...)` med konkret `p_role_id`
+- **Skift rolle:** kald `employee_upsert(...)` med ny `p_role_id`
+- **Fjern rolle:** kald `employee_upsert(...)` med `p_role_id=NULL`. Krav-dok 4.4 specificerer "medarbejderen mister adgang udover personlige basale funktioner"; det opfyldes ved NULL-rolle (helpers og `permission_resolve` returnerer default-deny for caller uden role_id)
+
+**T9 tilføjer tynde wrappers** for ækvivalent navngivning med krav-dok-funktions-tekst og for tydligt audit-spor:
+
+- `employee_role_assign(p_employee_id uuid, p_role_id uuid)`: kalder `employee_upsert` med eksisterende employee-data + nye p_role_id; audit-trigger fanger som UPDATE
+- `employee_role_remove(p_employee_id uuid)`: kalder `employee_upsert` med p_role_id=NULL
+
+**Pending-pligtighed:** rolle-tildeling er IKKE pending-pligtig fordi krav-dok 4.4 ikke specificerer "gældende dato" som de øvrige pending-pligtige operationer gør. Rolle-ændring sker umiddelbart; audit-trigger fanger ændringen. Det matcher krav-dok 3.6's afgrænsning til "alle ændringer med gældende dato".
+
+**G-nummer-kandidat (lav):** hvis senere brug viser at rolle-tildelinger også bør være pending-pligtige (fx for at undgå utilsigtet ophæving af FM-chefs adgang), kan en separat pakke konvertere `employee_role_assign` til pending-wrapper. Dokumenteres som åben option, ikke V2-scope.
+
 ---
 
 ## Implementations-rækkefølge
 
-**Dependency-chain (lineær):**
+**V2-re-ordering rationale (Codex KRITISK 1+2):** V1's rækkefølge byggede direkte muterende public RPC'er i Steps 1-6 og introducerede pending_changes først i Step 7. Resultat: to skriveveje (direkte + pending) i konflikt. V2 etablerer pending_changes-infrastruktur tidligt (nu Step 1) og bygger derefter datatabeller med kun interne apply-handlers; public pending-wrappers samles i nyt Step 7 hvor alle change_types er kendt. Direkte mutatorer (permission-elementer, grants, konfig) forbliver i de respektive steps fordi de IKKE er pending-pligtige (jf. krav-dok 3.6.2 + Beslutning 11).
 
-- Step 1 (`org_nodes` + cycle-detect) → ingen deps
-- Step 2 (`org_node_closure` + maintain-trigger) → deps Step 1
-- Step 3 (`employee_node_placements` + skifte-RPC) → deps Step 1 + eksisterende `employees`
-- Step 4 (`client_node_placements` UDEN client-FK + RPC) → deps Step 1
-- Step 5 (permission-elementer: areas/pages/tabs + CRUD-RPCs) → ingen deps på tidligere T9-tabeller
-- Step 6 (`role_permission_grants` + resolve-helper + acl-helpers + team_close-RPC) → deps Steps 2+3+5
-- Step 7 (`pending_changes` + apply-cron + undo-mekanisme + `undo_settings`) → ingen deps på T9-tabeller; bygger på trin 3's cron-skabelon
-- Step 8 (migration discovery + extract + upload-scripts for 1.0) → uafhængig
-- Step 9 (migration af eksisterende `role_page_permissions` → ny model) → deps Steps 5+6
-- Step 10 (seed Mathias+Kasper + Copenhagen Sales-knude + superadmin-grants) → deps Steps 1+3+5+6+9
-- Step 11 (klassifikation af T9-kolonner) → deps alle DB-steps
-- Step 12 (dokumentations-opdateringer + cleanup) → sidste step
+**Dependency-chain (lineær, V2):**
 
-### Step 1 — org_nodes + cycle-detection + RLS + audit + tests
+- Step 1 (`pending_changes`-infrastruktur + cron + undo_settings + apply-dispatcher) → bygger på trin 3's cron-skabelon
+- Step 2 (`org_nodes` + cycle-detect + internal `_apply_org_node_*`-handlers) → deps Step 1
+- Step 3 (`org_node_closure` + maintain-trigger) → deps Step 2
+- Step 4 (`employee_node_placements` + internal `_apply_employee_*` + `_apply_team_close`-handlers) → deps Step 2 + eksisterende `employees`
+- Step 5 (`client_node_placements` UDEN client-FK + internal `_apply_client_*`-handlers) → deps Step 2
+- Step 6 (permission-elementer: areas/pages/tabs + direkte CRUD-RPCs; ikke pending-pligtige) → ingen deps på tidligere T9-tabeller
+- Step 7 (`role_permission_grants` + helpers `acl_subtree_*`/`permission_resolve`/`acl_visibility_check` + direkte CRUD-RPCs) → deps Steps 3 (closure) + 4 (placements) + 6 (elements)
+- Step 8 (public pending-wrapper RPCs `org_node_upsert/deactivate`, `team_close`, `employee_place/remove`, `client_place/close` + `employee_role_assign/remove` direkte) → deps Steps 1+2+4+5
+- Step 9 (read-RPCs: `org_tree_read[_at]`, `employee_placement_read[_at]`, `client_placement_read[_at]`, `permission_elements_read`, `role_permissions_read`, `pending_changes_read`) → deps alle DB-steps + Step 7's helpers
+- Step 10 (migration discovery + extract + upload-scripts for 1.0) → uafhængig af DB-state
+- Step 11 (migration af eksisterende `role_page_permissions` → ny model) → deps Steps 6+7
+- Step 12 (seed Mathias+Kasper + Cph Sales + Ejere + superadmin-grants) → deps Steps 2+4+6+7+11
+- Step 13 (klassifikation + fitness-checks + dokumentations-opdateringer + cleanup) → sidste step; deps alle
 
-- **Migration-fil:** `20260518000000_t9_org_nodes.sql`
-- **Hvad:** Tabel `core_identity.org_nodes(id, name, parent_id, node_type, is_active, created_at, updated_at)`; `node_type` ENUM `('department', 'team')`; selv-refererende FK; BEFORE-trigger for cycle-detection (rekursiv CTE); BEFORE-trigger der blokerer team-knude med børn; FORCE RLS; SELECT `using (true)`; INSERT/UPDATE/DELETE via RPC; audit-trigger; RPC `org_node_upsert` + `org_node_deactivate`
-- **Hvorfor først:** alle senere T9-tabeller har FK eller relation til org_nodes
-- **Risiko:** lav (cycle-detection er standard; team-har-børn-check er CHECK-tilsvarende)
+### Step 1 — pending_changes-infrastruktur + cron + undo_settings + apply-dispatcher (V2)
+
+- **Migration-fil:** `20260518000000_t9_pending_changes.sql`
+- **Hvad:**
+  - Tabel `core_identity.pending_changes(id, change_type text, target_id uuid, payload jsonb, effective_from date, requested_by uuid, requested_at timestamptz, approved_at timestamptz, approved_by uuid, undo_deadline timestamptz, applied_at timestamptz, undone_at timestamptz, status text, ...)`; status-CHECK (`'pending' | 'approved' | 'applied' | 'undone'`); change_type-CHECK initial allowlist (skal udvides i Steps 2+4+5 når handlers oprettes); FORCE RLS; SELECT `using (is_admin() OR requested_by = current_employee_id())`; audit-trigger
+  - Tabel `core_identity.undo_settings(change_type text PK, undo_period_seconds integer, updated_at, updated_by)`; default-rows seeded med 86400 (24h) for hver change_type efter Steps 2+4+5 har deklareret dem
+  - RPC'er `pending_change_request`, `pending_change_approve`, `pending_change_undo`, `pending_change_apply` med dispatcher (switch-statement på change_type); dispatcher er tom indtil Steps 2+4+5 registrerer handlers
+  - Cron `pending_changes_apply_due` (kører hver minut via pg_cron) + heartbeat-integration per trin 3
+  - RPC `undo_setting_update(p_change_type, p_undo_period_seconds)` (direkte, ikke pending)
+- **Hvorfor først (V2):** alle senere muterende RPC'er er pending-wrappers (Step 8) eller har interne handlers (Steps 2+4+5) der registrerer i dispatcheren; pending-tabel + cron skal eksistere før handlers kan registreres
+- **Risiko:** mellem — dispatcher-mekanikken er central. Mitigation: tests af tom dispatcher + senere af hver registreret handler
+- **Rollback:** revert migration; pause cron
+- **Tests (`supabase/tests/smoke/t9_pending_changes.sql`):**
+  - Smoke: `pending_change_request` med fake change_type fejler validation (ingen handler registreret)
+  - Lifecycle: request → approve → vent → cron-apply (efter handlers registreret i Steps 2+4+5 udvides denne test)
+  - Undo: request → approve → undo før deadline; verificér status='undone'
+  - Konfig: `undo_setting_update` ændrer undo_period; nye changes bruger ny periode
+
+### Step 2 — org_nodes + cycle-detection + internal apply-handlers (V2)
+
+- **Migration-fil:** `20260518000001_t9_org_nodes.sql`
+- **Hvad:**
+  - Tabel `core_identity.org_nodes(id, name, parent_id, node_type, is_active, created_at, updated_at)`; `node_type` CHECK `IN ('department', 'team')`; selv-refererende FK; BEFORE-trigger cycle-detection (rekursiv CTE); BEFORE-trigger blokerer team-knude med børn; FORCE RLS; SELECT `using (true)`; audit-trigger
+  - Interne apply-handlers `_apply_org_node_upsert(payload jsonb)` + `_apply_org_node_deactivate(payload jsonb)` — `security definer`, `revoke execute from authenticated`; udfører faktisk INSERT/UPDATE
+  - Udvid `pending_changes.change_type`-allowlist med `'org_node_upsert'`, `'org_node_deactivate'`
+  - Registrér handlers i dispatcheren (Step 1)
+  - Seed `undo_settings`-rows for nye change_types
+  - **NB:** ingen public RPC for muterende; den kommer i Step 8 som tynd wrapper
+- **Hvorfor:** kræver Step 1; alle senere T9-tabeller har FK eller relation til org_nodes
+- **Risiko:** lav (cycle-detection er standard; handlers er interne)
 - **Rollback:** revert migration; pre-cutover ingen rows
 - **Tests (`supabase/tests/smoke/t9_org_nodes.sql`):**
-  - Smoke: opret root + afdeling + team + verificér tree-struktur
+  - Smoke: opret root + afdeling + team (via direct INSERT i tx-rollback, ikke RPC) + verificér tree-struktur
   - Cycle-detect: forsøg UPDATE der ville lave cycle → blokeret
   - Team-har-børn-blokering: opret team, forsøg INSERT child → blokeret
   - is_active=false-blokering: nye INSERT'er med parent_id pegende på inactive node → blokeret
-  - Audit: `org_node_upsert` producerer audit_log-row
+  - Audit: direct INSERT producerer audit_log-row
+  - Interne handlers afvises ved authenticated-kald: `set local role authenticated; SELECT _apply_org_node_upsert('{...}'::jsonb)` → permission denied
 
-### Step 2 — org_node_closure + maintain-trigger + audit-exempt-allowlist
+### Step 3 — org_node_closure + maintain-trigger + audit-exempt-allowlist
 
 - **Migration-fil:** `20260518000001_t9_org_node_closure.sql`
 - **Hvad:** Tabel `core_identity.org_node_closure(ancestor_id, descendant_id, depth)` PK(ancestor_id, descendant_id) + INDEX(descendant_id); AFTER-trigger der genberegner berørt subtree (Valg 2); FORCE RLS + `using (true)`; tilføj closure til `AUDIT_EXEMPT_SNAPSHOT_TABLES` i `scripts/fitness.mjs`
-- **Hvorfor:** kræver Step 1
-- **Risiko:** mellem — trigger-korrekthed kritisk. Mitigation: dedikeret consistency-check (Step 11) + tests
+- **Hvorfor:** kræver Step 2 (org_nodes)
+- **Risiko:** mellem — trigger-korrekthed kritisk. Mitigation: dedikeret consistency-check (Step 13) + tests
 - **Rollback:** revert migration + fitness.mjs ændring
 - **Tests:**
   - Smoke: bygge 3-niveau-træ; verificér closure har korrekt rows (sum inkl. self)
   - Mutations-konsistens: INSERT/UPDATE/DELETE org_nodes → closure-rebuild korrekt
-  - **NB:** helper-tests (`acl_subtree_*`) ligger i Step 6 hvor de oprettes
+  - **NB:** helper-tests (`acl_subtree_*`) ligger i Step 7 hvor de oprettes
 
-### Step 3 — employee_node_placements + skifte-RPC + tests
+### Step 4 — employee_node_placements + internal apply-handlers (V2)
 
 - **Migration-fil:** `20260518000002_t9_employee_node_placements.sql`
-- **Hvad:** Tabel `core_identity.employee_node_placements(id, employee_id, node_id, effective_from, effective_to, created_at, updated_at)`; FK til employees + org_nodes; partial UNIQUE `(employee_id) WHERE effective_to IS NULL`; EXCLUDE constraint `(employee_id WITH =, daterange(effective_from, coalesce(effective_to, 'infinity'::date)) WITH &&)` (kræver btree_gist); FORCE RLS; SELECT `using (true)`; INSERT/UPDATE via RPC; audit-trigger; RPC'er `employee_place` (lukker eventuel åben + åbner ny i tx) + `employee_remove_from_node` (lukker uden ny)
-- **Hvorfor:** kræver org_nodes + employees
-- **Risiko:** mellem — EXCLUDE-constraint via btree_gist; skifte-RPC atomicity
+- **Hvad:**
+  - Tabel `core_identity.employee_node_placements(id, employee_id, node_id, effective_from, effective_to, created_at, updated_at)`; FK til employees + org_nodes; partial UNIQUE `(employee_id) WHERE effective_to IS NULL`; EXCLUDE constraint `(employee_id WITH =, daterange(effective_from, coalesce(effective_to, 'infinity'::date)) WITH &&)` (kræver btree_gist); FORCE RLS; SELECT `using (true)`; audit-trigger
+  - Interne apply-handlers `_apply_employee_place(payload jsonb)` + `_apply_employee_remove(payload jsonb)` + `_apply_team_close(payload jsonb)` (atomisk: team is_active=false + luk alle åbne employee+client placements); alle `security definer revoke from authenticated`
+  - Udvid `pending_changes.change_type`-allowlist med `'employee_place'`, `'employee_remove'`, `'team_close'`; registrér handlers i dispatcher; seed `undo_settings`-rows
+- **Hvorfor:** kræver Step 2 (org_nodes) + eksisterende `employees`. Team_close-handler placeres her fordi det rører employee_placements primært
+- **Risiko:** mellem — EXCLUDE-constraint via btree_gist; team_close-atomicity
 - **Rollback:** revert migration (pre-cutover ingen rows)
 - **Tests:**
-  - Smoke: placér; flyt; verificér gammel lukket + ny åben
+  - Smoke: placér; flyt; verificér gammel lukket + ny åben (via direct INSERT i tx-rollback)
   - Overlap-blokering: forsøg overlappende placements → blokeret af EXCLUDE
-  - Knude-løs gyldig: `employee_remove_from_node` lukker uden ny placement → employee_id har ingen aktiv placement (effective_to IS NULL gælder ikke for nogen row)
+  - Knude-løs gyldig: tom placement-state er gyldig
   - Audit-trigger fyrer ved INSERT/UPDATE/DELETE
+  - Interne handlers afvises ved authenticated-kald
+  - team_close-handler: atomisk close + luk; rollback ved failure midt i transaction
 
-### Step 4 — client_node_placements (uden client-FK) + skifte-RPC + tests
+### Step 5 — client_node_placements (uden client-FK) + internal apply-handlers (V2)
 
 - **Migration-fil:** `20260518000003_t9_client_node_placements.sql`
-- **Hvad:** Tabel `core_identity.client_node_placements(id, client_id, node_id, effective_from, effective_to, created_at, updated_at)`; `client_id uuid not null` UDEN FK (jf. Valg 4); FK til org_nodes; partial UNIQUE + EXCLUDE som Step 3; trigger der validerer `node_type='team'` på node_id; FORCE RLS; SELECT `using (is_admin())` pre-cutover; INSERT/UPDATE via RPC; audit-trigger; RPC'er `client_node_place` + `client_node_close`. client_id på `FK_COVERAGE_EXEMPTIONS` allowlist
-- **Hvorfor:** kræver org_nodes
+- **Hvad:**
+  - Tabel `core_identity.client_node_placements(id, client_id, node_id, effective_from, effective_to, created_at, updated_at)`; `client_id uuid not null` UDEN FK (jf. Valg 4); FK til org_nodes; partial UNIQUE + EXCLUDE som Step 4; trigger validerer `node_type='team'` på node_id; FORCE RLS; SELECT `using (is_admin())` pre-cutover; audit-trigger
+  - Interne apply-handlers `_apply_client_place(payload jsonb)` + `_apply_client_close(payload jsonb)` (begge `security definer revoke from authenticated`)
+  - Udvid `pending_changes.change_type`-allowlist med `'client_place'`, `'client_close'`; registrér handlers; seed `undo_settings`-rows
+  - client_id på `FK_COVERAGE_EXEMPTIONS` allowlist i `scripts/fitness.mjs`
+- **Hvorfor:** kræver Step 2 (org_nodes)
 - **Risiko:** lav (ingen client-FK; pre-cutover ingen rows)
 - **Rollback:** revert migration + fitness.mjs ændring
-- **Tests:** smoke med syntetisk client_id-uuid; overlap-blokering; node_type='team'-check (insert mod afdeling → blokeret)
+- **Tests:** smoke med syntetisk client_id-uuid; overlap-blokering; node_type='team'-check (insert mod afdeling → blokeret); interne handlers afvises ved authenticated-kald
 
-### Step 5 — Permission-elementer (areas/pages/tabs) + CRUD-RPCs
+### Step 6 — Permission-elementer (areas/pages/tabs) + direkte CRUD-RPCs
 
 - **Migration-fil:** `20260518000004_t9_permission_elements.sql`
-- **Hvad:** Tre tabeller `permission_areas` / `permission_pages` (FK areas) / `permission_tabs` (FK pages); FORCE RLS; SELECT `using (true)`; INSERT/UPDATE/DELETE via RPC; audit-trigger; RPC'er per Valg 1
-- **Hvorfor:** uafhængig af tidligere T9-tabeller; placeres her for at gøre Step 6 muligt
+- **Hvad:** Tre tabeller `permission_areas` / `permission_pages` (FK areas) / `permission_tabs` (FK pages); FORCE RLS; SELECT `using (true)`; INSERT/UPDATE/DELETE via direkte RPC'er (ikke pending — krav-dok 4.5 specificerer ikke gældende dato); audit-trigger; RPC'er `permission_area_upsert`, `permission_area_deactivate`, `permission_page_upsert`, `permission_page_deactivate`, `permission_tab_upsert`, `permission_tab_deactivate` (alle med `has_permission`-check)
+- **Hvorfor:** uafhængig af tidligere T9-tabeller; placeres her for at gøre Step 7 muligt
 - **Risiko:** lav
 - **Rollback:** revert migration
 - **Tests:**
@@ -362,16 +525,16 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
   - is_active=false-blokering: tab kan ikke pege på inactive page (trigger)
   - Audit-spor
 
-### Step 6 — role_permission_grants + resolve-helper + acl-helpers + team_close-RPC
+### Step 7 — role_permission_grants + helpers + direkte CRUD-RPCs (V2)
 
 - **Migration-fil:** `20260518000005_t9_grants_and_helpers.sql`
 - **Hvad:**
-  - Tabel `core_identity.role_permission_grants(id, role_id, area_id, page_id, tab_id, can_access, can_write, visibility, ...)`; CHECK at præcis én af area_id/page_id/tab_id er sat; FK til roles + area/page/tab; FORCE RLS; SELECT `using (true)`; INSERT/UPDATE via RPC; audit-trigger
-  - Helpers `acl_subtree_org_nodes`, `acl_subtree_employees`, `permission_resolve`, `can_user_see` (alle `language sql stable security invoker set search_path = ''`)
-  - RPC'er `role_permission_grant_set`, `role_permission_grant_remove`
-  - RPC `team_close(p_node_id, p_effective_from)` — verificér node_type='team' + is_active=true; sætter is_active=false; lukker alle åbne `employee_node_placements` for node_id; lukker alle åbne `client_node_placements` for node_id; alt i én transaktion
-- **Hvorfor:** kræver Steps 2 (closure) + 3 (placements) + 5 (elements); helpers og team_close samles her for at sikre lineær dependency-chain
-- **Risiko:** mellem — helper-korrekthed kritisk; team_close atomicity
+  - Tabel `core_identity.role_permission_grants(id, role_id, area_id, page_id, tab_id, can_access, can_write, visibility, ...)`; CHECK at præcis én af area_id/page_id/tab_id er sat; FK til roles + area/page/tab; FORCE RLS; SELECT `using (true)`; audit-trigger
+  - Helpers (alle `language sql stable security invoker set search_path = ''`): `acl_subtree_org_nodes(p_employee_id)`, `acl_subtree_employees(p_employee_id)`, `permission_resolve(p_role_id, p_element_type, p_element_id)`, `acl_visibility_check(p_employee_id, p_target_id, p_target_kind, p_visibility)` (V2 — split fra V1's `can_user_see` per Codex MELLEM-fund)
+  - Direkte CRUD-RPC'er `role_permission_grant_set` + `role_permission_grant_remove` (ikke pending — krav-dok 4.6 ikke gældende dato)
+  - **NB (V2):** `team_close` er flyttet til Step 4's interne handler `_apply_team_close` fordi det er pending-pligtig operation
+- **Hvorfor:** kræver Step 3 (closure) + Step 4 (placements) + Step 6 (elements); helpers samles her for at sikre alle source-tabeller eksisterer
+- **Risiko:** mellem — helper-korrekthed kritisk for senere forretnings-RPC'er
 - **Rollback:** revert migration
 - **Tests (`supabase/tests/smoke/t9_grants_and_helpers.sql`, tx-rollback per CI-blocker 20):**
   - Fixture (alle tests bruger `set local role authenticated` + `request.jwt.claim.sub`):
@@ -384,29 +547,59 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
   - `acl_subtree_org_nodes(E-tm)` → [FM-A]
   - `acl_subtree_employees(E-root-mgr)` → [E-root-mgr, E-fm-mgr, E-tm]
   - `acl_subtree_org_nodes(E-team-less)` → tom array (knude-løs)
-  - `permission_resolve(fm_chef, 'page', operations_page_id)`: hvis grant på page-niveau → returnér page-værdier; hvis kun area-grant → returnér arvede area-værdier; ellers default-deny
+  - `permission_resolve(fm_chef, 'page', operations_page_id)`: arve-aware lookup (tab → page → area → default-deny)
   - Arve-test: tab uden grant arver fra page; page uden grant arver fra area
-  - `team_close(FM-A)`: FM-A.is_active=false; E-tm's placement lukkes; verificér atomicity via failure-test
-  - Visibility-mapping: gammel scope='team' migration → grants-row med visibility='subtree' (verificeret i Step 9)
+  - **V2-test:** `acl_visibility_check` returnerer korrekt baseret på visibility-værdi: visibility='self' → kun self; visibility='subtree' → caller's subtree; visibility='all' → altid true
+  - **V2-test (composition):** simulering af forretnings-RPC composition — `permission_resolve` finder visibility på (rolle, page); `acl_visibility_check` bruger den visibility-værdi til at filtrere target. Verificér samme target synligt/usynligt afhængigt af forskellig page/tab-grant (Codex V1 MELLEM-test)
+  - Visibility-mapping: gammel scope='team' migration → grants-row med visibility='subtree' (verificeret i Step 11)
 
-### Step 7 — pending_changes + apply-cron + undo_settings
+### Step 8 — Public pending-wrapper RPCs + employee_role-wrappers (V2)
 
-- **Migration-fil:** `20260518000006_t9_pending_changes.sql`
+- **Migration-fil:** `20260518000006_t9_public_wrapper_rpcs.sql`
 - **Hvad:**
-  - Tabel `pending_changes` med status-CHECK + change_type ENUM (initial værdier: `'org_node_upsert'`, `'org_node_deactivate'`, `'employee_place'`, `'employee_remove'`, `'client_place'`, `'client_close'`, `'permission_grant_set'`); FORCE RLS; SELECT `using (is_admin() OR requested_by = current_employee_id())`; INSERT via RPC; audit-trigger
-  - Tabel `undo_settings(change_type, undo_period_seconds, updated_at, updated_by)`; default-rows seedet med `undo_period_seconds=86400` (24h) for alle change_types
-  - RPC'er `pending_change_request`, `pending_change_approve`, `pending_change_undo`, `pending_change_apply` (apply dispatcher dispatcher på change_type til konkrete handlers)
-  - Cron `pending_changes_apply_due` (kører hver minut via pg_cron) som flytter approved-rows til applied når `undo_deadline <= now()`
-  - Heartbeat-integration per trin 3's `cron_heartbeats`-pattern
-- **Hvorfor:** Step 7 placeres her fordi apply-dispatcher SKAL kende alle ændrings-typer den dispatcher til; alle RPC'er fra Steps 1+3+4+5+6 er nu defineret
-- **Risiko:** mellem — apply-dispatcher kan dispatche til buggy handler. Mitigation: hver handler er gennemtestet + apply er idempotent (re-apply af samme row er no-op)
-- **Rollback:** revert migration; pause cron via SUPABASE_CRON_PAUSE_LIST manuel handling
-- **Tests:**
-  - Smoke: request → approve → vent til undo_deadline → cron applies; verificér state-ændring
-  - Undo: request → approve → undo før deadline; verificér state ikke ændret (eller ruller tilbage hvis allerede applied — applied undo er bonus-scope, evt. G-nummer)
-  - Konfig: `undo_setting_update` ændrer undo_period; nye changes bruger ny periode
+  - **Public pending-wrapper RPCs** (tynde wrappers omkring `pending_change_request`; jf. Beslutning 11 + change-type-matrix i Valg 8):
+    - `org_node_upsert(p_id, p_name, p_parent_id, p_node_type, p_is_active, p_effective_from) returns uuid` — opretter pending med change_type='org_node_upsert'; returnerer pending_change.id
+    - `org_node_deactivate(p_node_id, p_effective_from)` — change_type='org_node_deactivate'
+    - `team_close(p_node_id, p_effective_from)` — change_type='team_close'
+    - `employee_place(p_employee_id, p_node_id, p_effective_from)` — change_type='employee_place'
+    - `employee_remove_from_node(p_employee_id, p_effective_from)` — change_type='employee_remove'
+    - `client_node_place(p_client_id, p_node_id, p_effective_from)` — change_type='client_place'
+    - `client_node_close(p_client_id, p_effective_from)` — change_type='client_close'
+  - **Employee-role-wrappers** (direkte, ikke pending — jf. Valg 14):
+    - `employee_role_assign(p_employee_id, p_role_id)` — kalder trin 5's `employee_upsert` med eksisterende data + ny p_role_id
+    - `employee_role_remove(p_employee_id)` — kalder `employee_upsert` med p_role_id=NULL
+  - Alle wrapper-RPCs udfører validering før pending-request (fx node_type='team' for client_place, cycle-check for org_node_upsert) og returnerer pending_change.id (eller void for employee_role)
+- **Hvorfor:** kræver Step 1 (pending_changes-infrastruktur) + Steps 2+4+5 (interne apply-handlers registreret) + Step 7 (helpers tilgængelige for validering)
+- **Risiko:** mellem — wrappers er sikkerheds-grænsen mod authenticated; alle valideringer SKAL ske her, ikke i apply-handlers
+- **Rollback:** revert migration
+- **Tests (`supabase/tests/smoke/t9_public_wrapper_rpcs.sql`, tx-rollback):**
+  - Smoke for hver wrapper: authenticated caller med has_permission → wrapper opretter pending_changes-row; tabel-state ikke muteret før approve+apply
+  - Validering: `client_node_place` mod afdelings-knude → fejler i wrapper (før pending)
+  - End-to-end: wrapper → request → approve → vent → cron apply → state ændret (test bruger `pending_change_apply` direkte for at undgå cron-ventetid)
+  - Undo: wrapper → request → approve → undo før deadline → state uændret
+  - employee_role_assign/remove: direkte UPDATE af role_id; audit fanger; ingen pending_changes-row oprettet
+  - **Auth-verifikation:** authenticated kald til interne `_apply_*`-handlers fejler med permission denied
 
-### Step 8 — Migration discovery + extract + upload-scripts for 1.0
+### Step 9 — Read-RPCs for Hent-funktioner (V2)
+
+- **Migration-fil:** `20260518000007_t9_read_rpcs.sql`
+- **Hvad:** Per Valg 13. Dedikerede read-RPCs for alle krav-dok sektion 4 Hent-funktioner:
+  - Træ: `org_tree_read()`, `org_tree_read_at(p_date)`
+  - Placering: `employee_placement_read(p_emp_id)`, `employee_placement_read_at(p_emp_id, p_date)`
+  - Klient: `client_placement_read(p_client_id)`, `client_placement_read_at(p_client_id, p_date)`
+  - Permission-elementer: `permission_elements_read()` (hierarkisk struktur)
+  - Rettigheder: `role_permissions_read(p_role_id)`
+  - Fortrydelse: `pending_changes_read()`
+- **Hvorfor:** kræver alle DB-steps + helpers fra Step 7; bygger 1:1-mapping til krav-dok sektion 4
+- **Risiko:** lav (read-only)
+- **Rollback:** revert migration
+- **Tests (`supabase/tests/smoke/t9_read_rpcs.sql`, tx-rollback):**
+  - Aktuel: read-RPC returnerer rows hvor effective_to IS NULL
+  - Historisk: read_at(p_date) returnerer rows hvor effective_from <= p_date AND (effective_to IS NULL OR effective_to > p_date)
+  - `org_tree_read_at` på dato før Cph Sales blev oprettet → tom array
+  - Permission-check: read-RPC afvises hvis `has_permission(<area>, <page>, can_view=true)` returnerer false (ingen leak af struktur uden adgang)
+
+### Step 10 — Migration discovery + extract + upload-scripts for 1.0
 
 - **Filer:** `scripts/migration/t9-org-tree-discovery.{mjs,sql}`, `scripts/migration/t9-org-tree-extract.sql`, `scripts/migration/t9-org-tree-upload.mjs`
 - **Hvad:** Per Valg 9. Discovery genererer markdown-rapport. Extract laver CSV/SQL-dump. Upload INSERT'er i 2.0 med `source_type='migration'`
@@ -415,11 +608,11 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
 - **Rollback:** slet scripts
 - **Tests:** scripts har `--dry-run` mode; Mathias eksekverer manuelt mod 1.0 når relevant
 
-### Step 9 — Migration af eksisterende role_page_permissions
+### Step 11 — Migration af eksisterende role_page_permissions
 
-- **Migration-fil:** `20260518000007_t9_migrate_role_page_permissions.sql`
+- **Migration-fil:** `20260518000008_t9_migrate_role_page_permissions.sql`
 - **Hvad:** Per Valg 11. Seed areas + pages + tabs + grants baseret på eksisterende `role_page_permissions`-rows. Eksisterende tabel bevares som read-only (FORCE RLS, ingen INSERT/UPDATE-policies). `has_permission()`-helper opdateres til at læse fra `role_permission_grants` med fallback til `role_page_permissions`
-- **Hvorfor:** kræver Step 5 (elements) + Step 6 (grants)
+- **Hvorfor:** kræver Step 6 (elements) + Step 7 (grants)
 - **Risiko:** mellem — kan bryde eksisterende permission-tjek hvis migration er ufuldstændig. Mitigation: `m1_permission_matrix.sql`-smoke-test udvides til at verificere alle eksisterende RPC'er stadig kan permissions-checke via ny helper
 - **Rollback:** revert migration; fallback-pattern i `has_permission()` ruller læsning tilbage til gammel tabel
 - **Tests:**
@@ -427,34 +620,27 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
   - Mapping: alle 33 eksisterende role_page_permissions-rows er mappet til grants
   - `has_permission()` returnerer identisk resultat for alle eksisterende (role, page, tab)-kombinationer
 
-### Step 10 — Seed Cph Sales + Ejere + Mathias/Kasper + superadmin-grants
+### Step 12 — Seed Cph Sales + Ejere + Mathias/Kasper + superadmin-grants
 
-- **Migration-fil:** `20260518000008_t9_seed_owners.sql`
-- **Hvad:** Per Valg 12. Bootstrap-INSERT'er for root-knude, Ejere-afdeling, placement af mg@ + km@ på Ejere, superadmin-rolle (omdøb fra admin hvis eksisterer), grants med `visibility='all'` på alle areas+pages+tabs
-- **Hvorfor:** kræver alle tidligere DB-steps
+- **Migration-fil:** `20260518000009_t9_seed_owners.sql`
+- **Hvad:** Per Valg 12. Bootstrap-INSERT'er for root-knude, Ejere-afdeling, placement af mg@ + km@ på Ejere, superadmin-rolle (omdøb fra admin hvis eksisterer), grants med `visibility='all'` på alle areas+pages+tabs. **NB:** Seed kører som migration direkte (ikke gennem pending_changes — bootstrap er ikke "brugerdrevet ændring med gældende dato")
+- **Hvorfor:** kræver alle tidligere DB-steps + Step 11 (grants-migrationen)
 - **Risiko:** lav (seed; pre-cutover)
 - **Rollback:** revert migration
 - **Tests:** smoke verificerer Mathias kan querie alt data via superadmin-rolle
 
-### Step 11 — Klassifikation af T9-kolonner + fitness-checks
+### Step 13 — Klassifikation + fitness-checks + dokumentations-opdateringer + cleanup
 
-- **Migration-fil:** `20260518000009_t9_classify.sql`
-- **Filer:** `scripts/fitness.mjs` (udvidet)
+- **Migration-fil:** `20260518000010_t9_classify.sql`
+- **Filer:**
+  - `scripts/fitness.mjs` (udvidet)
+  - `docs/strategi/bygge-status.md`, `docs/teknisk/permission-matrix.md`, `docs/teknisk/teknisk-gaeld.md`, `docs/coordination/aktiv-plan.md`, `docs/coordination/seneste-rapport.md`
 - **Hvad:**
   - INSERT'er i `core_compliance.data_field_definitions` for alle nye T9-kolonner; kategori='operationel' eller 'master_data'; pii_level='none' (jf. krav-dok pkt 10)
-  - Nye fitness-checks: `org_node_closure_consistency`, `permission_grant_integrity`, `pending_changes_invariants`
-- **Hvorfor:** CI-blocker 2 (klassifikations-coverage) + verifikation af invarianter
-- **Risiko:** lav
-- **Rollback:** revert migration + fitness.mjs ændring
-- **Tests:** migration-gate kører i CI; fitness verificerer 0 unklassificerede + invariants
-
-### Step 12 — Dokumentations-opdateringer + cleanup
-
-- **Filer:** `docs/strategi/bygge-status.md`, `docs/teknisk/permission-matrix.md`, `docs/teknisk/teknisk-gaeld.md`, `docs/coordination/aktiv-plan.md`, `docs/coordination/seneste-rapport.md`
-- **Hvad:**
+  - Nye fitness-checks: `org_node_closure_consistency`, `permission_grant_integrity`, `pending_changes_invariants`, `pending_changes_no_direct_writes` (verificerer at authenticated rolle ikke kan EXECUTE `_apply_*`-handlers)
   - bygge-status: trin 9 → ✓ Godkendt; PAUSET-status fjernes; 1M-sales-benchmark-action-item tilføjet (deadline trin 14)
   - permission-matrix: omskrives til den nye tre-niveau-model; auto-generated-marker opdateret
-  - teknisk-gaeld: G-numre fra Codex-runder + G-nummer-kandidater for rettelse 23 + CI-blocker 19 kategori-udvidelser
+  - teknisk-gaeld: G-numre fra Codex-runder + G-nummer-kandidater for rettelse 23 + CI-blocker 19 kategori-udvidelser + krav-dok-modsigelse 18 vs 25 (Claude.ai V1 KOSMETISK 3) + ENUM-sprog-note (Claude.ai V1 KOSMETISK 4)
   - aktiv-plan: ryd til "ingen aktiv plan" + tilføj T9 til Historisk
   - seneste-rapport: peg på T9-slut-rapport
   - Arkivér krav-dok + plan + plan-feedback til `docs/coordination/arkiv/`
@@ -468,21 +654,24 @@ Andre knuder (afdelinger, teams) oprettes i UI per krav-dok pkt 26.
 
 Nye eller ændrede tests:
 
-- `supabase/tests/smoke/t9_org_nodes.sql` — cycle-detect, team-har-børn-blokering, is_active-blokering, audit. Grøn
+- `supabase/tests/smoke/t9_pending_changes.sql` (ny, Step 1) — pending_changes-infrastruktur: lifecycle, cron-apply, undo. Udvides løbende når Steps 2+4+5 registrerer handlers. Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_org_nodes.sql` — cycle-detect, team-har-børn-blokering, is_active-blokering, audit, interne handlers afvises ved authenticated-kald. Grøn
 - `supabase/tests/smoke/t9_org_node_closure.sql` — closure-konsistens efter mutations. Tx-rollback. Grøn
-- `supabase/tests/smoke/t9_employee_node_placements.sql` — placering, flyt, knude-løs, EXCLUDE-overlap-blokering, authenticated-rolle-tests. Tx-rollback. Grøn
-- `supabase/tests/smoke/t9_client_node_placements.sql` — uden client FK; node_type='team'-check; overlap. Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_employee_node_placements.sql` — placering, flyt, knude-løs, EXCLUDE-overlap, audit, team_close-atomicity, authenticated-rolle-afvisning. Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_client_node_placements.sql` — uden client FK; node_type='team'-check; overlap; authenticated-afvisning. Tx-rollback. Grøn
 - `supabase/tests/smoke/t9_permission_elements.sql` — areas/pages/tabs CRUD; FK-kæde; is_active-blokering. Grøn
-- `supabase/tests/smoke/t9_grants_and_helpers.sql` (ny) — alle helpers + permission_resolve + arve-logik + team_close-atomicity, authenticated-rolle-tests. Tx-rollback. Grøn
-- `supabase/tests/smoke/t9_pending_changes.sql` (ny) — fortrydelses-livscyklus; cron-apply; undo. Tx-rollback. Grøn
-- `supabase/tests/smoke/t9_migration_role_page_permissions.sql` (ny) — migration mapper alle eksisterende rows; `has_permission()` returnerer identisk resultat før/efter
-- `supabase/tests/smoke/m1_permission_matrix.sql` (eksisterende, opdateres) — verificerer alle 33 eksisterende RPC'er stadig permissions-checker korrekt via ny model
+- `supabase/tests/smoke/t9_grants_and_helpers.sql` (V2) — alle helpers + `acl_visibility_check` + `permission_resolve` arve-logik; composition-test (samme target synligt/usynligt afhængigt af page/tab-grant — Codex MELLEM-test). Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_public_wrapper_rpcs.sql` (V2, ny — Step 8) — alle pending-wrappers: validering før pending; pending-row oprettet uden state-mutation; end-to-end request→approve→apply; undo før deadline; interne `_apply_*`-handlers afvises ved authenticated. Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_read_rpcs.sql` (V2, ny — Step 9) — alle Hent-RPCs: aktuel + historisk; permission-check afviser uden has_permission. Tx-rollback. Grøn
+- `supabase/tests/smoke/t9_migration_role_page_permissions.sql` (ny, Step 11) — migration mapper alle eksisterende rows; `has_permission()` returnerer identisk resultat før/efter
+- `supabase/tests/smoke/m1_permission_matrix.sql` (eksisterende, opdateres i Step 11) — verificerer alle 33 eksisterende RPC'er stadig permissions-checker korrekt via ny model
 
 Fitness-checks:
 
 - `org_node_closure_consistency` (ny) — closure matcher tree
 - `permission_grant_integrity` (ny) — grants peger på existerende + ikke-deaktiverede elementer
 - `pending_changes_invariants` (ny) — status-livscyklus konsistent (approved før applied; applied har applied_at; undone har undone_at; undo_deadline > approved_at)
+- `pending_changes_no_direct_writes` (ny V2) — verificerer at authenticated rolle ikke har EXECUTE-grant på `_apply_*`-handlers; CI-blocker fanger hvis grant utilsigtet tilføjes
 - `db-test-tx-wrap-on-immutable-insert` (eksisterende) — verificeret for nye tests
 - `audit-trigger-coverage` (eksisterende) — verificerer closure på allowlist; alle andre T9-tabeller har trigger
 - `fk-coverage` (eksisterende, CI-blocker 19) — verificerer `client_id` på allowlist med begrundelse
@@ -491,20 +680,22 @@ Fitness-checks:
 
 ## Risiko + kompensation
 
-| Migration / Step         | Værste-case                                                        | Sandsynlighed | Rollback                                                                      |
-| ------------------------ | ------------------------------------------------------------------ | ------------- | ----------------------------------------------------------------------------- |
-| Step 1 org_nodes         | Cycle-detect-trigger har bug; producerer falsk-negativ             | lav           | revert migration; pre-cutover ingen rows                                      |
-| Step 2 closure           | Maintain-trigger rebuild forkert; helpers får forkert data         | mellem        | revert + fitness-consistency-check fanger inden cutover                       |
-| Step 3 placements        | EXCLUDE-constraint accepterer overlap (btree_gist-fejl)            | lav           | revert; manuel cleanup (pre-cutover tomt)                                     |
-| Step 4 client_placements | client_id uden FK accepterer invalid uuid                          | lav           | trin 10 FK-add fanger ved ALTER; pre-cutover ingen rows                       |
-| Step 5 elements          | FK-kæde brudt; tabs uden valid page                                | lav           | revert; pre-cutover ingen seedet data                                         |
-| Step 6 grants + helpers  | acl_subtree_employees returnerer forkert sæt                       | mellem        | revert; authenticated-rolle-fixture-tests fanger inden cutover                |
-| Step 6 team_close        | Lukker placements ikke atomisk; halv-tilstand                      | mellem        | revert; SQL-tests bekræfter rollback ved failure                              |
-| Step 7 pending_changes   | Apply-dispatcher dispatcher til buggy handler                      | mellem        | hver handler test'es separat; apply er idempotent (re-run no-op)              |
-| Step 7 cron              | Cron pauser eller fejler; ændringer hænger i 'approved'            | lav           | manuel apply-RPC; heartbeat-fitness fanger cron-failure                       |
-| Step 9 migration         | Eksisterende permission-tjek brudt efter migration                 | mellem        | fallback i `has_permission()` til gammel tabel; m1-smoke-test fanger inden CI |
-| Step 10 seed             | Eksisterende admin-rolle ikke korrekt omdøbt; floor-trigger bryder | mellem        | revert seed; trin-1-bootstrap er uberørt                                      |
-| Step 11 classify         | Migration-gate fejler på manglende kolonner                        | lav           | tilføj manglende entries i samme commit                                       |
+| Migration / Step               | Værste-case                                                                 | Sandsynlighed       | Rollback                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| Step 1 pending_changes (V2)    | Apply-dispatcher buggy; ændringer hænger i 'approved' eller applies forkert | mellem              | hver handler test'es separat ved registrering; apply er idempotent; pause cron |
+| Step 1 cron                    | Cron pauser eller fejler; ændringer hænger i 'approved'                     | lav                 | manuel apply-RPC; heartbeat-fitness fanger cron-failure                        |
+| Step 2 org_nodes               | Cycle-detect-trigger har bug; producerer falsk-negativ                      | lav                 | revert migration; pre-cutover ingen rows                                       |
+| Step 3 closure                 | Maintain-trigger rebuild forkert; helpers får forkert data                  | mellem              | revert + fitness-consistency-check fanger inden cutover                        |
+| Step 4 placements + team_close | EXCLUDE-constraint accepterer overlap; team_close-handler ikke atomisk      | mellem              | revert; SQL-tests bekræfter rollback ved failure i tx-wrap                     |
+| Step 5 client_placements       | client_id uden FK accepterer invalid uuid                                   | lav                 | trin 10 FK-add fanger ved ALTER; pre-cutover ingen rows                        |
+| Step 6 elements                | FK-kæde brudt; tabs uden valid page                                         | lav                 | revert; pre-cutover ingen seedet data                                          |
+| Step 7 grants + helpers        | acl_subtree_employees / acl_visibility_check returnerer forkert sæt         | mellem              | revert; authenticated-rolle-fixture-tests fanger inden cutover                 |
+| Step 8 wrappers (V2)           | Wrapper springer validering over; pending-row med invalid payload           | mellem              | apply-handler re-validerer; idempotency catch                                  |
+| Step 8 auth-grænse (V2)        | Authenticated rolle kan kalde intern `_apply_*`-handler                     | KRITISK hvis muligt | `pending_changes_no_direct_writes`-fitness-check fanger; CI-blocker            |
+| Step 9 read-RPCs (V2)          | Read-RPC eksponerer rows uden permission-check                              | lav                 | revert; `has_permission`-check ved RPC-indgang                                 |
+| Step 11 migration              | Eksisterende permission-tjek brudt efter migration                          | mellem              | fallback i `has_permission()` til gammel tabel; m1-smoke-test fanger inden CI  |
+| Step 12 seed                   | Eksisterende admin-rolle ikke korrekt omdøbt; floor-trigger bryder          | mellem              | revert seed; trin-1-bootstrap er uberørt                                       |
+| Step 13 classify               | Migration-gate fejler på manglende kolonner                                 | lav                 | tilføj manglende entries i samme commit                                        |
 
 **Kompensation generelt:**
 
@@ -531,7 +722,7 @@ Fitness-checks:
 - `docs/coordination/seneste-rapport.md` → peg på `docs/coordination/rapport-historik/<dato>-t9.md`
 - `docs/strategi/bygge-status.md` → trin 9 → ✓ Godkendt med commit-hash + dato; PAUSET-status fjernes; 1M-sales-benchmark-action-item tilføjet (deadline trin 14); klassifikations-tal opdateret efter T9-kolonner
 - `docs/teknisk/permission-matrix.md` → omskrives til ny tre-niveau-model (areas/pages/tabs/grants); auto-genereret-marker opdateret til 2026-05-XX-introspection
-- `docs/teknisk/teknisk-gaeld.md` → tilføj G-nummer-kandidater fra Valg 3 (rettelse 23-udvidelse) + Valg 4 (allowlist-kategori); tilføj G-nummer for `role_page_permissions`-drop i senere pakke; tilføj G-nummer for full undo-mekanisme (hvis applied-undo afvises i T9-scope)
+- `docs/teknisk/teknisk-gaeld.md` → tilføj G-nummer-kandidater fra Valg 3 (rettelse 23-udvidelse) + Valg 4 (allowlist-kategori) + Claude.ai V1 KOSMETISK 3 (krav-dok-modsigelse afgørelse 18 vs 25 — Mathias-præcisering af tekst) + Claude.ai V1 KOSMETISK 4 (ENUM-sprog: engelsk i kode, dansk i UI — dokumenteret som bevidst valg) + Valg 14 (rolle-tildeling som potentielt pending-pligtig i senere pakke); tilføj G-nummer for `role_page_permissions`-drop i senere pakke; tilføj G-nummer for full undo-mekanisme (hvis applied-undo afvises i T9-scope)
 - `docs/coordination/mathias-afgoerelser.md` → ingen ny entry forventet (T9 implementerer eksisterende rammebeslutninger). Hvis benchmark-fund eller andet kræver ny afgørelse: ny entry med G-nummer som plan-reference
 
 **Reference-konsekvenser** (ingen omdøbninger/flytninger i T9):
@@ -542,7 +733,7 @@ Fitness-checks:
   - `grep -r "PAUSET" docs/strategi/bygge-status.md` returnerer 0 hits
   - `grep -r "role_page_permissions" supabase/` returnerer kun (a) fallback-reference i `has_permission()`, (b) m1-smoke-test, (c) migration-fil. Nye konsumenter bruger `role_permission_grants`
 
-**Ansvar:** Code udfører oprydning + opdatering som del af build-PR (Step 12 i implementations-rækkefølgen), ikke som separat trin. Slut-rapporten verificerer udførelse i "Oprydning + opdatering udført"-sektion. Manglende udførelse = KRITISK feedback fra reviewere (per krav-dok 12.3).
+**Ansvar:** Code udfører oprydning + opdatering som del af build-PR (Step 13 i implementations-rækkefølgen, V2-numbering), ikke som separat trin. Slut-rapporten verificerer udførelse i "Oprydning + opdatering udført"-sektion. Manglende udførelse = KRITISK feedback fra reviewere (per krav-dok 12.3).
 
 ---
 
@@ -575,15 +766,26 @@ Fitness-checks:
 
 ## Konklusion
 
-Planen leverer T9-formålet med acceptabel risiko:
+V2-planen adresserer V1's 5 fund (Codex 2 KRITISKE + 1 MELLEM; Claude.ai 2 MELLEM) og dokumenterer 2 kosmetiske G-nummer-kandidater. Centrale V2-ændringer:
 
-- Alle 9 funktions-grupper fra krav-dok sektion 4 dækket med konkret implementations-vej (Steps 1-12)
-- Alle 12 tekniske valg har eksplicit anbefaling + begrundelse + alternativ-argumentation
+- **Codex KRITISK 1+2 (skrivevej-konflikt + change_type-matrix):** Beslutning 11 etablerer pending_changes som eneste skrivevej for tids-baserede ændringer. Komplet change-type-matrix i Valg 8 lister alle 7 pending-pligtige operationer. Step-rækkefølge re-orderet: pending_changes-infrastruktur til Step 1; interne apply-handlers i Steps 2+4+5; public pending-wrappers samlet i Step 8
+- **Codex MELLEM (can_user_see-signatur):** Helper splittet i `acl_visibility_check` (visibility-only) + `permission_resolve` (permission-only); forretnings-RPC composer separat
+- **Claude.ai MELLEM 1 (Hent-funktioner):** Nyt Step 9 + Valg 13 leverer dedikerede read-RPCs for alle 9 Hent-funktioner fra krav-dok sektion 4, særligt historiske
+- **Claude.ai MELLEM 2 (rolle-til-medarbejder):** Valg 14 verificerer trin 5's `employee_upsert` dækker Tildel/Skift/Fjern; tynde wrappers `employee_role_assign/remove` tilføjet for klarhed
+- **Claude.ai KOSMETISK 3+4:** Dokumenteret som G-nummer-kandidater i oprydnings-strategi; ikke plan-blokerende
+
+V2 bevarer V1's solide elementer:
+
+- Alle 9 funktions-grupper fra krav-dok sektion 4 dækket med konkret implementations-vej (Steps 1-13 — udvidet fra 12)
+- Alle 14 tekniske valg har eksplicit anbefaling + begrundelse + alternativ-argumentation (udvidet med Valg 13+14)
 - Alle 32 Mathias-afgørelser fra krav-dok sektion 10 mappet til konkrete plan-elementer
-- Alle fire forretnings-dokumenter konsulteret med konkrete referencer (princip-numre, paragraf-numre, datoer, sektion-referencer)
-- RLS-rekursion undgået via beslutning 8 (synlighed i RPC-lag, ikke tabel-RLS) — lærdom fra arkiveret V1-V3-runde
-- Modsigelses-disciplin respekteret: ingen modsigelser identificeret; krav-dok og ramme er konsistente
-- Codex-opgraderings-rolle anerkendt: OPGRADERING-forslag på Valg 1-12 håndteres i V<n+1>'s "Opgraderings-håndtering"-sektion
+- Alle fire forretnings-dokumenter konsulteret med konkrete referencer
+- RLS-rekursion undgået via beslutning 8 (synlighed i RPC-lag) — lærdom fra arkiveret V1-V3-runde
+- Modsigelses-disciplin respekteret: ingen modsigelser identificeret
+- Codex-opgraderings-rolle anerkendt: OPGRADERING-forslag håndteres i V<n+1>'s "Opgraderings-håndtering"-sektion. Codex leverede INGEN OPGRADERING-fund i V1
+
+**Codex' V1-fund alle adresseret. Claude.ai's V1 MELLEM-fund alle adresseret. Plan klar til V2-review.** Claude.ai's V1-feedback (FEEDBACK) gælder ikke V2; ny approval kræves.
+
 - Oprydnings-strategi er obligatorisk og dokumenteret som DEL af build
 
 Klar til Codex-review V1 (kode-validering + opgraderings-forslag) + Claude.ai-review V1 (forretnings-dokument-konsistens) parallelt.
