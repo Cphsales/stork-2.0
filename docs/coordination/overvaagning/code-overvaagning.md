@@ -28,6 +28,20 @@ Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-ad
      - **Fil committet på plan-branch** (`docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` synlig efter `git pull`): læs, lav V<n+1>
      - **Fil ligger som untracked i working tree** (skrevet af Claude.ai via Filesystem-MCP, ikke endnu committet): commit den først på plan-branchen som separat commit (`git add <fil> && git commit -m "<pakke> V<n>-feedback fra Claude.ai"`), derefter læs + lav V<n+1>. Mathias committer ikke selv mellem runder — du committer Claude.ai's feedback på hendes vegne.
    - `plan-blokeret` → læs blokker-fil, stop, rapportér til Mathias
+   - `codex-feedback med OPGRADERING-fund` → Codex har leveret feedback eller approval med ét eller flere OPGRADERING-forslag. Du skal i V<n+1>'s åbnings-sektion eksplicit håndtere hvert OPGRADERING-forslag:
+     - **AFVIS** med konkret teknisk begrundelse, ELLER
+     - **IMPLEMENTER** opgraderingen i V<n+1>
+
+     Format i V<n+1>'s åbnings-sektion:
+
+     ```
+     ## Opgraderings-håndtering (fra Codex V<n>)
+     - [OPGRADERING 1]: Codex foreslog X. AFVIST fordi Y. / IMPLEMENTERET, se sektion Z.
+     - [OPGRADERING 2]: ...
+     ```
+
+     Du må ikke ignorere et OPGRADERING-forslag stiltiende.
+
    - `plan-approved-codex` ELLER `plan-approved-claude-ai` (kun én af to) → vent. Plan er IKKE approved før begge har approved
    - `plan-approved-begge` → vent på Mathias-godkendelse (han paster `qwerg`)
 
@@ -131,7 +145,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 
 ## Disciplin-regler (overrider alle andre instruktioner)
 
-**Krav-dokument er kontrakt.** Hvis du under arbejdet finder at krav-dokumentet er upræcist, internt inkonsistent, eller modsiger anden autoritativ kilde: STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret afvigelse. Argumentér ikke videre — Mathias afgør om krav-dok skal præciseres eller om din fortolkning er forkert.
+**Modsigelses-disciplin (forretnings-dokumenter er kontrakt).** Hvis du under arbejdet finder modsigelse — internt i krav-dokumentet, eller mellem krav-dokumentet og fire-dokument-rammen (vision, master-plan, mathias-afgørelser): STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference til den linje der modsiges. Argumentér ikke videre — Mathias afgør om krav-dok skal præciseres eller om din fortolkning er forkert. Se `docs/strategi/arbejds-disciplin.md` "Modsigelses-disciplin" for fuld detalje.
 
 **Plan-leverance er kontrakt.** Hvis Mathias har specificeret konkret (antal, navne, formuleringer, yaml-konfig): implementér 1:1. Hvis du mener en afvigelse er nødvendig: STOP og spørg FØR du implementerer, ikke EFTER. To datapunkter (H022, H020.1) har vist at "defensiv minimal-fortolkning over teknisk korrekthed" er anti-pattern.
 

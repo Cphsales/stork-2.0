@@ -253,3 +253,58 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
   dokumenter (særligt §5 i stork-2-0.md som var kilde til flere af de
   misforståede ting) — selvom de dokumenter ikke er fuldt autoritative, er
   deres indhold ofte konsistent med Mathias' tænkning og bør konsulteres.
+
+### 2026-05-17 — To flow-ændringer (modsigelse → afvis; Codex opgraderings-rolle)
+
+Begge ændringer gælder ALLE fremtidige pakker, ikke kun T9.
+
+**Ændring 1: Modsigelse → afvis**
+
+Hvis Code under plan-arbejdet finder modsigelse — internt i krav-dokumentet,
+eller mellem krav-dokumentet og fire-dokument-rammen (vision, master-plan,
+mathias-afgørelser): han STOPPER. Commit blokker-fil
+(`docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md`) med konkret
+reference. Ingen argumentation videre — Mathias afgør om krav-dok skal
+præciseres eller om Code's fortolkning er forkert.
+
+Det gælder også Codex under plan-review: modsigelse markeres som KRITISK
+feedback (ikke G-nummer-kandidat), og planen passerer ikke på trods af
+modsigelsen.
+
+Eksisterende disciplin "Krav-dokument-disciplin" skærpes til at dække alle
+fire forretnings-dokumenter, ikke kun krav-dokumentet.
+
+- **Begrundelse:** T9 V1-V3 disaster skete fordi Claude.ai godkendte planer
+  der modsagde eksisterende mathias-afgørelser. Disciplin skal være eksplicit:
+  modsigelse → afvis, ikke "navigér uden om".
+
+**Ændring 2: Codex opgraderings-rolle**
+
+Codex' rolle udvides fra "find fejl" til "find fejl + foreslå opgraderinger".
+Hvis Codex har en bedre kodemetode end den Code har planlagt: Codex må
+foreslå opgraderingen med severity OPGRADERING (ny severity, separat fra
+KRITISK / MELLEM / KOSMETISK).
+
+Code skal i sin V<n+1>-runde eksplicit håndtere hvert OPGRADERING-forslag:
+
+- **AFVIS** med konkret teknisk begrundelse, ELLER
+- **IMPLEMENTER** opgraderingen og lever V<n+1> baseret på den
+
+Opgraderings-forslag er ikke approval-blokerende. Codex må levere APPROVAL
+og samtidig foreslå OPGRADERING. Code afgør om opgraderingen tages med
+før build.
+
+Grænse: opgraderings-forslag må ALDRIG indebære ændring af formål, scope,
+leverancer eller tilføjelse af features. Hvis "bedre løsning" reelt ændrer
+hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
+
+- **Begrundelse:** Codex har ofte teknisk indsigt der overstiger Code's første
+  løsning. Hidtidig rolle begrænsede ham til "find fejl". Udvidelsen lader
+  hans værdi komme i spil tidligt i plan-runden, ikke kun som teknisk gæld
+  efter build.
+
+- **Plan-reference:** Denne commit. Fire fil-ændringer:
+  - `docs/strategi/arbejds-disciplin.md` (Modsigelses-disciplin + Codex-opgraderings-rolle)
+  - `docs/coordination/overvaagning/code-overvaagning.md` (disciplin-regel + plan-fase-tilstand for OPGRADERING)
+  - `docs/coordination/overvaagning/codex-overvaagning.md` (OPGRADERING severity + opgraderings-rolle-sektion)
+  - Denne entry
