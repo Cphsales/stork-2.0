@@ -7,5 +7,5 @@
 //
 // STATUS: skelet — fuld implementation følger.
 
-console.log('t9-org-tree-upload: stub — fuld implementation kommer som follow-up commit.');
+console.log("t9-org-tree-upload: stub — fuld implementation kommer som follow-up commit.");
 process.exit(0);
