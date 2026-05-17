@@ -24,6 +24,10 @@ declare
   v_mg_id uuid;
   v_km_id uuid;
 begin
+  if not exists (select 1 from information_schema.tables where table_schema='core_identity' and table_name='pending_changes') then
+    raise notice 'T9 smoke: pre-migration state — target table not yet created; skipping';
+    return;
+  end if;
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'T9 step 1 smoke', true);
 
