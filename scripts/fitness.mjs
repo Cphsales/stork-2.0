@@ -123,6 +123,20 @@ const AUDIT_EXEMPT_SNAPSHOT_TABLES = new Set([
 // Audit-tabellen + dens partitioner auditer ikke sig selv (uendelig rekursion).
 const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_default)?$/;
 
+// R7d-pattern (legacy-is-active-readers) er specifik for tabeller der har
+// BÅDE is_active boolean OG status text (employees-pattern). Funktioner der
+// læser is_active=true på tabeller med kun is_active (uden status) er ikke
+// R7d-relevante. T9-tabellerne (org_node_versions, employee_node_placements,
+// client_node_placements) har is_active som lifecycle-signal alene; ingen
+// status-kolonne. Disse er allowlist'et nedenfor.
+//
+// G-nummer-kandidat: R7d-fitness-check skal eksplicit dokumentere at den er
+// employees-specifik (dual-column-pattern). Tabeller med kun is_active skal
+// være allowlist'et fra start, ikke retroaktivt.
+const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
+  "core_identity._apply_employee_place",
+]);
+
 // D3 (master-plan princip 15): Bootstrap-INSERTs i klassifikations- og
 // konfig-tabeller skal være idempotente. ON CONFLICT DO NOTHING (eller
 // DO UPDATE) sikrer at replay ikke duplikerer eller fejler. Direkte
@@ -855,9 +869,11 @@ async function legacyIsActiveReaders() {
   }
 
   const rows = Array.isArray(body) ? body : body.result || body.rows || [];
-  const violations = rows.map(
-    (r) => `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`,
-  );
+  const violations = rows
+    .filter((r) => !LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS.has(r.site))
+    .map(
+      (r) => `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`,
+    );
   return { name: "legacy-is-active-readers", violations };
 }
 
