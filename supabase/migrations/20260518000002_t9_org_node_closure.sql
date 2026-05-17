@@ -10,6 +10,7 @@
 -- Historisk-tree-queries (org_tree_read_at) bruger recursive CTE over versions
 -- direkte for given dato; closure-tabellen er kun for current state (performance).
 
+-- no-dedup-key: closure-tabel er current-state-derived fra org_node_versions; PK er (ancestor, descendant).
 create table core_identity.org_node_closure (
   ancestor_id uuid not null references core_identity.org_nodes(id) on delete cascade,
   descendant_id uuid not null references core_identity.org_nodes(id) on delete cascade,

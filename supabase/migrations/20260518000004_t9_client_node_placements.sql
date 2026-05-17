@@ -9,6 +9,7 @@
 --
 -- Apply-handlers: _apply_client_place + _apply_client_close.
 
+-- no-dedup-key: versioneret placement-tabel; partial UNIQUE (client_id) WHERE effective_to IS NULL er natural dedup.
 create table core_identity.client_node_placements (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null,  -- UDEN FK (trin 10 tilføjer)
@@ -219,6 +220,9 @@ $$;
 revoke execute on function core_identity.pending_change_apply(uuid) from public, anon;
 
 -- ─── Seed undo_settings ─────────────────────────────────────────────────
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'T9 Step 5: seed undo_settings for client_place/close', false);
+
 insert into core_identity.undo_settings (change_type, undo_period_seconds)
 values
   ('client_place', 24 * 3600),

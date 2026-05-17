@@ -65,6 +65,7 @@ begin
       -- Opret ny superadmin-rolle.
       insert into core_identity.roles (name, description)
       values ('superadmin', 'Superadmin — eneste hardkodede rolle. Visibility=Alt på alle elementer.')
+      on conflict (name) do update set description = excluded.description, updated_at = now()
       returning id into v_superadmin_role_id;
 
       -- Tilknyt mg@ og km@ til superadmin.

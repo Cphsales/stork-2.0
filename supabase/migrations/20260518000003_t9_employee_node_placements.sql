@@ -11,6 +11,7 @@
 -- - _apply_team_close: ny org_node_version med is_active=false + luk alle åbne placements
 --   (V5 KOSMETISK: handler er i Step 4 fordi den rører primært employee_placements)
 
+-- no-dedup-key: versioneret placement-tabel; partial UNIQUE (employee_id) WHERE effective_to IS NULL er natural dedup.
 create table core_identity.employee_node_placements (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references core_identity.employees(id) on delete restrict,
@@ -288,6 +289,9 @@ $$;
 revoke execute on function core_identity.pending_change_apply(uuid) from public, anon;
 
 -- ─── Seed undo_settings ─────────────────────────────────────────────────
+select set_config('stork.source_type', 'migration', false);
+select set_config('stork.change_reason', 'T9 Step 4: seed undo_settings for employee_place/remove + team_close', false);
+
 insert into core_identity.undo_settings (change_type, undo_period_seconds)
 values
   ('employee_place', 24 * 3600),
