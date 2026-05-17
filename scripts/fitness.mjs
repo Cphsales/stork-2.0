@@ -115,6 +115,9 @@ const TX_WRAP_REQUIRED_FOR_TEST_INSERT = [
 const AUDIT_EXEMPT_SNAPSHOT_TABLES = new Set([
   "core_money.commission_snapshots",
   // R6: commission_snapshots_candidate + salary_corrections_candidate droppet
+  // T9 Plan V6 Valg 3: closure-tabel er current-state-derived fra org_node_versions.
+  // Kategori-udvidelse (G-nummer-kandidat for master-plan rettelse 23-udvidelse til derived-tables).
+  "core_identity.org_node_closure",
 ]);
 
 // Audit-tabellen + dens partitioner auditer ikke sig selv (uendelig rekursion).
