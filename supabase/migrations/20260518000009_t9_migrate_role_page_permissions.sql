@@ -146,7 +146,7 @@ $seed$;
 
 create or replace function core_identity.has_permission(
   p_page_key text,
-  p_tab_key text,
+  p_tab_key text default null,
   p_can_edit boolean default false
 ) returns boolean
 language plpgsql stable security invoker set search_path = ''
@@ -225,5 +225,5 @@ comment on function core_identity.has_permission(text, text, boolean) is
 -- authenticated; kun trin-5's role_page_permission_upsert-RPC kan skrive.
 -- For V6: revoke EXECUTE fra role_page_permission_upsert (deprecated).
 
-revoke execute on function core_identity.role_page_permission_upsert(uuid, text, text, boolean, boolean, text)
+revoke execute on function core_identity.role_page_permission_upsert(uuid, text, text, boolean, boolean, text, text)
 from public, anon, authenticated;
