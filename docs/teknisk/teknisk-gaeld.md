@@ -514,6 +514,21 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Risiko hvis glemt:** Lav. Vej B er sjælden (kræver atomic rollback). Men mangler regel kan friste til oversnedig brug.
 - **Plan:** Append-only-sektion i `docs/strategi/arbejds-disciplin.md` udvides: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
 
+### [G053] MELLEM — T9-smoke-tests blev aldrig kørt grønt mod stateful DB
+
+- **Beskrivelse:** Alle 6 T9-smoke-tests har table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. Minimum 3 bug-lag i `t9_grants_and_helpers.sql`: (1) `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (2) direkte INSERT i `employee_node_placements` for mg@/km@ bryder partial UNIQUE pga. Step 12 seed, (3) muligvis flere lag.
+- **Vision-svækkelse:** Rettigheder der virker + drift-disciplin. Tests der ikke faktisk kører er værre end ingen tests.
+- **Introduceret:** T9-build (PR #34, smoke-tests). Manifesteret post-deploy.
+- **Skal løses:** Senest i T9-supplement-pakken (refactor af alle 6 T9-tests).
+- **Risiko hvis glemt:** Mellem. T9-funktionalitet er deployed og virker på remote, men test-coverage er ikke verificeret.
+- **Midlertidig løsning:** `t9_grants_and_helpers.sql` renamet til `.sql.disabled` så CI ikke blokkeres. PR #43 fix.
+- **Plan:** Refactor alle 6 T9-tests til stateful-DB-aware mønster:
+  1. Brug throwaway-employees + UUIDs (ikke mg@/km@)
+  2. Eksplicit cleanup-sektion eller udelukkende \_apply\_\*-handlers
+  3. Verificér mod live remote DB FØR PR-merge
+  4. Fjern table-existence guards (de skjuler bugs)
+     Re-aktivér `t9_grants_and_helpers.sql.disabled` som del af refactoren.
+
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 
 - **Beskrivelse:** H024's nye fitness-check (CI-blocker 20) scanner direkte `INSERT INTO <immutable-tabel>` i `supabase/tests/**/*.sql`. Tests der INSERT'er indirekte via RPC-kald (fx `perform core_identity.anonymize_employee(...)` der internt INSERT'er i `anonymization_state`, eller `perform core_compliance.break_glass_execute(...)` der INSERT'er i `break_glass_requests`) bliver IKKE fanget.
