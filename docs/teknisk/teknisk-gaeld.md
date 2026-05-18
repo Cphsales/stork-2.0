@@ -8,7 +8,7 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 16. maj 2026 (H020 dokument-konsistens — M12 G019-arkivering, M21 dato, M22 schema-navn; afspejler seneste tilføjelser G031-G044 fra R-runde-5..R8 + Q-pakke + H016/H020-audit)
+**Sidste opdatering:** 18. maj 2026 (T9 post-merge — G046-G052 tilføjet for T9-build disciplin-læringer)
 
 ---
 
@@ -459,6 +459,60 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Skal løses:** Når næste pakke tilføjer policies på en ny write-tabel.
 - **Risiko hvis glemt:** Mellem. Manifesterer som "permission denied for table" ved første kald — fanget ved manuel test, ikke CI.
 - **Plan (Mønster):** Udvid `write-policy-session-var-consistency` eller ny check der scanner `create policy ... for insert/update/delete` og verificerer at samme tabel har matchende `grant insert/update/delete to <role>`-statement. Falsk-positiv-risiko: medium (kan kræve allowlist for tabeller med policy uden grant by design). Implementation-kompleksitet: lav.
+
+### [G047] MELLEM — DB-tests kører mod live remote DB (ingen isoleret test-DB)
+
+- **Beskrivelse:** `scripts/run-db-tests.mjs:15` peger på samme Supabase-project som production (`imtxvrymaqbgcvsarlib`). DB-tests kører mod live remote via Management API. Konsekvens under T9-build: 3 admin-merges med rød CI (PR #36-38) fordi DB-tests fejlede chicken-and-egg ved partial T9-deploy (M1 + r7b smoke-tests forventede T9-tabeller der først blev oprettet efter merge + push).
+- **Vision-svækkelse:** Drift-disciplin (§3). CI-rød accepteres som "ventet" hvilket svækker signal-værdi.
+- **Introduceret:** Trin 1 (run-db-tests-script + CI-workflow).
+- **Skal løses:** Før næste større pakke der ændrer schema (T9-supplement, trin 10+).
+- **Risiko hvis glemt:** Mellem. Future bugs i applied migrations manifesterer sig som DB-test-fejl på efterfølgende PRs uden mulighed for at fixe i PR'en.
+- **Plan:** Provisioning af separat Supabase-project (eller Supabase branching-feature på Pro+); CI-step der applier alle migrations til test-DB før db:test; sekret SUPABASE_TEST_PROJECT_REF + SUPABASE_TEST_ACCESS_TOKEN; run-db-tests.mjs udvidet med project-ref-valg.
+
+### [G048] LAV — Step 3's fil-as-applied indeholder buggy closure-rebuild CTE
+
+- **Beskrivelse:** `supabase/migrations/20260518000002_t9_org_node_closure.sql:71` har `join nodes_now n on n.node_id = ac.descendant_id` (skulle have været `ac.ancestor_id`). Bug fixed via CREATE OR REPLACE i Step 12 (000010_t9_seed_owners.sql). Step 3's fil er applied til remote — append-only-disciplin forhindrer in-place fix.
+- **Vision-svækkelse:** Lav — kosmetisk i historik-perspektiv; runtime-funktionalitet er korrekt fra Step 12 og frem.
+- **Introduceret:** T9-build (Step 3, applied 2026-05-18).
+- **Skal løses:** Ingen aktiv handling — dokumentation tilstrækkelig.
+- **Risiko hvis glemt:** Lav. Developer der læser Step 3's fil ser buggy kode "as applied" uden at vide om fix-location.
+- **Plan:** Slut-rapport-PR tilføjer kommentar i Step 3's fil der peger på fix-location i Step 12 (000010).
+
+### [G049] MELLEM — Apply-dispatcher-extension-pattern ikke formaliseret i plan-skabelon
+
+- **Beskrivelse:** T9 introducerede dispatcher-extension-pattern (CREATE OR REPLACE pr. step der tilføjer WHEN-klause til CASE-statement i `pending_change_apply`). Step 1's "tomme dispatcher" var invalid plpgsql (CASE uden WHEN); fanget først ved første db push. Plan V6 nævnte mønstret men formaliserede ikke "CASE-statement kræver mindst én WHEN i Postgres".
+- **Vision-svækkelse:** Drift-disciplin — pattern dokumenteret bagefter, ikke før build.
+- **Introduceret:** Plan V6 (T9-plan).
+- **Skal løses:** Næste pakke der bruger dispatcher-extension.
+- **Risiko hvis glemt:** Mellem. Samme bug-klasse kan ramme andre pakker.
+- **Plan:** Plan-skabelon (`docs/skabeloner/plan-skabelon.md`) opdateres med pattern-checklist for CREATE OR REPLACE FUNCTION: signatur-bevarelse (DEFAULTs, arg-count), CASE-statement-minimums-WHEN, record-INTO-field-restriction.
+
+### [G050] MELLEM — Plan V6 mangelfuldt om RLS write-policy-strategi
+
+- **Beskrivelse:** Plan V6 specificerede SELECT-policies + FORCE RLS + SECURITY INVOKER-RPCs for T9-write-veje, men ikke INSERT/UPDATE-policies eller GRANT-statements. Konsekvens: 11 write-RPCs kunne ikke skrive fra authenticated-kontekst. Fixed retroaktivt i T9-fundament-supplement (PR #39) ved at implementere §1.1's session-var-pattern eksplicit.
+- **Vision-svækkelse:** "Rettigheder der virker" — fundament-niveau lacuna i Plan V6.
+- **Introduceret:** Plan V6.
+- **Skal løses:** Fremadrettet — plan-skabelon skal kræve eksplicit policy-strategi pr. write-tabel.
+- **Risiko hvis glemt:** Mellem. Næste pakke med write-RPCs kan have samme lacuna.
+- **Plan:** Plan-skabelon udvides med "Write-policy-checklist": for hver write-tabel skal planen specificere INSERT/UPDATE/DELETE-policies + session-var + GRANTs.
+
+### [G051] LAV — Pre-T9 funktioner redefineret uden eksplicit signatur-diff
+
+- **Beskrivelse:** T9-build redefinerede `has_permission` (Step 11) uden at læse pre-T9-signatur. Konsekvens: `cannot remove parameter defaults from existing function` (42P13). Samme klasse: `role_page_permission_upsert` revoke med 6 args mod 7-arg eksisterende signatur. Begge fanget ved push.
+- **Vision-svækkelse:** Drift-disciplin.
+- **Introduceret:** T9-build (Step 11).
+- **Skal løses:** Næste pakke der CREATE OR REPLACE'er pre-existing functions.
+- **Risiko hvis glemt:** Lav (build-time-fanget) men gentager bug-klasse.
+- **Plan:** Fitness-check der scanner alle CREATE OR REPLACE FUNCTION i migration-filer; sammenligner argument-signatur (inkl. DEFAULTs) med pre-existing definition (live introspection); fejler hvis defaults fjernes eller arg-count ændres. Implementation-kompleksitet: medium.
+
+### [G052] LAV — Vej B i PR #40 skabte præcedens for "ret merged-til-main migration når ej applied"
+
+- **Beskrivelse:** PR #40 rettede `20260518000011_t9_classify.sql` (84 rows fra `{"days":2555}` til `{"max_days":2555}`) trods filen var merged til main. Begrundelse: atomic rollback ved første push betød filen aldrig var applied til remote — ingen historisk DB-state at beskytte. Mathias-godkendt 2026-05-19 som "Vej B".
+- **Vision-svækkelse:** Append-only-disciplin er nu kontekst-afhængig (merged ≠ applied).
+- **Introduceret:** PR #40 (2026-05-18).
+- **Skal løses:** Append-only-disciplin-dokumentation skal afspejle nuancen.
+- **Risiko hvis glemt:** Lav. Vej B er sjælden (kræver atomic rollback). Men mangler regel kan friste til oversnedig brug.
+- **Plan:** Append-only-sektion i `docs/strategi/arbejds-disciplin.md` udvides: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 
