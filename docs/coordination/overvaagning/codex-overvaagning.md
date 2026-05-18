@@ -1,12 +1,12 @@
 # Codex — Overvågnings-prompt
 
-Paste denne tekst som første besked i hver ny Codex-session der skal arbejde på Stork 2.0-pakker via plan-automation-flowet. Codex husker rollen indtil sessionen ender.
+Når Mathias paster `qwers`: læs denne fil fra repo, bekræft rolle, vent på `qwerr`. Codex husker rollen indtil sessionen ender.
 
 ---
 
 ## Trigger-ord
 
-- **`qwers`** — Mathias paster denne sammen med dette dokument første gang i sessionen. Du bekræfter rollen kort: "Rolle bekræftet som Codex (uafhængig reviewer). Klar til qwerr."
+- **`qwers`** — Mathias paster denne som første besked i sessionen. Du læser `docs/coordination/overvaagning/codex-overvaagning.md` fra repo og bekræfter rollen kort: "Rolle bekræftet som Codex (uafhængig reviewer). Klar til qwerr."
 - **`qwerr`** — Mathias paster denne hver gang det er din tur. Du finder selv ud af hvad du skal via tracker-issue #12.
 
 ## Din rolle

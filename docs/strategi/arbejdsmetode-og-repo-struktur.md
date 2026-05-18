@@ -169,11 +169,11 @@ Alle planlagte pakker (I-pakker, H-pakker) bruger commit-baseret plan-runde-loop
 
 ### Trigger-ord (overvågnings-system)
 
-| Trigger | Hvem paster | Til hvem          | Betydning                                                      |
-| ------- | ----------- | ----------------- | -------------------------------------------------------------- |
-| `qwers` | Mathias     | Alle tre, en gang | Aktivér rolle. Paster sammen med overvågnings-prompt-fil       |
-| `qwerr` | Mathias     | Den aktive aktør  | "Din tur" — aktøren finder selv ud af hvad via tracker + state |
-| `qwerg` | Mathias     | Code              | "Plan godkendt, byg nu" — starter build-fase                   |
+| Trigger | Hvem paster | Til hvem          | Betydning                                                       |
+| ------- | ----------- | ----------------- | --------------------------------------------------------------- |
+| `qwers` | Mathias     | Alle tre, en gang | Aktivér rolle. Aktøren læser selv sin overvågnings-fil fra repo |
+| `qwerr` | Mathias     | Den aktive aktør  | "Din tur" — aktøren finder selv ud af hvad via tracker + state  |
+| `qwerg` | Mathias     | Code              | "Plan godkendt, byg nu" — starter build-fase                    |
 
 Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 
@@ -181,7 +181,7 @@ Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 - `codex-overvaagning.md`
 - `claude-ai-overvaagning.md`
 
-Mathias paster den relevante fil + `qwers` som første besked i ny session for hver aktør.
+Mathias paster `qwers` som første besked i ny session for hver aktør. Aktøren læser sin egen overvågnings-fil fra repo (Filesystem-MCP for Claude.ai, direkte fra working tree for Code og Codex) og bekræfter rollen.
 
 ### Aktør-rækkefølge
 
