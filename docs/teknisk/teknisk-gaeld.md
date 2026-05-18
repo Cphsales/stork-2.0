@@ -516,18 +516,26 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 
 ### [G053] MELLEM — T9-smoke-tests blev aldrig kørt grønt mod stateful DB
 
-- **Beskrivelse:** Alle 6 T9-smoke-tests har table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. Minimum 3 bug-lag i `t9_grants_and_helpers.sql`: (1) `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (2) direkte INSERT i `employee_node_placements` for mg@/km@ bryder partial UNIQUE pga. Step 12 seed, (3) muligvis flere lag.
+- **Beskrivelse:** Alle 6 T9-smoke-tests har table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. Konkret manifesteret som 4 lag af fail under PR #43-CI: (1) M1 superadmin manglede permission-rows for T9-RPCs (fixed via separat migration), (2) `t9_grants_and_helpers`: `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (3) `t9_grants_and_helpers`: direkte INSERT i `employee_node_placements` for mg@/km@ bryder partial UNIQUE pga. Step 12 seed, (4) `t9_placements`: `_apply_employee_place(mg@, ..., effective_from=current_date - 5)` sætter existing seed-placement's `effective_to = 2026-05-13` mens existing har `effective_from = 2026-05-17` → CHECK-violation (Codex KRITISK 4 backdated-bug manifesteret).
 - **Vision-svækkelse:** Rettigheder der virker + drift-disciplin. Tests der ikke faktisk kører er værre end ingen tests.
 - **Introduceret:** T9-build (PR #34, smoke-tests). Manifesteret post-deploy.
 - **Skal løses:** Senest i T9-supplement-pakken (refactor af alle 6 T9-tests).
 - **Risiko hvis glemt:** Mellem. T9-funktionalitet er deployed og virker på remote, men test-coverage er ikke verificeret.
-- **Midlertidig løsning:** `t9_grants_and_helpers.sql` renamet til `.sql.disabled` så CI ikke blokkeres. PR #43 fix.
+- **Midlertidig løsning (PR #43, Vej B2):** Alle 6 T9-tests renamet til `.sql.disabled` så CI ikke blokkeres:
+  - `t9_grants_and_helpers.sql.disabled`
+  - `t9_org_node_closure.sql.disabled`
+  - `t9_org_nodes.sql.disabled`
+  - `t9_pending_changes.sql.disabled`
+  - `t9_placements.sql.disabled`
+  - `t9_public_wrapper_rpcs.sql.disabled`
+    Db-test-runner filtrerer på `.sql`-extension; `.disabled` skipper automatisk.
 - **Plan:** Refactor alle 6 T9-tests til stateful-DB-aware mønster:
   1. Brug throwaway-employees + UUIDs (ikke mg@/km@)
-  2. Eksplicit cleanup-sektion eller udelukkende \_apply\_\*-handlers
-  3. Verificér mod live remote DB FØR PR-merge
+  2. Eksplicit cleanup-sektion eller udelukkende _apply_\*-handlers
+  3. Verificér mod live remote DB FØR PR-merge (kør hver test via MCP `execute_sql` med `BEGIN/ROLLBACK`)
   4. Fjern table-existence guards (de skjuler bugs)
-     Re-aktivér `t9_grants_and_helpers.sql.disabled` som del af refactoren.
+  5. Re-aktivér alle 6 `.sql.disabled`-filer som del af refactoren
+  6. Forudsætning: T9-supplement KRITISK 4 (backdated guards) lukket først, ellers `t9_placements` vil stadig bryde
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 
