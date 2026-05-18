@@ -514,28 +514,27 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Risiko hvis glemt:** Lav. Vej B er sjælden (kræver atomic rollback). Men mangler regel kan friste til oversnedig brug.
 - **Plan:** Append-only-sektion i `docs/strategi/arbejds-disciplin.md` udvides: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
 
-### [G053] MELLEM — T9-smoke-tests blev aldrig kørt grønt mod stateful DB
+### [G053] LØST i PR #43 / T9-test-fixture-hardening — T9-smoke-tests refaktoreret til hermetisk-fixture-kontrakt
 
-- **Beskrivelse:** Alle 6 T9-smoke-tests har table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. Konkret manifesteret som 4 lag af fail under PR #43-CI: (1) M1 superadmin manglede permission-rows for T9-RPCs (fixed via separat migration), (2) `t9_grants_and_helpers`: `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (3) `t9_grants_and_helpers`: direkte INSERT i `employee_node_placements` for mg@/km@ bryder partial UNIQUE pga. Step 12 seed, (4) `t9_placements`: `_apply_employee_place(mg@, ..., effective_from=current_date - 5)` sætter existing seed-placement's `effective_to = 2026-05-13` mens existing har `effective_from = 2026-05-17` → CHECK-violation (Codex KRITISK 4 backdated-bug manifesteret).
+- **Beskrivelse:** Alle 6 T9-smoke-tests havde table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. 4 lag af fail under PR #43-CI: (1) M1 superadmin manglede permission-rows for T9-RPCs, (2) `t9_grants_and_helpers` `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (3) `t9_grants_and_helpers` direkte INSERT i `employee_node_placements` for mg@/km@ brød partial UNIQUE pga. Step 12 seed, (4) `t9_placements` `_apply_employee_place` på seed-employee brød CHECK-constraint pga. backdated effective_from (Codex KRITISK 4 manifesteret).
 - **Vision-svækkelse:** Rettigheder der virker + drift-disciplin. Tests der ikke faktisk kører er værre end ingen tests.
 - **Introduceret:** T9-build (PR #34, smoke-tests). Manifesteret post-deploy.
-- **Skal løses:** Senest i T9-supplement-pakken (refactor af alle 6 T9-tests).
-- **Risiko hvis glemt:** Mellem. T9-funktionalitet er deployed og virker på remote, men test-coverage er ikke verificeret.
-- **Midlertidig løsning (PR #43, Vej B2):** Alle 6 T9-tests renamet til `.sql.disabled` så CI ikke blokkeres:
-  - `t9_grants_and_helpers.sql.disabled`
-  - `t9_org_node_closure.sql.disabled`
-  - `t9_org_nodes.sql.disabled`
-  - `t9_pending_changes.sql.disabled`
-  - `t9_placements.sql.disabled`
-  - `t9_public_wrapper_rpcs.sql.disabled`
-    Db-test-runner filtrerer på `.sql`-extension; `.disabled` skipper automatisk.
-- **Plan:** Refactor alle 6 T9-tests til stateful-DB-aware mønster:
-  1. Brug throwaway-employees + UUIDs (ikke mg@/km@)
-  2. Eksplicit cleanup-sektion eller udelukkende _apply_\*-handlers
-  3. Verificér mod live remote DB FØR PR-merge (kør hver test via MCP `execute_sql` med `BEGIN/ROLLBACK`)
-  4. Fjern table-existence guards (de skjuler bugs)
-  5. Re-aktivér alle 6 `.sql.disabled`-filer som del af refactoren
-  6. Forudsætning: T9-supplement KRITISK 4 (backdated guards) lukket først, ellers `t9_placements` vil stadig bryde
+- **Løsning (PR #43 d7aa835, T9-test-fixture-hardening):** Hermetisk-fixture-kontrakt etableret. Mutable fixtures skal være transaction-local throwaway data; seed-users må kun bruges read-only som auth-caller for at nå authorized wrapper-paths. Konkret leveret:
+  1. Alle 6 T9-tests refaktoreret + re-enabled (ingen `.sql.disabled` tilbage):
+     - `t9_grants_and_helpers.sql`: throwaway-rolle + 2 throwaway-employees + uuid-suffixed permission-elements
+     - `t9_placements.sql`: throwaway pending-actors + assertions filtrerer på fixture-IDs
+     - `t9_org_nodes.sql`: throwaway pending-actors + uuid-suffixed node-navne
+     - `t9_pending_changes.sql`: throwaway employees + uuid-suffixed change_type for `undo_settings`
+     - `t9_org_node_closure.sql`: skip-guard fjernet (ingen seed-afhængighed)
+     - `t9_public_wrapper_rpcs.sql`: Vej D — split test i unauthenticated (42501) + authorized superadmin context (22023) via generisk superadmin-lookup + `request.jwt.claim.sub`
+  2. Alle 6 tests verificeret 2x mod live remote via MCP `execute_sql` med `BEGIN/ROLLBACK` — begge runs pass uden seed-cleanup.
+  3. Tre fitness-værn håndhæver kontrakten i CI:
+     - `db-test-no-disabled-sql` — `.sql.disabled` må ikke merges
+     - `db-test-no-t9-seed-user-fixtures` — `t9_*.sql` må ikke bruge mg@/km@ som mutable fixture (allowlist via `-- allow-bootstrap-seed-user-test: <reason>`)
+     - `db-test-no-t9-skip-guards` — `t9_*.sql` må ikke indeholde `information_schema.tables`-lookup eller `pre-migration state ... skipping`-mønstre
+  4. `TX_WRAP_REQUIRED_FOR_TEST_INSERT` udvidet med 9 T9 mutable state-tabeller (`org_nodes`, `org_node_versions`, `employee_node_placements`, `client_node_placements`, `pending_changes`, `role_permission_grants`, `permission_areas/pages/tabs`) — låser BEGIN/ROLLBACK-mønstret for fremtidige tilføjelser.
+  5. `supabase/tests/README.md` udvidet med T9-fixture-regel-sektion + reference til de 3 værn + TX_WRAP-listen.
+  6. Negativ-tests verificeret: alle 3 nye værn fejler korrekt på syntetiske overtrædelser.
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 

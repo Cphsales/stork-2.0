@@ -964,9 +964,7 @@ async function dbTestNoDisabledSql() {
       const sub = `${d}/${e.name}`;
       if (e.isDirectory()) await recurse(sub);
       else if (e.name.endsWith(".sql.disabled")) {
-        violations.push(
-          `${sub}: disabled DB-test må ikke merges (rename til .sql + fix testen, eller slet)`,
-        );
+        violations.push(`${sub}: disabled DB-test må ikke merges (rename til .sql + fix testen, eller slet)`);
       }
     }
   }
@@ -1012,11 +1010,7 @@ async function dbTestNoT9SkipGuards() {
   }
   // Skip-guard-mønster: information_schema.tables-lookup + raise notice "skipping" + early return.
   // T9 er deployed; manglende schema skal være rød test, ikke silent skip.
-  const skipPatterns = [
-    /information_schema\.tables/i,
-    /pre-migration state/i,
-    /not yet created;\s*skipping/i,
-  ];
+  const skipPatterns = [/information_schema\.tables/i, /pre-migration state/i, /not yet created;\s*skipping/i];
   for (const e of entries) {
     if (!e.isFile() || !e.name.startsWith("t9_") || !e.name.endsWith(".sql")) continue;
     const file = `${dir}/${e.name}`;
