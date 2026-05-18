@@ -48,3 +48,21 @@ Kræver `SUPABASE_ACCESS_TOKEN` env-var (samme som fitness `db-rls-policies`-che
 ## Master-plan-reference
 
 Hver test header skal inkludere master-plan-paragraf den verificerer. Fitness-grøn er nødvendigt men ikke tilstrækkeligt — master-plan-kravet skal være direkte testet.
+
+## T9-fixture-regel (G053, 2026-05-19)
+
+T9-smoke-tests (`smoke/t9_*.sql`) skal følge **hermetisk-fixture-kontrakten**:
+
+- **Mutable fixtures skal være transaction-local throwaway data.** Brug `gen_random_uuid()` til IDs + uuid-suffix til alle navne/emails/change*types (`t9_smoke_role*<uuid>`, `t9*empa*<uuid>@test.invalid`, `TestDept\_<uuid>`, osv.)
+- **Seed-users (mg@/km@) må KUN bruges read-only** som auth-caller for at nå authorized wrapper-paths (eksempel: `t9_public_wrapper_rpcs.sql`'s superadmin-lookup + `set_config('request.jwt.claim.sub', ...)`)
+- **Aldrig** `DELETE`/`UPDATE`/`INSERT` på seed-employees, seed-placements eller seed-grants
+- **Assertions filtrerer på fixture-IDs**, ikke global DB-state (ingen "count(\*)" uden WHERE-clause på fixture)
+- **Ingen `information_schema.tables`-skip-guards** — T9 er deployed; manglende schema skal være rød test
+
+Tre fitness-værn håndhæver kontrakten i CI:
+
+- `db-test-no-disabled-sql` — `.sql.disabled` må ikke merges
+- `db-test-no-t9-seed-user-fixtures` — `t9_*.sql` må ikke indeholde `mg@copenhagensales.dk` / `km@copenhagensales.dk` (allowlist via `-- allow-bootstrap-seed-user-test: <reason>` for read-only auth/bootstrap-verifikation)
+- `db-test-no-t9-skip-guards` — `t9_*.sql` må ikke indeholde `information_schema.tables`-lookup eller `pre-migration state ... skipping`-mønstre
+
+Plus: T9 mutable state-tabeller er tilføjet til `TX_WRAP_REQUIRED_FOR_TEST_INSERT`-listen i `scripts/fitness.mjs`.
