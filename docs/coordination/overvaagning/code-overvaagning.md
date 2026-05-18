@@ -42,6 +42,13 @@ Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-ad
 
      Du må ikke ignorere et OPGRADERING-forslag stiltiende.
 
+   - `codex-feedback eller claude-ai-feedback med NEEDS-MATHIAS-fund` (ny 2026-05-18) — reviewer har leveret feedback med ét eller flere NEEDS-MATHIAS-fund. Du MÅ IKKE lave V<n+1> baseret på dette. STOP plan-arbejdet, rapportér til Mathias med konkret citat af hvert NEEDS-MATHIAS-spørgsmål. Vent på Mathias-afgørelse — enten via:
+     - Ny entry i `docs/coordination/mathias-afgoerelser.md` (committet til main), ELLER
+     - Ny krav-dok-version, ELLER
+     - Direkte besked til dig om hvilken vej der tages
+
+     Når Mathias' afgørelse er dokumenteret: lav V<n+1> der eksplicit refererer til afgørelsen i åbnings-sektion under "NEEDS-MATHIAS-håndtering".
+
    - `plan-approved-codex` ELLER `plan-approved-claude-ai` (kun én af to) → vent. Plan er IKKE approved før begge har approved
    - `plan-approved-begge` → vent på Mathias-godkendelse (han paster `qwerg`)
 
@@ -56,16 +63,25 @@ Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-ad
    - Codex har approved slut-rapport → vent på Mathias-merge
 
    **Ingen aktiv pakke:**
-   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai skriver krav-dok via Filesystem-MCP direkte til working tree — den ligger initialt som untracked, ikke committet. Hvis fundet:
+   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai-forfatter skriver krav-dok via Filesystem-MCP direkte til working tree — den ligger initialt som untracked, ikke committet. Hvis fundet:
+
+     **Krav-dok-review-status-tjek (NY 2026-05-18) — FØR commit:**
+     - Tjek `docs/coordination/krav-dok-feedback/` for fil `<pakke>-approved-claude-ai-reviewer.md` (kan være enten committet eller untracked i working tree)
+     - **Hvis approval-fil findes:** krav-dok er review-godkendt. Fortsæt med commit + PR-trinene nedenfor — inkluder approval-fil i samme commit som krav-dok.
+     - **Hvis feedback-fil findes** (`<pakke>-claude-ai-reviewer.md` UDEN "approved" prefix): krav-dok er IKKE klar — reviewer har afvist. STOP, rapportér til Mathias. Mathias afgør om forfatter skal rette eller om plan-arbejde starter på trods.
+     - **Hvis hverken approval eller feedback findes:** krav-dok-review er endnu ikke kørt. STOP, rapportér til Mathias at krav-dok venter på reviewer.
+
+     Når approval-fil er bekræftet:
      1. Læs krav-dokumentet (formål + scope + Mathias' afgørelser + tekniske valg)
      2. Branch fra main: `git checkout -b claude/<pakke>-krav-og-data`
-     3. Commit: `git add <fil> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
+     3. Commit krav-dok + approval-fil: `git add <krav-dok> <approval-fil> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
      4. Push: `git push origin claude/<pakke>-krav-og-data`
-     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument. Plan-arbejde startes når denne er merget."`
+     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument + review-approval. Plan-arbejde startes når denne er merget."`
      6. CI grøn → merge med `--rebase`. Hvis markdown-only-PR rammer branch-protection (kendt issue): retry CI, eller STOP og rapportér til Mathias. Aldrig `--admin`.
      7. Cleanup: `git checkout main && git pull && git branch -D claude/<pakke>-krav-og-data && git push origin --delete claude/<pakke>-krav-og-data`
      8. Rapportér til Mathias mellem hvert skridt (commit-hash, PR-link, merge-status)
      9. Derefter: start plan-arbejde V1 (se næste bullet)
+
    - Hvis krav-dok er på main (enten lige merged ovenfor, eller committet i tidligere session) → læs krav-dokumentet, lav plan V1 på `claude/<pakke>-plan`-branch
    - Hvis hverken untracked krav-dok-fil eller nyligt committet krav-dok på main → ingenting at gøre. Rapportér: "ingen aktiv pakke, ingen krav-dok at handle på"
 
@@ -105,6 +121,28 @@ Når du skriver en plan, **skal** den indeholde "Fire-dokument-konsultation"-sek
 | `docs/coordination/<pakke>-krav-og-data.md` | ja          | [sektioner]                           | ja/nej             |
 
 **Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Claude.ai blokere planen med KRITISK feedback.** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
+
+## Plan-pre-push-tjekliste (obligatorisk før commit, ny 2026-05-18)
+
+Før du committer plan-V<n> til `claude/<pakke>-plan`-branch: gå igennem denne tjekliste. Manglende tjek = potentielt reviewer-runde der kunne være forhindret. Mål: spare iterationer ved at fange basale mangler i din egen runde, ikke i Codex' eller Claude.ai's.
+
+| Tjek | Beskrivelse                                                                                                                                                                        | Hvor                                                      |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1    | Formåls-sætning matcher krav-dok                                                                                                                                                   | Plan øverst                                               |
+| 2    | Fire-dokument-konsultations-tabel udfyldt med konkrete referencer (paragraf-numre, dato-citater)                                                                                   | Plan-sektion                                              |
+| 3    | Fundament-tjek-passeret-sektion udfyldt med 7-række-tabel (GRANT+policy+session-var, SELECT-bredde, backdated guards, Apply-dispatcher, jsonb-format, Eksempel-row, Plan-detaljer) | Plan-sektion                                              |
+| 4    | Oprydnings- og opdaterings-strategi-sektion udfyldt med konkrete filer der arkiveres/slettes/opdateres                                                                             | Plan-sektion                                              |
+| 5    | Plan-leverancer dækker ALLE krav-dok-leverancer (ingen droppet stiltiende)                                                                                                         | Krydsetjek                                                |
+| 6    | Plan-leverancer går IKKE ud over krav-dok scope ("IKKE i scope"-listen respekteret)                                                                                                | Krydsetjek                                                |
+| 7    | Implementations-rækkefølge har Type/Hvad/Eksakt indhold/Afhængigheder/Migration-fil/Risiko per leverance                                                                           | Plan-sektion                                              |
+| 8    | Ingen tekniske beslutninger modsiger eksisterende mathias-afgørelser                                                                                                               | Krydsetjek mod `docs/coordination/mathias-afgoerelser.md` |
+| 9    | Hvis plan introducerer ny ramme-beslutning (terminologi, standard, disciplin): er den foreslået som NEEDS-MATHIAS-flag i plan, ikke implicit antaget?                              | Plan-sektion                                              |
+
+**Hvis du finder et "nej" på noget tjek:** ret FØR du committer. Det er ikke acceptabelt at pushe plan med vidende mangler — det spilder reviewer-tid og forlænger pakke-leverancen.
+
+**Hvis du er i tvivl om et tjek:** STOP, rapportér til Mathias FØR commit, vent på afklaring. "Jeg pushede og lod review fange det" er ikke gyldig handling.
+
+**Hvis Mathias' tidligere prompt har specificeret konkrete elementer i planen** (antal, navne, formuleringer, yaml-konfig): verificér at de er implementeret 1:1 (jf. Plan-leverance-kontrakt-regel). Afvigelser flagges FØR push, ikke EFTER.
 
 ## Hvad du gør når Mathias paster `qwerg`
 

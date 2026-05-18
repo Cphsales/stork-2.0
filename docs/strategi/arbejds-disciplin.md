@@ -82,13 +82,17 @@ beslutningstager.
 
 ### Claude.ai
 
-Rolle: strategisk sparring + krav-dok-forfatter + **forretnings-dokument-reviewer i plan-flowet**.
+Rolle: strategisk sparring + krav-dok-forfatter + krav-dok-reviewer (NY 2026-05-18) + **forretnings-dokument-reviewer i plan-flowet**.
+
+De tre Claude.ai-roller (forfatter, krav-dok-reviewer, plan- og slut-rapport-reviewer) køres i **separate chats** for at sikre bias-rensning. Samme chat må ikke have to roller samtidig.
 
 MÅ:
 
 - Foreslå løsninger med konkret begrundelse
 - Stille spørgsmål for at afklare scope
+- Køre forretningsspørgsmål-fase (`docs/coordination/<pakke>-forretningsspoergsmaal.md`) før krav-dok-skrivning
 - Skrive krav-dokumenter (`<pakke>-krav-og-data.md`) baseret på Mathias' afgørelser
+- **Reviewe krav-dok i separat chat** før Mathias-commit, mod fire forretnings-dokumenter + forretningsspørgsmål-fil. Levere approval eller feedback til `docs/coordination/krav-dok-feedback/`.
 - **Reviewe plan-filer og slut-rapporter mod fire forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok). Levere approval eller feedback.
 - Flagge drift mellem afgørelser og implementation
 - Sige "jeg ved det ikke" eller "ikke verificeret"
@@ -102,6 +106,8 @@ MÅ IKKE:
   afgørelser
 - Fabrikere statistik, tidslinjer, sourcing
 - **Lave kode-vurderinger** (bugs, RLS-huller, SQL-fejl, teknisk gennemførlighed) — det er Codex' bord
+- **Designe datamodel** (tabeller, kolonner, RPC-signaturer, granularitets-valg, helper-RPC-forslag, kode-skitser, "Model A/B/C") — Code's bord i plan-fasen
+- **Skrive påstande i krav-dok uden Mathias-kilde** — krav-dok = tanker; hver påstand citerer Mathias-ord eller låst afgørelse. Ingen kilde: spørg, skriv ikke.
 
 ### Code (Claude Code CLI)
 
@@ -340,16 +346,20 @@ Code må ikke ignorere et OPGRADERING-forslag stiltiende.
 
 ### OPGRADERING vs andre severities
 
-| Severity    | Konsekvens                                                                                                                                     |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| KRITISK     | Stopper plan i alle runder. Code SKAL adressere i V<n+1>                                                                                       |
-| MELLEM      | Stopper plan i runde 1. Bliver G-nummer i runde 2+                                                                                             |
-| KOSMETISK   | Stopper IKKE plan. G-nummer-kandidat                                                                                                           |
-| OPGRADERING | Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Codex må levere APPROVAL og samtidig OPGRADERING-forslag |
+| Severity      | Konsekvens                                                                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| KRITISK       | Stopper plan i alle runder. Code SKAL adressere i V<n+1>                                                                                       |
+| MELLEM        | Stopper plan i runde 1. Bliver G-nummer i runde 2+                                                                                             |
+| KOSMETISK     | Stopper IKKE plan. G-nummer-kandidat                                                                                                           |
+| OPGRADERING   | Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Codex må levere APPROVAL og samtidig OPGRADERING-forslag |
+| NEEDS-MATHIAS | Stopper plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Reviewer dokumenterer eksplicit spørgsmål til Mathias.          |
 
 OPGRADERING er ikke i konflikt med APPROVAL. Codex kan levere kode-approval
 af planen og samtidig foreslå opgradering. Code afgør om opgraderingen tages
 med før build.
+
+NEEDS-MATHIAS er ikke kode- eller forretnings-modsigelse. Det er fund hvor
+reviewer reelt ikke kan afgøre uden Mathias-input. Se egen sektion "NEEDS-MATHIAS-severity" nedenfor for detaljer.
 
 ### Grænse for opgraderings-forslag
 
@@ -362,6 +372,76 @@ Codex' opgraderings-forslag må ALDRIG indebære:
 Hvis Codex' "bedre løsning" reelt ændrer hvad planen leverer: det er ikke
 en opgradering, det er en funktions-beslutning, og det hører hos Mathias.
 Marker i så fald som "OUT OF SCOPE — kræver Mathias-runde".
+
+## NEEDS-MATHIAS-severity (ny 2026-05-18)
+
+Femte severity-niveau, parallel til KRITISK / MELLEM / KOSMETISK / OPGRADERING.
+Indført for at fange fund hvor reviewer reelt ikke kan afgøre uden Mathias-input.
+
+### Hvad NEEDS-MATHIAS fanger
+
+Fund der ikke er kode-fejl eller forretnings-modsigelse, men hvor afgørelse er
+Mathias' bord:
+
+- **To gyldige tekniske valg uden klar vinder.** Reviewer ser to alternative
+  approaches og kan ikke teknisk skille dem ad — valget er forretnings- eller
+  retning-baseret.
+- **Ny ramme-niveau-beslutning.** Planen introducerer noget der ikke står i
+  `mathias-afgoerelser.md` og ikke kan udledes af eksisterende forretnings-
+  dokumenter. F.eks. ny disciplin, ny standard-håndtering, ny terminologi.
+- **Modsigelse mellem to forretnings-dokumenter.** Reviewer opdager at to af
+  de fire forretnings-dokumenter siger modsat — Mathias afgør hvilken der vinder.
+- **Scope-grænse-tvivl.** Planen er på grænsen mellem "i scope" og "ikke i scope"
+  fra krav-dok, og reviewer kan ikke afgøre uden Mathias.
+
+### Hvad NEEDS-MATHIAS IKKE er
+
+- **KRITISK fund med konkret kilde.** Hvis planen modsiger vision-princip med
+  konkret citat: det er KRITISK, ikke NEEDS-MATHIAS. Reviewer håndhæver rammen,
+  eskalerer ikke.
+- **Kode-bug eller RLS-hul.** Det er KRITISK (kode-niveau), Codex' bord, ikke
+  Mathias-eskalering.
+- **OPGRADERING.** Reviewer har bedre alternativ — forslå det, lad Code afgøre.
+
+Reviewer skal modstå at bruge NEEDS-MATHIAS som bekvem flugt-vej fra teknisk
+afgørelse. Hvis du kan argumentere teknisk: gem ikke til Mathias.
+
+### Konsekvens af NEEDS-MATHIAS-fund
+
+1. **Reviewer leverer FEEDBACK** med fund markeret som NEEDS-MATHIAS
+2. **Code ser feedback'en** — men kan IKKE lave V<n+1> baseret på den
+3. **Mathias afgør** — enten ved ny entry i `mathias-afgoerelser.md`, ny krav-dok-
+   version, eller direkte besked til Code om hvilken vej der tages
+4. **Code laver V<n+1>** efter Mathias' afgørelse er dokumenteret
+
+Det er strengere end KRITISK, fordi KRITISK kan adresseres af Code via teknisk
+omformulering. NEEDS-MATHIAS kan KUN adresseres af Mathias.
+
+### Format for NEEDS-MATHIAS-fund
+
+```
+[NEEDS-MATHIAS] Kort beskrivelse
+Spørgsmål til Mathias: [eksplicit, enkelt spørgsmål]
+Kontekst: [hvorfor reviewer ikke kan afgøre selv]
+Mulige svar: [option A: ... / option B: ... / option C hvis relevant]
+Reviewers tentative præference: [hvis nogen, ellers "ingen"]
+Hvor Mathias-svaret dokumenteres: [ny entry i mathias-afgoerelser.md med dato / ny krav-dok-version / direkte instruks til Code]
+```
+
+Tentative præference er valgfri — reviewer må godt mene noget, men afgørelsen
+binder hverken Mathias eller Code.
+
+### Reviewer-disciplin omkring NEEDS-MATHIAS
+
+- **Modstå fristelsen til at eskalere alt.** Hvis du har konkret kilde:
+  KRITISK med kildecitat, ikke NEEDS-MATHIAS.
+- **Maks 2 NEEDS-MATHIAS-fund per review.** Hvis du har 3+, er du sandsynligvis
+  i drift — måske krav-dok skulle have været præcise fra start. Stop og
+  rapportér til Mathias at krav-dok-runde måske er nødvendig før plan-runden
+  fortsætter.
+- **NEEDS-MATHIAS kan IKKE kombineres med APPROVAL.** Hvis du har ét NEEDS-MATHIAS-
+  fund og ellers ingen kritiske: lever FEEDBACK med kun det fund — ikke APPROVAL.
+  Plan stoppes indtil Mathias har svaret.
 
 ## Git-sync-disciplin
 

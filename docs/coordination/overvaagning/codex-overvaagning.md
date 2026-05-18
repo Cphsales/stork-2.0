@@ -61,6 +61,24 @@ Spørg dig selv:
 - Er der RLS-huller, SQL-fejl, eller migrations-rekkefølges-problemer i planen?
 - Bryder planen tekniske invarianter (FORCE RLS, audit-trigger-dækning, helper-renhed)?
 
+**Obligatoriske end-to-end-tjek per write-vej:**
+
+For hver write-RPC og INSERT/UPDATE/DELETE-vej i planen — verificér eksplicit og citér plan-reference. Manglende ét af punkterne nedenfor = KRITISK fund.
+
+1. **GRANT + policy + session-var som tre-pak:** Har planen GRANT INSERT/UPDATE/DELETE på tabellen til relevant rolle? Har planen tilsvarende RLS-policy med session-var-reference? Sætter planen session-var før operationen kaldes? Mangler ét af de tre = KRITISK fund.
+
+2. **SELECT-policy bredde:** Er SELECT-policy bred nok til alle legitime læsere (dispatcher-mapping, permission-grants, UI-flows)? Hvis nej: KRITISK fund.
+
+3. **Backdated guards:** For writes der berører historisk eller låst data — findes der backdated guard der forhindrer ændring af data ældre end X? Placeret før write?
+
+4. **Apply-dispatcher-extension specificeret per RPC:** For hver ny write-RPC — er apply-dispatcher-extension-pattern eksplicit specificeret (hvordan RPC kobles til dispatcher, hvilken extension der bruges)? Hvis ikke: KRITISK fund.
+
+5. **jsonb-format konsistens:** For jsonb-kolonner der både skrives og læses — bruger producer og consumer samme nøgle-navne?
+
+6. **Eksempel-row gennem flow:** Følg én konkret eksempel-row (gerne som non-admin med relevant permission) gennem hele flowet: UI-input → handler → RPC → DB → læsning. Hvert step viser hvilken policy/grant/session-var der gælder. Hvis flowet går galt: KRITISK fund.
+
+7. **Krydsetjek mod Fundament-tjek-passeret-sektion:** Hvis Code har sagt "ja" til et tjek du selv finder fejl på (punkt 1-6 ovenfor): det er KRITISK fund. Plan kan ikke approves med ærligheds-fejl i fundament-rapportering.
+
 **Hvis Codex spotter et forretnings-dokument-konflikt** (fx planen modsiger vision-princip 9 eller en mathias-afgørelse): marker det som "OUT OF SCOPE — Claude.ai's bord" og fortsæt kode-reviewet. Lad ikke det blokere et ellers solidt kode-review. Claude.ai's parallelle review fanger det.
 
 ### Slut-rapport-review
@@ -97,13 +115,15 @@ Du skal markere hvert fund med severity. Ikke alle fund fører til V<n+1> — ku
 - **MELLEM** — reelt problem men ikke produktion-blokerende. Stopper plan i runde 1; bliver G-nummer i runde 2+.
 - **KOSMETISK** — stilistisk, ordlyd, eller mindre praktisk forbedring. Stopper IKKE plan. Markeres som G-nummer-kandidat.
 - **OPGRADERING** (ny 2026-05-17) — du har en bedre kodemetode end Code har planlagt. Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Du må levere APPROVAL og samtidig foreslå OPGRADERING.
+- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input. Eksempler: to gyldige tekniske valg uden klar vinder, ny ramme-niveau-beslutning Code introducerer, modsigelse mellem to forretnings-dokumenter, scope-grænse-tvivl. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Anvend kun når du faktisk ikke har teknisk grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
 
 **Anti-glid-regler:**
 
 1. **Hvis alle dine fund er KOSMETISKE → lever APPROVAL** med liste af fund + G-nummer-anbefalinger. Lad ikke kosmetik trigge V<n+1>.
 2. **Hvis dine fund er MELLEM og vi er i runde 2+: lever APPROVAL** + G-numre. Plan går videre.
 3. **Hvis dine fund er KRITISKE: lever FEEDBACK** uanset runde.
-4. **Hvis du er i tvivl om severity: marker konservativt** (KOSMETISK frem for MELLEM, MELLEM frem for KRITISK). Hellere at noget bliver G-nummer end at vi kører overflødig runde.
+4. **Hvis du har NEEDS-MATHIAS-fund: lever FEEDBACK** uanset øvrige fund. Plan stoppes indtil Mathias har svaret. Max 2 NEEDS-MATHIAS pr. review — hvis flere: stop og rapportér at krav-dok-runde sandsynligvis er nødvendig.
+5. **Hvis du er i tvivl om severity: marker konservativt** (KOSMETISK frem for MELLEM, MELLEM frem for KRITISK, KRITISK frem for NEEDS-MATHIAS). Hellere at noget bliver G-nummer end at vi kører overflødig runde eller eskalerer unødigt.
 
 **Format for hvert fund:**
 
