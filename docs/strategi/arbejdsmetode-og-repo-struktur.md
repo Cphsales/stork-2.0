@@ -183,14 +183,6 @@ Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 
 Mathias paster den relevante fil + `qwers` som første besked i ny session for hver aktør.
 
-**Claude.ai-rolle-noter:**
-
-- **Krav-dok-forfatter** — separat chat startet med `claude-ai-overvaagning.md` + `qwers`. Skriver krav-dok efter eventuel forretningsspørgsmål-fase.
-- **Krav-dok-reviewer** — separat chat startet med `claude-ai-overvaagning.md` + `qwers`. Læser krav-dok efter forfatter har leveret, før Mathias committer.
-- **Plan- og slut-rapport-reviewer** — separat chat startet med `claude-ai-overvaagning.md` + `qwers`. Den almindelige løbende review-rolle.
-
-De tre roller MÅ IKKE blandes i samme chat. Hver rolle har separat bias-rensning gennem separat chat-start.
-
 ### Aktør-rækkefølge
 
 1. **Claude.ai-forfatter kører forretningsspørgsmål-fase** (`docs/coordination/<pakke>-forretningsspoergsmaal.md`) hvis pakken kræver det. Se `docs/skabeloner/forretningsspoergsmaal-skabelon.md` for skip-kriterier og struktur. Output committes til main af Mathias inden krav-dok-skrivning starter. Hvis fasen skippes: dokumentér kort hvorfor i krav-dok's åbnings-sektion.

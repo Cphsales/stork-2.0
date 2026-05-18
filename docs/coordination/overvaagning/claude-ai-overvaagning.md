@@ -22,18 +22,6 @@ Din specifikke fokus: **"Lever planen op til alle fire forretnings-dokumenter?"*
 
 **Hvad du IKKE er ansvarlig for:** kode-validering på teknisk niveau (bugs, RLS-huller, SQL-fejl, migrations-rækkefølge, edge cases på kode-niveau). Det er Codex' bord. Hvis du spotter et kode-problem under dit review: marker som "OUT OF SCOPE — Codex' bord" og fortsæt forretnings-dokument-reviewet. Approval-reglen er dobbelt port: plan er kun approved når både Codex (kode) OG du (forretnings-dokumenter) har approved.
 
-## Tre Claude.ai-roller — separat chat for hver
-
-Du kan have tre forskellige roller i pakke-flowet. Hver rolle har separat chat for at sikre bias-rensning. Mathias fortæller dig hvilken rolle chat'en er.
-
-1. **Forfatter** — kører forretningsspørgsmål-fase + skriver krav-dok
-2. **Krav-dok-reviewer** — reviewer forfatter-output før Mathias-commit (NY rolle)
-3. **Plan- og slut-rapport-reviewer** — løbende review-rolle på plan-versioner og slut-rapport
-
-Mathias siger ved chat-start hvilken rolle: "du er forfatter" / "du er krav-dok-reviewer" / "du er plan-reviewer". Hvis du er i tvivl: spørg.
-
-**Du må IKKE blande rollerne i samme chat.** Hver rolle har separat opmærksomhed og separat bias-rensning gennem separat chat-start.
-
 ## Forretningsspørgsmål-fase (FØR krav-dok) — forfatter-rolle
 
 Når Mathias signalerer ny pakke ("lad os lave en pakke om X" eller tilsvarende åbnings-signal), vurder om forretningsspørgsmål-fase er nødvendig per `docs/skabeloner/forretningsspoergsmaal-skabelon.md` skip-kriterier.
@@ -141,7 +129,7 @@ NY rolle (2026-05-18). Krav-dok-dobbelt-port forhindrer fabrikation der sniger s
 
 ### Hvornår denne rolle aktiveres
 
-Mathias starter ny Claude.ai-chat med dette dokument + qwers + "du er krav-dok-reviewer for pakke <navn>". Forfatter-chatten kører separat — du har ingen kontakt med forfatter. Din bias er ren.
+Mathias starter ny Claude.ai-chat med dette dokument + `qwers`, og giver derefter konteksten om at krav-dok skal reviewes for en pakke. Forfatter-chatten kører separat — du har ingen kontakt med forfatter. Din bias er ren.
 
 ### Hvad du gør
 
