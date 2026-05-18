@@ -389,7 +389,7 @@ Reflekterer T9-omstart-rammen fra 2026-05-17 (mathias-afgoerelser, 15 punkter). 
 
 - `superadmin`-rolle = synlighed=`Alt` på alle elementer. **Eneste hardkodede rolle**
 - Mathias og Kasper har `superadmin`-rollen, placeret på en `Ejere`-afdeling i træet
-- GDPR-ansvarlig, AMO-ansvarlig, AI-ansvarlig er UI-rolle-tildelinger via `role_permission_grants` på relevante areas — ingen separate hardkodede roller (ingen `is_compliance_officer()` etc.)
+- Ingen andre hardkodede roller. Compliance-ansvarlige (GDPR, AMO, AI) er én eller flere konkrete medarbejdere valgt i UI — ikke rolle, ikke permission. Se §1.13.
 
 **Superadmin-floor (forhindrer alle-superadmins-slettet-tilstand):**
 
@@ -656,9 +656,15 @@ Stork 2.0's egen juridiske ramme:
 - retention_type-enum: `time_based`, `event_based`, `manual`, `permanent`
 - `permanent` håndhæves via positiv allowlist (DB-trigger + IMMUTABLE allowlist-funktion `is_permanent_allowed`) — kun system-meta-kolonner (PK'er, singleton-konfig, audit-struktur, system-cron-config) kvalificerer. Allowlist-ændringer kræver kode-commit + review.
 
+**Compliance-ansvarlige:**
+
+- GDPR-ansvarlig (og evt. AMO-ansvarlig, AI-ansvarlig) er én eller flere konkrete medarbejdere valgt i UI. Ikke rolle, ikke permission. Pr. ansvars-type kan flere medarbejdere have ansvaret samtidigt.
+- Reflekterer Mathias-afgørelse 2026-05-14 (Korrektion C) og cutover-blocker #3.
+- Konkret mekanik (hvilke ansvars-typer der findes, hvilke handlinger der knyttes til udpegelsen, hvordan medarbejderne udpeges) designes når relevant RPC eller cutover-blocker kræver det. Ikke i T9-fundament.
+
 **Konsekvens for permissions:**
 
-- GDPR-ansvarlig, AMO-ansvarlig, AI-ansvarlig er UI-rolle-tildelinger via `role_permission_grants` på relevante areas (se §1.7). Ingen separate hardkodede compliance-roller. Retroaktiv sletning, AI-instruktions-ændringer, AMO-rettelser gates'es via `has_permission` på respektive areas når relevante RPCs bygges.
+- Permissions til retroaktiv GDPR-sletning, AI-instruktions-ændringer, AMO-rettelser gates'es via `has_permission` på respektive areas — samme model som alle andre operationer. Ingen særlige compliance-permission-mekanismer.
 
 ### §1.14 Driftstabilitet
 

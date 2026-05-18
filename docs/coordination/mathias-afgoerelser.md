@@ -193,6 +193,14 @@ Append-only natur: fejl efter commit kan kun rettes via efterfølgende rettelse-
 - **Løsning:** Code kører `--permission-mode bypassPermissions` (fuld autonomi, ingen prompts). Codex kører `-s workspace-write -a never` (skriv kun i repo + tmp + memories, ingen prompts). Forskellen er bevidst: Code's rolle kræver mange kommando-typer (pnpm, supabase, gh, git, sql); Codex' rolle er fokuseret på read + review + push-til-egen-branch og har ikke brug for at gå uden for repo. Aliases i `~/.bashrc` gør det permanent. Bash backslash-escape (`\claude`, `\codex`) bypasser alias for én kommando hvis nødvendigt.
 - **Plan-reference:** Denne commit. Backups taget: `~/.codex/config.toml.bak.2026-05-16` + `~/.claude/settings.local.json.bak.2026-05-16`. Ingen ændring til eksisterende config-filer — aliases er additive.
 
+### 2026-05-19 — Compliance-ansvarlige er konkrete medarbejdere, ikke rolle eller permission
+
+- **Beslutning:** §1.7 + §1.13's tekst om "UI-rolle-tildelinger via role_permission_grants" (commit b5d61d8) renses. Korrekt formulering: compliance-ansvarlige (GDPR, AMO, AI) er én eller flere konkrete medarbejdere valgt i UI — ikke rolle, ikke permission. Pr. ansvars-type kan flere medarbejdere have ansvaret samtidigt. Reflekterer Mathias-afgørelse 2026-05-14 (Korrektion C) der allerede er afspejlet i cutover-blocker #3.
+
+- **Begrundelse:** GDPR har ikke noget med systemets permissions at gøre. Permissions er adgangs-mekanik (hvad må medarbejderen i systemet). Compliance-ansvarlig er metadata om hvem der har det operationelle ansvar (modtager fx alarmer). De to ting er ortogonale. Sammenblanding skaber falsk kobling.
+
+- **Plan-reference:** §1.7 + §1.13 opdateret i samme commit. Konkret mekanik designes når relevant RPC eller cutover-blocker kræver det — ikke i T9-fundament.
+
 ### 2026-05-18 — Master-plan §1.7 opdateret til at matche T9-omstart-rammen
 
 - **Beslutning:** Master-plan §1.7 "Identitet og rettigheder" omskrevet til at reflektere T9-omstart-rammen (2026-05-17 entry, 15 punkter). Pre-omsadlings-tekst fjernes som forkert fundament. Konkret fjernet/erstattet:
