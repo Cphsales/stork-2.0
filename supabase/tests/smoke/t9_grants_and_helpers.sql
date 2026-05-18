@@ -45,7 +45,9 @@ begin
 
   -- ─── T2: Grants — INSERT med CHECK at præcis ét element-niveau ───────
   -- Brug eksisterende admin-rolle fra trin 1.
-  select id into v_role_id from core_identity.roles where name = 'admin' limit 1;
+  -- R1B omdøbte 'admin' → 'superadmin' (2026-05-14). T9-omstart-rammen punkt 10:
+  -- superadmin er eneste hardkodede rolle.
+  select id into v_role_id from core_identity.roles where name = 'superadmin' limit 1;
 
   begin
     v_caught := null;
