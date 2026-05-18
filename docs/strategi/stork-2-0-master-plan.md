@@ -658,7 +658,7 @@ Stork 2.0's egen juridiske ramme:
 
 **Konsekvens for permissions:**
 
-- `is_compliance_officer()` helper-funktion (stærkere end superadmin) — krævet for retroaktiv sletning, AI-instruktions-ændringer, AMO-rettelser. Implementeres når relevant RPC bygges; design-spor klar fra fundamentet
+- GDPR-ansvarlig, AMO-ansvarlig, AI-ansvarlig er UI-rolle-tildelinger via `role_permission_grants` på relevante areas (se §1.7). Ingen separate hardkodede compliance-roller. Retroaktiv sletning, AI-instruktions-ændringer, AMO-rettelser gates'es via `has_permission` på respektive areas når relevante RPCs bygges.
 
 ### §1.14 Driftstabilitet
 

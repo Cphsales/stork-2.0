@@ -76,12 +76,21 @@ create policy permission_tabs_update on core_identity.permission_tabs
   using (current_setting('stork.t9_write_authorized', true) = 'true');
 
 -- 1.6 role_permission_grants
+-- NOTE: Eneste T9-tabel der får DELETE-policy. Verificeret: pending_changes /
+-- undo_settings / permission_areas / permission_pages / permission_tabs har
+-- ingen DELETE-veje (kun status-update + deactivate-flag-mønster). Kun
+-- role_permission_grant_remove udfører faktisk DELETE under FORCE RLS fra
+-- authenticated-kontekst.
 create policy role_permission_grants_insert on core_identity.role_permission_grants
   for insert to authenticated
   with check (current_setting('stork.t9_write_authorized', true) = 'true');
 
 create policy role_permission_grants_update on core_identity.role_permission_grants
   for update to authenticated
+  using (current_setting('stork.t9_write_authorized', true) = 'true');
+
+create policy role_permission_grants_delete on core_identity.role_permission_grants
+  for delete to authenticated
   using (current_setting('stork.t9_write_authorized', true) = 'true');
 
 -- ─── DEL 2: 11 write-RPCs får session-var pattern ─────────────────────────
@@ -94,6 +103,27 @@ create policy role_permission_grants_update on core_identity.role_permission_gra
 --   4. Selve INSERT/UPDATE
 
 -- 2.1 pending_change_approve (Step 1, UPDATE pending_changes)
+--
+-- Mathias 2026-05-19 (T9-omstart-rammen punkt 12): Approve er ikke ny adgang.
+-- Den er can_edit på den ressource som pending change rammer. Hvis bruger har
+-- can_edit=true på org_træ-area, må vedkommende også approve en pending change
+-- der ændrer org_træ.
+--
+-- Dispatcher-mapping change_type → has_permission(page_key, can_edit=true):
+--   org_node_upsert     → 'org_nodes'           (struktur-ændring af knude)
+--   org_node_deactivate → 'org_nodes'           (struktur-ændring af knude)
+--   team_close          → 'org_nodes'           (lukker team-knude — struktur)
+--   employee_place      → 'employee_placements' (medarbejder-placering)
+--   employee_remove     → 'employee_placements' (medarbejder-placering)
+--   client_place        → 'client_placements'   (klient-placering)
+--   client_close        → 'client_placements'   (klient-placering)
+--
+-- Mappingen er system-mekanik (kode-logik), IKKE UI-styret data. Samme princip
+-- som apply-handlers' dispatcher per change_type. Mappingen er udtømmende;
+-- ukendt change_type raiser exception.
+--
+-- is_admin() self-approve-undtagelsen bevares: en admin kan approve sin egen
+-- request (§1.1's undtagelse for bootstrap-flows).
 create or replace function core_identity.pending_change_approve(
   p_change_id uuid
 ) returns void
@@ -105,6 +135,7 @@ declare
   v_change record;
   v_approver uuid;
   v_undo_period integer;
+  v_page_key text;
 begin
   v_approver := core_identity.current_employee_id();
   if v_approver is null then
@@ -125,6 +156,26 @@ begin
   if v_change.status <> 'pending' then
     raise exception 'pending_change_wrong_status: % (expected pending)', v_change.status
       using errcode = '22023';
+  end if;
+
+  -- Dispatcher: map change_type → underliggende ressource (page_key).
+  -- Approve af pending change kræver can_edit på samme page som ændringen rammer.
+  case v_change.change_type
+    when 'org_node_upsert'     then v_page_key := 'org_nodes';
+    when 'org_node_deactivate' then v_page_key := 'org_nodes';
+    when 'team_close'          then v_page_key := 'org_nodes';
+    when 'employee_place'      then v_page_key := 'employee_placements';
+    when 'employee_remove'     then v_page_key := 'employee_placements';
+    when 'client_place'        then v_page_key := 'client_placements';
+    when 'client_close'        then v_page_key := 'client_placements';
+    else
+      raise exception 'unknown_change_type for approve-gate: %', v_change.change_type
+        using errcode = '42883';
+  end case;
+
+  if not core_identity.has_permission(v_page_key, null, true) then
+    raise exception 'permission_denied: approve % kræver can_edit på %', v_change.change_type, v_page_key
+      using errcode = '42501';
   end if;
 
   if v_change.requested_by = v_approver and not core_identity.is_admin() then
@@ -156,6 +207,10 @@ $$;
 revoke execute on function core_identity.pending_change_approve(uuid) from public, anon;
 
 -- 2.2 pending_change_undo (Step 1, UPDATE pending_changes)
+--
+-- Undo af pending change kræver samme can_edit-rettighed på underliggende
+-- ressource som approve af samme change. Dispatcher-mapping identisk med
+-- pending_change_approve.
 create or replace function core_identity.pending_change_undo(
   p_change_id uuid
 ) returns void
@@ -165,6 +220,7 @@ set search_path = ''
 as $$
 declare
   v_change record;
+  v_page_key text;
 begin
   select * into v_change
   from core_identity.pending_changes
@@ -185,6 +241,25 @@ begin
     raise exception 'undo_deadline_expired'
       using errcode = '22023',
             hint = format('deadline var %s', v_change.undo_deadline);
+  end if;
+
+  -- Dispatcher: samme mapping som pending_change_approve.
+  case v_change.change_type
+    when 'org_node_upsert'     then v_page_key := 'org_nodes';
+    when 'org_node_deactivate' then v_page_key := 'org_nodes';
+    when 'team_close'          then v_page_key := 'org_nodes';
+    when 'employee_place'      then v_page_key := 'employee_placements';
+    when 'employee_remove'     then v_page_key := 'employee_placements';
+    when 'client_place'        then v_page_key := 'client_placements';
+    when 'client_close'        then v_page_key := 'client_placements';
+    else
+      raise exception 'unknown_change_type for undo-gate: %', v_change.change_type
+        using errcode = '42883';
+  end case;
+
+  if not core_identity.has_permission(v_page_key, null, true) then
+    raise exception 'permission_denied: undo % kræver can_edit på %', v_change.change_type, v_page_key
+      using errcode = '42501';
   end if;
 
   perform set_config('stork.t9_write_authorized', 'true', true);
