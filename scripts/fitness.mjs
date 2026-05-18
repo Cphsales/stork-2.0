@@ -133,7 +133,11 @@ const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_d
 // G-nummer-kandidat: R7d-fitness-check skal eksplicit dokumentere at den er
 // employees-specifik (dual-column-pattern). Tabeller med kun is_active skal
 // være allowlist'et fra start, ikke retroaktivt.
-const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set(["core_identity._apply_employee_place"]);
+const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
+  "core_identity._apply_employee_place",
+  "core_identity.client_node_place",
+  "core_identity.permission_elements_read",
+]);
 
 // D3 (master-plan princip 15): Bootstrap-INSERTs i klassifikations- og
 // konfig-tabeller skal være idempotente. ON CONFLICT DO NOTHING (eller
