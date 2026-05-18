@@ -451,6 +451,15 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Også berørt af samme fix:** p1a*anonymization_strategies-test (skabte 38 stale `p1a_smoke_t5*\*`-strategier pr. CI-kørsel pga. samme manglende tx-wrap; identificeret under H024-afdækning).
 - **Note:** Flyttes til arkiv ved næste teknisk-gaeld-revision.
 
+### [G046] MELLEM — Fitness-check fanger ikke manglende table grants ved policy-tilføjelse
+
+- **Beskrivelse:** RLS-policy og SQL table-privileges er ortogonale. T9 build tilføjede SELECT-policies på 6 write-tabeller uden tilsvarende GRANT INSERT/UPDATE — RPCs fejlede med "permission denied for table" før session-var-policy kunne evaluere. Codex runde 3 fundet (T9-fundament-supplement). Fitness-check `write-policy-session-var-consistency` validerer policy-form, men ikke at GRANT er på plads.
+- **Vision-svækkelse:** Drift-disciplin (§3). Plan-vs-kode-drift kan smutte igennem CI.
+- **Introduceret:** T9-build (Step 1 + Step 6 + Step 7 hver tilføjede SELECT-only grants). T9-fundament-supplement fixede ad hoc.
+- **Skal løses:** Når næste pakke tilføjer policies på en ny write-tabel.
+- **Risiko hvis glemt:** Mellem. Manifesterer som "permission denied for table" ved første kald — fanget ved manuel test, ikke CI.
+- **Plan (Mønster):** Udvid `write-policy-session-var-consistency` eller ny check der scanner `create policy ... for insert/update/delete` og verificerer at samme tabel har matchende `grant insert/update/delete to <role>`-statement. Falsk-positiv-risiko: medium (kan kræve allowlist for tabeller med policy uden grant by design). Implementation-kompleksitet: lav.
+
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 
 - **Beskrivelse:** H024's nye fitness-check (CI-blocker 20) scanner direkte `INSERT INTO <immutable-tabel>` i `supabase/tests/**/*.sql`. Tests der INSERT'er indirekte via RPC-kald (fx `perform core_identity.anonymize_employee(...)` der internt INSERT'er i `anonymization_state`, eller `perform core_compliance.break_glass_execute(...)` der INSERT'er i `break_glass_requests`) bliver IKKE fanget.

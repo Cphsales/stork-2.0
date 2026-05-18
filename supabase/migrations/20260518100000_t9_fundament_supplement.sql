@@ -23,6 +23,21 @@
 -- - KRITISK 3 API/schema exposure (kræver Mathias Dashboard-handling)
 -- - Type-codegen, Read-RPC gates, Step 12 superadmin-robusthed
 
+-- ─── DEL 0: GRANT INSERT/UPDATE/DELETE på 6 write-tabeller ────────────────
+--
+-- Codex runde 3 fund 1: RLS policy er ortogonal til SQL-privileges. T9
+-- migrations gjorde `revoke all` + `grant select to authenticated`. Uden
+-- explicit INSERT/UPDATE/DELETE-grant vil RPC-write fejle MED "permission
+-- denied for table" FØR session-var-policy kan evaluere. Pre-T9 (R1B, P1a)
+-- fulgte begge mønstre konsekvent.
+
+grant insert, update on table core_identity.pending_changes to authenticated;
+grant insert, update on table core_identity.undo_settings to authenticated;
+grant insert, update on table core_identity.permission_areas to authenticated;
+grant insert, update on table core_identity.permission_pages to authenticated;
+grant insert, update on table core_identity.permission_tabs to authenticated;
+grant insert, update, delete on table core_identity.role_permission_grants to authenticated;
+
 -- ─── DEL 1: Policies på 6 write-tabeller ──────────────────────────────────
 --
 -- Pattern: INSERT-policy med WITH CHECK + UPDATE-policy med USING.
@@ -38,6 +53,34 @@ create policy pending_changes_insert on core_identity.pending_changes
 create policy pending_changes_update on core_identity.pending_changes
   for update to authenticated
   using (current_setting('stork.t9_write_authorized', true) = 'true');
+
+-- Codex runde 3 fund 2: SELECT-policy fra Step 1 (Step 1's body linje 87-93)
+-- tillod kun requester + is_admin() at se pending rows. Det blokerer
+-- pending_change_approve/undo's dispatcher (select * ... for update køres
+-- FØR dispatcher kan evaluere has_permission). Erstat med policy der også
+-- tillader potentielle approvere/undoere baseret på samme change_type →
+-- page_key-mapping som dispatcheren bruger. Holder §1.1: policy er
+-- write-uafhængig; dispatcher gates'er write som sandhed.
+drop policy if exists pending_changes_select on core_identity.pending_changes;
+
+create policy pending_changes_select on core_identity.pending_changes
+  for select to authenticated
+  using (
+    requested_by = core_identity.current_employee_id()
+    or core_identity.is_admin()
+    or (
+      change_type in ('org_node_upsert', 'org_node_deactivate', 'team_close')
+        and core_identity.has_permission('org_nodes', null, true)
+    )
+    or (
+      change_type in ('employee_place', 'employee_remove')
+        and core_identity.has_permission('employee_placements', null, true)
+    )
+    or (
+      change_type in ('client_place', 'client_close')
+        and core_identity.has_permission('client_placements', null, true)
+    )
+  );
 
 -- 1.2 undo_settings
 create policy undo_settings_insert on core_identity.undo_settings
@@ -503,9 +546,7 @@ end; $$;
 revoke execute on function core_identity.role_permission_grant_set(uuid, text, uuid, boolean, boolean, text) from public, anon;
 
 -- 2.11 role_permission_grant_remove (Step 7, DELETE role_permission_grants)
--- NOTE: DELETE-policy ikke i Mathias' scope (kun INSERT + UPDATE).
--- DELETE-operation vil fortsætte med at fungere fra superadmin/postgres
--- direkte men kan fejle fra authenticated. Hvis CI viser det: separat fix.
+-- DELETE-policy + GRANT DELETE tilføjet ovenfor (Codex runde 3 fund 1).
 create or replace function core_identity.role_permission_grant_remove(
   p_role_id uuid,
   p_element_type text,
