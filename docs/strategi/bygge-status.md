@@ -291,7 +291,7 @@
 - 3 admin-merges med rød CI (PR #36-38) — chicken-and-egg-state hvor DB-tests fejlede pga. partial T9-deploy
 - Vej B i PR #40 (ret Step 13 direkte i append-only-fil): tilladt fordi filen aldrig var applied til remote (atomic rollback)
 
-**Verifikation:** Alle fitness-checks grøn. Migration-gate Phase 2: alle 90 migrations grøn (78 pre-T9 + 12 T9 + 1 supplement). 277 klassificerede kolonner (193 pre-T9 + 84 T9). Remote DB state matcher repo state per supabase migration list.
+**Verifikation:** Alle fitness-checks grøn. Migration-gate Phase 2: alle 91 migrations grøn (448 kolonner i union-tjek). Remote `data_field_definitions`: 286 klassificerede rows (202 pre-T9 + 84 T9). Remote DB state matcher repo state per `supabase migration list`.
 
 **G-numre rejst:** Se `docs/teknisk/teknisk-gaeld.md` G046-G052 (T9-build disciplin-læringer).
 

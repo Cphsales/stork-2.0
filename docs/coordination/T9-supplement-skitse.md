@@ -21,12 +21,13 @@ T9-fundament er leveret (org-træ + permission-elementer + grants + fortrydelses
 - Fix: tilføj forward-check i trigger (CREATE OR REPLACE i ny migration)
 - Reference: Codex runde 2 KRITISK 1; Code's runde 2-verifikation (T9-diagnose-runde-2 §1)
 
-**2. Backdated effective_from guards på 5 apply-handlers**
+**2. Backdated effective_from guards på alle 7 apply-handlers**
 
-- `_apply_employee_place`, `_apply_org_node_upsert`, `_apply_org_node_deactivate`, `_apply_team_close`, `_apply_client_place` bryder CHECK-constraint (effective_to < effective_from) ved backdated effective_from
+- Alle handlers der sætter `effective_to = brugerens_effective_from` på en eksisterende open-ended row bryder CHECK-constraint (`effective_from < effective_to`) ved backdated effective_from
+- Ramte handlers: `_apply_employee_place`, `_apply_employee_remove`, `_apply_org_node_upsert`, `_apply_org_node_deactivate`, `_apply_team_close`, `_apply_client_place`, `_apply_client_close` (7 stk — alle der lukker open-ended row med ny effective_from)
 - Fix: pre-update guard der afviser `effective_from <= prior_open.effective_from`
 - Policy-spørgsmål: forbyd backdating helt, eller tillad med historisk traversal? Anbefaling: forbyd
-- Reference: Codex runde 2 KRITISK 4; Code's reproduktion i T9-diagnose-runde-2 §6
+- Reference: Codex runde 2 KRITISK 4 + Codex runde 1 på PR #41 (MELLEM 2 — Code's runde 1 skitse listede kun 5 handlers; manglende \_apply_employee_remove + \_apply_client_close)
 
 **3. API/schema exposure**
 
