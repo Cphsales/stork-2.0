@@ -4,7 +4,7 @@
 
 **Scope:** Kun §4 byggetrin. H-pakker (H010, H016, H020, H020.1, H021, H022, H022.1, dokument-roller-pakken, master-plan sandheds-audit m.fl.) er disciplin/dokument-pakker uden for §4 og spores via commit-history + slut-rapporter i `docs/coordination/rapport-historik/`. Tekniske G-numre (gæld) spores i `docs/teknisk/teknisk-gaeld.md`.
 
-**Sidste opdatering:** 17. maj 2026 (T9 — Identitet del 2 — bygget; PAUSET-status fjernet)
+**Sidste opdatering:** 18. maj 2026 (T9 — Identitet del 2 — komplet leveret: build + fundament-supplement + classify-format-fix)
 
 ---
 
@@ -22,7 +22,7 @@
 | 7b      | Auto-lock-cron + candidate-pre-compute-cron                    | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 7c      | break_glass_requests + RPC-skabelon                            | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 8       | Migration-gate Phase 2 strict                                  | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
-| 9       | Identitet del 2 (org-træ + permission-fundament + fortrydelse) | ✓ Godkendt           | Trin 5     | TBD     | 17. maj |
+| 9       | Identitet del 2 (org-træ + permission-fundament + fortrydelse) | ✓ Godkendt           | Trin 5     | d73d929 | 18. maj |
 | 10      | Klient-skabelon + felt-definitions                             | ⌛ Udestående        | —          | —       | —       |
 | 10b     | Lokations-skabelon                                             | ⌛ Udestående        | —          | —       | —       |
 | 11      | UDGÅR (schema-grænser fra trin 1)                              | —                    | —          | —       | —       |
@@ -238,17 +238,75 @@
 
 ---
 
+### Vores trin 5 — Identitet del 2 (§4 trin 9)
+
+**Dato:** 17.-18. maj 2026
+**Commit:** d73d929 på main (PR #34, #35, #36, #37, #38, #39, #40)
+**Status:** ✓ Godkendt
+
+**Bygget (Steps 1-13, fil-prefixes 000000-000011):**
+
+- `pending_changes` + `undo_settings` + cron + pending_change_apply (central apply-gate, V6 Beslutning 15)
+- `org_nodes` (identity-only) + `org_node_versions` (versioneret state med effective_from/\_to) + cycle-detect + team-no-children-trigger
+- `org_node_closure` + maintain-trigger på versions (current-state-derived; AUDIT_EXEMPT_SNAPSHOT_TABLES udvidet)
+- `employee_node_placements` + apply-handlers (place/remove/team_close)
+- `client_node_placements` (uden client-FK; team-only validering)
+- Permission-elementer (areas/pages/tabs) + 6 CRUD-RPCs
+- `role_permission_grants` + helpers (`acl_subtree_org_nodes`, `acl_subtree_employees`, `permission_resolve`, `acl_visibility_check`)
+- 7 public pending-wrapper RPCs + employee_role_assign/\_remove
+- 9 read-RPCs (org_tree_read_at, employee_placement_read_at, etc.)
+- Migration af role_page_permissions til ny model + has_permission med fallback
+- Seed Copenhagen Sales + Ejere + mg@/km@ + superadmin-grants
+- Klassifikation af alle 84 T9-kolonner (84 rows i data_field_definitions)
+
+**T9-fundament-supplement (PR #39, fil-prefix 100000):**
+
+- Master-plan §1.7 omskrevet (rettelse 35): 3-niveau permission (Område→Page→Tab) + 2 akser ((kan_tilgå/kan_skrive) × visibility (Sig selv/Hiraki/Alt)). Pre-omsadlings-tekst om 4-dim permission + scope=team + stab-rolle + `org_unit_closure`-navn + `is_compliance_officer()` fjernet
+- §1.13 "Konsekvens for permissions": compliance-ansvarlige er konkrete medarbejdere valgt i UI — ikke rolle/permission (mathias-afgoerelser 2026-05-19)
+- §1.1's session-var-pattern implementeret: INSERT/UPDATE-policies + GRANT INSERT/UPDATE på 6 write-tabeller; 11 write-RPCs sætter `stork.t9_write_authorized` efter has_permission-check
+- pending_change_approve + pending_change_undo dispatcher: change_type → page_key → has_permission(can_edit=true)
+- SELECT-policy på pending_changes udvidet til "potentielle approvere/undoere" (samme mapping som dispatcher)
+- DELETE-policy + GRANT DELETE på role_permission_grants
+
+**Push-fase-bugs (8 stk over PR #35-38 + Codex-runde 1+2 diagnose-tilbageblik):**
+
+1. CASE-uden-WHEN i Step 1 dispatcher (PR #35)
+2. permission_resolve signatur-mismatch (PR #36)
+3. R7d fitness false positives × 3 (PR #36 + #38)
+4. has_permission DEFAULT-bevarelse (PR #37)
+5. role_page_permission_upsert arg-count (PR #37)
+6. closure-rebuild CTE direction (PR #38)
+7. has_permission record-INTO-field (PR #38)
+8. classify retention_value format ({days} → {max_days}) (PR #40, ramte alle 84 rows)
+
+**Codex review-runder:**
+
+- Runde 1 (diagnose): 4 KRITISK + 3 MELLEM fund identificeret efter første build-PR
+- Runde 2 (verifikation): T9-omstart-rammen (mathias-afgoerelser 2026-05-17) etableret som korrekt fundament
+- Runde 3 (PR #39 review): 2 KRITISK fund — manglende GRANTs + SELECT-policy blokerer dispatcher
+- Runde 4 (PR #39 final): APPROVAL
+
+**Disciplin-afvigelser (alle Mathias-godkendt):**
+
+- 3 admin-merges med rød CI (PR #36-38) — chicken-and-egg-state hvor DB-tests fejlede pga. partial T9-deploy
+- Vej B i PR #40 (ret Step 13 direkte i append-only-fil): tilladt fordi filen aldrig var applied til remote (atomic rollback)
+
+**Verifikation:** Alle fitness-checks grøn. Migration-gate Phase 2: alle 91 migrations grøn (448 kolonner i union-tjek). Remote `data_field_definitions`: 286 klassificerede rows (202 pre-T9 + 84 T9). Remote DB state matcher repo state per `supabase migration list`.
+
+**G-numre rejst:** Se `docs/teknisk/teknisk-gaeld.md` G046-G052 (T9-build disciplin-læringer).
+
+---
+
 ## Næste op
 
-**§4 trin 9 (identitet del 2) er PAUSET** pr. mathias-afgoerelser 2026-05-15 ("Huskeliste skal være på fornuftigt niveau før nye byggetrin startes. Ad-hoc-mønstret der har skabt glid skal stoppes via H010-disciplin før §4 trin 9 påbegyndes.").
+**Trin 10 (klient-skabelon) er næste i master-plan-rækkefølge**, men T9-supplement-pakken bør håndteres først:
 
-**Status pr. 2026-05-16:** H010-disciplin er etableret (commit `3c6bc0b`, PR #10). Overvågnings-system med qwers/qwerr/qwerg-flow er bygget. Plan-automation-flowet er testet end-to-end via H020. Dokument-roller er skarpe. Master-plan sandheds-audit er gennemført.
+- KRITISK 1 Team-retype trigger-fix (envejs blokering på node_type-ændring)
+- KRITISK 4 Backdated effective_from guards på 5 apply-handlers
+- KRITISK 3 API/schema exposure (kræver Mathias' Supabase Dashboard-handling)
+- Import-stubs scope-afklaring (Step 10 leverede .mjs stubs ikke discovery/upload)
+- Type-codegen (database.ts er placeholder)
+- Read-RPC gates (Codex MELLEM)
+- Step 12 superadmin-robusthed (else-branch logik-gap)
 
-**Forudsætning for at genoptage trin 9:** Mathias-godkendelse af at fundamentet (H010 + overvågnings-system + dokument-roller + sandheds-audit) er tilstrækkeligt at bygge videre på.
-
-**Når trin 9 genoptages — indhold:**
-
-- Org-træ + closure-tabel + subtree-RLS-helper
-- Subtree-RLS benchmark-test (rettelse 19 C1: <5ms pr. row, ingen rekursion i EXPLAIN)
-- Migration-scripts: discovery + udtræk + upload for teams + klient-team-historik fra 1.0
-- Verifikation: klassifikations-tal opdateres samtidig (G-nummer-kandidat for nuværende inkonsistens)
+Se `docs/coordination/aktiv-plan.md` for T9-supplement-skitse.

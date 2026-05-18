@@ -2,11 +2,13 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv plan.
+**Aktuel:** T9-supplement (skitse — afventer krav-dok + plan-skrivning)
+
+`docs/coordination/T9-supplement-skitse.md` lister scope (Codex KRITISK 1/3/4 + import-stubs + type-codegen + Step 12 robusthed). Selve plan-flow følger normal proces: krav-dok → plan → Codex review → Mathias godkendelse → build.
 
 **Historisk:**
 
-- T9 (§4 trin 9 — Identitet del 2: organisations-træet + permission-fundament + fortrydelses-mekanisme + import fra 1.0) afsluttet via build-PR claude/T9-build → main. Plan + feedback (V1-V6) arkiveret i `docs/coordination/arkiv/` (filnavne `T9-*`). Krav-dok + plan + 13 plan-feedback-filer. Build i 11 migrations + 8 smoke-tests + 2 stub migration-scripts. Slut-rapport følger.
+- T9 (§4 trin 9 — Identitet del 2: organisations-træ + permission-fundament + fortrydelses-mekanisme + import fra 1.0) afsluttet 2026-05-18 via PR #34, #35, #36, #37, #38, #39, #40 → main. Plan + feedback (V1-V6) arkiveret i `docs/coordination/arkiv/` (filnavne `T9-*`). Build i 12 migrations + 6 smoke-tests + 2 stub migration-scripts + T9-fundament-supplement-migration (master-plan §1.7-omskrivning + §1.1 session-var-pattern). 8 push-fase-bugs fix'et via PR #35-38 + #40. Slut-rapport: `rapport-historik/2026-05-18-t9.md`.
 - H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
 - H020 (28 åbenlyse dokument-rettelser + plan-automation-flow-test) afsluttet
   ved commit-range `7c0c83d..70d8857` (PR #20 rebase-merged 2026-05-16). Plan +
