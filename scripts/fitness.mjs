@@ -100,6 +100,19 @@ const TX_WRAP_REQUIRED_FOR_TEST_INSERT = [
   "core_compliance.anonymization_strategies",
   "core_compliance.anonymization_mappings",
   "core_compliance.break_glass_operation_types",
+  // T9 mutable state-tabeller (G053 refactor 2026-05-19): tests må ikke
+  // efterlade rows der kolliderer med Step 12 seed eller andre runs.
+  // Alle T9-smoke-tests er allerede BEGIN/ROLLBACK-wrapped efter refactor;
+  // listen låser mønsteret for fremtidige tilføjelser.
+  "core_identity.org_nodes",
+  "core_identity.org_node_versions",
+  "core_identity.employee_node_placements",
+  "core_identity.client_node_placements",
+  "core_identity.pending_changes",
+  "core_identity.role_permission_grants",
+  "core_identity.permission_areas",
+  "core_identity.permission_pages",
+  "core_identity.permission_tabs",
 ];
 
 // R2 (master-plan rettelse 23): Snapshot-tabeller der er bevidst undtaget
@@ -929,6 +942,91 @@ async function collectSqlFiles(dir) {
   return out;
 }
 
+// ─── T9-test-disciplin (G053 refactor 2026-05-19) ──────────────────────────
+//
+// Tre værn der låser hermetisk-fixture-kontrakten for T9-smoke-tests:
+//   db-test-no-disabled-sql        — midlertidige .sql.disabled må ikke merges
+//   db-test-no-t9-seed-user-fixtures — t9_*.sql må ikke bruge mg@/km@ mutable
+//   db-test-no-t9-skip-guards      — t9_*.sql må ikke skippe ved manglende tabel
+
+async function dbTestNoDisabledSql() {
+  const violations = [];
+  const testsDir = "supabase/tests";
+  async function recurse(d) {
+    let entries;
+    try {
+      entries = await readdir(join(ROOT, d), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (SKIP_DIRS.has(e.name)) continue;
+      const sub = `${d}/${e.name}`;
+      if (e.isDirectory()) await recurse(sub);
+      else if (e.name.endsWith(".sql.disabled")) {
+        violations.push(`${sub}: disabled DB-test må ikke merges (rename til .sql + fix testen, eller slet)`);
+      }
+    }
+  }
+  await recurse(testsDir);
+  return { name: "db-test-no-disabled-sql", violations };
+}
+
+async function dbTestNoT9SeedUserFixtures() {
+  const violations = [];
+  const dir = "supabase/tests/smoke";
+  let entries;
+  try {
+    entries = await readdir(join(ROOT, dir), { withFileTypes: true });
+  } catch {
+    return { name: "db-test-no-t9-seed-user-fixtures", violations };
+  }
+  const seedUsers = ["mg@copenhagensales.dk", "km@copenhagensales.dk"];
+  for (const e of entries) {
+    if (!e.isFile() || !e.name.startsWith("t9_") || !e.name.endsWith(".sql")) continue;
+    const file = `${dir}/${e.name}`;
+    const content = await readFile(join(ROOT, file), "utf8");
+    if (/^\s*--\s*allow-bootstrap-seed-user-test\s*:/im.test(content)) continue;
+    for (const u of seedUsers) {
+      if (content.includes(u)) {
+        violations.push(
+          `${file}: bruger seed-user "${u}" som fixture — forbudt. Brug throwaway employees med uuid-suffix-emails, eller tilføj "-- allow-bootstrap-seed-user-test: <reason>" hvis testen er read-only seed/auth verification.`,
+        );
+        break;
+      }
+    }
+  }
+  return { name: "db-test-no-t9-seed-user-fixtures", violations };
+}
+
+async function dbTestNoT9SkipGuards() {
+  const violations = [];
+  const dir = "supabase/tests/smoke";
+  let entries;
+  try {
+    entries = await readdir(join(ROOT, dir), { withFileTypes: true });
+  } catch {
+    return { name: "db-test-no-t9-skip-guards", violations };
+  }
+  // Skip-guard-mønster: information_schema.tables-lookup + raise notice "skipping" + early return.
+  // T9 er deployed; manglende schema skal være rød test, ikke silent skip.
+  const skipPatterns = [/information_schema\.tables/i, /pre-migration state/i, /not yet created;\s*skipping/i];
+  for (const e of entries) {
+    if (!e.isFile() || !e.name.startsWith("t9_") || !e.name.endsWith(".sql")) continue;
+    const file = `${dir}/${e.name}`;
+    const content = await readFile(join(ROOT, file), "utf8");
+    for (const re of skipPatterns) {
+      if (re.test(content)) {
+        violations.push(
+          `${file}: indeholder skip-guard-mønster (/${re.source}/). T9 er deployed; manglende schema skal være rød test, ikke silent skip.`,
+        );
+        break;
+      }
+    }
+  }
+  return { name: "db-test-no-t9-skip-guards", violations };
+}
+
 // ─── runner ────────────────────────────────────────────────────────────────
 
 const checks = [
@@ -947,6 +1045,9 @@ const checks = [
   writePolicySessionVarConsistency,
   legacyIsActiveReaders,
   dbTestTxWrapOnImmutableInsert,
+  dbTestNoDisabledSql,
+  dbTestNoT9SeedUserFixtures,
+  dbTestNoT9SkipGuards,
 ];
 
 async function main() {
