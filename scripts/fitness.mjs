@@ -148,6 +148,7 @@ const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_d
 // være allowlist'et fra start, ikke retroaktivt.
 const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
   "core_identity._apply_employee_place",
+  "core_identity._apply_client_place",
   "core_identity.client_node_place",
   "core_identity.permission_elements_read",
 ]);
@@ -999,6 +1000,114 @@ async function dbTestNoT9SeedUserFixtures() {
   return { name: "db-test-no-t9-seed-user-fixtures", violations };
 }
 
+async function postgrestT9SchemaExposure() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+
+  // T9-supplement Step 5 + Codex runde 2 follow-up: deterministisk schema-exposure-
+  // canary via PostgREST OpenAPI-introspection (ikke RPC-call). Service_role har
+  // ingen direkte data-grants på core_identity-tabeller — en security-invoker RPC
+  // ville fejle med 42501 uanset om schemaet er korrekt eksponeret. OpenAPI-spec
+  // verificerer schema + cache-state uden at kræve tabel-access.
+  // Hard-fail hvis SUPABASE_ACCESS_TOKEN mangler i CI; skip lokalt for udvikler-flow.
+  if (!token) {
+    return {
+      name: "postgrest-t9-schema-exposure",
+      violations: [],
+      skipped: "SUPABASE_ACCESS_TOKEN ikke sat (lokal udvikler-mode)",
+    };
+  }
+
+  let serviceRoleKey;
+  try {
+    const apiKeysRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/api-keys`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!apiKeysRes.ok) {
+      return {
+        name: "postgrest-t9-schema-exposure",
+        violations: [`Management API /api-keys returned ${apiKeysRes.status}`],
+      };
+    }
+    const keys = await apiKeysRes.json();
+    const serviceKeyEntry = (Array.isArray(keys) ? keys : keys.data || []).find(
+      (k) => k.name === "service_role" || k.type === "service_role",
+    );
+    if (!serviceKeyEntry) {
+      return {
+        name: "postgrest-t9-schema-exposure",
+        violations: [`service_role-key ikke fundet i /api-keys response`],
+      };
+    }
+    serviceRoleKey = serviceKeyEntry.api_key;
+  } catch (err) {
+    return {
+      name: "postgrest-t9-schema-exposure",
+      violations: [`Netværksfejl ved api-keys-hent: ${err.message}`],
+    };
+  }
+
+  // PostgREST OpenAPI-introspection: GET /rest/v1/ med Accept-Profile=core_identity.
+  // Hvis schemaet er eksponeret + cachen er fresh, returnerer PostgREST en OpenAPI
+  // spec hvor T9-RPCs (org_tree_read etc.) er listet under "paths". Verifikationen
+  // kræver ingen tabel-SELECT-grant på service_role (modsat tidligere RPC-call —
+  // service_role har bevidst ingen direkte data-grants på core_identity, så et
+  // RPC-call med security invoker ville fejle med 42501 selv ved korrekt exposure).
+  //
+  // Sentinel-RPCs der skal være i spec'en for at bevise schema + cache er friske.
+  const expectedRpcs = [
+    "/rpc/org_tree_read",
+    "/rpc/permission_elements_read",
+    "/rpc/employee_placement_read",
+    "/rpc/client_placement_read",
+    "/rpc/pending_changes_read",
+  ];
+
+  try {
+    const specRes = await fetch(`https://${projectRef}.supabase.co/rest/v1/`, {
+      method: "GET",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Accept-Profile": "core_identity",
+        Accept: "application/openapi+json",
+      },
+    });
+
+    if (!specRes.ok) {
+      const body = await specRes.text();
+      return {
+        name: "postgrest-t9-schema-exposure",
+        violations: [
+          `OpenAPI-introspection fejlede: HTTP ${specRes.status}. ` +
+            `Forventet 200 med Accept-Profile: core_identity. ` +
+            `Body: ${body.slice(0, 200)}`,
+        ],
+      };
+    }
+
+    const spec = await specRes.json();
+    const paths = (spec && spec.paths) || {};
+    const missing = expectedRpcs.filter((p) => !(p in paths));
+    if (missing.length > 0) {
+      return {
+        name: "postgrest-t9-schema-exposure",
+        violations: [
+          `core_identity er eksponeret men T9-RPCs mangler i OpenAPI-spec: ${missing.join(", ")}. ` +
+            `Mulige årsager: PostgREST schema-cache stale (notify pgrst, 'reload schema'), ` +
+            `eller RPC'erne mangler i remote DB (tjek migrations-state).`,
+        ],
+      };
+    }
+    return { name: "postgrest-t9-schema-exposure", violations: [] };
+  } catch (err) {
+    return {
+      name: "postgrest-t9-schema-exposure",
+      violations: [`Netværksfejl ved OpenAPI-introspection: ${err.message}`],
+    };
+  }
+}
+
 async function dbTestNoT9SkipGuards() {
   const violations = [];
   const dir = "supabase/tests/smoke";
@@ -1048,6 +1157,7 @@ const checks = [
   dbTestNoDisabledSql,
   dbTestNoT9SeedUserFixtures,
   dbTestNoT9SkipGuards,
+  postgrestT9SchemaExposure,
 ];
 
 async function main() {
