@@ -12,3 +12,6 @@ supabase/.branches/
 .husky/pre-commit
 .husky/commit-msg
 .husky/pre-push
+
+# Codex review-output er raw AI-output (ikke menneske-skrevet markdown — fri-tekst)
+docs/coordination/codex-reviews/
