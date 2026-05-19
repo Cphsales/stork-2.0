@@ -8,7 +8,7 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 18. maj 2026 (T9 post-merge — G046-G052 tilføjet for T9-build disciplin-læringer)
+**Sidste opdatering:** 19. maj 2026 (T9-supplement PR #44 — G054 tilføjet for type-codegen blokeret på core_identity-eksponering)
 
 ---
 
@@ -535,6 +535,18 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   4. `TX_WRAP_REQUIRED_FOR_TEST_INSERT` udvidet med 9 T9 mutable state-tabeller (`org_nodes`, `org_node_versions`, `employee_node_placements`, `client_node_placements`, `pending_changes`, `role_permission_grants`, `permission_areas/pages/tabs`) — låser BEGIN/ROLLBACK-mønstret for fremtidige tilføjelser.
   5. `supabase/tests/README.md` udvidet med T9-fixture-regel-sektion + reference til de 3 værn + TX_WRAP-listen.
   6. Negativ-tests verificeret: alle 3 nye værn fejler korrekt på syntetiske overtrædelser.
+
+### [G054] MELLEM — T9 type-codegen blokeret på core_identity-eksponering i Dashboard
+
+- **Beskrivelse:** T9-supplement V4 Step 6 krævede `pnpm types:generate` + fjernet placeholder-guard + committede typer. T9-supplement PR #44 leverer ikke type-codegen fordi `core_identity` endnu ikke er eksponeret via PostgREST/Dashboard (fitness-check `postgrest-t9-schema-exposure` fejler korrekt med PGRST202). Indtil Mathias eksponerer schemaet manuelt i Supabase Dashboard kan PostgREST-introspection ikke generere typer for T9-RPCs, og `packages/types/src/database.ts` forbliver placeholder; `scripts/types-check.sh` skipper drift-check.
+- **Vision-svækkelse:** Type-safety. T9-RPCs har ingen client-side type-checking; ingen typer i frontend = misuse-risiko.
+- **Introduceret:** T9-build (PR #34) hvor `core_identity` blev tilføjet; opdaget ved T9-supplement Codex review (PR #44 runde 1 MELLEM 3).
+- **Skal løses:** Når Mathias eksponerer `core_identity` i Dashboard og fitness-check passerer:
+  1. Kør `pnpm types:generate`
+  2. Commit `packages/types/src/database.ts` med ny indhold
+  3. Fjern placeholder-skip i `scripts/types-check.sh:11-13`
+- **Risiko hvis glemt:** Mellem. T9-RPCs er bagudkompatible med eksisterende JS-callere (untyped any), men nye callere mister type-checking.
+- **Plan:** Følg op efter Mathias' Dashboard-eksponering. Tracking-event: når `postgrest-t9-schema-exposure` fitness-check passerer på CI, fyr type-generation som separat commit på næste pakke der rører T9-typer.
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 

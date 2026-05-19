@@ -711,20 +711,16 @@ comment on function core_identity._require_read_permission(text, text) is
   'T9-supplement Step 3c: intern helper for admin-only read-RPCs. Raiser 42501 hvis has_permission(p_page, p_tab, false) returnerer false.';
 
 -- ─── Admin-only RPCs: permission_elements_read + role_permissions_read ────
+-- Bevarer Step 9's RETURNS TABLE-signaturer (Codex runde 1 KRITISK 1):
+-- CREATE OR REPLACE kan ikke ændre return type; vi tilføjer kun gate i body.
 create or replace function core_identity.permission_elements_read()
 returns table (
-  area_id uuid,
-  area_name text,
-  area_is_active boolean,
-  area_sort_order integer,
-  page_id uuid,
-  page_name text,
-  page_is_active boolean,
-  page_sort_order integer,
-  tab_id uuid,
-  tab_name text,
-  tab_is_active boolean,
-  tab_sort_order integer
+  level text,
+  element_id uuid,
+  parent_id uuid,
+  name text,
+  is_active boolean,
+  sort_order integer
 )
 language plpgsql
 stable
@@ -735,26 +731,27 @@ begin
   perform core_identity._require_read_permission('permissions', 'manage');
 
   return query
-  select
-    a.id, a.name, a.is_active, a.sort_order,
-    p.id, p.name, p.is_active, p.sort_order,
-    t.id, t.name, t.is_active, t.sort_order
-  from core_identity.permission_areas a
-  left join core_identity.permission_pages p on p.area_id = a.id
-  left join core_identity.permission_tabs t on t.page_id = p.id
-  order by a.sort_order, a.name, p.sort_order, p.name, t.sort_order, t.name;
+  select 'area'::text, a.id, null::uuid, a.name, a.is_active, a.sort_order
+  from core_identity.permission_areas a where a.is_active = true
+  union all
+  select 'page'::text, p.id, p.area_id, p.name, p.is_active, p.sort_order
+  from core_identity.permission_pages p where p.is_active = true
+  union all
+  select 'tab'::text, t.id, t.page_id, t.name, t.is_active, t.sort_order
+  from core_identity.permission_tabs t where t.is_active = true;
 end;
 $$;
 
 revoke execute on function core_identity.permission_elements_read() from public, anon;
 grant execute on function core_identity.permission_elements_read() to authenticated;
 
+-- Bevarer Step 9's signatur; tilføjer kun _require_read_permission-gate.
 create or replace function core_identity.role_permissions_read(p_role_id uuid)
 returns table (
   grant_id uuid,
-  area_id uuid,
-  page_id uuid,
-  tab_id uuid,
+  element_type text,
+  element_id uuid,
+  element_name text,
   can_access boolean,
   can_write boolean,
   visibility text
@@ -768,9 +765,20 @@ begin
   perform core_identity._require_read_permission('permissions', 'manage');
 
   return query
-  select g.id, g.area_id, g.page_id, g.tab_id, g.can_access, g.can_write, g.visibility
+  select g.id, 'area'::text, g.area_id, a.name, g.can_access, g.can_write, g.visibility
   from core_identity.role_permission_grants g
-  where g.role_id = p_role_id;
+  join core_identity.permission_areas a on a.id = g.area_id
+  where g.role_id = p_role_id and g.area_id is not null
+  union all
+  select g.id, 'page'::text, g.page_id, p.name, g.can_access, g.can_write, g.visibility
+  from core_identity.role_permission_grants g
+  join core_identity.permission_pages p on p.id = g.page_id
+  where g.role_id = p_role_id and g.page_id is not null
+  union all
+  select g.id, 'tab'::text, g.tab_id, t.name, g.can_access, g.can_write, g.visibility
+  from core_identity.role_permission_grants g
+  join core_identity.permission_tabs t on t.id = g.tab_id
+  where g.role_id = p_role_id and g.tab_id is not null;
 end;
 $$;
 
@@ -944,21 +952,20 @@ revoke execute on function core_identity.client_placement_read(uuid) from public
 grant execute on function core_identity.client_placement_read(uuid) to authenticated;
 
 -- ─── Visibility-RPC: pending_changes_read ────────────────────────────────
+-- Bevarer Step 9's RETURNS TABLE-signatur (Codex runde 1 KRITISK 1).
+-- pending_changes_select-policy fra PR #39 håndhæver scope via change_type →
+-- page_key-mapping.
 create or replace function core_identity.pending_changes_read()
 returns table (
-  id uuid,
+  change_id uuid,
   change_type text,
   target_id uuid,
-  payload jsonb,
   effective_from date,
-  requested_by uuid,
+  status text,
   requested_at timestamptz,
-  approved_by uuid,
   approved_at timestamptz,
   undo_deadline timestamptz,
-  applied_at timestamptz,
-  undone_at timestamptz,
-  status text
+  applied_at timestamptz
 )
 language plpgsql
 stable
@@ -966,14 +973,11 @@ security invoker
 set search_path = ''
 as $$
 begin
-  -- pending_changes_select-policy fra PR #39 håndhæver scope via change_type →
-  -- page_key-mapping. RPC selv har ingen ekstra filter.
   perform set_config('stork.t9_read_at_date', current_date::text, true);
 
   return query
-  select pc.id, pc.change_type, pc.target_id, pc.payload, pc.effective_from,
-         pc.requested_by, pc.requested_at, pc.approved_by, pc.approved_at,
-         pc.undo_deadline, pc.applied_at, pc.undone_at, pc.status
+  select pc.id, pc.change_type, pc.target_id, pc.effective_from, pc.status,
+         pc.requested_at, pc.approved_at, pc.undo_deadline, pc.applied_at
   from core_identity.pending_changes pc;
 end;
 $$;

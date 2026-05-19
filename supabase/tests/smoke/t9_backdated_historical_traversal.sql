@@ -60,25 +60,43 @@ begin
     (v_emp_a_id, v_node_team_b_id, '2026-06-01', null);
 
   -- T1: BACKDATED til 2026-05-15 (inde i A-intervallet) → split A
-  -- Forventet: A lukkes på 2026-05-15; ny row team_a [2026-05-15, 2026-06-01)
+  -- Forventet: existing team_a [2026-04-01, 2026-06-01) splittes til
+  --   team_a [2026-04-01, 2026-05-15) (luknings-branch)
+  --   team_a [2026-05-15, 2026-06-01) (ny backdated row)
+  --   team_b [2026-06-01, null) (uændret)
+  -- Codex KRITISK 2: Assert direkte mod tabel — RPC kræver auth-context vi
+  -- ikke har i smoke-tx, og denne test handler om backdated traversal, ikke
+  -- read-gates.
   perform core_identity._apply_employee_place(
     jsonb_build_object('employee_id', v_emp_a_id::text, 'node_id', v_node_team_a_id::text, 'effective_from', '2026-05-15'),
     null
   );
 
-  select node_id into v_first_node from core_identity.employee_placement_read_at(v_emp_a_id, '2026-05-10');
-  if v_first_node is null or v_first_node <> v_node_team_a_id then
-    raise exception 'T1 FAIL: 2026-05-10 should still see team_a (got %)', v_first_node;
+  -- Luknings-branch: team_a [2026-04-01, 2026-05-15)
+  if not exists (
+    select 1 from core_identity.employee_node_placements
+    where employee_id = v_emp_a_id and node_id = v_node_team_a_id
+      and effective_from = '2026-04-01' and effective_to = '2026-05-15'
+  ) then
+    raise exception 'T1 FAIL: luknings-branch team_a [2026-04-01, 2026-05-15) mangler';
   end if;
 
-  select node_id into v_second_node from core_identity.employee_placement_read_at(v_emp_a_id, '2026-05-20');
-  if v_second_node is null or v_second_node <> v_node_team_a_id then
-    raise exception 'T1 FAIL: 2026-05-20 should see team_a from split (got %)', v_second_node;
+  -- Backdated-branch: team_a [2026-05-15, 2026-06-01)
+  if not exists (
+    select 1 from core_identity.employee_node_placements
+    where employee_id = v_emp_a_id and node_id = v_node_team_a_id
+      and effective_from = '2026-05-15' and effective_to = '2026-06-01'
+  ) then
+    raise exception 'T1 FAIL: backdated row team_a [2026-05-15, 2026-06-01) mangler';
   end if;
 
-  select node_id into v_third_node from core_identity.employee_placement_read_at(v_emp_a_id, '2026-06-10');
-  if v_third_node is null or v_third_node <> v_node_team_b_id then
-    raise exception 'T1 FAIL: 2026-06-10 should see team_b (got %)', v_third_node;
+  -- team_b [2026-06-01, null) uændret
+  if not exists (
+    select 1 from core_identity.employee_node_placements
+    where employee_id = v_emp_a_id and node_id = v_node_team_b_id
+      and effective_from = '2026-06-01' and effective_to is null
+  ) then
+    raise exception 'T1 FAIL: team_b [2026-06-01, null) skulle være uændret';
   end if;
 
   -- T2: PRE-HISTORY backdating til 2026-03-15 (før alle existing intervals)
@@ -204,7 +222,89 @@ begin
   select count(*) into v_count from core_identity.org_node_versions where node_id = v_node_team_a_id;
   if v_count <> 2 then raise exception 'T10 FAIL: split-deactivate skulle give 2 versions (count=%)', v_count; end if;
 
-  raise notice 'T9-supplement backdated traversal: ALL TESTS PASSED (T1-T10)';
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- BLOCK 5 — _apply_org_node_upsert: backdated rename split
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- Codex runde 1 MELLEM 1: tilføj _apply_org_node_upsert backdated dækning.
+  -- Setup: én version af team_b [2026-04-01, null) med navn 'TeamB_<suffix>'.
+  -- Backdated rename til 2026-05-15 (inde i intervallet) → split.
+  delete from core_identity.org_node_versions where node_id = v_node_team_b_id;
+  insert into core_identity.org_node_versions
+    (node_id, name, parent_id, node_type, is_active, effective_from)
+  values
+    (v_node_team_b_id, 'TeamB_orig_' || v_uuid_suffix, v_node_dept_id, 'team', true, '2026-04-01');
+
+  perform core_identity._apply_org_node_upsert(
+    jsonb_build_object(
+      'id', v_node_team_b_id::text,
+      'name', 'TeamB_renamed_' || v_uuid_suffix,
+      'parent_id', v_node_dept_id::text,
+      'node_type', 'team',
+      'is_active', true,
+      'effective_from', '2026-05-15'
+    ),
+    null
+  );
+  -- Forventet: 2 versions (lukket original + ny renamed fra 2026-05-15)
+  select count(*) into v_count from core_identity.org_node_versions where node_id = v_node_team_b_id;
+  if v_count <> 2 then
+    raise exception 'T11 FAIL: backdated upsert skulle splitte version (count=%)', v_count;
+  end if;
+  if not exists (
+    select 1 from core_identity.org_node_versions
+    where node_id = v_node_team_b_id and name = 'TeamB_renamed_' || v_uuid_suffix
+      and effective_from = '2026-05-15' and effective_to is null
+  ) then
+    raise exception 'T11 FAIL: renamed version [2026-05-15, null) mangler';
+  end if;
+
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- BLOCK 6 — _apply_team_close: split team-version + cascade luk placements
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- Reset team_a som team-version + employee+client placement inden i.
+  delete from core_identity.org_node_versions where node_id = v_node_team_a_id;
+  insert into core_identity.org_node_versions
+    (node_id, name, parent_id, node_type, is_active, effective_from)
+  values
+    (v_node_team_a_id, 'TeamA_close_' || v_uuid_suffix, v_node_dept_id, 'team', true, '2026-04-01');
+
+  delete from core_identity.employee_node_placements where employee_id = v_emp_a_id;
+  insert into core_identity.employee_node_placements (employee_id, node_id, effective_from, effective_to) values
+    (v_emp_a_id, v_node_team_a_id, '2026-04-01', null);
+
+  delete from core_identity.client_node_placements where client_id = v_client_id;
+  insert into core_identity.client_node_placements (client_id, node_id, effective_from, effective_to) values
+    (v_client_id, v_node_team_a_id, '2026-04-01', null);
+
+  -- T12: SPLIT team-close ved 2026-05-15 (midt i interval)
+  perform core_identity._apply_team_close(
+    jsonb_build_object('node_id', v_node_team_a_id::text, 'effective_from', '2026-05-15'),
+    null
+  );
+
+  -- Team-version splittet (2 versions: aktiv før, inaktiv efter)
+  select count(*) into v_count from core_identity.org_node_versions where node_id = v_node_team_a_id;
+  if v_count <> 2 then raise exception 'T12 FAIL: split team-close skulle give 2 versions (count=%)', v_count; end if;
+
+  -- Employee placement lukket på 2026-05-15
+  if not exists (
+    select 1 from core_identity.employee_node_placements
+    where employee_id = v_emp_a_id and node_id = v_node_team_a_id
+      and effective_from = '2026-04-01' and effective_to = '2026-05-15'
+  ) then
+    raise exception 'T12 FAIL: cascade-luk af employee_placement mangler';
+  end if;
+
+  -- Client placement lukket på 2026-05-15
+  if not exists (
+    select 1 from core_identity.client_node_placements
+    where client_id = v_client_id and node_id = v_node_team_a_id
+      and effective_from = '2026-04-01' and effective_to = '2026-05-15'
+  ) then
+    raise exception 'T12 FAIL: cascade-luk af client_placement mangler';
+  end if;
+
+  raise notice 'T9-supplement backdated traversal: ALL TESTS PASSED (T1-T12)';
 end;
 $test$;
 

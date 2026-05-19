@@ -1022,7 +1022,6 @@ async function postgrestT9SchemaExposure() {
       return {
         name: "postgrest-t9-schema-exposure",
         violations: [`Management API /api-keys returned ${apiKeysRes.status}`],
-        soft: true,
       };
     }
     const keys = await apiKeysRes.json();
@@ -1033,7 +1032,6 @@ async function postgrestT9SchemaExposure() {
       return {
         name: "postgrest-t9-schema-exposure",
         violations: [`service_role-key ikke fundet i /api-keys response`],
-        soft: true,
       };
     }
     serviceRoleKey = serviceKeyEntry.api_key;
@@ -1041,7 +1039,6 @@ async function postgrestT9SchemaExposure() {
     return {
       name: "postgrest-t9-schema-exposure",
       violations: [`Netværksfejl ved api-keys-hent: ${err.message}`],
-      soft: true,
     };
   }
 
@@ -1071,13 +1068,11 @@ async function postgrestT9SchemaExposure() {
     return {
       name: "postgrest-t9-schema-exposure",
       violations: [`Uventet PostgREST-respons: HTTP ${rpcRes.status} ${body.slice(0, 200)}`],
-      soft: true,
     };
   } catch (err) {
     return {
       name: "postgrest-t9-schema-exposure",
       violations: [`Netværksfejl ved PostgREST-kald: ${err.message}`],
-      soft: true,
     };
   }
 }

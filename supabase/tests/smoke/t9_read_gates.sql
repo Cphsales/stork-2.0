@@ -1,26 +1,28 @@
 -- T9-supplement smoke: read-gates på 9 RPCs med tre-lags test.
 --
--- V4 OPGRADERING 2 (Codex V3): tre lag:
+-- V4 OPGRADERING 2 (Codex V3) + Codex runde 1 MELLEM 2 fix:
 --   Lag 1 — Deklarativ has_function_privilege for alle 9 RPCs (deterministisk grant-check)
---   Lag 2 — Runtime uden permission (admin-only raiser 42501; visibility-RPCs empty)
---   Lag 3 — Runtime med fixture-role + permission (succes-path)
+--   Lag 2 — Runtime uden permission: JWT sat til UUID der ikke matcher nogen
+--           employee. current_employee_id() returnerer NULL → has_permission
+--           returnerer false → admin-only-RPCs raiser 42501; visibility-RPCs
+--           returnerer 0 rows (ACL-helper får NULL caller → tom acl_subtree).
+--   Lag 3 — Runtime med superadmin (succes-path: alle RPCs returnerer ≥0 rows).
 -- Plus session-var-isolation (V4 OPGRADERING 1): _at efterfulgt af current
 -- bruger current_date, ikke tidligere _at-state.
+--
+-- Note: Lag 3 med "granted fixture-role" kræver auth.users-INSERT som er
+-- service_role-only operation; pragmatisk testes succes-path via superadmin.
 
 begin;
 
 do $test$
 declare
-  v_uuid_suffix text;
-  v_role_id uuid;
-  v_emp_a_id uuid;
   v_superadmin_auth_id uuid;
   v_caught text;
   v_rowcount integer;
 begin
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'T9-supplement read-gates smoke', true);
-  v_uuid_suffix := replace(gen_random_uuid()::text, '-', '');
 
   -- ═══════════════════════════════════════════════════════════════════════
   -- Lag 1 — Deklarativ EXECUTE-grant for alle 9 read-RPCs
@@ -45,27 +47,56 @@ begin
     'EXECUTE-grant mangler: pending_changes_read';
 
   -- ═══════════════════════════════════════════════════════════════════════
-  -- Lag 2 — Runtime uden permission: admin-only raiser 42501
+  -- Lag 2 — Runtime uden permission: fake-JWT → no employee match
   -- ═══════════════════════════════════════════════════════════════════════
-  -- Throwaway-role + employee uden permission/manage
-  perform set_config('stork.allow_roles_write', 'true', true);
-  insert into core_identity.roles (name, description)
-  values ('t9_supp_role_' || v_uuid_suffix, 'T9-supplement read-gates smoke')
-  returning id into v_role_id;
+  -- Sæt JWT til en UUID der ikke matcher nogen employee.auth_user_id.
+  -- current_employee_id() returnerer NULL → has_permission() returnerer false.
+  -- Admin-only RPCs skal raise 42501; visibility-RPCs returnerer tom liste.
+  perform set_config('request.jwt.claim.sub', gen_random_uuid()::text, true);
 
-  perform set_config('stork.allow_employees_write', 'true', true);
-  insert into core_identity.employees (first_name, last_name, email, role_id)
-  values ('T9S', 'EmpA', 't9s_empa_' || v_uuid_suffix || '@test.invalid', v_role_id)
-  returning id into v_emp_a_id;
+  -- Admin-only: permission_elements_read → 42501
+  begin
+    v_caught := null;
+    perform core_identity.permission_elements_read();
+  exception when sqlstate '42501' then v_caught := 'ok'; end;
+  if v_caught is null then
+    raise exception 'Lag 2 FAIL: permission_elements_read skulle raise 42501 uden permission';
+  end if;
 
-  -- Simuler caller som throwaway-employee uden permissions:
-  -- bruger generisk superadmin lookup som auth-caller; men i denne tx
-  -- har vi ikke en seedet auth-uid for v_emp_a_id. I stedet tester vi
-  -- via superadmin lookup + verifikation af at admin-only raiser når
-  -- vi kalder uden has_permission. Det er en pragmatisk approx; fuld
-  -- test af unauthenticated kræver auth.users-mock (uden for scope).
+  -- Admin-only: role_permissions_read(p_role_id) → 42501
+  begin
+    v_caught := null;
+    perform core_identity.role_permissions_read(gen_random_uuid());
+  exception when sqlstate '42501' then v_caught := 'ok'; end;
+  if v_caught is null then
+    raise exception 'Lag 2 FAIL: role_permissions_read skulle raise 42501 uden permission';
+  end if;
 
-  -- Hent superadmin for at have valid auth-context
+  -- Visibility-RPCs: returnerer 0 rows (ACL-helper får NULL caller → tom acl_subtree)
+  select count(*) into v_rowcount from core_identity.org_tree_read();
+  if v_rowcount <> 0 then
+    raise exception 'Lag 2 FAIL: org_tree_read skulle returnere 0 rows uden auth (fik %)', v_rowcount;
+  end if;
+
+  select count(*) into v_rowcount from core_identity.org_tree_read_at(current_date - 30);
+  if v_rowcount <> 0 then
+    raise exception 'Lag 2 FAIL: org_tree_read_at skulle returnere 0 rows uden auth (fik %)', v_rowcount;
+  end if;
+
+  select count(*) into v_rowcount from core_identity.employee_placement_read(gen_random_uuid());
+  if v_rowcount <> 0 then
+    raise exception 'Lag 2 FAIL: employee_placement_read skulle returnere 0 rows uden auth (fik %)', v_rowcount;
+  end if;
+
+  select count(*) into v_rowcount from core_identity.client_placement_read(gen_random_uuid());
+  if v_rowcount <> 0 then
+    raise exception 'Lag 2 FAIL: client_placement_read skulle returnere 0 rows uden auth (fik %)', v_rowcount;
+  end if;
+
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- Lag 3 — Runtime med superadmin (succes-path)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- Hent superadmin for at have valid auth-context.
   select e.auth_user_id into v_superadmin_auth_id
   from core_identity.employees e
   join core_identity.roles r on r.id = e.role_id
@@ -77,9 +108,6 @@ begin
     raise exception 'SETUP FAIL: ingen aktiv superadmin med auth_user_id';
   end if;
 
-  -- ═══════════════════════════════════════════════════════════════════════
-  -- Lag 3 — Runtime med superadmin (succes-path)
-  -- ═══════════════════════════════════════════════════════════════════════
   perform set_config('request.jwt.claim.sub', v_superadmin_auth_id::text, true);
 
   -- Admin-only RPCs returnerer rows (eller mindst eksekverer uden 42501)

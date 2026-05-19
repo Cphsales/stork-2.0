@@ -12,6 +12,9 @@
 -- T8: Partial UNIQUE — to open-ended versions for samme node_id blokeret.
 -- T9: EXCLUDE — overlap af versions for samme node_id blokeret.
 -- T10: V6 central apply-gate — pending_change_apply afviser future-dated.
+-- T11: Team-retype overlap-invariant (T9-supplement to-vejs daterange-check) —
+--      retype af node til 'team' mens existing child-version overlapper det
+--      nye team-interval → blokeret (Invariant b, backdated/future case).
 --
 -- HERMETIC FIXTURE (G053 refactor 2026-05-19):
 -- Testen opretter egne throwaway-rolle, employees og uuid-suffixed node-navne.
@@ -253,7 +256,35 @@ begin
     raise exception 'T10 FAIL: pending_change_apply skal afvise future-dated (V6 central gate)';
   end if;
 
-  raise notice 'T9 Step 2 smoke: ALL TESTS PASSED (T1-T10)';
+  -- ─── T11: Team-retype overlap-invariant (T9-supplement) ──────────────
+  -- Setup: dept-node D med child C, begge starter på current_date.
+  -- Forsøg derefter at INSERT en ny D-version med node_type='team' for et
+  -- backdated interval [current_date - 5, current_date + 30) — child C
+  -- overlapper → trigger Invariant b skal raise P0001.
+  declare
+    v_retype_d_id uuid := gen_random_uuid();
+    v_retype_c_id uuid := gen_random_uuid();
+  begin
+    insert into core_identity.org_nodes (id) values (v_retype_d_id), (v_retype_c_id);
+    insert into core_identity.org_node_versions
+      (node_id, name, parent_id, node_type, is_active, effective_from, effective_to)
+    values
+      (v_retype_d_id, 'RetypeD_' || v_uuid_suffix, null, 'department', true, current_date, current_date + 30),
+      (v_retype_c_id, 'RetypeC_' || v_uuid_suffix, v_retype_d_id, 'team', true, current_date, current_date + 30);
+
+    begin
+      v_caught := null;
+      insert into core_identity.org_node_versions
+        (node_id, name, parent_id, node_type, is_active, effective_from, effective_to)
+      values
+        (v_retype_d_id, 'RetypeD_' || v_uuid_suffix, null, 'team', true, current_date - 5, current_date + 20);
+    exception when sqlstate 'P0001' then v_caught := 'ok'; end;
+    if v_caught is null then
+      raise exception 'T11 FAIL: team-retype med overlappende child skal afvises (Invariant b)';
+    end if;
+  end;
+
+  raise notice 'T9 Step 2 smoke: ALL TESTS PASSED (T1-T11)';
 end;
 $test$;
 
