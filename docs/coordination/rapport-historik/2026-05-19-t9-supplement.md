@@ -134,7 +134,7 @@ Næste pakke: T9 cleanup eller Lag E (afventer Mathias)
   - **[G054] MELLEM** — T9 type-codegen blokeret på `core_identity`-eksponering i Dashboard. Reference: `docs/teknisk/teknisk-gaeld.md`. 3-trins-løsning: kør `pnpm types:generate` → commit `packages/types/src/database.ts` → fjern placeholder-skip i `scripts/types-check.sh:11-13`. Tracker-event: `postgrest-t9-schema-exposure` grøn på CI.
 
 - **Løst:**
-  - **[G053]** — T9-test-fixture-hardening fra PR #43 verificeret: alle 7 T9-tests (inkl. 2 nye fra denne pakke) består hermetisk-fixture-kontrakten + 3 nye fitness-værn (`db-test-no-disabled-sql`, `db-test-no-t9-seed-user-fixtures`, `db-test-no-t9-skip-guards`) håndhæver kontrakten i CI.
+  - **[G053]** — T9-test-fixture-hardening fra PR #43 verificeret: alle 8 T9-tests (6 fra PR #43 + 2 nye fra denne pakke) består hermetisk-fixture-kontrakten + 3 nye fitness-værn (`db-test-no-disabled-sql`, `db-test-no-t9-seed-user-fixtures`, `db-test-no-t9-skip-guards`) håndhæver kontrakten i CI.
 
 - **Opdateret status:** Ingen.
 
