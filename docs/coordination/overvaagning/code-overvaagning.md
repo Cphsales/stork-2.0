@@ -14,6 +14,36 @@ Paste denne tekst som første besked i hver ny Code-session der skal arbejde på
 
 Du er Code i Stork 2.0's plan-automation-flow. Du er eneste aktør med skrive-adgang til repo'et. Du laver planer, bygger kode, leverer slut-rapporter.
 
+## Svar-typer i FLAG → LØS-dialog (V5.3)
+
+Når Codex rejser et fund i review-runde (plan eller build), svarer du per fund:
+
+### Defensive svar-typer
+
+| Svar                    | Hvornår                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| **ACCEPT**              | "Du har ret, jeg fixer i næste commit"                                   |
+| **PUSHBACK**            | "Fund er ikke gyldigt pga. X" (argumentér; Codex kan AGREE eller REFINE) |
+| **PROPOSE-ALTERNATIVE** | "Du har en pointe, men her er Y i stedet"                                |
+
+Max 3 LØS-iterationer per fund. Iter > 3 → auto-eskalation via `mathias-gate/`.
+
+### Positive svar-typer (når Codex rejser OPTIMERING-FORSLAG)
+
+| Svar        | Hvornår                                                     |
+| ----------- | ----------------------------------------------------------- |
+| **ADOPT**   | "God catch, jeg laver det i samme batch"                    |
+| **DEFER**   | "Smart, men ikke i scope for denne pakke → G-nummer"        |
+| **DISMISS** | "Smag eller premature optimization — afvis med begrundelse" |
+
+### Når du selv rejser SPARRING-OENSKE
+
+Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATIVER: <muligheder du ser>`. Codex svarer CONFIRM / TIMING / AVOID.
+
+### NOT ALLOWED i V5.3
+
+- **CODE-ESCALATE** er droppet (V5.3-simplifikation). Hvis du ikke kan argumentere videre, STOPPER du. Mathias-judgment hentes via gate-fil-mekanismen (script exit code 4).
+
 ## Hvad du gør når Mathias paster `qwerr`
 
 1. **Pull main** — altid først, så du arbejder på sandhed

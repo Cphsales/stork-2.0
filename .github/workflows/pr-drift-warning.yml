@@ -1,0 +1,86 @@
+name: PR drift warning
+
+# Lag 1 leverance B: når main får commits der rammer filer i åbne PR'er,
+# postes en idempotent comment til den ramte PR med rebase-anbefaling.
+# Fanger PR #42-mønstret (PR der sidder open mens main får overlap-commits).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Find changed files in main commit
+        id: changed
+        run: |
+          set -euo pipefail
+          FILES=$(git diff --name-only HEAD^..HEAD | tr '\n' ' ')
+          SHA=$(git rev-parse HEAD)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Changed files in $SHA: $FILES"
+
+      - name: Comment drift on overlapping PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.changed.outputs.sha }}
+          MAIN_FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- pr-drift-warning:$SHA -->"
+          SEVEN_DAYS_AGO=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          PR_FILES_TSV=$(gh pr list --state open --json number,files,createdAt \
+            --jq ".[] | select(.createdAt > \"$SEVEN_DAYS_AGO\") | [.number, (.files[].path)] | @tsv")
+
+          if [ -z "$PR_FILES_TSV" ]; then
+            echo "Ingen aabne PR'er <7 dage. Stille."
+            exit 0
+          fi
+
+          OVERLAPS=$(echo "$PR_FILES_TSV" | awk -v files="$MAIN_FILES" '
+              { pr=$1; for(i=2;i<=NF;i++) prfiles[pr,$i]=1; prs[pr]=1 }
+              END {
+                split(files, mf, " ");
+                for(pr in prs) {
+                  overlap = "";
+                  for(i in mf) if((pr SUBSEP mf[i]) in prfiles) overlap = overlap " " mf[i];
+                  if(overlap != "") print pr "\t" overlap;
+                }
+              }')
+
+          if [ -z "$OVERLAPS" ]; then
+            echo "Ingen overlap mellem main-commit og aabne PR'er. Stille."
+            exit 0
+          fi
+
+          BODY_TMP=$(mktemp)
+          echo "$OVERLAPS" | while IFS=$'\t' read -r PR OVERLAP; do
+            if gh pr view "$PR" --json comments --jq '.comments[].body' 2>/dev/null | grep -qF "$MARKER"; then
+              echo "PR #$PR: marker allerede tilstede for SHA $SHA - skipper."
+              continue
+            fi
+            {
+              echo "$MARKER"
+              echo "Main har modtaget commit \`$SHA\` der rammer disse filer i denne PR:"
+              echo ""
+              echo "$OVERLAP"
+              echo ""
+              echo "Overvej rebase mod main for at undgaa mergekonflikt-akkumulering. Hvis dette er bevidst (fx parallel-arbejde), kan denne advarsel ignoreres."
+              echo ""
+              echo "_(Auto-genereret af pr-drift-warning.yml. Marker-SHA forhindrer duplikat-comments.)_"
+            } > "$BODY_TMP"
+            gh pr comment "$PR" --body-file "$BODY_TMP"
+            echo "PR #$PR: comment postet for SHA $SHA (overlap: $OVERLAP)"
+          done
+          rm -f "$BODY_TMP"

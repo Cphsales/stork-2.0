@@ -441,8 +441,10 @@ Besvar disse fire spørgsmål eksplicit, inden migration-fil oprettes:
 2. **Hvilket vision-element kunne det svække?**
 3. **Er der en simplere løsning der bygger samme funktionalitet uden vision-kompromis?**
 4. **Hvis kompromis: er det dokumenteret med plan (G-nummer i `docs/teknisk/teknisk-gaeld.md` + deadline)?**
+5. **(V5.3) Skal nogen halt-marker rejses?** Tjek mod `docs/skabeloner/workflow-skabelon.md` build-fase marker-protokol — særligt `WORKAROUND-INTRODUCERET` (bevidst kvalitets-sænkning kræver Mathias-gate via `docs/coordination/mathias-gate/`).
 
 **Hvis svaret på spørgsmål 4 er "nej": STOP og spørg Mathias.**
+**Hvis spørgsmål 5 rejser en halt-marker: følg V5.3 routing (mathias-gate to-fil-flow).**
 
 Migration-kommentar bør indeholde svaret på 1+2 i kort form (ikke alle fire — det er disciplin-tjek, ikke dokumentationskrav). Større designvalg dokumenteres i vision-tjek-sektion i trin-rapporten.
 

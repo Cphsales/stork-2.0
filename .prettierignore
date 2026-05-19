@@ -6,3 +6,9 @@ pnpm-lock.yaml
 # Supabase CLI artifacts
 supabase/.temp/
 supabase/.branches/
+
+# Husky shell hooks (no parser)
+.husky/_/
+.husky/pre-commit
+.husky/commit-msg
+.husky/pre-push

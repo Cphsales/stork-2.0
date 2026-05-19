@@ -41,6 +41,36 @@ Tabel pr. element i planen:
 
 ---
 
+## Halt-eskaleringer + clarifications undervejs (V5.3)
+
+Hver halt-trigger der blev rejst under build dokumenteres her med outcome:
+
+| Marker                | Hvad               | Iter | Outcome                 | Gate-fil-reference                |
+| --------------------- | ------------------ | ---- | ----------------------- | --------------------------------- |
+| [BRUD-PAA-KRAV / ...] | [kort beskrivelse] | 1-3  | LØS-konsensus / Mathias | [mathias-gate/-sti hvis relevant] |
+
+"Ingen halt-eskaleringer" hvis intet trigger blev rejst.
+
+**STOP-FOR-CLARIFICATION-events:** [liste eller "ingen"] — hver med spørgsmål + mål-part + svar + genoptag-tidspunkt.
+
+---
+
+## Optimerings-håndtering (V5.3)
+
+Hver `OPTIMERING-FORSLAG` Codex rejste under build, med Code's svar:
+
+| Forslag            | Klasse          | Code's svar (ADOPT/DEFER/DISMISS) | Begrundelse / G-nummer |
+| ------------------ | --------------- | --------------------------------- | ---------------------- |
+| [kort beskrivelse] | [hvilken batch] | ADOPT                             | [hvad blev gjort]      |
+| ...                | ...             | DEFER                             | G-nummer YYY           |
+| ...                | ...             | DISMISS                           | [hvorfor afvist]       |
+
+`SPARRING-OENSKE`-events (Code stillede spørgsmål til Codex): [liste eller "ingen"].
+
+"Ingen optimerings-aktivitet" hvis intet positive marker blev rejst.
+
+---
+
 ## Plan-afvigelser
 
 Hver afvigelse fra planen flagges her med:

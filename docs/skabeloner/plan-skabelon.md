@@ -68,6 +68,27 @@ Liste pr. ny eller ændret test:
 
 ---
 
+## Build-fase halt-håndtering (V5.3 — workflow-spec reference)
+
+Planen skal kortfattet beskrive forventede halt-trigger-scenarier under build, så Codex ved hvad der skal rejses som halt-marker vs G-nummer-kandidat. Se `docs/skabeloner/workflow-skabelon.md` for fuld marker-protokol-spec.
+
+- **Forventede WORKAROUND-kandidater:** [liste eller "ingen forventet"]
+- **Forventede PLAN-AFVIGELSE-scenarier:** [liste eller "ingen forventet"]
+- **Kritiske invarianter der ikke må brydes:** [fx FORCE RLS, audit-trigger-dækning] — dette guider Codex' KRITISK-SIKKERHEDSHUL-vurdering
+
+Hvis planen IKKE forudser nogen halt-scenarier, marker eksplicit "ingen halt-scenarier forventet".
+
+## Optimerings-hypoteser (V5.3 — valgfri)
+
+Hvis planen ser oplagte optimerings-muligheder under build, dokumentér dem her som **hypoteser** Codex kan rejse som OPTIMERING-FORSLAG. Code kan ADOPT / DEFER / DISMISS per V5.3-svar-typer.
+
+- [Hypotese 1: kort beskrivelse]
+- [Hypotese 2: ...]
+
+Ikke obligatorisk — udelad hvis planen er straight-forward.
+
+---
+
 ## Risiko + kompensation
 
 Risiko-matrix:
