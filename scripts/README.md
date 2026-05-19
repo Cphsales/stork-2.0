@@ -2,12 +2,12 @@
 
 Disciplin-mekanismer der køres lokalt og i CI.
 
-| Script               | Formål                                                                                                             | Aktiveres              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------- |
-| `types-check.sh`     | Drift-detection: generated Supabase-typer vs `packages/types/src/database.ts`. Skipper på `// PLACEHOLDER`-marker. | `pnpm types:check`     |
-| `schema-check.sh`    | Drift-detection: remote schema vs `supabase/schema.sql`. Skipper på `-- PLACEHOLDER`-marker.                       | `pnpm schema:check`    |
-| `migration-gate.mjs` | Phase 1: warner på uklassificerede kolonner. Phase 2 (`MIGRATION_GATE_STRICT=true`): blokerer.                     | `pnpm migration:check` |
-| `fitness.mjs`        | Arkitektoniske invarianter på tværs af repo. Hver check er en function.                                            | `pnpm fitness`         |
+| Script               | Formål                                                                                                                                                                                                                               | Aktiveres                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `types-gen.sh`       | Type-codegen for eksponerede API-schemas (`public,core_identity,core_compliance,core_money`). `--write` regenererer `packages/types/src/database.ts`; `--check` verificerer drift mod remote. Schema-listen står ét sted i scriptet. | `pnpm types:generate` (write) / `pnpm types:check` (check) |
+| `schema-check.sh`    | Drift-detection: remote schema vs `supabase/schema.sql`. Skipper på `-- PLACEHOLDER`-marker.                                                                                                                                         | `pnpm schema:check`                                        |
+| `migration-gate.mjs` | Phase 1: warner på uklassificerede kolonner. Phase 2 (`MIGRATION_GATE_STRICT=true`): blokerer.                                                                                                                                       | `pnpm migration:check`                                     |
+| `fitness.mjs`        | Arkitektoniske invarianter på tværs af repo. Hver check er en function.                                                                                                                                                              | `pnpm fitness`                                             |
 
 ## Fitness checks (B4 starter-sæt)
 
