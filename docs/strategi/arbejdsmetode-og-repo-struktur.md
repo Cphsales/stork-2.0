@@ -164,6 +164,8 @@ Efter R-runde-2 er færdig:
 
 Alle planlagte pakker (I-pakker, H-pakker) bruger commit-baseret plan-runde-loop frem for chat-baseret. Round-trip-feedback håndteres via `docs/coordination/plan-feedback/`-mappen og codex-notify-workflow.
 
+**Operationel reference:** [`docs/skabeloner/workflow-skabelon.md`](../skabeloner/workflow-skabelon.md) er autoritativ for hvordan flowet køres step-by-step (7 steps + 4 loops + meta-regel + marker-protokol + Mathias-gate to-fil-flow). Denne fil dækker hvorfor — workflow-skabelon dækker hvordan. V5.3 marker-protokol etableret 2026-05-20 via Lag 1 workflow-stabilisering.
+
 ### Trigger-ord (overvågnings-system)
 
 | Trigger | Hvem paster | Til hvem          | Betydning                                                      |
