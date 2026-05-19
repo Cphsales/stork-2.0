@@ -2,12 +2,13 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** T9-supplement (skitse — afventer krav-dok + plan-skrivning)
+**Aktuel:** ingen aktiv pakke — venter på næste pakke-valg fra Mathias.
 
-`docs/coordination/T9-supplement-skitse.md` lister scope (Codex KRITISK 1/3/4 + import-stubs + type-codegen + Step 12 robusthed). Selve plan-flow følger normal proces: krav-dok → plan → Codex review → Mathias godkendelse → build.
+Kandidat-emner per T9-supplement slut-rapport: T9-cleanup (G054-follow-up er allerede løst i PR #46), Lag E (beregningsmotor + tidsregistrering), Supabase Branching-infrastruktur.
 
 **Historisk:**
 
+- T9-supplement (lukke 6 åbne T9-fund: team-retype-overlap-invariant, schema-exposure-verifikation, backdated traversal i 7 apply-handlers, date-aware read-gates, Step 12 robusthed, type-codegen) afsluttet 2026-05-19 via PR #44 (build), #45 (slut-rapport), #46 (G054 type-codegen). Plan + krav-og-data + V1-V4 plan-feedback (claude-ai + codex) + skitse arkiveret i `docs/coordination/arkiv/` (filnavne `T9-supplement-*`, 11 filer). Slut-rapport: `rapport-historik/2026-05-19-t9-supplement.md`.
 - T9 (§4 trin 9 — Identitet del 2: organisations-træ + permission-fundament + fortrydelses-mekanisme + import fra 1.0) afsluttet 2026-05-18 via PR #34, #35, #36, #37, #38, #39, #40 → main. Plan + feedback (V1-V6) arkiveret i `docs/coordination/arkiv/` (filnavne `T9-*`). Build i 12 migrations + 6 smoke-tests + 2 stub migration-scripts + T9-fundament-supplement-migration (master-plan §1.7-omskrivning + §1.1 session-var-pattern). 8 push-fase-bugs fix'et via PR #35-38 + #40. Slut-rapport: `rapport-historik/2026-05-18-t9.md`.
 - H010 (etablering af arbejdsmetode + repo-struktur) afsluttet ved commit `3c6bc0b`.
 - H020 (28 åbenlyse dokument-rettelser + plan-automation-flow-test) afsluttet
