@@ -148,6 +148,7 @@ const AUDIT_LOG_SELF_EXCLUSION_RE = /^core_compliance\.audit_log(_\d{4}_\d{2}|_d
 // være allowlist'et fra start, ikke retroaktivt.
 const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
   "core_identity._apply_employee_place",
+  "core_identity._apply_client_place",
   "core_identity.client_node_place",
   "core_identity.permission_elements_read",
 ]);
