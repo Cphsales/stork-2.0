@@ -90,7 +90,7 @@ fi
 # (V5.3 workflow-skabelon tooling-disciplin #3)
 # ============================================================
 
-PAKKE_NAME="$(basename "$PLAN_FILE" | sed -E 's/-plan\.md$//; s/\.md$//')"
+PAKKE_NAME="$(basename "$PLAN_FILE" | sed -E 's/-plan\.md$//; s/\.md$//; s/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')"
 DATE="$(date +%Y-%m-%d)"
 
 case "$PHASE" in
