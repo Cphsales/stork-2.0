@@ -8,7 +8,7 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 19. maj 2026 (T9-supplement PR #44 — G054 tilføjet for type-codegen blokeret på core_identity-eksponering)
+**Sidste opdatering:** 19. maj 2026 (G054 LØST — type-codegen for alle 4 eksponerede API-schemas)
 
 ---
 
@@ -514,6 +514,18 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Risiko hvis glemt:** Lav. Vej B er sjælden (kræver atomic rollback). Men mangler regel kan friste til oversnedig brug.
 - **Plan:** Append-only-sektion i `docs/strategi/arbejds-disciplin.md` udvides: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
 
+### [G054] LØST i PR claude/G054-type-codegen — type-codegen for alle eksponerede API-schemas
+
+- **Beskrivelse:** T9-supplement V4 Step 6 krævede `pnpm types:generate` + fjernet placeholder-guard + committede typer. Oprindeligt diagnosticeret som blokeret af Dashboard-eksponering (PGRST202 fra `core_identity`). Efter Dashboard-eksponering 2026-05-19 viste det sig at G054 havde to-delt rod, ikke kun én: (a) `core_identity` ikke eksponeret via PostgREST, (b) `pnpm types:generate`-scriptet brugte `supabase gen types --linked` uden `--schema`-flag, hvilket defaulter til kun `public`. Konsekvens: selv efter exposure ville typer kun dække `public`, ikke `core_identity`/`core_compliance`/`core_money`.
+- **Vision-svækkelse:** Type-safety på tværs af eksponerede schemas. RPC-callere uden type-checking = misuse-risiko.
+- **Introduceret:** T9-build (PR #34) introducerede `core_identity` uden type-coverage; samme klasse uadresseret for `core_compliance` (T6/T7) og `core_money` (T7). Opdaget ved T9-supplement Codex review (PR #44 runde 1 MELLEM 3) som T9-symptom; rod-bredden afsløret under diagnose 2026-05-19.
+- **Løsning (PR claude/G054-type-codegen):**
+  1. Nyt fælles `scripts/types-gen.sh` med schema-liste som single source of truth: `public,core_identity,core_compliance,core_money` (alle 4 eksponerede API-schemas verificeret via remote `pg_namespace` + Dashboard).
+  2. `pnpm types:generate` og `pnpm types:check` bruger samme script (write-mode hhv. check-mode) — schema-listen kan ikke drive fra hinanden.
+  3. `packages/types/src/database.ts` regenereret med alle 4 schemas (3174 linjer).
+  4. Placeholder-skip-blok fjernet (gammel `scripts/types-check.sh` slettet i samme commit).
+- **Verifikation:** `pnpm types:generate`, `pnpm types:check`, `pnpm format:check`, `pnpm typecheck` alle grøn lokalt. CI grøn på PR-head.
+
 ### [G053] LØST i PR #43 / T9-test-fixture-hardening — T9-smoke-tests refaktoreret til hermetisk-fixture-kontrakt
 
 - **Beskrivelse:** Alle 6 T9-smoke-tests havde table-existence guards (tilføjet under T9-build for at undgå fail pre-deploy). Under build skipped testene → falsk grøn. Først post-deploy (efter PR #40) prøvede testene at køre rigtigt og afslørede design-bugs. 4 lag af fail under PR #43-CI: (1) M1 superadmin manglede permission-rows for T9-RPCs, (2) `t9_grants_and_helpers` `roles where name = 'admin'` skulle være `'superadmin'` (R1B), (3) `t9_grants_and_helpers` direkte INSERT i `employee_node_placements` for mg@/km@ brød partial UNIQUE pga. Step 12 seed, (4) `t9_placements` `_apply_employee_place` på seed-employee brød CHECK-constraint pga. backdated effective_from (Codex KRITISK 4 manifesteret).
@@ -535,18 +547,6 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
   4. `TX_WRAP_REQUIRED_FOR_TEST_INSERT` udvidet med 9 T9 mutable state-tabeller (`org_nodes`, `org_node_versions`, `employee_node_placements`, `client_node_placements`, `pending_changes`, `role_permission_grants`, `permission_areas/pages/tabs`) — låser BEGIN/ROLLBACK-mønstret for fremtidige tilføjelser.
   5. `supabase/tests/README.md` udvidet med T9-fixture-regel-sektion + reference til de 3 værn + TX_WRAP-listen.
   6. Negativ-tests verificeret: alle 3 nye værn fejler korrekt på syntetiske overtrædelser.
-
-### [G054] MELLEM — T9 type-codegen blokeret på core_identity-eksponering i Dashboard
-
-- **Beskrivelse:** T9-supplement V4 Step 6 krævede `pnpm types:generate` + fjernet placeholder-guard + committede typer. T9-supplement PR #44 leverer ikke type-codegen fordi `core_identity` endnu ikke er eksponeret via PostgREST/Dashboard (fitness-check `postgrest-t9-schema-exposure` fejler korrekt med PGRST202). Indtil Mathias eksponerer schemaet manuelt i Supabase Dashboard kan PostgREST-introspection ikke generere typer for T9-RPCs, og `packages/types/src/database.ts` forbliver placeholder; `scripts/types-check.sh` skipper drift-check.
-- **Vision-svækkelse:** Type-safety. T9-RPCs har ingen client-side type-checking; ingen typer i frontend = misuse-risiko.
-- **Introduceret:** T9-build (PR #34) hvor `core_identity` blev tilføjet; opdaget ved T9-supplement Codex review (PR #44 runde 1 MELLEM 3).
-- **Skal løses:** Når Mathias eksponerer `core_identity` i Dashboard og fitness-check passerer:
-  1. Kør `pnpm types:generate`
-  2. Commit `packages/types/src/database.ts` med ny indhold
-  3. Fjern placeholder-skip i `scripts/types-check.sh:11-13`
-- **Risiko hvis glemt:** Mellem. T9-RPCs er bagudkompatible med eksisterende JS-callere (untyped any), men nye callere mister type-checking.
-- **Plan:** Følg op efter Mathias' Dashboard-eksponering. Tracking-event: når `postgrest-t9-schema-exposure` fitness-check passerer på CI, fyr type-generation som separat commit på næste pakke der rører T9-typer.
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
 
