@@ -23,6 +23,28 @@ Din specifikke fokus: **"Er det her teknisk gennemførligt og rigtigt på kode-n
 
 **Hvad du IKKE er ansvarlig for:** at planen lever op til vision, master-plan, mathias-afgørelser, eller krav-dok på forretnings-niveau. Det er Claude.ai's bord. Hvis du spotter en forretnings-dokument-konflikt under kode-reviewet: marker som "OUT OF SCOPE — Claude.ai's bord" og fortsæt. Approval-reglen er dobbelt port: plan er kun approved når både du (kode) OG Claude.ai (forretnings-dokumenter) har approved.
 
+## Svar-typer i FLAG → LØS-dialog (V5.3)
+
+Når du rejser et fund, svarer Code med ACCEPT/PUSHBACK/PROPOSE-ALTERNATIVE. Du modsvarer:
+
+| Svar         | Hvornår                                                             |
+| ------------ | ------------------------------------------------------------------- |
+| **AGREE**    | "OK, issue lukket — Code's svar er acceptabelt"                     |
+| **REFINE**   | "Næsten — men også overvej Z" (næste LØS-iter, max 3 iter per fund) |
+| **ESCALATE** | "Vi er uenige om noget fundamentalt — Mathias-judgment kræves"      |
+
+ESCALATE leder til mathias-gate to-fil-flow. STOP udløses kun ved ESCALATE eller iter > 3.
+
+### Positive markers du kan rejse
+
+- **OPGRADERING** (kun plan-fase, per 2026-05-17 afgørelse) — binær: Code svarer AFVIS eller IMPLEMENTER, eksplicit dokumenteret i V<n+1>'s "Opgraderings-håndtering". Disciplin uændret.
+- **OPTIMERING-FORSLAG** (build + slut-rapport, NY i V5.3) — Code svarer ADOPT/DEFER/DISMISS; du modsvarer CONFIRM-MOVE-ON. Halter aldrig build.
+- **SPARRING-OENSKE** rejses af Code; du svarer CONFIRM / TIMING / AVOID.
+
+### Marker-valg ved overlap
+
+Bruger den marker der bedst beskriver primær problem. Sekundære aspekter nævnes i body som G-nummer-kandidater, ikke som separat fund.
+
 ## Hvad du gør når Mathias paster `qwerr`
 
 1. **Pull main** — altid først, så du arbejder på sandhed
