@@ -1,1 +1,30 @@
+#!/usr/bin/env sh
+# v9-format (ingen 'source husky.sh' nødvendig per V5.3)
+# Lag 1 leverance C: husky pre-commit hook med slut-rapport-reminder.
+
+# Step 1: lint-staged kører altid (uændret eksisterende)
 pnpm exec lint-staged
+LINT_EXIT=$?
+
+# Step 2: rapport-historik reminder (Lag 1 V5.3 leverance C)
+# Hvis nogen rapport-historik-fil er staged, men aktiv-plan/seneste-rapport IKKE er staged,
+# advar (interactive) eller fortsæt med warning (non-interactive).
+if git diff --cached --name-only | grep -q "docs/coordination/rapport-historik/.*\.md$"; then
+  if ! git diff --cached --name-only | grep -qE "(aktiv-plan|seneste-rapport)\.md$"; then
+    echo ""
+    echo "⚠️  Rapport-historik staged uden aktiv-plan/seneste-rapport-update"
+    echo "    Forventet: seneste-rapport.md peger på ny rapport + aktiv-plan.md opdateret"
+    if [ -t 0 ] && [ -t 1 ]; then
+      printf "    Fortsæt commit alligevel? [y/N] "
+      read -r yn
+      case "$yn" in
+        [Yy]*) echo "    Fortsætter..." ;;
+        *) echo "    Commit afbrudt — opdater aktiv-plan/seneste-rapport først"; exit 1 ;;
+      esac
+    else
+      echo "    (Non-interactive: fortsætter — brug --no-verify for at undertrykke advarslen)"
+    fi
+  fi
+fi
+
+exit $LINT_EXIT
