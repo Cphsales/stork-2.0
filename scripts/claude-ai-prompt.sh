@@ -22,11 +22,16 @@ Usage: $0 <plan-fil> <round-N> [--phase=plan|slut-rapport]
 
 Eksempel:
   $0 docs/coordination/Lag1-plan.md 1
-  $0 docs/coordination/Lag1-plan.md 2 --phase=plan
   $0 docs/coordination/rapport-historik/2026-05-20-Lag1.md 1 --phase=slut-rapport
 
-Pipe output til clipboard: $0 ... | xclip -selection clipboard
-Eller fil: $0 ... > /tmp/claude-ai-prompt.md
+Output:
+  - STDOUT: paste-pakke (kopiér direkte fra terminal)
+  - FIL: docs/coordination/plan-feedback/<pakke>-claude-ai-prompt-<phase>-runde-<N>.md
+    (skrives ind i repoet så Claude.ai-MCP kan læse stien direkte uden manuel paste)
+
+Til Claude.ai-web:
+  Option A — paste prompt-INDHOLD fra stdout (kopiér og indsæt i web-chat)
+  Option B — paste stien til fil + bed Claude.ai læse den via Filesystem-MCP
 EOF
   exit 64
 fi
@@ -55,7 +60,7 @@ if [ ! -f "$PLAN_FILE" ]; then
   exit 64
 fi
 
-PAKKE_NAME="$(basename "$PLAN_FILE" | sed -E 's/-plan\.md$//; s/\.md$//')"
+PAKKE_NAME="$(basename "$PLAN_FILE" | sed -E 's/-plan\.md$//; s/\.md$//; s/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')"
 ABSPATH_PLAN="$(realpath "$PLAN_FILE")"
 
 case "$PHASE" in
@@ -64,10 +69,15 @@ case "$PHASE" in
   *) echo "❌ Ukendt --phase: $PHASE" >&2; exit 64 ;;
 esac
 
+# Output-fil inde i repoet så Claude.ai-MCP kan læse den direkte
+mkdir -p "$REPO_ROOT/docs/coordination/plan-feedback"
+OUTPUT_FILE="docs/coordination/plan-feedback/${PAKKE_NAME}-claude-ai-prompt-${PHASE}-runde-${ROUND_N}.md"
+
 # ============================================================
-# Generér paste-pakke
+# Generér paste-pakke (skriver til både stdout OG repo-fil)
 # ============================================================
 
+generate_prompt() {
 cat <<EOF
 $PHASE_TRIGGER
 
@@ -170,3 +180,13 @@ cat <<EOF
 
 Begynd review.
 EOF
+}
+
+# Skriv til stdout (for direkte paste) OG til repo-fil (for MCP-læsning)
+generate_prompt | tee "$OUTPUT_FILE"
+
+echo "" >&2
+echo "✓ Prompt skrevet til: $OUTPUT_FILE" >&2
+echo "  Til Claude.ai-web — to muligheder:" >&2
+echo "    A) Paste prompt-indhold fra stdout (scroll op + kopier)" >&2
+echo "    B) Sig til Claude.ai: 'Læs $OUTPUT_FILE via Filesystem-MCP og kør reviewet'" >&2

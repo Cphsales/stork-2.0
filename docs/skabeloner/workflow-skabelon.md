@@ -334,4 +334,4 @@ PUSHBACK, REQUEST-RAAD, STOP-FOR-CLARIFICATION blev IKKE brugt i workflow-stabil
 
 ---
 
-**Sidste opdatering:** 2026-05-20 — Lag 1 build-fase. workflow-skabelon V5.3-synkroniseret med Lag1-plan.md's marker-protokol-spec.
+**Sidste opdatering:** 2026-05-20 — Lag 1 build-fase. workflow-skabelon V5.3-synkroniseret med Lag1-planen's marker-protokol-spec (plan-fil arkiveret som `docs/coordination/arkiv/Lag1-plan.md` efter pakke-lukning).
