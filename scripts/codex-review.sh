@@ -105,6 +105,15 @@ OUTPUT_FILE="${OUTPUT_DIR}/${DATE}-${PAKKE_NAME}-runde-${ROUND_N}.md"
 
 PLAN_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo 'uncommitted')"
 
+case "$PHASE" in
+  plan|build)
+    FORMAAL_LINE='FORMÅL: udledes af "## Formål"-sektionen i '"$PLAN_FILE"'.'
+    ;;
+  slut-rapport)
+    FORMAAL_LINE='FORMÅL (slut-rapport-fase): Verificér at slut-rapporten reflekterer faktisk leverance, plan-afvigelser ærligt, og fire-dokument-tjek korrekt. Underliggende pakke-formål kan slås op i rapport-headerens "Plan-fil"-felt hvis nødvendigt.'
+    ;;
+esac
+
 PROMPT=$(cat <<EOF
 Læs disse filer:
 1. $PREFIX_FILE (niveau 1-prefix — anvend ordret)
@@ -112,7 +121,7 @@ Læs disse filer:
 
 RUNDE-NUMMER: $ROUND_N
 FASE: $PHASE
-FORMÅL: udledes af "## Formål"-sektionen i $PLAN_FILE.
+$FORMAAL_LINE
 
 Følg niveau 1-prefixens scope-krav + marker-protokol + dialog-regler.
 
@@ -158,6 +167,13 @@ fi
 # Skriv output-fil med header
 # ============================================================
 
+case "$REASONING" in
+  xhigh)  REASONING_FLAG="--xhigh" ;;
+  medium) REASONING_FLAG="--quick" ;;
+  *)      REASONING_FLAG="" ;;
+esac
+RERUN_CMD="$0 $PLAN_FILE $ROUND_N $REASONING_FLAG --phase=$PHASE"
+
 cat > "$OUTPUT_FILE" <<EOF
 # Codex review — $PAKKE_NAME runde $ROUND_N
 
@@ -168,7 +184,7 @@ cat > "$OUTPUT_FILE" <<EOF
 **Dato:** $DATE
 **Reasoning:** $REASONING
 **Max ord:** $MAX_WORDS
-**Command:** \`$0 $PLAN_FILE $ROUND_N\` (re-run via samme args)
+**Command:** \`$RERUN_CMD\` (re-run via samme args inkl. flags)
 
 ---
 
