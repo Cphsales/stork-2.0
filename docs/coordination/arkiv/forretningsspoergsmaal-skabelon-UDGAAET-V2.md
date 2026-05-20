@@ -1,4 +1,8 @@
-# Forretningsspørgsmål-skabelon
+> **UDGÅET 2026-05-20 ved V2-workflow.** Forretningsspørgsmål håndteres nu direkte i krav-dok-fasens chat mellem Claude.ai-forfatter og Mathias. Separat `<pakke>-forretningsspoergsmaal.md`-fil er ikke længere del af flowet. Bevaret som arkiv for historisk reference (jf. `mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2", punkt 2).
+
+---
+
+# Forretningsspørgsmål-skabelon (UDGÅET — historisk reference)
 
 Skabelon for forretningsspørgsmål-fase. Denne fase køres FØR Claude.ai skriver krav-og-data-dokument for en pakke. Output er kilde-grundlag der binder krav-dokumentet til konkrete Mathias-svar med dato.
 

@@ -4,10 +4,11 @@ Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → by
 
 **Aktuel:** ingen aktiv pakke — venter på næste pakke-valg fra Mathias.
 
-Workflow-spec V5.3 (`docs/skabeloner/workflow-skabelon.md`) er etableret som autoritativ operationel guide for kommende pakker.
+Workflow-spec V2 (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2") er etableret som autoritativ operationel guide for kommende pakker. Detaljer i `docs/skabeloner/workflow-skabelon.md` + overvaagning-filer.
 
 **Historisk:**
 
+- **Workflow-forenkling V2** (PR #60) afsluttet 2026-05-20. 30 disciplin-fund fra trin 10-forsøget adresseret. Krav-dok-fase simplificeret + recon-først for Code + dokument-hierarki differentieret. Trin 10 udskudt med krav-dok + mathias-afgoerelser-entry bevaret på main.
 - **Lag 1 disciplin-fundament komplet** (PR #42's disciplin-indhold selektivt merget gennem Lag1-filter + G055/G056-fix + handoff-arkivering) afsluttet 2026-05-20 via PR #52 (`8898d3e`), PR #53 (`048d021`), PR #54 (`41cf359`). Tilfører Lag 1's V5.3-spec: forretningsspoergsmaal-fase, krav-dok-review-rolle, NEEDS-MATHIAS-severity, end-to-end-tjek per write-vej, Fundament-tjek-passeret, Plan-pre-push-tjekliste, datamodel-STOP. Lukker 2 latente Lag1-huller (G055 script-parser + G056 Codex rolle-grænse). Slut-rapport: `rapport-historik/2026-05-20-Lag1-disciplin-fundament.md`.
 - **Lag 1** (workflow-stabilisering — 9 leverancer A-J + V5.3 marker-protokol-spec) afsluttet 2026-05-20 via PR #48 (`708ab8d`). Plan + V5.1-V5.3 plan-feedback + Codex-approval arkiveret i `docs/coordination/arkiv/` (filnavne `Lag1-*`). Slut-rapport: `rapport-historik/2026-05-20-Lag1.md`. Plan-fase: 7 plan-versioner, 5 Codex-runder med APPROVAL på V5.1, 3 Claude.ai-runder med APPROVAL på V5.3.
 - **T9-supplement** (lukke 6 åbne T9-fund: team-retype-overlap-invariant, schema-exposure-verifikation, backdated traversal i 7 apply-handlers, date-aware read-gates, Step 12 robusthed, type-codegen) afsluttet 2026-05-19 via PR #44 (build), #45 (slut-rapport), #46 (G054 type-codegen). Plan + krav-og-data + V1-V4 plan-feedback eksisterer på `claude/T9-supplement-plan`-branchen per slut-rapport-disciplin. Slut-rapport: `rapport-historik/2026-05-19-t9-supplement.md`.

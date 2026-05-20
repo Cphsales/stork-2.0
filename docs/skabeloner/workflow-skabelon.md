@@ -6,79 +6,71 @@ Strategi-grundlaget (hvorfor flowet ser sådan ud) står i [`docs/strategi/arbej
 
 ---
 
-## 7-step flow
+## 5-step flow (V2 2026-05-20)
+
+V2 simplificerer flowet baseret på trin 10-erfaring (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2"). Tre Claude.ai-roller er reduceret til to (forfatter + slut-rapport-reviewer); Mathias er direkte validator i krav-dok-fasen — ingen separat reviewer-chat. Pakke-skala afgør om krav-dok-fasen kører.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ 0. DATA-GRUNDLAG (kan skippes — se skip-kriterier)           │
-│    Mathias rejser emne → alle aktører briefes                │
-│    Kontekst-indsamling fra master-plan, teknisk-gaeld,       │
-│    bygge-status, mathias-afgoerelser                         │
-│    Output: <pakke>-data-grundlag.md                          │
+│ 0. PAKKE-SKALA-VURDERING                                     │
+│    Mathias afgør pakke-skala: Lille / Mellem / Stor          │
+│    Lille (0-2 åbne spm) → skip krav-dok                      │
+│    Mellem (3-5) → simplificeret krav-dok-fase                │
+│    Stor (6+) → fuld flow + ekstra validering                 │
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ 1. KRAV-FASE                                                 │
-│    Mathias + Claude.ai → krav-dok (forretnings-tanke)        │
+│ 1. KRAV-DOK-FASE                                             │
+│    Claude.ai-forfatter ↔ Mathias direkte i chat              │
+│    (Mathias er direkte validator; ingen separat reviewer)    │
+│    Spørgsmål-runde sker i chatten — ingen mellem-artefakter  │
 │    Output: <pakke>-krav-og-data.md                           │
+│    (skippes for Lille-pakker)                                │
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ 2. KRAV-AFKLAR                                               │
-│    Code + Codex læser krav-dok → afklarende spørgsmål        │
-│    → ACCEPT (buildable) eller AFVIS (revid krav)             │
-│    Output: <pakke>-krav-afklaring.md                         │
-└──────────┬───────────────────────────┬───────────────────────┘
-           │ AFVIS                     │ ACCEPT
-           ▼                           ▼
-   ┌───────────────┐         ┌──────────────────────────────┐
-   │ → step 1      │         │ 3. PLAN-FASE                 │
-   │ (revid krav)  │         │    Code + Codex iter (max 7) │
-   └───────────────┘         │    PUSHBACK + REQUEST-RAAD   │
-                             │    Iteration 8+ → Mathias    │
-                             │    Krav-fejl opdaget → step 1│
-                             │    Output: <pakke>-plan.md   │
-                             └──────────────┬───────────────┘
-                                            ▼ (ÉN færdig plan)
-                             ┌──────────────────────────────┐
-                             │ 4. APPROVAL-FASE             │
-                             │    Mathias + Claude.ai       │
-                             │    → godkend / afvis plan    │
-                             └──────┬─────────────┬─────────┘
-                                    │ AFVIS       │ GODKEND
-                                    ▼             ▼
-                            ┌───────────────┐   ┌──────────────────────────┐
-                            │ → step 3 (V2) │   │ 5. BUILD-FASE            │
-                            └───────────────┘   │    Code bygger,          │
-                                                │    Codex valider (runder)│
-                                                │    Output: PR + commits  │
-                                                └──────────────┬───────────┘
-                                                               ▼
-                                                ┌──────────────────────────┐
-                                                │ 6. SLUT-RAPPORT + LUK    │
-                                                │    Code skriver,         │
-                                                │    Codex + Claude.ai     │
-                                                │    validerer             │
-                                                │    Mathias lukker pakken │
-                                                │    Output: rapport-      │
-                                                │    historik/<dato>-      │
-                                                │    <pakke>.md            │
-                                                └──────────────────────────┘
+│ 2. PLAN-FASE                                                 │
+│    Code + Codex iterativt                                    │
+│    Recon-først OBLIGATORISK: Code SKAL læse hver migration-  │
+│    fil planen refererer FØR plan-indhold skrives             │
+│    Codex KRITISK-fund om fabrikation = STOP (ikke "fix og    │
+│    fortsæt"); recon-først gentages før V<n+1>                │
+│    Output: <pakke>-plan.md                                   │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ 3. APPROVAL                                                  │
+│    Mathias godkender med qwerg                               │
+│    AFVIS → step 2 (plan V<n+1>)                              │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ 4. BUILD                                                     │
+│    Code bygger, Codex validerer (runder)                     │
+│    Output: PR + commits + codex-review-filer                 │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ 5. SLUT-RAPPORT + CLAUDE.AI-REVIEW                           │
+│    Code skriver slut-rapport; Claude.ai-reviewer (separat    │
+│    chat) verificerer mod krav-dok + plan                     │
+│    Mathias lukker pakken                                     │
+│    Output: rapport-historik/<dato>-<pakke>.md                │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Aktører + ansvar pr. step
 
-| Step | Aktør(er)                               | Output                                                                                                                                                                                                                                                                                                                                                                                                    | Skabelon                                                                   |
-| ---- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 0    | Mathias initierer, alle aktører briefes | `<pakke>-data-grundlag.md`                                                                                                                                                                                                                                                                                                                                                                                | —                                                                          |
-| 1    | Mathias + Claude.ai                     | `<pakke>-forretningsspoergsmaal.md` (hvis fasen kører) → `<pakke>-krav-og-data.md` → `krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md`. Step 1 har 3 sub-trin: forretningsspørgsmål → krav-dok → krav-dok-review. Se [`forretningsspoergsmaal-skabelon.md`](forretningsspoergsmaal-skabelon.md) for skip-kriterier; `arbejdsmetode-og-repo-struktur.md` Aktør-rækkefølge trin 1-4 for fuld flow. | [`forretningsspoergsmaal-skabelon.md`](forretningsspoergsmaal-skabelon.md) |
-| 2    | Code + Codex                            | `<pakke>-krav-afklaring.md`                                                                                                                                                                                                                                                                                                                                                                               | —                                                                          |
-| 3    | Code + Codex (iterativt)                | `<pakke>-plan.md`                                                                                                                                                                                                                                                                                                                                                                                         | [`plan-skabelon.md`](plan-skabelon.md)                                     |
-| 4    | Mathias + Claude.ai                     | Godkendelse i `mathias-afgoerelser.md`                                                                                                                                                                                                                                                                                                                                                                    | —                                                                          |
-| 5    | Code bygger, Codex validerer            | PR + commits + codex-review-filer                                                                                                                                                                                                                                                                                                                                                                         | [`codex-review-prompt.md`](codex-review-prompt.md)                         |
-| 6    | Code + Codex + Claude.ai + Mathias      | `rapport-historik/<dato>-<pakke>.md`                                                                                                                                                                                                                                                                                                                                                                      | [`rapport-skabelon.md`](rapport-skabelon.md)                               |
+| Step | Aktør(er)                                                   | Output                                                                                 | Skabelon                                           |
+| ---- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 0    | Mathias                                                     | Pakke-skala-vurdering (Lille / Mellem / Stor) — afgør om step 1 kører                  | —                                                  |
+| 1    | Claude.ai-forfatter + Mathias (direkte validator i chat)    | `<pakke>-krav-og-data.md` (skippes for Lille-pakker; ingen separat reviewer-chat i V2) | —                                                  |
+| 2    | Code + Codex (iterativt, recon-først obligatorisk)          | `<pakke>-plan.md`                                                                      | [`plan-skabelon.md`](plan-skabelon.md)             |
+| 3    | Mathias                                                     | Godkendelse via `qwerg`                                                                | —                                                  |
+| 4    | Code bygger, Codex validerer                                | PR + commits + codex-review-filer                                                      | [`codex-review-prompt.md`](codex-review-prompt.md) |
+| 5    | Code skriver, Claude.ai-reviewer (separat chat) verificerer | `rapport-historik/<dato>-<pakke>.md`                                                   | [`rapport-skabelon.md`](rapport-skabelon.md)       |
 
 ---
 
@@ -86,12 +78,11 @@ Strategi-grundlaget (hvorfor flowet ser sådan ud) står i [`docs/strategi/arbej
 
 ### Loops
 
-| Loop        | Trigger                           | Til                 |
-| ----------- | --------------------------------- | ------------------- |
-| 2 → 1       | Krav ikke buildable (AFVIS)       | step 1 (revid krav) |
-| 3 → 1       | Krav-fejl opdaget midt i plan     | step 1 (revid krav) |
-| 3 → Mathias | Plan-iteration 8+ uden konvergens | Eskalation          |
-| 4 → 3       | Plan ikke godkendt (AFVIS)        | step 3 (V2)         |
+| Loop        | Trigger                            | Til                     |
+| ----------- | ---------------------------------- | ----------------------- |
+| 2 → 1       | Krav-fejl opdaget midt i plan-fase | step 1 (revid krav-dok) |
+| 2 → Mathias | Plan-iteration 8+ uden konvergens  | Eskalation              |
+| 3 → 2       | Plan ikke godkendt (AFVIS)         | step 2 (plan V<n+1>)    |
 
 ### Meta-regel: `STOP-FOR-CLARIFICATION`
 
@@ -105,23 +96,23 @@ Flow pauser → mål-part (Mathias / Claude.ai / Codex) svarer → flow fortsæt
 
 ---
 
-## Skip-kriterier for step 0
+## Step 0 — pakke-skala-vurdering (V2)
 
-Step 0 (DATA-GRUNDLAG) er IKKE obligatorisk. Skip når:
+Step 0 er obligatorisk. Mathias afgør pakke-skala ud fra antal åbne forretnings-spørgsmål:
 
-- **Mikro-pakker** (PR direkte uden plan-runde — typo-fix, doc-rettelse, oprydning under 100 linjer)
-- **Hot-fix-pakker** med klar rod-årsag og ingen tvivl om kontekst
-- **Pakker hvor data-grundlaget er etableret af forrige pakke** (samme session, samme dag, samme tema)
+| Skala  | Åbne spm | Step 1 (krav-dok-fase)                           | Step 2 (plan-fase) |
+| ------ | -------- | ------------------------------------------------ | ------------------ |
+| Lille  | 0-2      | Skippes — direkte PR uden plan-runde mulig       | Skippes for mikro  |
+| Mellem | 3-5      | Simplificeret (få spm i chat, derefter krav-dok) | Fuld plan-fase     |
+| Stor   | 6+       | Fuld krav-dok-fase + ekstra validering           | Fuld plan-fase     |
 
-Beslutning om at skippe dokumenteres med én linje i krav-dok's åbnings-sektion:
+**Mikro/hot-fix:** PR direkte uden plan-runde (typo-fix, doc-rettelse, oprydning under 100 linjer, hot-fix med klar rod-årsag) hører under Lille.
 
-```markdown
-> Step 0 skippet — mikro-pakke / hot-fix / kontekst etableret i [reference]
-```
+Skala-vurdering noteres af Mathias i åbnings-signal eller af Claude.ai-forfatter øverst i krav-dok når den skrives.
 
 ---
 
-## Trigger-format under runder (step 3 og 5)
+## Trigger-format under runder (step 2 og 4)
 
 Ved review-runder kan Code, Codex eller Claude.ai bruge:
 
@@ -215,23 +206,17 @@ Hvis en situation matcher flere markers: **Codex bruger den marker der bedst bes
 
 Forventet filsæt for en pakke kaldet `<pakke>`:
 
-| Fil                                                                          | Step | Vedligeholdes af                                                             |
-| ---------------------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------- |
-| `docs/coordination/<pakke>-data-grundlag.md`                                 | 0    | Auto (`data-grundlag.sh`)                                                    |
-| `docs/coordination/<pakke>-forretningsspoergsmaal.md`                        | 1    | Claude.ai-forfatter (hvis fasen kører — se skip-kriterier)                   |
-| `docs/coordination/<pakke>-krav-og-data.md`                                  | 1    | Claude.ai-forfatter (via Filesystem-MCP, untracked)                          |
-| `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md`          | 1    | Claude.ai-krav-dok-reviewer (feedback, separat chat)                         |
-| `docs/coordination/krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md` | 1    | Claude.ai-krav-dok-reviewer (approval, separat chat)                         |
-| `docs/coordination/<pakke>-krav-afklaring.md`                                | 2    | Auto (`krav-afklar.sh`) + Code/Codex                                         |
-| `docs/coordination/<pakke>-plan.md`                                          | 3    | Code (V1-Vn)                                                                 |
-| `docs/coordination/plan-feedback/<pakke>-V<N>-codex.md`                      | 3    | Auto via `codex-review.sh`                                                   |
-| `docs/coordination/plan-feedback/<pakke>-V<N>-claude-ai.md`                  | 4    | Mathias paster fra web (`claude-ai-prompt.sh` genererer paste-pakke)         |
-| `docs/coordination/plan-feedback/<pakke>-approved-codex.md`                  | 3-5  | Auto-konsolideret ved approval                                               |
-| `docs/coordination/mathias-gate/<pakke>-<type>-<N>.md`                       | 5    | AFVENTER-entries (build-fase Mathias-gate); arkiveres efter trufne afgørelse |
-| `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<N>.md`                | 5    | Auto via `codex-review.sh`                                                   |
-| `docs/coordination/rapport-historik/<dato>-<pakke>.md`                       | 6    | Code                                                                         |
+| Fil                                                           | Step | Vedligeholdes af                                                             |
+| ------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------- |
+| `docs/coordination/<pakke>-krav-og-data.md`                   | 1    | Claude.ai-forfatter (direkte chat med Mathias; ingen separat reviewer i V2)  |
+| `docs/coordination/<pakke>-plan.md`                           | 2    | Code (V1-Vn, recon-først obligatorisk)                                       |
+| `docs/coordination/plan-feedback/<pakke>-V<N>-codex.md`       | 2    | Auto via `codex-review.sh`                                                   |
+| `docs/coordination/plan-feedback/<pakke>-approved-codex.md`   | 2-4  | Auto-konsolideret ved approval                                               |
+| `docs/coordination/mathias-gate/<pakke>-<type>-<N>.md`        | 4    | AFVENTER-entries (build-fase Mathias-gate); arkiveres efter trufne afgørelse |
+| `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<N>.md` | 4    | Auto via `codex-review.sh`                                                   |
+| `docs/coordination/rapport-historik/<dato>-<pakke>.md`        | 5    | Code (Claude.ai-reviewer verificerer i separat chat)                         |
 
-Ved pakke-lukning (efter step 6) flyttes plan + krav-og-data + forretningsspoergsmaal + V1-Vn plan-feedback + krav-dok-feedback til `docs/coordination/arkiv/` med prefix `<pakke>-*`.
+Ved pakke-lukning (efter step 5) flyttes plan + krav-og-data + V1-Vn plan-feedback til `docs/coordination/arkiv/` med prefix `<pakke>-*`.
 
 ---
 
@@ -337,4 +322,4 @@ PUSHBACK, REQUEST-RAAD, STOP-FOR-CLARIFICATION blev IKKE brugt i workflow-stabil
 
 ---
 
-**Sidste opdatering:** 2026-05-20 — Lag 1 build-fase. workflow-skabelon V5.3-synkroniseret med Lag1-planen's marker-protokol-spec (plan-fil arkiveret som `docs/coordination/arkiv/Lag1-plan.md` efter pakke-lukning).
+**Sidste opdatering:** 2026-05-20 — Workflow V2 finalize. 7-step flow reduceret til 5-step flow (jf. `mathias-afgoerelser.md` "Workflow-justering V2" 2026-05-20). Krav-dok-fase simplificeret til direkte chat mellem Claude.ai-forfatter og Mathias; separat reviewer-rolle + forretningsspoergsmaal-fil + krav-dok-feedback-mappe udgået. Pakke-skala-vurdering nu eksplicit step 0. Recon-først obligatorisk i plan-fasen.

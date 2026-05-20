@@ -34,7 +34,6 @@ docs/
 │   ├── mathias-afgoerelser.md
 │   ├── cutover-checklist.md
 │   ├── codex-reviews/
-│   ├── krav-dok-feedback/
 │   ├── plan-feedback/
 │   ├── rapport-historik/
 │   └── arkiv/
@@ -48,8 +47,7 @@ docs/
 └── skabeloner/            # genbrugelige skabeloner
     ├── plan-skabelon.md
     ├── rapport-skabelon.md
-    ├── codex-review-prompt.md
-    └── forretningsspoergsmaal-skabelon.md
+    └── codex-review-prompt.md
 ```
 
 **Princip:** én sti til alt. Sporing via git, ikke chat-arkæologi.
@@ -277,15 +275,6 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 ### Krav-dokument-disciplin
 
 Krav-dokumentet er **kontrakt**. Detaljer + brud-typer dokumenteret i `docs/strategi/arbejds-disciplin.md` sektion "Krav-dokument-disciplin". Hvis et plan-forslag ville modsige krav-dokumentet, committes `<pakke>-V<n>-blokeret.md` og runden stoppes — argumentation hører i ny krav-dokument-runde, ikke i plan-runden.
-
-### Filnavngivning i `krav-dok-feedback/`
-
-| Fil                                      | Skrevet af                       | Trigger-comment |
-| ---------------------------------------- | -------------------------------- | --------------- |
-| `<pakke>-claude-ai-reviewer.md`          | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
-| `<pakke>-approved-claude-ai-reviewer.md` | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
-
-Krav-dok-feedback-filer udløser ikke codex-notify trigger — krav-dok-fasen er pre-plan og ligger uden for plan-automation-flowet's normal tracker-comments.
 
 ### Filnavngivning i `plan-feedback/`
 
