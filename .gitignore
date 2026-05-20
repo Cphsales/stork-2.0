@@ -43,3 +43,6 @@ supabase/.branches/
 
 # Claude Code lokal arbejds-mappe
 .claude/
+
+# MS Office lock-filer (utilsigtet åbnet i Word/Excel)
+~$*

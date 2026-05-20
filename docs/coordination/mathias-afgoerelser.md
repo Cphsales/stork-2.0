@@ -339,3 +339,53 @@ hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
   - `docs/coordination/overvaagning/code-overvaagning.md` (disciplin-regel + plan-fase-tilstand for OPGRADERING)
   - `docs/coordination/overvaagning/codex-overvaagning.md` (OPGRADERING severity + opgraderings-rolle-sektion)
   - Denne entry
+
+### 2026-05-18 — Plan-flow- og krav-dok-disciplin: T9-læring lukkes på styringsfil-niveau
+
+- **Beslutning:** Fire huller i plan-flowet og krav-dok-skrivning lukkes som ramme-låsning der gælder alle fremtidige pakker:
+  1. **Plan-dybde-krav** — plan-skabelonen kræver eksakt indhold (signatur + body-skitse) per leverance, ikke prosa. Ny obligatorisk "Fundament-tjek-passeret"-sektion (parallel til Fire-dokument-konsultation og Oprydnings-strategi) med 7 tjek (write-vej-fundament + plan-detalje-eksplicitet).
+
+  2. **Codex end-to-end-tjek** — Codex' Plan-review udvides med 7 obligatoriske end-to-end-tjek per write-vej: GRANT+policy+session-var-tre-pak, SELECT-bredde, backdated guards, apply-dispatcher-extension specificeret per RPC, jsonb-format konsistens, eksempel-row gennem flow, krydsetjek mod plan's egen Fundament-tjek-sektion. Niveau 1-prefix i codex-review-prompt-skabelon udvides parallelt.
+
+  3. **Krav-dok-skrivnings-disciplin** — claude-ai-overvaagning får ny sektion: hver påstand i krav-dok kan peges på Mathias-kilde (direkte ord, mathias-afgoerelser-entry, vision-princip, master-plan-paragraf). Mangler kilde: spørg, skriv ikke. `conversation_search` obligatorisk før reference til tidligere afgørelse. Krav-dok indeholder kun tanker — ingen datamodel, ingen kode-skitser.
+
+  4. **Datamodel-grænse** — arbejds-disciplin.md AI-arbejdsdeling: Claude.ai MÅ IKKE designe datamodel (tabeller, kolonner, RPC-signaturer, granularitets-valg, helper-RPC-forslag, kode-skitser, "Model A/B/C") — det er Code's bord i plan-fasen. Datamodel-STOP-regel tilføjet til Claude.ai's disciplin-regler i claude-ai-overvaagning.
+
+- **Begrundelse:** T9-runden afdækkede to fejl-mønstre med samme rod. Første: plan-V'er passerede plan-fase med fundament-mangler (GRANT/policy/session-var, SELECT-bredde, jsonb-format) fanget post-hoc af Codex, ikke ex-ante af plan-disciplin. Andet: krav-dok-fabrikation ("UI-rolle-tildelinger via role_permission_grants") der modsagde Korrektion C 2026-05-14 (compliance-ansvarlige er konkrete medarbejdere, ikke rolle/permission). Roden: krav-dok og plan blev godkendt uden tilstrækkelig fundament- og kilde-disciplin. Hullerne lukkes på styringsfil-niveau så de aktiveres automatisk hver runde, ikke kun når Mathias husker dem.
+
+- **Plan-reference:** Denne commit. Fem fil-ændringer:
+  - `docs/strategi/arbejds-disciplin.md` — to nye Claude.ai MÅ IKKE-punkter (designe datamodel + skrive påstande i krav-dok uden Mathias-kilde)
+  - `docs/coordination/overvaagning/claude-ai-overvaagning.md` — ny "Krav-dok-skrivnings-disciplin"-sektion (kilde-disciplin + rene tanker, med T9-eksempel) + blokker-punkt 5 (Fundament-tjek-passeret-sektion) + datamodel-STOP i disciplin-regler
+  - `docs/skabeloner/plan-skabelon.md` — Implementations-rækkefølge udvidet (Type, Eksakt indhold, Afhængigheder) + ny obligatorisk "Fundament-tjek-passeret"-sektion med 7 tjek
+  - `docs/coordination/overvaagning/codex-overvaagning.md` — Plan-review udvidet med 7 obligatoriske end-to-end-tjek per write-vej
+  - `docs/skabeloner/codex-review-prompt.md` — niveau 1-prefix udvidet med samme end-to-end-tjek-liste
+
+- **Konsekvens for fremtidige pakker:** Plan kan ikke approves uden udfyldt Fundament-tjek-passeret-sektion. Krav-dok kan ikke skrives uden kilde-disciplin. Begge tjek er nu i overvågnings-flowet — Claude.ai blokerer plan på struktur (sektion findes), Codex blokerer på indhold (sektion stemmer).
+
+### 2026-05-18 (anden runde) — Output-kvalitets-disciplin: fire tillæg til plan-flowet
+
+- **Beslutning:** Fire yderligere tillæg til plan-flowet for at øge output-kvalitet i nuværende manuelle flow. Automation af flowet er udskudt til efter 15. juni 2026 (Agent SDK credits lander på subscription-plans). Denne pakke fokuserer på disciplin og kildegrundlag, ikke automation.
+  1. **Forretningsspørgsmål-fase FØR krav-dok** — ny fase mellem pakke-idé og krav-dok-skrivning. Claude.ai-forfatter stiller forretnings-spørgsmål til Mathias før krav-dok skrives; svar dokumenteres i `docs/coordination/<pakke>-forretningsspoergsmaal.md` som kildegrundlag. Skip-kriterier for mikro-pakker, allerede-låst-kontekst, og tekniske infrastruktur-pakker. Ny skabelon `docs/skabeloner/forretningsspoergsmaal-skabelon.md`.
+
+  2. **Krav-dok review-runde via separat Claude.ai-session** — krav-dok kører gennem reviewer (separat chat) før Mathias-commit. Reviewer er ren Claude.ai-instans uden forfatter-bias. Krav-dok-feedback placeres i `docs/coordination/krav-dok-feedback/`. **Note (2026-05-18 senere — commit `4a9f329`):** Oprindelig tekst omtalte "Tre Claude.ai-roller" som separat-chat-struktur. Dette blev fortrudt samme dag — roller er implicit per chat, ikke en eksplicit aktiverings-mekanisme. Selve krav-dok-review-runden består dog som disciplin.
+
+  3. **NEEDS-MATHIAS-severity** — femte severity-niveau parallel til KRITISK/MELLEM/KOSMETISK/OPGRADERING. Fanger fund hvor reviewer ikke kan afgøre uden Mathias-input (to gyldige valg, ny ramme-beslutning, dokument-modsigelse, scope-grænse-tvivl). Stopper plan i alle runder; Code må ikke lave V<n+1> før Mathias har afgjort. Max 2 per review for at undgå eskalering-misbrug.
+
+  4. **Plan-pre-push-tjekliste i Code** — 9-tjek-tabel Code skal igennem FØR plan-commit. Inkluderer formåls-konsistens, fire-dokument-tabel, Fundament-tjek-passeret, oprydnings-strategi, krav-dok-dækning, scope-grænse, implementations-rækkefølge-format, mathias-afgørelser-konsistens, NEEDS-MATHIAS-flag for nye ramme-beslutninger.
+
+- **Begrundelse:** T9 + efterfølgende fabrikation viste at output-kvalitet kunne øges ved (a) bedre kildegrundlag før krav-dok, (b) review af krav-dok før plan-fase, (c) en severity-mekanisme der eskalerer korrekt til Mathias i stedet for at lade reviewers tvinge V<n+1>-runder uden afgørelses-grundlag, (d) selv-disciplin i Code før push der fanger basale mangler.
+
+- **Bonus-rettelse:** OPGRADERING-niveau tilføjet til severity-listen i `docs/strategi/arbejdsmetode-og-repo-struktur.md` — eksisterende mangel siden 2026-05-17 fanget af recon under denne pakke.
+
+- **Ærligheds-flag:** Et femte forslag (slut-rapport-honesty-tjek med plan-afvigelser-sektion) blev oprindeligt foreslået af Claude.ai, men recon afslørede at det allerede eksisterer i rapport-skabelonen — fabrikation, ikke nyt fund. Fjernet fra pakken inden implementation. Flaget her for at dokumentere at fabrikation skete på dette niveau af samtalen og at recon fangede det inden commit.
+
+- **Plan-reference:** Denne commit. Syv fil-ændringer:
+  - `docs/skabeloner/forretningsspoergsmaal-skabelon.md` (NY)
+  - `docs/strategi/arbejdsmetode-og-repo-struktur.md` (aktør-rækkefølge: trin 1 + 3 indsat, 15 trin total; mappe-struktur opdateret; krav-dok-feedback filnavngivning; severity-disciplin udvidet med OPGRADERING + NEEDS-MATHIAS)
+  - `docs/coordination/overvaagning/claude-ai-overvaagning.md` (forretningsspørgsmål-fase-sektion + krav-dok-review-rolle-sektion + NEEDS-MATHIAS i severity + anti-glid-regel)
+  - `docs/strategi/arbejds-disciplin.md` (Claude.ai-rolle udvidet med krav-dok-reviewer + køre forretningsspørgsmål-fase; NEEDS-MATHIAS-severity som ny sektion + tabel udvidet)
+  - `docs/coordination/overvaagning/codex-overvaagning.md` (NEEDS-MATHIAS i severity + anti-glid-regel)
+  - `docs/coordination/overvaagning/code-overvaagning.md` (NEEDS-MATHIAS-håndtering i tilstand-liste + Plan-pre-push-tjekliste-sektion)
+  - Denne entry
+
+- **Konsekvens for fremtidige pakker:** Stor-pakker kører nu forretningsspørgsmål-fase → krav-dok → krav-dok-review → plan-fase. Reviewers kan markere NEEDS-MATHIAS som eskaleringsvej når dokument-modsigelse eller ramme-beslutning kræver Mathias-input. Code skal igennem 9-tjek-pre-push før plan-commit. Net-effekt: færre iterationer pr. pakke, men ekstra fase op-i-flowet (forretningsspørgsmål + krav-dok-review).
