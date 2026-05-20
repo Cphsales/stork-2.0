@@ -220,6 +220,27 @@ Ved pakke-lukning (efter step 5) flyttes plan + krav-og-data + V1-Vn plan-feedba
 
 ---
 
+## Konsekvens-opdaterings-disciplin (V2 2026-05-20)
+
+**Princip:** rammer en pakke noget der hører til et autoritativt dokument, opdateres dokumentet som del af samme pakke. Det gælder uanset om konsekvensen opdages i krav-dok-fasen, plan-fasen, build-fasen eller slut-rapport-fasen.
+
+**Fire autoritative dokumenter med obligatorisk vurdering:**
+
+| Dokument                                   | Hvornår rammes det?                                                              | Hvad opdateres                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | Pakken ændrer §-indhold, indfører ny arkitektur-detalje, eller binder fremtidige | Relevant § + ny rettelse i Appendix C med beskrivelse + commit-hash |
+| `docs/strategi/bygge-status.md`            | Pakken færdiggør eller skifter status på et byggetrin (vision-tjek-historik)     | Trin-status + vision-tjek-entry i historikken                       |
+| `docs/coordination/mathias-afgoerelser.md` | Pakken indeholder strategisk retning-skift eller låser ramme på tværs af pakker  | Ny append-only entry med dato + begrundelse + plan-reference        |
+| `docs/teknisk/teknisk-gaeld.md`            | Pakken tilføjer G-numre (kendt gæld) eller løser eksisterende G-numre            | G-nummer-entries med status (kandidat/lukket) + reference           |
+
+**Plan-skabelon-håndhævelse:** "Oprydnings- og opdaterings-strategi"-sektionens "Konsekvens-opdateringer for autoritative dokumenter"-tabel kræver eksplicit ja/nej for alle fire — tom række = plan ikke approval-klar.
+
+**Slut-rapport-håndhævelse:** "Oprydning + opdatering udført"-sektionen verificerer konkret commit-hash for hver opdatering der var markeret "ja" i planen. Manglende opdatering = afvigelse der skal flagges i Plan-afvigelser-sektionen.
+
+**Hvorfor:** uden eksplicit disciplin vokser drift mellem autoritative dokumenter og koden. Master-plan beskriver intentionen; bygge-status reflekterer faktisk fremgang; mathias-afgoerelser fanger rammer; teknisk-gæld viser akkumuleret hjørner. Når én ændres, skal de andre tjekkes samme runde — ikke "senere".
+
+---
+
 ## Tooling-disciplin
 
 Læringer fra workflow-test (2026-05-19). Skal følges af scripts der wrapper Codex CLI.

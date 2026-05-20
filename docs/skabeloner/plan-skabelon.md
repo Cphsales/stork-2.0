@@ -147,15 +147,27 @@ Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op 
 
 - [Liste eller "ingen"]
 
-**Dokumenter der skal opdateres** (som konsekvens af pakkens leverance):
+**Konsekvens-opdateringer for autoritative dokumenter** (V2 2026-05-20 — obligatorisk tabel):
+
+Hver pakke skal eksplicit vurdere konsekvens for alle fire autoritative dokumenter — også hvis svaret er "nej, ingen ændring". Manglende vurdering på nogen række = plan ikke approval-klar.
+
+| Dokument                                   | Konsekvens? | Opdatering der laves i denne pakke                               |
+| ------------------------------------------ | ----------- | ---------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | ja / nej    | [hvis ja: hvilket §, rettelse-nummer i Appendix C; ellers "nej"] |
+| `docs/strategi/bygge-status.md`            | ja / nej    | [hvis ja: hvilket trin + ny status; ellers "nej"]                |
+| `docs/coordination/mathias-afgoerelser.md` | ja / nej    | [hvis ja: entry-dato + emne; ellers "nej, kun pakke-leverance"]  |
+| `docs/teknisk/teknisk-gaeld.md`            | ja / nej    | [hvis ja: G-numre tilføjet/løst; ellers "nej"]                   |
+
+**Regel for "ja":** Hvis pakken rammer indhold i et autoritativt dokument — uanset om Mathias har rejst det eller Code/Codex har fundet det undervejs — skal opdateringen leveres som del af samme pakke (ikke udskudt til senere). Det forhindrer dokument-drift.
+
+**Regel for "nej":** Hvis ingen konsekvens, marker eksplicit "nej". Tom række = ikke vurderet.
+
+**Standard-opdateringer** (altid):
 
 - `docs/coordination/aktiv-plan.md` → ryd til "ingen aktiv plan" eller peg på næste
-- `docs/coordination/seneste-rapport.md` → peger på ny slut-rapport (standard)
-- `docs/coordination/mathias-afgoerelser.md` → entry hvis pakken indeholder strategiske retning-skift (ikke pakke-leverancer)
-- `docs/strategi/bygge-status.md` → hvis pakken ændrer trin-status
-- `docs/strategi/stork-2-0-master-plan.md` → hvis pakken introducerer rettelse (Appendix C)
-- `docs/teknisk/teknisk-gaeld.md` → hvis pakken tilføjer/løser G-numre
-- [Andre pakke-specifikke dokument-opdateringer]
+- `docs/coordination/seneste-rapport.md` → peger på ny slut-rapport
+
+**Andre pakke-specifikke dokument-opdateringer:** [liste eller "ingen"]
 
 **Reference-konsekvenser** (hvis pakken om-døber eller flytter filer):
 
