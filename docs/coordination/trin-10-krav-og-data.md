@@ -1,24 +1,24 @@
 # Trin 10 — Klient-skabelon og felt-definitioner
 
-**Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner + match-rolle
-**Status:** Klar til krav-dok-review
+**Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
+**Status:** Klar til Mathias-godkendelse
 **Dato:** 2026-05-20
 
 ---
 
 ## 1. Pakkens formål
 
-Trin 10 etablerer klienten som forretnings-fundament i Stork 2.0. En klient er én af de firmaer Stork sælger for — Tryg, Eesy, TDC, Finansforbundet og lignende. Alt i forretningen hænger på klienten: salg, calls, team-tilknytning, lønarter. Trin 10 bygger klient-stammen så alt andet senere kan kobles på den.
+Trin 10 etablerer klienten som forretnings-fundament i Stork 2.0. En klient er én af de firmaer Stork sælger for — eksempelvis Tryg, Eesy, TDC, Finansforbundet. Alt i forretningen hænger på klienten: salg, calls, team-tilknytning, lønarter.
 
-Pakken leverer ikke frontend-pages og ikke admin-UI'er. Den leverer fundamentet der gør det muligt at oprette og redigere klienter senere.
+Trin 10 bygger klient-stammen og felt-definitioner-mekanikken så alt andet senere kan kobles på den. Pakken leverer ikke frontend-pages og ikke admin-UI'er. Den leverer fundamentet i databasen.
 
 Kilde: master-plan §1.8 "Klient er driftens grundenhed".
 
 ---
 
-## 2. Forretningsmæssige sandheder (LÅSTE)
+## 2. Forretningsmæssige sandheder
 
-Disse er ramme for trin 10. De er afgjort af Mathias og kan ikke ændres af Code eller Codex.
+Disse er rammen for trin 10. De er afgjort af Mathias og kan ikke ændres af Code eller Codex.
 
 ### 2.1 Klient-identitet og dataejerskab
 
@@ -30,7 +30,7 @@ Disse er ramme for trin 10. De er afgjort af Mathias og kan ikke ændres af Code
 
 1. **Klient knyttes kun til team-niveau.** Aldrig til afdelinger eller Copenhagen Sales-niveauet.
 
-2. **En klient er knyttet til ét team ad gangen.** Historikken bevares så Stork altid kan se hvilket team der ejede klienten på et givet tidspunkt.
+2. **En klient er knyttet til maksimalt ét team ad gangen.** Historikken bevares så Stork altid kan se hvilket team der ejede klienten på et givet tidspunkt.
 
 3. **Klient kan ikke dræbe et team.** Hvis klient stopper, fortsætter teamet. Klient-til-team-tilknytningen lukkes med en slut-dato; teamet eksisterer uafhængigt.
 
@@ -40,23 +40,13 @@ Disse er ramme for trin 10. De er afgjort af Mathias og kan ikke ændres af Code
 
 1. **Hver klient kan have sine egne felter.** Felter defineres pr. klient. Felter tilføjes og ændres uden teknisk ændring.
 
-2. **Felter har en kategori-mærkat (match-rolle).** Mærkatet siger hvad feltet repræsenterer.
+2. **Pr. felt-definition registreres:** navn, type, om feltet er påkrævet, persondata-niveau, sortering, aktiv-tilstand.
 
-3. **Pr. felt registreres:** kategori-mærkat (match-rolle), om feltet er påkrævet, persondata-niveau, sortering, aktiv-tilstand.
-
-### 2.4 Match-rolle — to forretnings-behov
-
-1. **Behov 1: Data om samme ting fra flere kilder skal samles ét sted.** Værdier af samme slags lander samme plads, ikke spredt i parallelle felter.
-
-2. **Behov 2: Samme salg skal genkendes på tværs af kilder.** Stork må ikke lave dubletter når samme salg lander fra flere kilder.
-
-3. **Hvordan begge behov realiseres er ikke afgjort her** — det er senere arbejde (lag E).
-
-### 2.5 Klient-logo
+### 2.4 Klient-logo
 
 1. **Klient kan have et logo.**
 
-### 2.6 Klient-livscyklus og persondata
+### 2.5 Klient-livscyklus og persondata
 
 1. **Klient anonymiseres ikke.** Klient-navn er forretningsdata, ikke persondata. Klient-rækken bliver stående evigt så historik og audit-spor bevares.
 
@@ -64,15 +54,11 @@ Disse er ramme for trin 10. De er afgjort af Mathias og kan ikke ændres af Code
 
 3. **Felter på klienten kan være persondata.** Hvis et felt er direkte persondata (fx en kontaktperson), har det egne sletteregler på felt-niveau, ikke klient-niveau.
 
-### 2.7 Klient-styring
+### 2.6 Klient-styring
 
-1. **Klienter oprettes manuelt** — ikke importeres fra eksterne kilder.
+1. **Rettigheder til klient-handlinger styres i UI.** Hvem må oprette/ændre/deaktivere klienter defineres i rettigheds-systemet, ikke fastlagt i kode.
 
-2. **Klient-specifik mekanik findes kun for at koble salg fra flere kilder.** Resten skal være data (pricing, felter, mapping), ikke kode-undtagelser.
-
-3. **Rettigheder til klient-handlinger styres i UI.** Hvem må oprette/ændre/deaktivere klienter defineres i rettigheds-systemet, ikke fastlagt i kode.
-
-4. **Lønarter der refererer klient sættes op via formler i UI.** Formel-systemet (trin 13) leverer mekanikken; konfiguration sker i UI bagefter. Klient-skabelonen selv har ikke lønart-konfiguration på sig.
+2. **Lønarter der refererer klient sættes op via formler i UI.** Formel-systemet (trin 13) leverer mekanikken; konfiguration sker i UI bagefter. Klient-skabelonen selv har ikke lønart-konfiguration på sig.
 
 ---
 
@@ -93,12 +79,12 @@ Dette afsnit beskriver HVAD systemet skal kunne gøre. Det er det centrale — k
 
 ### 3.2 Funktioner på klient-felter (felt-definitioner)
 
-| Funktion                  | Beskrivelse                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Opret felt-definition     | Bruger opretter en ny felt-definition for en klient med navn, kategori-mærkat, krav, persondata-niveau, sortering |
-| Ændr felt-definition      | Bruger ændrer en eksisterende felt-definition                                                                     |
-| Deaktivér felt-definition | Bruger sætter felt inaktiv (bliver stående for historik)                                                          |
-| Hent felt-definitioner    | Bruger kan se alle aktive felt-definitioner for en klient                                                         |
+| Funktion                  | Beskrivelse                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Opret felt-definition     | Bruger opretter en ny felt-definition for en klient med navn, type, krav, persondata-niveau, sortering |
+| Ændr felt-definition      | Bruger ændrer en eksisterende felt-definition                                                          |
+| Deaktivér felt-definition | Bruger sætter felt inaktiv (bliver stående for historik)                                               |
+| Hent felt-definitioner    | Bruger kan se alle aktive felt-definitioner for en klient                                              |
 
 ### 3.3 Funktioner på klient-felt-værdier
 
@@ -136,12 +122,31 @@ Klient-til-team-tilknytningen er etableret som mekanik i T9. Trin 10 leverer at 
 - **Salg som funktionalitet** — trin 14
 - **Pricing-regler pr. klient** — senere trin
 - **Lønarter der refererer klient** — formel-systemet, trin 13
-- **Frontend-pages og admin-UI'er** — lag F
-- **Mapping af eksterne kilder mod klient-felter** — lag E
-- **Selve mekanikken til at koble salg fra flere kilder** — lag E
+- **Frontend-pages og admin-UI'er** — senere lag
 - **Konkrete rettighedstildelinger** — sættes op i UI når frontend etableres
 - **Klient-anonymiserings-mekanik** — klient anonymiseres ikke
-- **Migration fra 1.0** — udskudt til separat pakke
+
+### 5.1 Klient-data-migration fra 1.0
+
+Migration af klient-data fra 1.0 til 2.0 er udskudt fra trin 10. Trin 10 leverer kun klient-skabelonen som greenfield-fundament. Klient-data-migration tages op senere som separat pakke når behovet konkret melder sig.
+
+Kilde: mathias-afgoerelser 2026-05-20 "Trin 10 scope-præcisering: migration og match-rolle ud".
+
+### 5.2 Match-mekanik mellem data-indgange
+
+Når data lander i Stork fra forskellige kilder (Eesy via API, TDC via Excel-upload, måske andre senere), skal Stork kunne sige "denne nye række er samme kunde / samme salg som den række jeg allerede har". Det kræver et felt der kan bruges som matche-nøgle — fx et telefonnummer, et kunde-id, eller et opportunity-id.
+
+Eksempel i hverdags-sprog: TDC sender en Excel hver morgen med salg fra i går. Eesy sender salg via API. Begge har et felt "telefon". Når TDC's række kommer ind, skal Stork tjekke: "har jeg allerede sét et salg på dette telefonnummer fra Eesy de seneste 48 timer? Hvis ja → dublet, drop det." Det er match.
+
+**Det hører ikke i trin 10.** For at kunne designe match-mekanikken skal vi vide:
+
+- Hvordan ser data-indgang-UI'en ud? (API-konfiguration? Excel-upload-side? Begge?)
+- Skal match-feltet vælges pr. data-indgang, eller arves fra klienten?
+- Hvad sker når en match fejler — manuel håndtering? Stilles i kø?
+
+Ingen af de spørgsmål er afklaret. At designe match-mekanikken nu er at gætte på en arkitektur der låser senere valg. Det udskydes til der hvor data-indgange bygges, når UI og konkrete krav er kendt.
+
+Kilde: mathias-afgoerelser 2026-05-20 "Trin 10 scope-præcisering: migration og match-rolle ud".
 
 ---
 
@@ -152,10 +157,9 @@ Krav-dokumentet specificerer kun forretningsmæssige sandheder og funktioner. F�
 - Hvordan klient-stammen teknisk implementeres
 - Hvordan klient-felt-definitioner teknisk gemmes og opdateres
 - Hvordan klient-felt-værdier teknisk håndteres
-- Hvordan klient-logo teknisk håndteres (upload, lagring, størrelses-håndtering)
+- Hvordan klient-logo teknisk håndteres (upload, lagring, størrelses-håndtering, normalisering)
 - Hvordan klient-livscyklus (aktiv/inaktiv) teknisk realiseres
 - Hvordan klient-FK til T9's klient-til-team-tilknytning teknisk tilføjes
-- Hvordan match-rolle teknisk repræsenteres
 - Hvordan triggers vedligeholder konsistens
 - Hvilke fitness-checks og tests
 - Konkrete tabel- og kolonne-navne
@@ -164,83 +168,77 @@ Hvis Code finder at en teknisk afgørelse rummer en forretningsmæssig dimension
 
 ---
 
-## 7. Mathias-afgørelser (input til trin 10)
+## 7. Master-plan-rettelser nødvendige
 
-| #   | Afgørelse                                                      | Reference                                   |
-| --- | -------------------------------------------------------------- | ------------------------------------------- |
-| 1   | Klient ejer rå data                                            | mathias-afgoerelser 2026-05-20 punkt 1      |
-| 2   | Dato afgør sandheden — historiske bindinger er faste           | mathias-afgoerelser 2026-05-20 punkt 2      |
-| 3   | Klient anonymiseres ikke                                       | mathias-afgoerelser 2026-05-20 punkt 3      |
-| 4   | Klient-livscyklus = aktiv/inaktiv                              | mathias-afgoerelser 2026-05-20 punkt 4      |
-| 5   | Klient kan have logo                                           | mathias-afgoerelser 2026-05-20 punkt 5      |
-| 6   | Rettigheder til klient-handlinger styres i UI                  | mathias-afgoerelser 2026-05-20 punkt 6      |
-| 7   | Lønarter der refererer klient sættes op via formler i UI       | mathias-afgoerelser 2026-05-20 punkt 7      |
-| 8   | Klient kun til team-knuder                                     | mathias-afgoerelser 2026-05-17 punkt 6      |
-| 9   | En klient = ét team ad gangen                                  | mathias-afgoerelser 2026-05-14 + 2026-05-17 |
-| 10  | Klient kan ikke dræbe et team                                  | mathias-afgoerelser 2026-05-16 punkt 4      |
-| 11  | Klient-data følger klienten ved team-skift                     | mathias-afgoerelser 2026-05-16 punkt 5      |
-| 12  | Alle ændringer med gældende dato følger fortrydelses-mekanisme | mathias-afgoerelser 2026-05-17 punkt 13     |
-| 13  | Plan-leverance er kontrakt                                     | mathias-afgoerelser 2026-05-15              |
-| 14  | Fire-dokument-disciplin obligatorisk i plan                    | mathias-afgoerelser 2026-05-16              |
-| 15  | Oprydnings-strategi obligatorisk i plan                        | mathias-afgoerelser 2026-05-16              |
+Som konsekvens af afgørelserne om scope (sektion 5.1 og 5.2) skal master-plan rettes som del af trin 10-arbejdet:
+
+- **§1.8 (Klient-skabelon):** match-rolle-konceptet (match-rolle pr. felt + crm_match_id-rolle + enum-liste over match-typer) fjernes fra felt-definitions-mønstret
+- **§4 trin 10:** migration-leverancen og crm_match_id-rolle-teksten fjernes fra trin 10's række
+
+De konkrete tekstrettelser er Code's bord at finde og udføre. Begge rettelser har sporbar kilde i mathias-afgoerelser 2026-05-20 "Trin 10 scope-præcisering: migration og match-rolle ud".
 
 ---
 
-## 8. Fire-dokument-konsultation
+## 8. Mathias-afgørelser (input til trin 10)
+
+| #   | Afgørelse                                                      | Reference                                                             |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 1   | Klient ejer rå data                                            | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 1    |
+| 2   | Dato afgør sandheden — historiske bindinger er faste           | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 2    |
+| 3   | Klient anonymiseres ikke                                       | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 3    |
+| 4   | Klient-livscyklus = aktiv/inaktiv                              | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 4    |
+| 5   | Klient kan have logo                                           | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 5    |
+| 6   | Rettigheder til klient-handlinger styres i UI                  | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 6    |
+| 7   | Lønarter der refererer klient sættes op via formler i UI       | mathias-afgoerelser 2026-05-20 "Trin 10 forretnings-ramme" punkt 7    |
+| 8   | Klient kun til team-knuder                                     | mathias-afgoerelser 2026-05-17 punkt 6                                |
+| 9   | En klient = maks ét team ad gangen                             | mathias-afgoerelser 2026-05-20 chat-validering ifm. krav-dok-arbejdet |
+| 10  | Klient kan ikke dræbe et team                                  | mathias-afgoerelser 2026-05-16 punkt 4                                |
+| 11  | Alle ændringer med gældende dato følger fortrydelses-mekanisme | mathias-afgoerelser 2026-05-17 punkt 13                               |
+| 12  | Klient-data-migration udskydes fra trin 10                     | mathias-afgoerelser 2026-05-20 "Trin 10 scope-præcisering" punkt 1    |
+| 13  | Match-rolle-konceptet udskydes fra trin 10                     | mathias-afgoerelser 2026-05-20 "Trin 10 scope-præcisering" punkt 2    |
+
+---
+
+## 9. Fire-dokument-konsultation
 
 | Dokument                                   | Relevante referencer for trin 10                                                                                                                                                           |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `docs/strategi/vision-og-principper.md`    | Princip 1 (data-kontrol i UI); Princip 2 (rettigheder i UI); Princip 3 (forretningslogik som data); Princip 6 (audit på alt der ændrer data); Princip 9 (status-modeller bevarer historik) |
-| `docs/strategi/stork-2-0-master-plan.md`   | §1.8 Klient-skabelon; §1.11 schema-arkitektur; §3 CI-blockers; §4 trin 10                                                                                                                  |
-| `docs/coordination/mathias-afgoerelser.md` | 2026-05-14, 2026-05-16, 2026-05-17, 2026-05-20 entries (jf. afgørelses-tabel ovenfor)                                                                                                      |
-| Dette krav-dok (`trin-10-krav-og-data.md`) | Sektion 2 (forretnings-sandheder), sektion 3 (funktioner), sektion 5 (scope-grænse), sektion 7 (afgørelses-tabel)                                                                          |
+| `docs/strategi/stork-2-0-master-plan.md`   | §1.8 Klient-skabelon (rettes som del af trin 10); §3 CI-blockers; §4 trin 10 (rettes som del af trin 10)                                                                                   |
+| `docs/coordination/mathias-afgoerelser.md` | 2026-05-16, 2026-05-17, 2026-05-20-entries (jf. afgørelses-tabel i sektion 8)                                                                                                              |
+| Dette krav-dok (`trin-10-krav-og-data.md`) | Sektion 2 (forretnings-sandheder), sektion 3 (funktioner), sektion 5 (scope-grænse), sektion 7 (master-plan-rettelser), sektion 8 (afgørelses-tabel)                                       |
 
 Code skal i plan-arbejdet eksplicit udfylde firekolonne-tabel (dokument / konsulteret / referencer / konflikt).
 
 ---
 
-## 9. Oprydnings- og opdaterings-strategi
+## 10. Oprydnings- og opdaterings-strategi
 
-### 9.1 Filer der arkiveres efter trin 10-merge
+### 10.1 Filer der arkiveres efter trin 10-merge
 
 - `docs/coordination/trin-10-krav-og-data.md` → `docs/coordination/arkiv/`
 - `docs/coordination/trin-10-plan.md` (når plan eksisterer) → `docs/coordination/arkiv/`
 - Alle `docs/coordination/plan-feedback/trin-10-*.md` → `docs/coordination/arkiv/`
 
-### 9.2 Dokumenter der opdateres som del af trin 10-build
+### 10.2 Dokumenter der opdateres som del af trin 10-build
 
 - `docs/coordination/aktiv-plan.md` — ryd til "ingen aktiv plan", tilføj trin 10 til Historisk-sektion
 - `docs/coordination/seneste-rapport.md` — pege på trin 10-slut-rapport
 - `docs/strategi/bygge-status.md` — trin 10 markeres godkendt
+- `docs/strategi/stork-2-0-master-plan.md` — §1.8 + §4 trin 10 rettes (jf. sektion 7)
 - `docs/teknisk/teknisk-gaeld.md` — eventuelle G-numre registreres
 
-### 9.3 Ansvar
+### 10.3 Ansvar
 
-- Code udfører arkivering og dokument-opdateringer som del af build-PR
+- Code udfører arkivering, master-plan-rettelser og dokument-opdateringer som del af build-PR
 - Slut-rapporten verificerer udførelse i "Oprydning + opdatering udført"-sektion
 - Manglende udførelse = KRITISK feedback fra reviewere
 
-### 9.4 Grep-tjek post-pakke
+### 10.4 Grep-tjek post-pakke
 
 - `grep -r "trin-10-krav-og-data\|trin-10-plan" docs/` returnerer kun arkiv + rapport-historik + slut-rapport
+- `grep -n "match-rolle\|crm_match_id\|migration: discovery-script for klienter" docs/strategi/stork-2-0-master-plan.md` returnerer ingen forekomster
 
 ---
 
-## 10. Forventet flow
-
-1. Mathias godkender dette krav-dok
-2. Krav-dok går gennem krav-dok-review (separat Claude.ai-chat) for bias-rensning
-3. Hvis review giver feedback: forfatter retter, ny review-runde
-4. Hvis review giver approval: Mathias paster qwerr → Code committer krav-dok + approval-fil til main via separat PR
-5. Når PR er merged: plan-fase starter
-6. Code paster qwerr → laver trin 10-plan V1
-7. Codex og Claude.ai reviewer V1 parallelt
-8. V1 → V2 → ... indtil begge approver
-9. Mathias paster qwerg → build starter
-10. Slut-rapport leveres med oprydning udført
-11. Slut-rapport reviewes
-12. Pakke merget; arkivering udført
-
----
-
-**Krav-dok klar til krav-dok-review.**
+**Krav-dok klar til Mathias-godkendelse.**
