@@ -74,9 +74,9 @@ Konkret rækkefølge for migrations / kode-ændringer. Hver step skal indeholde 
 
 ## Fundament-tjek-passeret
 
-**Obligatorisk for Mellem/Stor-pakker** (parallel til "Fire-dokument-konsultation" og "Oprydnings- og opdaterings-strategi"). Valgfri for Lille-pakker (mikro-fix, doc-rettelse, oprydning under 100 linjer). Mangler sektionen i Mellem/Stor uden begrundet "N/A": planen er ikke approval-klar (KRITISK feedback fra Codex og Claude.ai).
+**Obligatorisk for Mellem/Stor-pakker** (parallel til "Fire-dokument-konsultation" og "Oprydnings- og opdaterings-strategi"). Valgfri for Lille-pakker (mikro-fix, doc-rettelse, oprydning under 100 linjer). Mangler sektionen i Mellem/Stor uden begrundet "N/A": planen er ikke approval-klar (KRITISK feedback fra Codex i plan-review; Code's pre-push-tjekliste skal fange det først).
 
-V2-reduktion (2026-05-20): tabellen er reduceret fra 7 til 4 essentielle tjek. Recon-først (Verificerede afhængigheder-sektionen øverst) dækker det tidligere "Apply-dispatcher-extension"-, "jsonb-format"- og "Backdated guards"-tjek der nu er en del af recon-disciplinen. Codex verificerer at indholdet stemmer; Claude.ai verificerer at tabellen findes og er udfyldt.
+V2-reduktion (2026-05-20): tabellen er reduceret fra 7 til 4 essentielle tjek. Recon-først (Verificerede afhængigheder-sektionen øverst) dækker det tidligere "Apply-dispatcher-extension"-, "jsonb-format"- og "Backdated guards"-tjek der nu er en del af recon-disciplinen. Codex verificerer at indholdet stemmer (V2 — Claude.ai-plan-reviewer-rolle udgået).
 
 | Tjek                                                               | Status     | Reference  |
 | ------------------------------------------------------------------ | ---------- | ---------- |
@@ -193,7 +193,7 @@ V2 dokument-hierarki (jf. `mathias-afgoerelser.md` 2026-05-20 "Workflow-justerin
 
 **Regler:**
 
-- "Konsulteret = nej" på nogen række = plan blokeret af Claude.ai
+- "Konsulteret = nej" på nogen række = plan blokeret af Codex i plan-review (V2 — Code's selv-disciplin skal udfylde tabellen før plan-commit; Claude.ai-plan-reviewer-rolle udgået)
 - "Referencer" må ikke være "hele filen" som dovent svar på vision/master-plan/mathias-afgørelser — skal være konkrete (paragraf-numre, princip-numre, datoer)
 - "Konflikt = ja" på nogen række kræver eksplicit håndtering i Strukturel beslutning-sektionen ovenfor med konkret beskrivelse af konflikt og hvordan planen håndterer den (eller hvilket dokument der opdateres)
 - Vision-konflikt = automatisk blokering. Master-plan/mathias-afgørelser-konflikt = trigger-for-opdatering, ikke automatisk blokering. Krav-dok-konflikt (efter approval) = KRITISK fordi krav-dok er PAKKE-KONTRAKT.
