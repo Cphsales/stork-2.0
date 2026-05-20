@@ -1,10 +1,27 @@
-# Trin 10 — Plan V5
+# Trin 10 — Plan V6
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V5 — klar til Codex plan-review-runde 5
+**Status:** V6 — klar til Codex plan-review-runde 6
 **Dato:** 2026-05-21
+
+---
+
+## Mathias-terminal-review V5 + Code grundig validering (LØS — V5.3 svar-typer)
+
+V5 fik Codex-automation APPROVAL i runde 5, men Mathias' selvstændige terminal-review afslørede 3 KRITISK-fund som automation-runden missede. Mathias bad om grundig validering før V6 — Code har genlæst hele planen op mod nuværende kode (fitness-script, T1-T9-migrations) og fundet 3 yderligere problemer som automation-runden også missede.
+
+| #   | Severity            | V5-step                                         | Fund                                                                                                                                                                                                                                                                                                                                                   | Kilde            | V6-svar                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | ------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | KRITISK             | T10.1 + T10.2                                   | Tabellerne mangler `-- no-dedup-key: <reason>` marker. Fitness-check `dedup-key-or-opt-out` (`scripts/fitness.mjs:422-450`) blokerer alle nye CREATE TABLE uden dedup_key-kolonne eller eksplicit opt-out-marker.                                                                                                                                      | Mathias-terminal | **ACCEPT.** Tilføj T9-stil marker over begge CREATE TABLE-statements.                                                                                                                                                                                                                                                                                                                                  |
+| 2   | KRITISK             | T10.4                                           | INSERT i `core_compliance.data_field_definitions` mangler `ON CONFLICT do nothing`. `core_compliance.data_field_definitions` er på `BOOTSTRAP_CONFIG_TABLES` (`scripts/fitness.mjs:162-172`); `migration-on-conflict-discipline` (`:675-737`) håndhæver det. V5's DEFER til G-nummer var forkert — fitness brækker.                                    | Mathias-terminal | **ACCEPT.** Tilføj `on conflict (table_schema, table_name, column_name) do nothing`. Fjern G-nummer-kandidat-tekst fra Optimerings-hypoteser (det er ikke en optimering, det er krav).                                                                                                                                                                                                                 |
+| 3   | KRITISK/FUNKTIONELT | T10.1 + T10.2 + T10.8 + T10.9 + T10.11 + T10.12 | `has_permission(p_page, NULL, false)` med `p_tab_key=NULL` springer tab-resolver over (`20260518000010_t9_seed_owners.sql:35`) og prøver kun page/area-grants. T10.13 seeder kun TAB-grants → read-paths matcher INGEN grant og returnerer false → SELECT-policy + read-RPC'er tilbageholder data for legitime brugere med kun `clients/manage`-grant. | Mathias-terminal | **ACCEPT.** Skift alle read-paths til tab-aware: `has_permission('clients', 'manage', false)` og `has_permission('client_field_definitions', 'manage', false)`. Berører SELECT-policies (T10.1 + T10.2), client_get/client_list/client_field_definitions_list (T10.12), client_logo_get (T10.11). Write-paths bruger allerede 'manage' tab — konsistent.                                               |
+| 4   | KRITISK-FABRIKATION | T10.16                                          | Plan refererer `FK_COVERAGE_EXEMPTIONS`-allowlist i scripts/fitness.mjs, men den findes IKKE. Master-plan §3 punkt 19 specificerer fitness-checken men den er ikke implementeret. T9-migration-kommentar (`20260518000004_t9_client_node_placements.sql:5`) er forhåndsdokumentation, ikke nuværende fitness-check.                                    | Code-validering  | **ACCEPT.** Omformulér T10.16: i stedet for "fjern client_id fra allowlist", verificér at FK-coverage-checken er implementeret; hvis ikke, ingen fitness-script-ændring nødvendig for FK. **Plus** tilføj `core_identity.client_field_definitions_list` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS` (fund #5). G-nummer-kandidat for "FK-coverage-fitness-check ikke implementeret per master-plan §3.19". |
+| 5   | KRITISK             | T10.12 client_field_definitions_list            | RPC bruger `where p_include_inactive or is_active = true` — matcher fitness-check `legacy-is-active-readers` (`scripts/fitness.mjs:830-892`) regex. client_field_definitions har KUN is_active (ingen status-kolonne), så funktionen skal allowlist'es i `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`.                                                          | Code-validering  | **ACCEPT.** Tilføj `core_identity.client_field_definitions_list` til allowlisten via T10.16's fitness-script-ændring.                                                                                                                                                                                                                                                                                  |
+| 6   | KRITISK             | T10.15 `t10_client_node_placements_fk.sql`      | Smoke-test INSERT'er i `core_identity.client_node_placements` som er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` (`:901-924`) kræver `begin;` + `rollback;` på linje-niveau.                                                                                                | Code-validering  | **ACCEPT.** Eksplicit `begin;` + `rollback;` wrap-pattern i T10.15's FK-test specifikation. T10.7a's fixture-INSERT i T9-tests sker indenfor eksisterende BEGIN/ROLLBACK (verificeret: `t9_placements.sql:9` + `:213`, `t9_backdated_historical_traversal.sql:9` + `:311`).                                                                                                                            |
+
+**Falsk-positiv-rod-årsag:** Codex-automation kører `codex exec` med model-reasoning; den læser plan-fil + plan-prefix-instruktioner men ikke nødvendigvis fitness-script-kilden eller has_permission-implementering. Den fanger mønstre den allerede kender; den fanger ikke fitness-checks den ikke ved findes. Manuel walk af plan op mod kode (fitness.mjs + has_permission-body + TX_WRAP_REQUIRED) er nødvendig.
 
 ---
 
@@ -187,6 +204,10 @@ Hvis fund under review ikke bringer os tættere på dette: G-nummer, ikke blocke
   - **Begrundelse:** Tidligere V1-V3-plan-forsøg byggede på droppede D5-tabeller; CREATE TABLE fra bunden er rigtigt.
   - **Plan-konsekvens:** Denne plan starter fra "clients-tabel eksisterer ikke" og leverer alle artefakter greenfield.
 
+- **Afgørelse 6:** "Kør V6 men ret op på fejl og lav grundig validering" (chat-validering 2026-05-21 efter selvstændig terminal-review fandt 3 KRITISK).
+  - **Begrundelse:** Codex-automation gav APPROVAL i runde 5, men manuel terminal-review afslørede fitness-script-håndhævelse (dedup-key + on-conflict) og has_permission-tab-resolver-detalje som automation missede. Code skal validere planen mod faktisk kode, ikke kun stole på Codex-automation.
+  - **Plan-konsekvens:** V6 implementerer alle 3 terminal-fund + 3 yderligere fund fra Code's egen grundige validering (FK_COVERAGE-fabrikation, R7d-allowlist, FK-test TX-wrap). Recon-først-disciplin udvidet: ikke kun migrationer, men også scripts/fitness.mjs skal læses for at fange håndhævelses-regler.
+
 ---
 
 ## Implementations-rækkefølge
@@ -200,6 +221,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Eksakt indhold:**
 
   ```sql
+  -- no-dedup-key: master-data; id er stable PK. Klient-rækker bevares evigt
+  -- (krav-dok §2.5.1: ikke-anonymiseret), inaktivering via is_active=false.
   create table core_identity.clients (
     id uuid primary key default gen_random_uuid(),
     name text not null check (length(trim(name)) > 0),
@@ -244,9 +267,11 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   grant insert, update on table core_identity.clients to authenticated;
 
   -- SELECT-policy: has_permission-baseret. Read-RPC'er har deres egen permission-check.
+  -- V6 (Mathias-terminal fund #3): tab-aware ('manage'). p_tab_key=null vil ramme
+  -- page/area-resolver, men T10.13 seeder kun tab-grants → ingen match. 'manage' matcher.
   create policy clients_select on core_identity.clients
     for select to authenticated
-    using (core_identity.has_permission('clients', null, false));
+    using (core_identity.has_permission('clients', 'manage', false));
 
   -- INSERT/UPDATE/DELETE: kun via RPC der sætter session-var.
   create policy clients_insert on core_identity.clients
@@ -272,6 +297,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Eksakt indhold:**
 
   ```sql
+  -- no-dedup-key: konfig-tabel; key er natural key (UNIQUE). Inaktiveres
+  -- via is_active=false, slettes ikke (krav-dok §2.3.2 udfasede felter bevares).
   create table core_identity.client_field_definitions (
     id uuid primary key default gen_random_uuid(),
     key text not null unique check (length(trim(key)) > 0),
@@ -312,9 +339,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   -- V5 (Codex V4 KRITISK): DML-GRANT obligatorisk for write-RPC-veje.
   grant insert, update on table core_identity.client_field_definitions to authenticated;
 
+  -- V6 (Mathias-terminal fund #3): tab-aware ('manage') frem for null tab.
   create policy client_field_definitions_select on core_identity.client_field_definitions
     for select to authenticated
-    using (core_identity.has_permission('client_field_definitions', null, false));
+    using (core_identity.has_permission('client_field_definitions', 'manage', false));
 
   create policy client_field_definitions_insert on core_identity.client_field_definitions
     for insert to authenticated
@@ -437,8 +465,11 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     ('core_identity', 'client_field_definitions', 'created_at',    'konfiguration', 'none',
       'permanent', null, null, 'INSERT-tid'),
     ('core_identity', 'client_field_definitions', 'updated_at',    'konfiguration', 'none',
-      'permanent', null, null, 'Sidste mutation');
+      'permanent', null, null, 'Sidste mutation')
+  on conflict (table_schema, table_name, column_name) do nothing;
   ```
+
+  **V6 (Mathias-terminal fund #2):** `on conflict do nothing` er obligatorisk per fitness-check `migration-on-conflict-discipline` (`core_compliance.data_field_definitions` er på `BOOTSTRAP_CONFIG_TABLES`). UNIQUE-constraint på (table_schema, table_name, column_name) gør conflict-targetet entydigt.
 
 - **Afhængigheder:** T10.1, T10.2 (tabeller skal eksistere), T10.3 (allowlist skal være udvidet)
 - **Migration-fil:** `supabase/migrations/<ts>_t10_classify.sql`
@@ -942,7 +973,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   language plpgsql stable security invoker set search_path = ''
   as $$
   begin
-    if not core_identity.has_permission('clients', null, false) then
+    if not core_identity.has_permission('clients', 'manage', false) then
       raise exception 'client_logo_get: permission_denied' using errcode = '42501';
     end if;
     return query
@@ -984,7 +1015,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   ) language plpgsql stable security invoker set search_path = ''
   as $$
   begin
-    if not core_identity.has_permission('clients', null, false) then
+    if not core_identity.has_permission('clients', 'manage', false) then
       raise exception 'client_get: permission_denied' using errcode = '42501';
     end if;
     return query
@@ -1003,7 +1034,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   ) language plpgsql stable security invoker set search_path = ''
   as $$
   begin
-    if not core_identity.has_permission('clients', null, false) then
+    if not core_identity.has_permission('clients', 'manage', false) then
       raise exception 'client_list: permission_denied' using errcode = '42501';
     end if;
     return query
@@ -1018,7 +1049,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   language plpgsql stable security invoker set search_path = ''
   as $$
   begin
-    if not core_identity.has_permission('client_field_definitions', null, false) then
+    if not core_identity.has_permission('client_field_definitions', 'manage', false) then
       raise exception 'client_field_definitions_list: permission_denied' using errcode = '42501';
     end if;
     return query
@@ -1111,18 +1142,34 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                           |
   | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres.                                       |
   | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                               |
-  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT.                                                                                                                                                                                                                                                                                                                                                    |
+  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                 |
   | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false. |
 
 - **Afhængigheder:** alle migrations i T10.1-T10.13
 - **Migration-fil:** test-filer
 - **Risiko:** lav.
 
-### T10.16 — Fitness-script-opdatering
+### T10.16 — Fitness-script-opdatering (V6 omformuleret)
 
-- **Type:** script-ændring
-- **Hvad:** Fjern `client_node_placements.client_id` fra `FK_COVERAGE_EXEMPTIONS` i `scripts/fitness.mjs`. Verificér `pnpm fitness` returnerer grønt.
-- **Afhængigheder:** T10.7 (FK skal være tilføjet)
+- **Type:** script-ændring (`scripts/fitness.mjs`)
+- **Hvad (V6 — Code-validering fund #4 + #5):**
+  1. **FK-coverage-allowlist:** `FK_COVERAGE_EXEMPTIONS`-allowlist findes IKKE i nuværende `scripts/fitness.mjs` — master-plan §3 punkt 19 er ikke implementeret endnu. Hvis check tilføjes senere, vil `client_node_placements.client_id` ikke længere være en exemption-kandidat (FK eksisterer efter T10.7). **Ingen fitness-script-ændring nødvendig for FK i V6.**
+  2. **R7d-allowlist (KRÆVET):** Tilføj `core_identity.client_field_definitions_list` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS` (`scripts/fitness.mjs:149-154`). RPC'en bruger `where p_include_inactive or is_active = true` for at filtrere aktive felt-definitioner. `client_field_definitions` har KUN is_active (ingen status-kolonne) — matcher allowliste-kommentaren: "T9-tabellerne har is_active som lifecycle-signal alene; ingen status-kolonne. Disse er allowlist'et nedenfor."
+- **Eksakt indhold (V6):**
+
+  ```javascript
+  // I LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS-Set (~linje 149-154):
+  const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
+    "core_identity._apply_employee_place",
+    "core_identity._apply_client_place",
+    "core_identity.client_node_place",
+    "core_identity.permission_elements_read",
+    "core_identity.client_field_definitions_list", // V6 — T10.12 RPC; client_field_definitions har kun is_active, ingen status
+  ]);
+  ```
+
+- **G-nummer-kandidat:** FK-coverage-fitness-check ikke implementeret per master-plan §3 punkt 19. Registreres som teknisk gæld for senere pakke der implementerer check'en. T9-migration `20260518000004:5` har forhåndsdokumentation der ikke matcher nuværende fitness-script-tilstand.
+- **Afhængigheder:** T10.12 (`client_field_definitions_list`-RPC skal eksistere så allowlist-entry refererer reel funktion)
 - **Risiko:** lav.
 
 ---
@@ -1132,7 +1179,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 | Tjek                                                           | Status | Reference                                                                                                                                                                                                                                                                                                      |
 | -------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var  | ja     | T10.8/T10.9/T10.10/T10.11 — `stork.allow_clients_write` / `allow_client_field_definitions_write` + `revoke/grant execute` + has_permission. **T10.13** (permission-seed) — `stork.t9_write_authorized` (V4-fix) som krævet af T9-supplement's INSERT-policies på permission_pages/tabs/role_permission_grants. |
-| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', null, false). T9-supplement's eksisterende ACL-scoped policy på client_node_placements bevares uændret.                                                                                                                                    |
+| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', 'manage', false) **tab-aware (V6-fix)**. T10.13 seeder kun tab-grants → null-tab matcher ikke; 'manage' matcher. T9-supplement's ACL-scoped policy på client_node_placements bevares uændret.                                              |
 | Eksempel-row verificeret gennem flow                           | ja     | T10.15 smoke-tests dækker INSERT + UPDATE + read-RPC + permission-spærring + audit-PII-hashing + logo-preserve + FK + LENIENT/strict                                                                                                                                                                           |
 | Plan-detaljer eksplicit (ingen TBD / Code afgør / overladelse) | ja     | Alle 16 steps har eksakt SQL/pseudo-SQL. Ingen "kan tilføjes senere"-noter.                                                                                                                                                                                                                                    |
 
@@ -1179,7 +1226,8 @@ Eksisterende tests opdateret i T10.7a:
 - **Hypotese 1:** Logo-MIME-validering kunne håndhæves som CHECK constraint på `logo_content_type` (`IN ('image/png', 'image/jpeg', 'image/svg+xml')`) frem for app-niveau. Codex kan rejse som OPTIMERING-FORSLAG.
 - **Hypotese 2:** `client_list` kunne tilbyde valgfri filter på is_active (p_include_inactive default false). Codex kan rejse som ADOPT i build.
 - **Hypotese 3:** `core_compliance.audit_filter_values`'s clients-special-case kan ekstraheres til en generel "jsonb-walking via field-definition-tabel"-mekanik for fremtidige jsonb-felter. Ikke implementeret nu (premature abstraction).
-- **Hypotese 4 (G-nummer-kandidat fra Codex V1 #4):** T10.4 klassifikations-INSERT mangler `ON CONFLICT do nothing` (T9-classify bruger det). Greenfield-migration kører kun én gang så idempotens er ikke nødvendig nu — men ensretning med T9-mønstret er værd at lave senere. **G-nummer for ensretning af classify-migration-pattern på tværs af alle pakker.**
+- **Hypotese 4 (V6 erstatter Codex V1 #4):** T10.4 har nu `on conflict do nothing` (V6 — Mathias-terminal fund #2). Tidligere DEFER-til-G-nummer var forkert: fitness-check `migration-on-conflict-discipline` håndhæver det, ikke optional.
+- **G-nummer-kandidat (Code-validering fund #4):** FK-coverage-fitness-check ikke implementeret per master-plan §3 punkt 19. T9-migration har forhåndsdokumentation der ikke matcher nuværende fitness-script.
 
 ---
 
@@ -1252,9 +1300,17 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V5 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V6 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
 
 16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V6-ændringer ift. V5 (Mathias-terminal-review + Code grundig validering):
+
+- T10.1 + T10.2: tilføjet `-- no-dedup-key: <reason>` markers — fitness-check `dedup-key-or-opt-out` blokerer ellers (Mathias #1).
+- T10.4: tilføjet `on conflict (table_schema, table_name, column_name) do nothing` — `core_compliance.data_field_definitions` er på `BOOTSTRAP_CONFIG_TABLES`; tidligere DEFER-til-G-nummer var forkert (Mathias #2).
+- T10.1 + T10.2 SELECT-policies + T10.11 client_logo_get + T10.12 read-RPC'er: alle skiftet fra `has_permission(p, null, false)` til `has_permission(p, 'manage', false)` — tab-aware. T10.13 seeder kun tab-grants så null-tab matcher ikke (Mathias #3).
+- T10.15 `t10_client_node_placements_fk.sql`: eksplicit `begin;` + `rollback;` wrap — `client_node_placements` på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (Code-validering #6).
+- T10.16 omformuleret: `FK_COVERAGE_EXEMPTIONS` findes ikke i nuværende fitness-script (master-plan §3.19 ikke implementeret); plan tilføjer i stedet `core_identity.client_field_definitions_list` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS` (Code-validering #4 + #5). G-nummer for FK-coverage-check.
 
 V5-ændring ift. V4 (Codex runde 4 ACCEPT):
 
@@ -1290,4 +1346,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 5.
+Klar til Codex plan-review-runde 6.
