@@ -24,6 +24,19 @@ Du svarer KUN på kode-niveau:
 - Akkumulerer planen teknisk gæld?
 - Følger koden disciplin-pakken (CI-blockers, fitness-checks)?
 
+END-TO-END-TJEK PER WRITE-VEJ (obligatoriske):
+
+For hver write-RPC og INSERT/UPDATE/DELETE-vej i planen — verificér:
+- GRANT + policy + session-var-tre-pak
+- SELECT-policy bredde
+- Backdated guards
+- Apply-dispatcher-extension specificeret per RPC
+- jsonb-format konsistens producer/consumer
+- Eksempel-row gennem flow (gerne som non-admin)
+- Krydsetjek mod Fundament-tjek-passeret-sektion
+
+Manglende ét af tjekkene på write-vej = KRITISK fund.
+
 Du svarer IKKE på:
 - Skulle formålet have været anderledes
 - Mangler features, er funktionalitet rigtig, bedre forretnings-løsninger

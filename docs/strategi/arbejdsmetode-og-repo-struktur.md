@@ -34,6 +34,8 @@ docs/
 │   ├── mathias-afgoerelser.md
 │   ├── cutover-checklist.md
 │   ├── codex-reviews/
+│   ├── krav-dok-feedback/
+│   ├── plan-feedback/
 │   ├── rapport-historik/
 │   └── arkiv/
 │
@@ -46,7 +48,8 @@ docs/
 └── skabeloner/            # genbrugelige skabeloner
     ├── plan-skabelon.md
     ├── rapport-skabelon.md
-    └── codex-review-prompt.md
+    ├── codex-review-prompt.md
+    └── forretningsspoergsmaal-skabelon.md
 ```
 
 **Princip:** én sti til alt. Sporing via git, ikke chat-arkæologi.
@@ -168,11 +171,11 @@ Alle planlagte pakker (I-pakker, H-pakker) bruger commit-baseret plan-runde-loop
 
 ### Trigger-ord (overvågnings-system)
 
-| Trigger | Hvem paster | Til hvem          | Betydning                                                      |
-| ------- | ----------- | ----------------- | -------------------------------------------------------------- |
-| `qwers` | Mathias     | Alle tre, en gang | Aktivér rolle. Paster sammen med overvågnings-prompt-fil       |
-| `qwerr` | Mathias     | Den aktive aktør  | "Din tur" — aktøren finder selv ud af hvad via tracker + state |
-| `qwerg` | Mathias     | Code              | "Plan godkendt, byg nu" — starter build-fase                   |
+| Trigger | Hvem paster | Til hvem          | Betydning                                                       |
+| ------- | ----------- | ----------------- | --------------------------------------------------------------- |
+| `qwers` | Mathias     | Alle tre, en gang | Aktivér rolle. Aktøren læser selv sin overvågnings-fil fra repo |
+| `qwerr` | Mathias     | Den aktive aktør  | "Din tur" — aktøren finder selv ud af hvad via tracker + state  |
+| `qwerg` | Mathias     | Code              | "Plan godkendt, byg nu" — starter build-fase                    |
 
 Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 
@@ -180,33 +183,37 @@ Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 - `codex-overvaagning.md`
 - `claude-ai-overvaagning.md`
 
-Mathias paster den relevante fil + `qwers` som første besked i ny session for hver aktør.
+Mathias paster `qwers` som første besked i ny session for hver aktør. Aktøren læser sin egen overvågnings-fil fra repo (Filesystem-MCP for Claude.ai, direkte fra working tree for Code og Codex) og bekræfter rollen.
 
 ### Aktør-rækkefølge
 
-1. **Claude.ai** leverer krav-og-data-dokument (`docs/coordination/<pakke>-krav-og-data.md`) med formål, scope, Mathias' afgørelser, og tekniske valg overladt til Code. Krav-dokumentet er **kontrakt**.
-2. **Mathias** godkender + committer krav-dokumentet til main.
-3. **`qwerr` til Code** → Code skriver `docs/coordination/<pakke>-plan.md` per `docs/skabeloner/plan-skabelon.md` baseret på krav-dokumentet. Push til `claude/<pakke>-plan`-branch. Codex-notify trigger "ny-plan-version" comment til tracker-issue.
-4. **`qwerr` til Codex** → Codex reviewer planen og committer `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md` (feedback) eller `<pakke>-V<n>-approved-codex.md` (approval).
-5. **`qwerr` til Claude.ai** → Claude.ai reviewer planen mod krav-dokumentet. Hvis feedback: skriver `docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` til disk; Mathias committer.
-6. Hvis EN af to har feedback: **`qwerr` til Code** → Code laver V<n+1> baseret på feedback. Loop tilbage til 4-5.
-7. Når BÅDE Codex og Claude.ai har approved: plan er klar til Mathias-godkendelse.
-8. **Mathias godkender plan** + paster **`qwerg` til Code** → Code starter build-fase. Opretter `claude/<pakke>-build`-branch, laver fil-cluster-commits, push, opretter PR.
-9. **Mathias merger build-PR** efter CI grøn.
-10. **`qwerr` til Code** → Code laver slut-rapport (`docs/coordination/rapport-historik/<dato>-<pakke>.md`) + arkiverer plan-filer + rydder aktiv-plan. Push til `claude/<pakke>-slut-rapport`. Opretter PR. Codex-notify trigger "slut-rapport-push".
-11. **`qwerr` til Codex** → Codex reviewer slut-rapport. Feedback eller approval.
-12. Hvis feedback: **`qwerr` til Code** → Code opdaterer slut-rapport på samme branch. Loop tilbage til 11.
-13. Når Codex har approved: **Mathias merger slut-rapport-PR**.
+1. **Claude.ai-forfatter kører forretningsspørgsmål-fase** (`docs/coordination/<pakke>-forretningsspoergsmaal.md`) hvis pakken kræver det. Se `docs/skabeloner/forretningsspoergsmaal-skabelon.md` for skip-kriterier og struktur. Output committes til main af Mathias inden krav-dok-skrivning starter. Hvis fasen skippes: dokumentér kort hvorfor i krav-dok's åbnings-sektion.
+2. **Claude.ai-forfatter leverer krav-og-data-dokument** (`docs/coordination/<pakke>-krav-og-data.md`) med formål, scope, Mathias' afgørelser, og tekniske valg overladt til Code. Krav-dokumentet refererer eksplicit til forretningsspørgsmål-filen (hvis fase blev kørt) som primær kilde. Skrives via Filesystem-MCP, untracked i working tree. Krav-dokumentet er **kontrakt**.
+3. **Claude.ai-krav-dok-reviewer leverer krav-dok-review** mod fire forretnings-dokumenter + forretningsspørgsmål-fil. Skriver `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md` (feedback) ELLER `docs/coordination/krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md` (approval). Hvis feedback: loop tilbage til 2 (forfatter retter krav-dok). Hvis approval: trin 4.
+4. **Mathias godkender krav-dok + approval-fil. `qwerr` til Code** → Code committer krav-dok + approval-fil til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: Code fortsætter til plan-arbejde (trin 5) uden ny qwerr.
+5. **Code skriver plan** (`docs/coordination/<pakke>-plan.md`) per `docs/skabeloner/plan-skabelon.md` baseret på krav-dokumentet. Push til `claude/<pakke>-plan`-branch. Codex-notify trigger "ny-plan-version" comment til tracker-issue.
+6. **`qwerr` til Codex** → Codex reviewer planen og committer `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md` (feedback) eller `<pakke>-V<n>-approved-codex.md` (approval).
+7. **`qwerr` til Claude.ai-plan-reviewer** → Claude.ai-plan-reviewer reviewer planen mod krav-dokumentet. Hvis feedback: skriver `docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` til disk; Mathias committer.
+8. Hvis EN af to har feedback: **`qwerr` til Code** → Code laver V<n+1> baseret på feedback. Loop tilbage til 6-7.
+9. Når BÅDE Codex og Claude.ai-plan-reviewer har approved: plan er klar til Mathias-godkendelse.
+10. **Mathias godkender plan** + paster **`qwerg` til Code** → Code starter build-fase. Opretter `claude/<pakke>-build`-branch, laver fil-cluster-commits, push, opretter PR.
+11. **Mathias merger build-PR** efter CI grøn.
+12. **`qwerr` til Code** → Code laver slut-rapport (`docs/coordination/rapport-historik/<dato>-<pakke>.md`) + arkiverer plan-filer + rydder aktiv-plan. Push til `claude/<pakke>-slut-rapport`. Opretter PR. Codex-notify trigger "slut-rapport-push".
+13. **`qwerr` til Codex** → Codex reviewer slut-rapport. Feedback eller approval.
+14. Hvis feedback: **`qwerr` til Code** → Code opdaterer slut-rapport på samme branch. Loop tilbage til 13.
+15. Når Codex har approved: **Mathias merger slut-rapport-PR**.
 
 ### Approval-regel (strict)
 
-En plan er KUN approved når BÅDE Codex og Claude.ai har leveret approval.
+En plan er KUN approved når BÅDE Codex og Claude.ai-plan-reviewer har leveret approval.
 
-- Kun Codex approver, Claude.ai har feedback → V<n+1>
-- Kun Claude.ai approver, Codex har feedback → V<n+1>
+- Kun Codex approver, Claude.ai-plan-reviewer har feedback → V<n+1>
+- Kun Claude.ai-plan-reviewer approver, Codex har feedback → V<n+1>
 - Begge approver → plan klar til Mathias-godkendelse (`qwerg`)
 
 Code må IKKE begynde build før Mathias eksplicit har pastet `qwerg`.
+
+**Krav-dok-approval er separat:** Et krav-dok går ikke til Mathias-godkendelse før Claude.ai-krav-dok-reviewer har leveret approval på det. Hvis feedback: forfatter retter, leverer ny version, reviewer ser igen. Loop indtil approval.
 
 ### Anti-glid: severity-disciplin
 
@@ -215,13 +222,17 @@ For at undgå mange runder uden tab af grundighed: alle fund markeres med severi
 - **KRITISK** — plan kan ikke bygges som beskrevet, vil ramme produktion-risiko, eller bryder vision-princip / krav-dokument. STOPPER plan i alle runder.
 - **MELLEM** — reelt problem men ikke produktion-blokerende. Stopper plan i runde 1; bliver G-nummer i runde 2+.
 - **KOSMETISK** — stilistisk eller mindre forbedring. Stopper IKKE plan. G-nummer-kandidat.
+- **OPGRADERING** (ny 2026-05-17) — Codex har bedre kodemetode end Code planlagt. Stopper IKKE plan; Code skal eksplicit afvise eller implementere i V<n+1>. Codex må levere APPROVAL og samtidig foreslå OPGRADERING.
+- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor reviewer reelt ikke kan afgøre uden Mathias-input (to gyldige valg, ny ramme-beslutning, dokument-modsigelse, scope-grænse-tvivl). STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje.
 
 Reviewer-anti-glid-regler:
 
 1. Hvis alle fund er KOSMETISKE → lever APPROVAL + G-nummer-anbefalinger
 2. Hvis fund er MELLEM og vi er i runde 2+ → lever APPROVAL + G-numre. Plan går videre.
 3. Hvis fund er KRITISKE → lever FEEDBACK uanset runde
-4. Ved tvivl om severity → marker konservativt (hellere G-nummer end ekstra runde)
+4. Hvis fund er OPGRADERING uden andre kritiske → lever APPROVAL + OPGRADERING-forslag. Code skal eksplicit afvise eller implementere i V<n+1>.
+5. Hvis fund er NEEDS-MATHIAS → lever FEEDBACK uanset øvrige fund. Plan stoppes indtil Mathias har svaret. Max 2 NEEDS-MATHIAS pr. review.
+6. Ved tvivl om severity → marker konservativt (KOSMETISK frem for MELLEM, MELLEM frem for KRITISK, KRITISK frem for NEEDS-MATHIAS). Hellere G-nummer end ekstra runde, hellere KRITISK end unødvendig eskalering.
 
 Reference: `docs/strategi/arbejds-disciplin.md` runde-trapper.
 
@@ -229,11 +240,13 @@ Reference: `docs/strategi/arbejds-disciplin.md` runde-trapper.
 
 Proces-vægten skaleres til pakke-størrelsen. Tre niveauer:
 
-- **Stor (I-pakke / kompleks H-pakke)**: fuld plan-runde-proces (krav-dok → plan → review → build → slut-rapport)
+- **Stor (I-pakke / kompleks H-pakke)**: fuld plan-runde-proces (krav-dok → krav-dok-review → plan → review → build → slut-rapport)
 - **Mellem (H-pakke)**: plan + ét review (kan være Codex eller Claude.ai afhængigt af om det er teknisk eller krav-relateret), derefter build
 - **Lille (mikro-H-pakke)**: PR direkte uden plan-runde. Codex reviewer PR'en. Mathias merger.
 
 Krav-dokumentet specificerer pakke-størrelse i "Type"-feltet. Standard er fuld proces hvis ikke andet står.
+
+**Krav-dok-review skippes for mellem og lille:** Krav-dok-dobbelt-port-disciplinen gælder primært stor-pakker. For mellem-pakker er Mathias' egen review tilstrækkelig (krav-dok er kortere, scope er mindre). For lille-pakker er der ikke krav-dok overhovedet.
 
 ### Oprydnings- og opdaterings-disciplin
 
@@ -241,7 +254,7 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 
 **Plan-skabelon-sektion (obligatorisk):** "Oprydnings- og opdaterings-strategi" lister:
 
-- Filer der skal flyttes til `docs/coordination/arkiv/` (standard: krav-dok, plan, plan-feedback-filer)
+- Filer der skal flyttes til `docs/coordination/arkiv/` (standard: krav-dok, plan, plan-feedback-filer, krav-dok-feedback-filer, forretningsspørgsmål-fil)
 - Filer der skal slettes (hvis pakken gør dem irrelevante)
 - Dokumenter der skal opdateres som konsekvens (aktiv-plan, seneste-rapport, mathias-afgoerelser, bygge-status, master-plan, teknisk-gaeld)
 - Reference-konsekvenser (grep-verifikation for omdøbte/flyttede stier)
@@ -255,6 +268,15 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 ### Krav-dokument-disciplin
 
 Krav-dokumentet er **kontrakt**. Detaljer + brud-typer dokumenteret i `docs/strategi/arbejds-disciplin.md` sektion "Krav-dokument-disciplin". Hvis et plan-forslag ville modsige krav-dokumentet, committes `<pakke>-V<n>-blokeret.md` og runden stoppes — argumentation hører i ny krav-dokument-runde, ikke i plan-runden.
+
+### Filnavngivning i `krav-dok-feedback/`
+
+| Fil                                      | Skrevet af                       | Trigger-comment |
+| ---------------------------------------- | -------------------------------- | --------------- |
+| `<pakke>-claude-ai-reviewer.md`          | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
+| `<pakke>-approved-claude-ai-reviewer.md` | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
+
+Krav-dok-feedback-filer udløser ikke codex-notify trigger — krav-dok-fasen er pre-plan og ligger uden for plan-automation-flowet's normal tracker-comments.
 
 ### Filnavngivning i `plan-feedback/`
 
