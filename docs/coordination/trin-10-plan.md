@@ -1,10 +1,20 @@
-# Trin 10 — Plan V4
+# Trin 10 — Plan V5
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V4 — klar til Codex plan-review-runde 4
-**Dato:** 2026-05-20
+**Status:** V5 — klar til Codex plan-review-runde 5
+**Dato:** 2026-05-21
+
+---
+
+## Codex V4-fund-håndtering (LØS — V5.3 svar-typer)
+
+Codex runde 4 (review-fil: `docs/coordination/codex-reviews/2026-05-21-trin-10-runde-4.md`) leverede 1 fund.
+
+| #   | Severity | V4-step       | Fund                                                                                                                                                                                                                                               | V5-svar                                                                                                                                                                                                                                                                                   | Hvor i V5     |
+| --- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | KRITISK  | T10.1 + T10.2 | Tabellerne har kun `GRANT SELECT to authenticated`. Mangler `GRANT INSERT, UPDATE` der er nødvendigt før RLS-policy/session-var-vejen kan virke for write-RPC'erne (T10.8-T10.11). Bryder niveau 1-prefixens GRANT + policy + session-var-tre-pak. | **ACCEPT.** Tilføj `grant insert, update on table core_identity.clients to authenticated` i T10.1 og tilsvarende for `client_field_definitions` i T10.2. Ingen DELETE-grant (inaktivering via is_active, ikke DELETE). Matcher T1's mønster for `core_compliance.data_field_definitions`. | T10.1 + T10.2 |
 
 ---
 
@@ -228,6 +238,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
   revoke all on table core_identity.clients from public, anon, service_role;
   grant select on table core_identity.clients to authenticated;
+  -- V5 (Codex V4 KRITISK): DML-GRANT obligatorisk så RLS-policy + session-var
+  -- kan tage over. Uden GRANT vil 'permission denied for table' ramme før policy.
+  -- Ingen DELETE-grant — inaktivering via is_active=false, ikke DELETE.
+  grant insert, update on table core_identity.clients to authenticated;
 
   -- SELECT-policy: has_permission-baseret. Read-RPC'er har deres egen permission-check.
   create policy clients_select on core_identity.clients
@@ -295,6 +309,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
   revoke all on table core_identity.client_field_definitions from public, anon, service_role;
   grant select on table core_identity.client_field_definitions to authenticated;
+  -- V5 (Codex V4 KRITISK): DML-GRANT obligatorisk for write-RPC-veje.
+  grant insert, update on table core_identity.client_field_definitions to authenticated;
 
   create policy client_field_definitions_select on core_identity.client_field_definitions
     for select to authenticated
@@ -1236,9 +1252,13 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V4 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V5 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
 
 16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V5-ændring ift. V4 (Codex runde 4 ACCEPT):
+
+- T10.1 + T10.2: tilføjet `grant insert, update on table ... to authenticated` — RLS-policy + session-var kan ikke virke før DML-GRANT er på plads. Ingen DELETE-grant (inaktivering via is_active).
 
 V4-ændring ift. V3 (Codex runde 3 ACCEPT):
 
@@ -1270,4 +1290,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 4.
+Klar til Codex plan-review-runde 5.
