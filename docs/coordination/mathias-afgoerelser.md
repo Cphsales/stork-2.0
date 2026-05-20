@@ -456,3 +456,36 @@ hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
   - `docs/coordination/rapport-historik/2026-05-20-trin-10-workflow-fund.md` — fund-katalog (30 fund) bevaret som læringskilde
 
 - **Konsekvens for fremtidige pakker:** Krav-dok-fase forventes at tage 25-50% mindre tid for Mellem-pakker. Lille-pakker har ingen krav-dok-overhead. Plan-fase er mere robust mod fabrikation pga. recon-først. Næste pakke der genoptager trin 10 vil køre den nye workflow direkte.
+
+### 2026-05-20 — Trin 10 scope-præcisering: migration og match-rolle ud
+
+- **Beslutning:** To dele fjernes fra master-plan §4 trin 10's leverance og
+  §1.8's klient-skabelon:
+  1. **Klient-data-migration fjernes fra trin 10.** Trin 10 leverer kun
+     klient-skabelonen som greenfield-fundament. Klient-data-migration
+     tages op senere som separat pakke når behovet konkret melder sig.
+
+  2. **Match-rolle-konceptet fjernes fra felt-definitioner.** Trin 10's
+     felt-definitioner har navn, type, påkrævet, persondata-niveau,
+     sortering, aktiv-tilstand. Ingen match-rolle som felt. Match-mekanik
+     designes der hvor data-indgange bygges, når UI og konkrete krav er
+     kendt.
+
+- **Begrundelse:** 2.0 er greenfield, ikke en kopi af 1.0. Migration-
+  leverancen i trin 10 ville være halv-leverance (kun discovery-script
+  uden adgang til 1.0) og misvisende ift. master-plan-mønstret hvor
+  migration-leverancer normalt dækker både master-data og felt-værdier.
+
+  Match-rolle-konceptet i §1.8 er en for tidlig design-beslutning. Match
+  handler om at genkende samme kunde/salg på tværs af kilder (Eesy API,
+  TDC Excel-upload osv.), men vi kender ikke data-indgang-UI'en endnu,
+  ved ikke om match-feltet skal vælges pr. indgang eller arves fra
+  klienten, og har ikke afklaret fejl-håndtering. At designe
+  match-mekanikken nu låser senere valg — det er præcis den fabrikation
+  V2-workflowet skal forhindre.
+
+- **Plan-reference:** Denne commit. Master-plan §1.8 og §4 trin 10
+  rettes som del af trin 10-arbejdet så migration-leverancen og
+  match-rolle-konceptet fjernes. Trin 10-krav-dok
+  (`docs/coordination/trin-10-krav-og-data.md`) refererer denne entry
+  som kilde for scope-grænsen.
