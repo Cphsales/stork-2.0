@@ -210,17 +210,16 @@ Erfaring fra trin 10-forsøget (2026-05-20): tidligere 15-trins flow med tre Cla
 
 **Sparring-på-tværs (uformelt sikkerhedsnet):** Mathias kan paste indhold fra én chat til en anden AI for verifikation hvis han fornemmer noget. Disciplinen er rammen, ikke isolation mellem aktører.
 
-### Approval-regel (strict)
+### Approval-regel (V2 strict)
 
-En plan er KUN approved når BÅDE Codex og Claude.ai-plan-reviewer har leveret approval.
+V2 simplificerer plan-approval. Plan-fase er Code + Codex (Claude.ai-plan-reviewer-rolle udgår per V2-justering 2026-05-20):
 
-- Kun Codex approver, Claude.ai-plan-reviewer har feedback → V<n+1>
-- Kun Claude.ai-plan-reviewer approver, Codex har feedback → V<n+1>
-- Begge approver → plan klar til Mathias-godkendelse (`qwerg`)
+- Codex har feedback → V<n+1>
+- Codex approver → plan klar til Mathias-godkendelse (`qwerg`)
 
 Code må IKKE begynde build før Mathias eksplicit har pastet `qwerg`.
 
-**Krav-dok-approval er separat:** Et krav-dok går ikke til Mathias-godkendelse før Claude.ai-krav-dok-reviewer har leveret approval på det. Hvis feedback: forfatter retter, leverer ny version, reviewer ser igen. Loop indtil approval.
+**Krav-dok-approval i V2:** Mathias er direkte validator i krav-dok-fasen (step 1). Ingen separat Claude.ai-krav-dok-reviewer-rolle. Forfatter skriver krav-dok via Filesystem-MCP, Mathias bekræfter direkte i chat. Spørgsmål-runden sker også i chat — ingen committed mellem-artefakter.
 
 ### Anti-glid: severity-disciplin
 
@@ -261,7 +260,7 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 
 **Plan-skabelon-sektion (obligatorisk):** "Oprydnings- og opdaterings-strategi" lister:
 
-- Filer der skal flyttes til `docs/coordination/arkiv/` (standard: krav-dok, plan, plan-feedback-filer, krav-dok-feedback-filer, forretningsspørgsmål-fil)
+- Filer der skal flyttes til `docs/coordination/arkiv/` (V2 standard: krav-dok, plan, plan-feedback-filer)
 - Filer der skal slettes (hvis pakken gør dem irrelevante)
 - Dokumenter der skal opdateres som konsekvens (aktiv-plan, seneste-rapport, mathias-afgoerelser, bygge-status, master-plan, teknisk-gaeld)
 - Reference-konsekvenser (grep-verifikation for omdøbte/flyttede stier)
@@ -278,15 +277,13 @@ Krav-dokumentet er **kontrakt**. Detaljer + brud-typer dokumenteret i `docs/stra
 
 ### Filnavngivning i `plan-feedback/`
 
-| Fil                                  | Skrevet af                  | Trigger-comment           |
-| ------------------------------------ | --------------------------- | ------------------------- |
-| `<pakke>-V<n>-codex.md`              | Codex                       | `codex-feedback`          |
-| `<pakke>-V<n>-claude-ai.md`          | Claude.ai (via Mathias)     | `claude-ai-feedback`      |
-| `<pakke>-V<n>-approved-codex.md`     | Codex                       | `plan-approved-codex`     |
-| `<pakke>-V<n>-approved-claude-ai.md` | Claude.ai (via Mathias)     | `plan-approved-claude-ai` |
-| `<pakke>-V<n>-blokeret.md`           | Code, Codex eller Claude.ai | `plan-blokeret`           |
+| Fil                              | Skrevet af       | Trigger-comment       |
+| -------------------------------- | ---------------- | --------------------- |
+| `<pakke>-V<n>-codex.md`          | Codex            | `codex-feedback`      |
+| `<pakke>-V<n>-approved-codex.md` | Codex            | `plan-approved-codex` |
+| `<pakke>-V<n>-blokeret.md`       | Code eller Codex | `plan-blokeret`       |
 
-**Bemærk:** codex-notify.yml-workflowet differentierer endnu ikke fuldt mellem `codex-feedback` og `claude-ai-feedback` (begge poster generisk "Codex-feedback"-comment pt.). Code's overvågnings-prompt kompenserer ved at læse filerne direkte i `plan-feedback/`. Workflow-opdatering er separat H-pakke når prioriteret.
+**V2-note:** Claude.ai-plan-reviewer-rolle udgået i V2 (jf. `mathias-afgoerelser.md` 2026-05-20). Plan-fase er Code + Codex; `<pakke>-V<n>-claude-ai.md` og `<pakke>-V<n>-approved-claude-ai.md` fra V5.3 produceres ikke længere. Eventuelle eksisterende sådanne filer på historiske pakke-branches arkiveres ved pakke-lukning som hidtil.
 
 ---
 

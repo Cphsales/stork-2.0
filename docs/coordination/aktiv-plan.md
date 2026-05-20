@@ -27,14 +27,13 @@ Workflow-spec V2 (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2") e
   `docs/coordination/arkiv/T9-foraeldet-2026-05-17/`. Ny T9-runde startes med
   nyt krav-dokument.
 
-Når ny plan starter:
+Når ny plan starter (V2 5-step flow per `mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2"):
 
-1. Step 0 (DATA-GRUNDLAG) hvis ikke-mikro: `scripts/data-grundlag.sh <pakke>`
-2. Step 1 (KRAV): Mathias + Claude.ai → krav-og-data-dok
-3. Step 2 (KRAV-AFKLAR): `scripts/krav-afklar.sh <krav-fil>`
-4. Step 3 (PLAN): Code + Codex iterativt → V1...Vn via `scripts/codex-review.sh`
-5. Step 4 (APPROVAL): Mathias + Claude.ai → via `scripts/claude-ai-prompt.sh`
-6. Step 5 (BUILD): Code bygger, Codex validerer
-7. Step 6 (SLUT-RAPPORT + LUK)
+1. Step 0 (PAKKE-SKALA-VURDERING): Mathias afgør Lille / Mellem / Stor (antal åbne forretnings-spørgsmål)
+2. Step 1 (KRAV-DOK-FASE): Claude.ai-forfatter ↔ Mathias direkte i chat — ingen separat reviewer-chat. Skippes for Lille-pakker.
+3. Step 2 (PLAN-FASE): Code + Codex iterativt → V1...Vn via `scripts/codex-review.sh`. Recon-først obligatorisk; Codex KRITISK om fabrikation = STOP.
+4. Step 3 (APPROVAL): Mathias paster `qwerg`
+5. Step 4 (BUILD): Code bygger, Codex validerer
+6. Step 5 (SLUT-RAPPORT + CLAUDE.AI-REVIEW + LUK): Claude.ai-reviewer (separat chat) verificerer mod krav-dok + plan
 
 Detaljeret reference: `docs/skabeloner/workflow-skabelon.md`.
