@@ -132,7 +132,7 @@ Krav-dok går ikke direkte til Mathias-commit. Den skal gennem **krav-dok-review
 3. Mathias starter ny chat med kontekst om reviewer-rolle for pakken
 4. Reviewer leverer enten approval-fil eller feedback-fil i `docs/coordination/krav-dok-feedback/`
 5. Hvis feedback: forfatter (denne chat) får besked fra Mathias, retter krav-dok, leverer ny version, loop
-6. Hvis approval: Mathias committer krav-dok + approval-fil til main, plan-fase starter
+6. Hvis approval: Mathias paster `qwerr` til Code → Code committer krav-dok + approval-fil til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: plan-fase starter. Se `docs/strategi/arbejdsmetode-og-repo-struktur.md` Aktør-rækkefølge trin 4 + `docs/coordination/overvaagning/code-overvaagning.md` "Krav-dok-review-status-tjek".
 
 ## Krav-dok-review-rolle — reviewer-rolle
 
