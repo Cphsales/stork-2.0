@@ -1,10 +1,27 @@
-# Trin 10 — Plan V6
+# Trin 10 — Plan V7
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V6 — klar til Codex plan-review-runde 6
+**Status:** V7 — klar til Codex plan-review-runde 7
 **Dato:** 2026-05-21
+
+---
+
+## Mathias-terminal-review V6 (LØS — V5.3 svar-typer)
+
+V6's grundlæggende design er bekræftet OK i terminal-review (no-dedup-markers, ON CONFLICT, tab-aware read-paths, T10.16-retning, begin/rollback for FK-test). Men review fandt 4 yderligere fund hvor V6 stadig ikke matchede krav-dok eller havde stale tekst.
+
+| #   | Severity | V6-step            | Fund                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | V7-svar                                                                                                                                                                                                                                                                                                                                                                                                            | Hvor i V7                     |
+| --- | -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
+| 1   | KRITISK  | T10.7 (FK)         | FK sikrer KUN eksistens, ikke at klient er aktiv. Krav-dok §2.5.2: "Inaktiv klient bliver stående for historik, men kan ikke vælges som ny team-tilknytning." T9-wrapper `client_node_place` (`20260518000007:140-170`) validerer permission + team-only, men ikke aktiv klient. T9-supplement `_apply_client_place` (`20260520000000:285-352`) validerer team-only + team-aktiv, men ikke klient-aktiv. Krav-dok §3.4 siger "valideres at klienten faktisk findes" — sammen med §2.5.2 betyder det: findes + aktiv. Plus: pending kan oprettes mens klient aktiv og applies efter deaktivering → apply-pathen SKAL også tjekke. | **ACCEPT.** Ny step T10.7b: CREATE OR REPLACE begge RPC'er med aktiv-check **og superadmin-bypass** (Mathias 2026-05-21: "superadmin må alt"). Wrapper-rækkefølge: has_permission → team-check → klient-eksistens (P0002) → klient-aktiv (22023 hvis ikke superadmin). Apply-handler: tilføj klient-eksistens (P0002) + klient-aktiv (P0001 hvis ikke superadmin) FØR INSERT/UPDATE. `client_node_close` rør IKKE. | T10.7b (ny) + T10.15          |
+| 2   | MELLEM   | Plan-tekst         | To stale referencer til "fjern client_id fra FK_COVERAGE_EXEMPTIONS" på linje 113 (Verificerede afhængigheder-tabel) + linje 142 (Scope-bullet). En implementeringsagent kan følge den forkerte del og lede efter ikke-eksisterende allowlist.                                                                                                                                                                                                                                                                                                                                                                                   | **ACCEPT.** Omformulér begge linjer til at matche T10.16's korrekte V6-retning (R7d-allowlist, ikke FK-allowlist).                                                                                                                                                                                                                                                                                                 | Linje 113 + 142               |
+| 3   | MELLEM   | T10.15             | Smoke-test dækker FK-eksistens + ON DELETE RESTRICT, men ikke det vigtigste forretningskrav (krav-dok §2.5.2: inaktiv klient kan ikke vælges).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | **ACCEPT.** Ny separat smoke-test `t10_client_active_check.sql` med 4 scenarier: aktiv place success, inaktiv place rejection (22023), pending-mens-aktiv + deaktiver + apply rejection (P0001), close virker på inaktiv klient.                                                                                                                                                                                   | T10.15 + ny test-fil          |
+| 4   | LAV      | T10.4 + Konklusion | "alle 9 kolonner" + "(9 kolonner)" på `client_field_definitions` — SQL har 10 rækker (id, key, display_name, field_type, required, pii_level, display_order, is_active, created_at, updated_at). Plus konklusion-historik siger T10.4 ON CONFLICT er "DEFER", men V6 gjorde det obligatorisk. Codex V1-fund-tabel siger stadig "DEFER → G-nummer".                                                                                                                                                                                                                                                                               | **ACCEPT.** Tekstrettelser: 9→10 på `client_field_definitions`; opdatér V1-fund-tabel (linje 68) og Konklusion-historik (linje 1335) til at reflektere V6's ACCEPT.                                                                                                                                                                                                                                                | T10.4 + linje 68 + linje 1335 |
+
+**Rettigheds-grænse (Mathias-bekræftet 2026-05-21):** Trin 10 introducerer ingen nye permission-koncepter ift. T9. Permission-modellen (`has_permission` resolver + areas/pages/tabs/grants) er etableret i T9; trin 10 udvider den med 2 nye pages under `org_structure`-area. Ingen klient-baseret adgangs-scope (det ville være senere pakke hvis besluttet). Aktiv-check (T10.7b) er en forretnings-**invariant**, ikke en permission-check — den håndhæves uafhængigt af caller-identitet.
+
+**Stamme/rådata-disciplin (Mathias-bekræftet 2026-05-21):** Krav-dok §2.5.1 + §2.1.1: klient-rækker (stammen) bevares evigt; rå data (salg/calls) følger klienten med dato-binding. Min plan respekterer dette: ingen DELETE-policy på `core_identity.clients`, ingen anonymisering, immutable `key`/`pii_level` på felt-definitioner, audit-trigger på alle write-veje. Lovlige UPDATE'er (name, fields, is_active, logo) bevarer audit-spor i `audit_log`.
 
 ---
 
@@ -60,12 +77,12 @@ Codex runde 2 (review-fil: `docs/coordination/codex-reviews/2026-05-20-trin-10-r
 
 Codex runde 1 (review-fil: `docs/coordination/codex-reviews/2026-05-20-trin-10-runde-1.md` på `claude/trin-10-plan-v3`) leverede 4 fund.
 
-| #   | Severity              | V1-step | Fund                                                                                                                                                                      | V2-svar                                                                                                                                                                                               | Hvor i V2             |
-| --- | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| 1   | KRITISK               | T10.1   | `clients.fields` mangler `CHECK (jsonb_typeof = 'object')` — scalar/array kan lagre uden audit-PII-walking.                                                               | **ACCEPT.** Tilføj CHECK på T10.1. Smoke-test i T10.15 udvides.                                                                                                                                       | T10.1 + T10.15        |
-| 2   | KRITISK-SIKKERHEDSHUL | T10.5   | audit_filter_values clients-special-case filtrerer `is_active = true` → hvis felt deaktiveres, hashes værdier i eksisterende fields ikke længere. Datalæk i audit-flowet. | **ACCEPT.** Fjern `is_active = true`-filter fra audit_filter_values clients-special-case. Hash alle direct-PII keys uanset is_active. Validation-trigger kan stadig behandle inactive som ukendt key. | T10.5                 |
-| 3   | MELLEM                | T10.15  | Smoke-tests dækker ukendt key lenient/strict, men ikke non-object `fields`.                                                                                               | **ACCEPT.** Tilføj test for CHECK-violation ved non-object.                                                                                                                                           | T10.15                |
-| 4   | G-NUMMER-KANDIDAT     | T10.4   | INSERT mangler `ON CONFLICT do nothing` (T9-classify bruger det). Ikke blocker for greenfield.                                                                            | **DEFER → G-nummer.** Greenfield-migration kører én gang; idempotens ikke nødvendig nu. Registreres som G-nummer for senere ensretning.                                                               | Optimerings-hypoteser |
+| #   | Severity              | V1-step | Fund                                                                                                                                                                      | V2-svar                                                                                                                                                                                                                                                                             | Hvor i V2      |
+| --- | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | KRITISK               | T10.1   | `clients.fields` mangler `CHECK (jsonb_typeof = 'object')` — scalar/array kan lagre uden audit-PII-walking.                                                               | **ACCEPT.** Tilføj CHECK på T10.1. Smoke-test i T10.15 udvides.                                                                                                                                                                                                                     | T10.1 + T10.15 |
+| 2   | KRITISK-SIKKERHEDSHUL | T10.5   | audit_filter_values clients-special-case filtrerer `is_active = true` → hvis felt deaktiveres, hashes værdier i eksisterende fields ikke længere. Datalæk i audit-flowet. | **ACCEPT.** Fjern `is_active = true`-filter fra audit_filter_values clients-special-case. Hash alle direct-PII keys uanset is_active. Validation-trigger kan stadig behandle inactive som ukendt key.                                                                               | T10.5          |
+| 3   | MELLEM                | T10.15  | Smoke-tests dækker ukendt key lenient/strict, men ikke non-object `fields`.                                                                                               | **ACCEPT.** Tilføj test for CHECK-violation ved non-object.                                                                                                                                                                                                                         | T10.15         |
+| 4   | G-NUMMER-KANDIDAT     | T10.4   | INSERT mangler `ON CONFLICT do nothing` (T9-classify bruger det). Ikke blocker for greenfield.                                                                            | **V2-svar: DEFER → G-nummer** (greenfield-engangsmigration). **V6 OVERSKRIVER: ACCEPT** — fitness-check `migration-on-conflict-discipline` håndhæver det på `core_compliance.data_field_definitions`. Plan har nu `ON CONFLICT (table_schema, table_name, column_name) DO NOTHING`. | T10.4          |
 
 ---
 
@@ -110,7 +127,7 @@ Recon-først per `docs/coordination/overvaagning/code-overvaagning.md`. Hver på
 | T9-smoke-test `t9_public_wrapper_rpcs.sql` T2                                                          | `supabase/tests/smoke/t9_public_wrapper_rpcs.sql:83-93`                                                        | Forventer 22023 fra team-only pre-check FØR FK valideres; ikke berørt.                                                                                                                                                                                                                                                                                                                                  |
 | T9-mønster for ny tabel i core_identity                                                                | `supabase/migrations/20260518000001_t9_org_nodes.sql:25-41`                                                    | `create table` + `enable rls` + `force rls` + `revoke all from public/anon/service_role` + `grant select to authenticated` + `create policy *_select` + `create trigger *_audit AFTER INSERT/UPDATE/DELETE EXECUTE FUNCTION core_compliance.stork_audit()`.                                                                                                                                             |
 | T9 RPC-mønster                                                                                         | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:9-44`                                           | SECURITY DEFINER + `set search_path = ''` + `if not has_permission(...) then raise 42501` + `set_config('stork.source_type'/'change_reason')` + body + `revoke execute from public, anon` + `grant execute to authenticated`.                                                                                                                                                                           |
-| FK_COVERAGE_EXEMPTIONS i fitness-script                                                                | `scripts/fitness.mjs` (eksisterer; konkret allowlist-indhold verificeres ved build)                            | `client_id` på `client_node_placements` står i allowlist; fjernes i trin 10 efter FK tilføjet.                                                                                                                                                                                                                                                                                                          |
+| `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS` i fitness-script                                                   | `scripts/fitness.mjs:149-154`                                                                                  | Allowlist for funktioner der bruger `is_active = true` filter uden tilsvarende `status = 'active'`-check. Trin 10 tilføjer `core_identity.client_field_definitions_list` (T10.16) fordi `client_field_definitions` har kun is_active, ingen status-kolonne. **FK_COVERAGE_EXEMPTIONS findes IKKE** — master-plan §3.19 ikke implementeret (V6-fund #4).                                                 |
 
 ---
 
@@ -139,7 +156,7 @@ Hvis fund under review ikke bringer os tættere på dette: G-nummer, ikke blocke
 - `clients_validate_fields`-trigger (LENIENT-default + strict via session-var)
 - Seed permissions i grant-modellen (`permission_pages` + `permission_tabs` + `role_permission_grants` under `org_structure`-area)
 - Master-plan §1.8 + §4 trin 10 rettelser (krav-dok §7)
-- Fitness-script-opdatering (fjern client_id fra FK_COVERAGE_EXEMPTIONS)
+- Fitness-script-opdatering (tilføj `client_field_definitions_list` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`)
 - 5 smoke-tests
 
 **IKKE i scope:**
@@ -207,6 +224,10 @@ Hvis fund under review ikke bringer os tættere på dette: G-nummer, ikke blocke
 - **Afgørelse 6:** "Kør V6 men ret op på fejl og lav grundig validering" (chat-validering 2026-05-21 efter selvstændig terminal-review fandt 3 KRITISK).
   - **Begrundelse:** Codex-automation gav APPROVAL i runde 5, men manuel terminal-review afslørede fitness-script-håndhævelse (dedup-key + on-conflict) og has_permission-tab-resolver-detalje som automation missede. Code skal validere planen mod faktisk kode, ikke kun stole på Codex-automation.
   - **Plan-konsekvens:** V6 implementerer alle 3 terminal-fund + 3 yderligere fund fra Code's egen grundige validering (FK_COVERAGE-fabrikation, R7d-allowlist, FK-test TX-wrap). Recon-først-disciplin udvidet: ikke kun migrationer, men også scripts/fitness.mjs skal læses for at fange håndhævelses-regler.
+
+- **Afgørelse 7:** Krav-dok §2.5.2 forretnings-invariant skal håndhæves i kode (chat-validering 2026-05-21 efter terminal-review fandt FK uden aktiv-check). Superadmin bypasser aktiv-check ("superadmin må alt").
+  - **Begrundelse:** FK garanterer kun eksistens, ikke aktivitet. Pending-change-mekanismen tillader pending oprettet mens aktiv, applied efter deaktivering. Begge skal håndhæve aktiv-invariant. Superadmin-bypass matcher vision-princip 2 og T9-supplement's policy-mønster (`is_admin() OR ...`).
+  - **Plan-konsekvens:** T10.7b CREATE OR REPLACE både `client_node_place` (wrapper) og `_apply_client_place` (apply-handler) med aktiv-check og `is_admin()`-bypass. `client_node_close` rør IKKE — lukning er legitim ved deaktivering. Eksistens-check (P0002) bypasses IKKE for superadmin (FK håndhæver alligevel).
 
 ---
 
@@ -413,7 +434,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 ### T10.4 — Klassifikation i `core_compliance.data_field_definitions`
 
 - **Type:** migration (INSERT i data_field_definitions)
-- **Hvad:** Tilføj klassifikation for alle 9 kolonner på `core_identity.clients` + alle 9 kolonner på `core_identity.client_field_definitions`.
+- **Hvad:** Tilføj klassifikation for alle 9 kolonner på `core_identity.clients` + alle 10 kolonner på `core_identity.client_field_definitions`.
 - **Eksakt indhold:**
 
   ```sql
@@ -445,7 +466,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
       'permanent', null, null, 'INSERT-tid'),
     ('core_identity', 'clients', 'updated_at',        'master_data', 'none',
       'permanent', null, null, 'Sidste mutation'),
-    -- core_identity.client_field_definitions (9 kolonner)
+    -- core_identity.client_field_definitions (10 kolonner)
     ('core_identity', 'client_field_definitions', 'id',            'konfiguration', 'none',
       'permanent', null, null, 'Field-definition PK'),
     ('core_identity', 'client_field_definitions', 'key',           'konfiguration', 'none',
@@ -701,6 +722,156 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Afhængigheder:** T10.1 (clients-tabel skal eksistere)
 - **Migration-fil:** N/A (test-fil-ændring)
 - **Risiko:** lav.
+
+### T10.7b — CREATE OR REPLACE `client_node_place` + `_apply_client_place` med klient-aktiv-check (V7 — Mathias-terminal-V6 #1)
+
+- **Type:** migration (CREATE OR REPLACE FUNCTION × 2)
+- **Hvad:** Krav-dok §2.5.2 punkt 2 ("Inaktiv klient bliver stående for historik, men kan ikke vælges som ny team-tilknytning") + §3.4 ("valideres at klienten faktisk findes") håndhæves via wrapper og apply-handler. FK fra T10.7 garanterer eksistens, men kun aktiv-check garanterer at deaktiverede klienter ikke kan placeres. Apply-pathen tjekker også fordi pending kan oprettes mens klienten er aktiv og applies efter deaktivering.
+- **Designvalg:**
+  - **Wrapper-rækkefølge:** `has_permission` → team-only pre-check → klient-eksistens (P0002) → klient-aktiv (22023, **superadmin-bypass**) → `pending_change_request`. Eksisterende-check kommer FØR aktiv-check så fejl-meddelelsen er informativ. Team-check kommer FØR klient-check så T9-test T2's `gen_random_uuid` fejler i team-check (uændret 22023-semantik).
+  - **Apply-handler-rækkefølge:** payload-validation → team-aktiv-check (uændret fra T9-supplement) → klient-eksistens (P0002) → klient-aktiv (P0001, **superadmin-bypass**) → INSERT/UPDATE. Apply-handler bruger P0001 frem for 22023 fordi invariant-brud her er server-state-race-condition, ikke caller-input-fejl.
+  - **Superadmin-bypass på aktiv-check:** Mathias-afgørelse 2026-05-21: "superadmin må alt". Matcher T9-supplements policy-mønster (`is_admin() OR ...`). Vision-princip 2: superadmin er eneste hardkodede rolle og bypasser invariants. Eksistens-check (P0002) bypasses IKKE — FK håndhæver under INSERT alligevel, og superadmin skal ikke kunne placere ikke-eksisterende klient.
+  - **`client_node_close` rør IKKE:** Lukning af placement ved klient-deaktivering er legitim forretnings-flow. Aktiv-check her ville blokere det.
+- **Eksakt indhold:**
+
+  ```sql
+  -- Wrapper: tilføj klient-aktiv-check efter team-check
+  create or replace function core_identity.client_node_place(
+    p_client_id uuid,
+    p_node_id uuid,
+    p_effective_from date
+  ) returns uuid language plpgsql security definer set search_path = ''
+  as $$
+  declare
+    v_request_id uuid;
+    v_client_active boolean;
+  begin
+    if not core_identity.has_permission('client_placements', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    -- Pre-check: node_id skal være team (uændret fra T9).
+    if not exists (
+      select 1 from core_identity.org_node_versions
+      where node_id = p_node_id and node_type = 'team' and is_active = true
+        and effective_from <= current_date
+        and (effective_to is null or effective_to > current_date)
+    ) then
+      raise exception 'client_placement_node_not_team_or_inactive: %', p_node_id using errcode = '22023';
+    end if;
+    -- V7/Trin 10 (krav-dok §3.4 + §2.5.2): klient skal findes og være aktiv.
+    select is_active into v_client_active
+      from core_identity.clients where id = p_client_id;
+    if not found then
+      raise exception 'client_not_found: %', p_client_id using errcode = 'P0002';
+    end if;
+    if v_client_active = false and not core_identity.is_admin() then
+      raise exception 'client_inactive: % er sat is_active=false (krav-dok §2.5.2: inaktiv klient kan ikke vælges som ny team-tilknytning)', p_client_id
+        using errcode = '22023';
+    end if;
+    v_request_id := core_identity.pending_change_request(
+      'client_place', p_client_id,
+      jsonb_build_object(
+        'client_id', p_client_id::text,
+        'node_id', p_node_id::text,
+        'effective_from', p_effective_from::text
+      ),
+      p_effective_from
+    );
+    return v_request_id;
+  end; $$;
+
+  revoke execute on function core_identity.client_node_place(uuid, uuid, date) from public, anon;
+
+  -- Apply-handler: tilføj klient-eksistens + aktiv-check FØR INSERT/UPDATE
+  create or replace function core_identity._apply_client_place(
+    p_payload jsonb,
+    p_pending_change_id uuid
+  ) returns void
+  language plpgsql security definer set search_path = ''
+  as $$
+  declare
+    v_client_id uuid;
+    v_node_id uuid;
+    v_effective_from date;
+    v_client_active boolean;
+    v_active record;
+  begin
+    v_client_id := (p_payload->>'client_id')::uuid;
+    v_node_id := (p_payload->>'node_id')::uuid;
+    v_effective_from := (p_payload->>'effective_from')::date;
+    if v_client_id is null or v_node_id is null or v_effective_from is null then
+      raise exception 'invalid_payload: client_id + node_id + effective_from required'
+        using errcode = '22023';
+    end if;
+
+    -- Team-aktiv-check (uændret fra T9-supplement).
+    if not exists (
+      select 1 from core_identity.org_node_versions
+      where node_id = v_node_id and node_type = 'team' and is_active = true
+        and effective_from <= v_effective_from
+        and (effective_to is null or effective_to > v_effective_from)
+    ) then
+      raise exception 'client_placement_requires_active_team: %', v_node_id
+        using errcode = 'P0001';
+    end if;
+
+    -- V7/Trin 10 (krav-dok §3.4 + §2.5.2): klient skal findes og være aktiv.
+    -- Fanger pending oprettet mens aktiv, applied efter deaktivering.
+    select is_active into v_client_active
+      from core_identity.clients where id = v_client_id;
+    if not found then
+      raise exception 'apply_client_place: client_not_found: %', v_client_id using errcode = 'P0002';
+    end if;
+    if v_client_active = false and not core_identity.is_admin() then
+      raise exception 'apply_client_place: client_inactive: % (krav-dok §2.5.2)', v_client_id
+        using errcode = 'P0001';
+    end if;
+
+    -- Resten af apply-handler-logikken er uændret fra T9-supplement
+    -- (20260520000000_t9_supplement.sql:321-350): find aktiv placement,
+    -- enten INSERT ny, UPDATE eksisterende eller split placement-række.
+    select * into v_active
+    from core_identity.client_node_placements
+    where client_id = v_client_id
+      and effective_from <= v_effective_from
+      and (effective_to is null or effective_to > v_effective_from)
+    limit 1;
+
+    if not found then
+      insert into core_identity.client_node_placements
+        (client_id, node_id, effective_from, effective_to, created_by_pending_change_id)
+      select v_client_id, v_node_id, v_effective_from,
+        (select min(effective_from) from core_identity.client_node_placements
+         where client_id = v_client_id and effective_from > v_effective_from),
+        p_pending_change_id;
+    elsif v_active.effective_from = v_effective_from then
+      update core_identity.client_node_placements
+      set node_id = v_node_id,
+          created_by_pending_change_id = coalesce(p_pending_change_id, created_by_pending_change_id),
+          updated_at = now()
+      where id = v_active.id;
+    else
+      update core_identity.client_node_placements
+      set effective_to = v_effective_from, updated_at = now()
+      where id = v_active.id;
+      insert into core_identity.client_node_placements
+        (client_id, node_id, effective_from, effective_to, created_by_pending_change_id)
+      values
+        (v_client_id, v_node_id, v_effective_from, v_active.effective_to, p_pending_change_id);
+    end if;
+  end; $$;
+
+  revoke execute on function core_identity._apply_client_place(jsonb, uuid) from public, anon, authenticated;
+  ```
+
+- **Impact-analyse for eksisterende T9-tests:**
+  - `t9_placements.sql` T5 + T7 + T9 (med fixture-seedede klienter fra T10.7a, default `is_active=true`): aktiv-check passerer. ✓
+  - `t9_placements.sql` T6 (`_apply_client_place` på department + `gen_random_uuid`-klient): team-check fejler først → uændret semantik.
+  - `t9_backdated_historical_traversal.sql` BLOCK 3: fixture-klienter er aktive. ✓
+  - `t9_public_wrapper_rpcs.sql` T2 (`gen_random_uuid` + department): team-check fejler først → uændret 22023. ✓
+- **Afhængigheder:** T10.1 (clients-tabel + is_active-kolonne), T10.7 (FK)
+- **Migration-fil:** `supabase/migrations/<ts>_t10_client_active_check.sql`
+- **Risiko:** lav. Rollback: CREATE OR REPLACE med T9-supplements oprindelige definitioner.
 
 ### T10.8 — `client_upsert` RPC (uden logo-parametre)
 
@@ -1131,21 +1302,22 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Migration-fil:** N/A (docs)
 - **Risiko:** lav. Rollback: git revert.
 
-### T10.15 — Smoke-tests (5 stk)
+### T10.15 — Smoke-tests (6 stk i V7)
 
 - **Type:** test-filer
-- **Hvad:** Fem smoke-tests dækker centrale flows.
+- **Hvad:** Seks smoke-tests dækker centrale flows. V7 tilføjer `t10_client_active_check.sql` for T10.7b-leverancen.
 - **Test-filer:**
 
-  | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-  | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                           |
-  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres.                                       |
-  | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                               |
-  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                 |
-  | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false. |
+  | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+  | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres.                                                                                                                                                                                                                                                                                                                                     |
+  | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                                                                                                                                                                                                                                                                                                               |
+  | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false.                                                                                                                                                                                                                                                                                               |
+  | `supabase/tests/smoke/t10_client_active_check.sql` (V7)  | T1: opret aktiv klient → `client_node_place` succeeds → pending oprettes → approve+apply succeeds → placement findes. T2: `client_set_active(client_id, false)` → ny `client_node_place` på samme klient + nyt team → forvent **22023 `client_inactive`**. T3 (apply-path-scenarie Mathias #1): opret pending mens klient aktiv → deaktiver klient → approve+apply → forvent **P0001 `apply_client_place: client_inactive`**. T4: `client_node_close` på inaktiv klient → success (ingen aktiv-check her). **T5 superadmin-bypass (Mathias 2026-05-21):** med superadmin-auth, place på inaktiv klient → success (bypass på aktiv-check, ikke på eksistens-check). Test SKAL være `begin;` + `rollback;`-wrapped (`client_node_placements` på TX_WRAP_REQUIRED). |
 
-- **Afhængigheder:** alle migrations i T10.1-T10.13
+- **Afhængigheder:** alle migrations i T10.1-T10.13 + T10.7b for active_check-test
 - **Migration-fil:** test-filer
 - **Risiko:** lav.
 
@@ -1187,13 +1359,14 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
 ## Test-konsekvens
 
-| Test-fil                            | Hvad verificeres                                                                                           | Forventet status |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------- |
-| `t10_client_lifecycle.sql`          | client_upsert + client_set_active + client_get + has_permission-spærring + is_active bevarer øvrige felter | grøn             |
-| `t10_client_field_definitions.sql`  | client_field_definition_upsert (uden p_match_role) + list-RPC + audit-PII-hashing for fields-keys          | grøn             |
-| `t10_client_logo.sql`               | logo set/clear/get + assert client_upsert bevarer logo + consistency-CHECK + set fejler ved NULL i ét felt | grøn             |
-| `t10_client_node_placements_fk.sql` | FK afviser ikke-eksisterende client_id; ON DELETE RESTRICT                                                 | grøn             |
-| `t10_clients_validate_fields.sql`   | LENIENT-default WARN; strict-mode raise                                                                    | grøn             |
+| Test-fil                            | Hvad verificeres                                                                                                      | Forventet status |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `t10_client_lifecycle.sql`          | client_upsert + client_set_active + client_get + has_permission-spærring + is_active bevarer øvrige felter            | grøn             |
+| `t10_client_field_definitions.sql`  | client_field_definition_upsert (uden p_match_role) + list-RPC + audit-PII-hashing for fields-keys                     | grøn             |
+| `t10_client_logo.sql`               | logo set/clear/get + assert client_upsert bevarer logo + consistency-CHECK + set fejler ved NULL i ét felt            | grøn             |
+| `t10_client_node_placements_fk.sql` | FK afviser ikke-eksisterende client_id; ON DELETE RESTRICT                                                            | grøn             |
+| `t10_clients_validate_fields.sql`   | LENIENT-default WARN; strict-mode raise                                                                               | grøn             |
+| `t10_client_active_check.sql` (V7)  | Aktiv place success + inaktiv place 22023 + pending+deaktiver+apply P0001 + close inaktiv success + superadmin-bypass | grøn             |
 
 Eksisterende tests opdateret i T10.7a:
 
@@ -1300,9 +1473,16 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V6 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V7 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2). Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 17 steps + 1 sub-step skaber alle artefakter fra bunden.
 
-16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+17 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V7-ændringer ift. V6 (Mathias-terminal-review V6 + 2026-05-21 superadmin-rettelse):
+
+- **Ny T10.7b:** CREATE OR REPLACE `client_node_place` + `_apply_client_place` med klient-aktiv-check og **superadmin-bypass**. Krav-dok §2.5.2 håndhæves i både wrapper og apply-path (apply fanger pending oprettet mens aktiv, applied efter deaktivering).
+- T10.15: ny smoke-test `t10_client_active_check.sql` (5 scenarier inkl. superadmin-bypass).
+- Stale-fixes: linje 113 (Verificerede afhængigheder) + linje 142 (Scope) opdateret til at matche T10.16's R7d-allowlist-retning. Linje 68 (V1-fund-tabel) + linje 1335 (Konklusion-historik) markeret som "V6 OVERSKRIVER".
+- T10.4 + Konklusion: "9 kolonner" på `client_field_definitions` rettet til "10 kolonner" (SQL var korrekt; tekst-fejl).
 
 V6-ændringer ift. V5 (Mathias-terminal-review + Code grundig validering):
 
@@ -1332,7 +1512,7 @@ V2-ændringer ift. V1 (Codex runde 1 ACCEPT på 3 fund + DEFER på 1):
 - T10.1: tilføjet `CHECK (jsonb_typeof(fields) = 'object')` — forhindrer scalar/array i fields-kolonnen (Codex KRITISK #1)
 - T10.5: fjernet `is_active = true`-filter fra audit_filter_values clients-special-case — alle direct-PII keys hashes uanset is_active for at undgå datalæk ved felt-deaktivering (Codex KRITISK-SIKKERHEDSHUL #2)
 - T10.15: smoke-test for non-object fields-reject + audit-PII-hashing efter is_active=false (Codex MELLEM #3 + V2-supplement til #2)
-- T10.4 ON CONFLICT: DEFER → G-nummer (greenfield-engangsmigration)
+- T10.4 ON CONFLICT: DEFER → G-nummer (greenfield-engangsmigration). **V6 OVERSKRIVER: ACCEPT** — fitness håndhæver, ON CONFLICT er nu obligatorisk i T10.4.
 
 Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen):
 
@@ -1346,4 +1526,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 6.
+Klar til Codex plan-review-runde 7.
