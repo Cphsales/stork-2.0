@@ -213,7 +213,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 4. **Opdatér** `docs/coordination/seneste-rapport.md` → peger på ny rapport
 5. **Arkivér plan-filer** til `docs/coordination/arkiv/`:
    - Plan-fil
-   - Alle plan-feedback-filer (V<n>-blokeret, V<n>-codex, V<n>-claude-ai, approved-\*)
+   - Alle plan-feedback-filer (V<n>-blokeret, V<n>-codex, approved-codex)
    - Flow-fejl-filer hvis nogen
 6. **Ryd aktiv-plan.md** → ingen aktiv plan
 7. **Commit + push + opret PR**: `<pakke> slut: rapport + plan-arkivering`

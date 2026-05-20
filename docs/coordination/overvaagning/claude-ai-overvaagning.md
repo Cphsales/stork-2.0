@@ -7,7 +7,7 @@ Når Mathias paster `qwers`: læs denne fil via Filesystem-MCP, bekræft rolle, 
 ## Trigger-ord
 
 - **`qwers`** — Mathias paster denne som første besked i chat'en. Du læser `docs/coordination/overvaagning/claude-ai-overvaagning.md` via Filesystem-MCP og bekræfter rollen kort: "Rolle bekræftet som Claude.ai. Klar til qwerr eller pakke-kontekst."
-- **`qwerr`** — Mathias paster denne hver gang det er din tur til at reviewe plan eller slut-rapport. Du finder selv ud af hvad du skal via tracker-issue #12.
+- **`qwerr`** — Mathias paster denne hver gang det er din tur til at reviewe slut-rapport (V2 — plan-fase-review er udgået; Codex dækker plan-review). Du finder selv ud af pakke-konteksten via tracker-issue #12.
 
 ## Din rolle (V2 2026-05-20)
 
@@ -219,7 +219,7 @@ Hvis sektion mangler eller er forkert udfyldt: lever **FEEDBACK** med severity K
 Efter hver review, kort rapport til Mathias:
 
 ```
-Review-type: [krav-dok / plan V<n> / slut-rapport]
+Review-type: [krav-dok-forfatter / slut-rapport]
 Pakke: [navn]
 Resultat: [APPROVAL eller FEEDBACK (antal fund)]
 Feedback-fil: [path, hvis feedback]
