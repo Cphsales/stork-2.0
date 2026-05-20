@@ -806,8 +806,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   $$;
   comment on function core_identity.is_admin_by_employee_id(uuid) is
     'V10/Trin 10: admin-tjek via employee_id (ikke auth.uid). Anvendes af apply-handlers der kører i cron-context uden auth.';
-  revoke all on function core_identity.is_admin_by_employee_id(uuid) from public, anon;
-  grant execute on function core_identity.is_admin_by_employee_id(uuid) to authenticated;
+  -- Grant-pattern matcher is_admin() (T1-helpers-stubs:50): authenticated + anon + service_role.
+  -- Service_role-grant er for cron-vejen (pending_changes_apply_due-job uden auth-context).
+  revoke all on function core_identity.is_admin_by_employee_id(uuid) from public;
+  grant execute on function core_identity.is_admin_by_employee_id(uuid) to authenticated, anon, service_role;
 
   -- Wrapper: tilføj klient-aktiv-check efter team-check
   create or replace function core_identity.client_node_place(
