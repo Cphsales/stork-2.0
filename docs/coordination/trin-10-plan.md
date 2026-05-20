@@ -1,10 +1,22 @@
-# Trin 10 — Plan V9
+# Trin 10 — Plan V10
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V9 — klar til Codex plan-review-runde 9
+**Status:** V10 — klar til Codex plan-review-runde 10
 **Dato:** 2026-05-21
+
+---
+
+## Codex runde 9 (LØS — V5.3 svar-typer)
+
+Codex runde 9 fandt 1 TEKNISK-BLOKERING: `_apply_client_place` bruger `is_admin()` til superadmin-bypass, men `auth.uid()` er NULL i cron-apply-context. Superadmin's pending kan fejle ved cron-apply hvis klient deaktiveres mellem pending og apply.
+
+| #   | Severity          | V9-step              | Fund                                                                                                                                                                                                     | V10-svar                                                                                                                                                                                                                                                                                                                                                             | Hvor i V10                      |
+| --- | ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 1   | TEKNISK-BLOKERING | T10.7b apply-handler | `is_admin()` returnerer false i cron-context (ingen `auth.uid()`). Wrapper-bypass evalueres mod current user, apply-bypass mod cron-rolle → inkonsistent. Superadmin's pending kan fejle ved cron-apply. | **ACCEPT (option A).** Tilføj ny helper `core_identity.is_admin_by_employee_id(p_employee_id uuid) returns boolean` der tjekker employee-rolle direkte (ikke `auth.uid()`). Apply-handler henter `requested_by` + `approved_by` fra pending_changes-rækken og kalder helperen. Bypass hvis EITHER er superadmin. Wrapper beholder `is_admin()` (altid auth-context). | T10.7b udvidet + T10.15 udvidet |
+
+**Design-begrundelse:** Wrapper kører altid med auth-context (direct user-call) → `is_admin()` virker. Apply-handler kører i to contexts: direct admin-call OG cron-call (ingen auth). For konsistens skal apply-bypass være baseret på pending-rækkens employee-historie. "Bypass hvis EITHER requester eller approver er superadmin" matcher "superadmin må alt"-reglen — superadmin's involvering på enten oprettelses- eller godkendelses-side legitimerer apply.
 
 ---
 
@@ -766,13 +778,37 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Type:** migration (CREATE OR REPLACE FUNCTION × 2)
 - **Hvad:** Krav-dok §2.5.2 punkt 2 ("Inaktiv klient bliver stående for historik, men kan ikke vælges som ny team-tilknytning") + §3.4 ("valideres at klienten faktisk findes") håndhæves via wrapper og apply-handler. FK fra T10.7 garanterer eksistens, men kun aktiv-check garanterer at deaktiverede klienter ikke kan placeres. Apply-pathen tjekker også fordi pending kan oprettes mens klienten er aktiv og applies efter deaktivering.
 - **Designvalg:**
-  - **Wrapper-rækkefølge:** `has_permission` → team-only pre-check → klient-eksistens (P0002) → klient-aktiv (22023, **superadmin-bypass**) → `pending_change_request`. Eksisterende-check kommer FØR aktiv-check så fejl-meddelelsen er informativ. Team-check kommer FØR klient-check så T9-test T2's `gen_random_uuid` fejler i team-check (uændret 22023-semantik).
-  - **Apply-handler-rækkefølge:** payload-validation → team-aktiv-check (uændret fra T9-supplement) → klient-eksistens (P0002) → klient-aktiv (P0001, **superadmin-bypass**) → INSERT/UPDATE. Apply-handler bruger P0001 frem for 22023 fordi invariant-brud her er server-state-race-condition, ikke caller-input-fejl.
-  - **Superadmin-bypass på aktiv-check:** Mathias-afgørelse 2026-05-21: "superadmin må alt". Matcher T9-supplements policy-mønster (`is_admin() OR ...`). Vision-princip 2: superadmin er eneste hardkodede rolle og bypasser invariants. Eksistens-check (P0002) bypasses IKKE — FK håndhæver under INSERT alligevel, og superadmin skal ikke kunne placere ikke-eksisterende klient.
+  - **Wrapper-rækkefølge:** `has_permission` → team-only pre-check → klient-eksistens (P0002) → klient-aktiv (22023, **superadmin-bypass via `is_admin()`**) → `pending_change_request`. Eksisterende-check kommer FØR aktiv-check så fejl-meddelelsen er informativ. Team-check kommer FØR klient-check så T9-test T2's `gen_random_uuid` fejler i team-check (uændret 22023-semantik).
+  - **Apply-handler-rækkefølge:** payload-validation → team-aktiv-check (uændret fra T9-supplement) → klient-eksistens (P0002) → **employee-baseret admin-tjek** (via `is_admin_by_employee_id(requested_by)` OR `is_admin_by_employee_id(approved_by)`) → klient-aktiv (P0001, bypass hvis admin involveret) → INSERT/UPDATE. **V10 (Codex runde 9):** apply bruger employee-id-baseret check (ikke `auth.uid()`) for at fungere konsistent i cron-context.
+  - **Superadmin-bypass-design:** Wrapper kører altid med auth-context → `is_admin()` virker. Apply kører i to contexts: direct admin-call OG cron-apply (`pending_changes_apply_due` job uden auth). For konsistens er apply-bypass baseret på pending-rækkens employee-historie (requested_by + approved_by). "Bypass hvis EITHER er superadmin" matcher "superadmin må alt"-reglen (Mathias 2026-05-21) på tværs af execution-contexts. Eksistens-check (P0002) bypasses IKKE — FK håndhæver alligevel.
   - **`client_node_close` rør IKKE:** Lukning af placement ved klient-deaktivering er legitim forretnings-flow. Aktiv-check her ville blokere det.
 - **Eksakt indhold:**
 
   ```sql
+  -- V10 (Codex runde 9 TEKNISK-BLOKERING): ny helper der tjekker admin-status
+  -- via employee_id direkte (ikke auth.uid()). Apply-handler bruger den for
+  -- konsistens i cron-apply-context hvor auth.uid() er NULL.
+  create or replace function core_identity.is_admin_by_employee_id(p_employee_id uuid)
+  returns boolean
+  language sql stable security invoker set search_path = ''
+  as $$
+    select exists (
+      select 1
+      from core_identity.employees e
+      join core_identity.role_page_permissions p on p.role_id = e.role_id
+      where e.id = p_employee_id
+        and core_identity.is_active_employee_state(e.anonymized_at, e.termination_date)
+        and p.page_key = 'system'
+        and p.tab_key = 'manage'
+        and p.scope = 'all'
+        and p.can_edit = true
+    );
+  $$;
+  comment on function core_identity.is_admin_by_employee_id(uuid) is
+    'V10/Trin 10: admin-tjek via employee_id (ikke auth.uid). Anvendes af apply-handlers der kører i cron-context uden auth.';
+  revoke all on function core_identity.is_admin_by_employee_id(uuid) from public, anon;
+  grant execute on function core_identity.is_admin_by_employee_id(uuid) to authenticated;
+
   -- Wrapper: tilføj klient-aktiv-check efter team-check
   create or replace function core_identity.client_node_place(
     p_client_id uuid,
@@ -865,6 +901,9 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     v_effective_from date;
     v_client_active boolean;
     v_active record;
+    v_requested_by uuid;
+    v_approved_by uuid;
+    v_admin_involved boolean;
   begin
     v_client_id := (p_payload->>'client_id')::uuid;
     v_node_id := (p_payload->>'node_id')::uuid;
@@ -892,7 +931,20 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     if not found then
       raise exception 'apply_client_place: client_not_found: %', v_client_id using errcode = 'P0002';
     end if;
-    if v_client_active = false and not core_identity.is_admin() then
+
+    -- V10 (Codex runde 9 TEKNISK-BLOKERING): bypass kan IKKE bruge is_admin()
+    -- fordi auth.uid() er NULL i cron-apply-context. Hent requester+approver fra
+    -- pending-rækken og tjek via employee-id-baseret helper.
+    v_admin_involved := false;
+    if p_pending_change_id is not null then
+      select requested_by, approved_by into v_requested_by, v_approved_by
+        from core_identity.pending_changes where id = p_pending_change_id;
+      v_admin_involved :=
+        core_identity.is_admin_by_employee_id(v_requested_by) or
+        (v_approved_by is not null and core_identity.is_admin_by_employee_id(v_approved_by));
+    end if;
+
+    if v_client_active = false and not v_admin_involved then
       raise exception 'apply_client_place: client_inactive: % (krav-dok §2.5.2)', v_client_id
         using errcode = 'P0001';
     end if;
@@ -1432,14 +1484,14 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Hvad:** Seks smoke-tests dækker centrale flows. V7 tilføjer `t10_client_active_check.sql` for T10.7b-leverancen.
 - **Test-filer:**
 
-  | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-  | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter. **V8 (Code walk-through #2):** assert client_upsert UPDATE rør IKKE is_active (set inaktiv → upsert med ny name → read is_active stadig false).                                                                                                                                                                                                                                                                                                                                                                                                                         |
-  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres. **V8 (Code walk-through #3+#4):** assert client_field_definition_upsert UPDATE rør IKKE is_active. client_field_definition_set_active toggles is_active uafhængigt.                                                                                                                                                                 |
-  | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                                                                                                                                                                                                                                                                                                               |
-  | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false.                                                                                                                                                                                                                                                                                               |
-  | `supabase/tests/smoke/t10_client_active_check.sql` (V7)  | T1: opret aktiv klient → `client_node_place` succeeds → pending oprettes → approve+apply succeeds → placement findes. T2: `client_set_active(client_id, false)` → ny `client_node_place` på samme klient + nyt team → forvent **22023 `client_inactive`**. T3 (apply-path-scenarie Mathias #1): opret pending mens klient aktiv → deaktiver klient → approve+apply → forvent **P0001 `apply_client_place: client_inactive`**. T4: `client_node_close` på inaktiv klient → success (ingen aktiv-check her). **T5 superadmin-bypass (Mathias 2026-05-21):** med superadmin-auth, place på inaktiv klient → success (bypass på aktiv-check, ikke på eksistens-check). Test SKAL være `begin;` + `rollback;`-wrapped (`client_node_placements` på TX_WRAP_REQUIRED). |
+  | Test-fil                                                                   | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+  | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `supabase/tests/smoke/t10_client_lifecycle.sql`                            | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter. **V8 (Code walk-through #2):** assert client_upsert UPDATE rør IKKE is_active (set inaktiv → upsert med ny name → read is_active stadig false).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+  | `supabase/tests/smoke/t10_client_field_definitions.sql`                    | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres. **V8 (Code walk-through #3+#4):** assert client_field_definition_upsert UPDATE rør IKKE is_active. client_field_definition_set_active toggles is_active uafhængigt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+  | `supabase/tests/smoke/t10_client_logo.sql`                                 | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+  | `supabase/tests/smoke/t10_client_node_placements_fk.sql`                   | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+  | `supabase/tests/smoke/t10_clients_validate_fields.sql`                     | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+  | `supabase/tests/smoke/t10_client_active_check.sql` (V7 + V10 cron-context) | T1: opret aktiv klient → `client_node_place` succeeds → pending oprettes → approve+apply succeeds → placement findes. T2: `client_set_active(client_id, false)` → ny `client_node_place` på samme klient + nyt team → forvent **22023 `client_inactive`**. T3 (apply-path-scenarie): non-admin opretter pending mens klient aktiv → non-admin approver → deaktiver klient → apply → forvent **P0001 `apply_client_place: client_inactive`**. T4: `client_node_close` på inaktiv klient → success (ingen aktiv-check her). **T5 superadmin-bypass wrapper (Mathias 2026-05-21):** med superadmin-auth, place på inaktiv klient → success. **T6 (V10 cron-context):** superadmin opretter pending mens klient aktiv → deaktiver klient → simulér cron-apply (kør apply uden auth-context via `reset role` + direct `_apply_client_place`-call eller `pending_change_apply` som service_role) → success (bypass via `is_admin_by_employee_id(requested_by)`). **T7 (V10):** non-admin opretter pending → superadmin approver → klient deaktiveres → cron-apply → success (bypass via approved_by). **T8 (V10):** non-admin opretter pending → non-admin approver → klient deaktiveres → cron-apply → P0001 (ingen admin involveret). Test SKAL være `begin;` + `rollback;`-wrapped. |
 
 - **Afhængigheder:** alle migrations i T10.1-T10.13 + T10.7b for active_check-test
 - **Migration-fil:** test-filer
@@ -1598,9 +1650,16 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V9 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2) + session-var fix på T9-public-wrappers for client. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
+V10 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2) + session-var fix på T9-public-wrappers for client + employee-id-baseret admin-bypass i cron-context. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
 
 19 leverancer, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V10-ændringer ift. V9 (Codex runde 9):
+
+- T10.7b udvidet med ny helper `core_identity.is_admin_by_employee_id(p_employee_id uuid)` — admin-tjek via employee-id (ikke `auth.uid()`).
+- `_apply_client_place` henter `requested_by` + `approved_by` fra pending-rækken og bypasser aktiv-check hvis EITHER er superadmin (Codex runde 9 TEKNISK-BLOKERING).
+- Wrapper `client_node_place` beholder `is_admin()` (auth-context er garanteret).
+- T10.15 smoke-test udvidet med 3 nye cron-context-scenarier (T6 + T7 + T8) der dækker requester-bypass, approver-bypass og no-admin-failure.
 
 V9-ændringer ift. V8 (Codex runde 8):
 
@@ -1666,4 +1725,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 9.
+Klar til Codex plan-review-runde 10.
