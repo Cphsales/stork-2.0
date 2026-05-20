@@ -1,9 +1,27 @@
-# Trin 10 — Klient-skabelon + felt-definitioner — Plan V1
+# Trin 10 — Klient-skabelon + felt-definitioner — Plan V2
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner + match-rolle
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (committed 2026-05-20 PR #58)
-**Plan-version:** V1
+**Plan-version:** V2 (adresserer Codex runde 1's 3 KRITISK + 1 TEKNISK-BLOKERING + 2 MELLEM fund)
 **Dato:** 2026-05-20
+
+---
+
+## Codex-fund-håndtering (fra V1 runde 1)
+
+V1 ramte 6 fund. V2 adresserer hvert eksplicit:
+
+- **KRITISK-SIKKERHEDSHUL (fund 1):** Apply-handlers manglede `revoke execute from public, anon, authenticated` for 6 ud af 7 handlers. **V2-fix:** Alle 9 apply-handlers (inkl. de nye fuldt-skrevne `_update` + `_deactivate` felt-def-handlers) har eksplicit `revoke execute` direkte efter create i T10.4.
+
+- **KRITISK (fund 2):** Pending_changes write-vej-disciplin manglede specifikation. **V2-fix:** T10.5 wrapper-RPCs kalder nu `core_identity.pending_change_request(p_change_type, p_target_id, p_payload, p_effective_from)` (T9's interne RPC, security invoker, kun callable fra SECURITY DEFINER wrappers). Direct INSERT i pending_changes fjernet — den vej eksisterer ikke i T9-flowet. Verificeret mod `20260518000000_t9_pending_changes.sql`.
+
+- **KRITISK/HUL (fund 3):** `_apply_client_field_definition_update` og `_apply_client_field_definition_deactivate` var kun "analog". **V2-fix:** Fuld pseudo-SQL skrevet for begge i T10.4 med payload-validering + row-count-check.
+
+- **TEKNISK-BLOKERING (fund 4):** Logo-normalisering i SQL ikke implementerbar. **V2-fix:** Normalisering flyttet til client-side (UI/edge-function). Wrapper-RPC validerer kun (a) base64-decode-succes, (b) max byte-størrelse (fx 200 KB), (c) magic-bytes for billede-format. Ingen resize i DB.
+
+- **MELLEM (fund 5):** Update-handlers manglede row-count-check. **V2-fix:** Alle update-handlers har nu `if not found then raise exception 'not_found_or_already_target_state' using errcode = 'P0002'` efter UPDATE.
+
+- **MELLEM (fund 6):** `created_at`/`updated_at` manglede klassifikation. **V2-fix:** Klassifikations-blokke for T10.1 og T10.2 inkluderer nu begge kolonner.
 
 ---
 
@@ -139,7 +157,9 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
     ('core_identity', 'clients', 'fields', 'master_data', 'mixed', 'manual', null, null, 'klient-felt-bag jsonb; PII pr. felt afgøres via client_field_definitions'),
     ('core_identity', 'clients', 'logo_data', 'master_data', 'none', 'manual', null, null, 'klient-logo blob'),
     ('core_identity', 'clients', 'is_active', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'aktiv-flag'),
-    ('core_identity', 'clients', 'deactivated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'deaktiverings-tidspunkt');
+    ('core_identity', 'clients', 'deactivated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'deaktiverings-tidspunkt'),
+    ('core_identity', 'clients', 'created_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'oprettelses-tidspunkt'),
+    ('core_identity', 'clients', 'updated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'seneste-opdateringstidspunkt');
   ```
 
 - **Afhængigheder:** core_identity.has_permission() (T9), core_identity.\_set_updated_at() (T9), core_compliance.stork_audit() (trin 2).
@@ -215,7 +235,9 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
     ('core_compliance', 'client_field_definitions', 'match_role', 'master_data', 'none', 'manual', null, null, 'kategori-mærkat for felt-mapping fra flere kilder'),
     ('core_compliance', 'client_field_definitions', 'display_order', 'master_data', 'none', 'manual', null, null, 'felt-sortering i UI'),
     ('core_compliance', 'client_field_definitions', 'is_active', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'aktiv-flag'),
-    ('core_compliance', 'client_field_definitions', 'deactivated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'deaktiverings-tidspunkt');
+    ('core_compliance', 'client_field_definitions', 'deactivated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'deaktiverings-tidspunkt'),
+    ('core_compliance', 'client_field_definitions', 'created_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'oprettelses-tidspunkt'),
+    ('core_compliance', 'client_field_definitions', 'updated_at', 'operationel', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'seneste-opdateringstidspunkt');
   ```
 
 - **Afhængigheder:** T10.1 (FK til clients), trin 2 stork_audit, T9 has_permission + \_set_updated_at.
@@ -295,6 +317,8 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
 
   revoke execute on function core_identity._apply_client_create(jsonb, uuid) from public, anon, authenticated;
 
+  revoke execute on function core_identity._apply_client_create(jsonb, uuid) from public, anon, authenticated;
+
   -- _apply_client_update (ændr navn)
   create or replace function core_identity._apply_client_update(
     p_payload jsonb,
@@ -314,9 +338,13 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
 
     set local stork.t10_write_authorized = 'true';
     update core_identity.clients set name = v_name where id = v_client_id;
+    if not found then
+      raise exception 'client_not_found: %', v_client_id using errcode = 'P0002';
+    end if;
     set local stork.t10_write_authorized = '';
   end;
   $$;
+  revoke execute on function core_identity._apply_client_update(jsonb, uuid) from public, anon, authenticated;
 
   -- _apply_client_deactivate
   create or replace function core_identity._apply_client_deactivate(
@@ -337,11 +365,17 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
     update core_identity.clients
       set is_active = false, deactivated_at = now()
       where id = v_client_id and is_active = true;
+    if not found then
+      raise exception 'client_not_found_or_already_inactive: %', v_client_id using errcode = 'P0002';
+    end if;
     set local stork.t10_write_authorized = '';
   end;
   $$;
+  revoke execute on function core_identity._apply_client_deactivate(jsonb, uuid) from public, anon, authenticated;
 
   -- _apply_client_upload_logo
+  -- Logo-normalisering sker client-side eller i edge-function FØR denne RPC kaldes.
+  -- DB-laget validerer kun: base64-decode-succes, max byte-størrelse, magic-bytes.
   create or replace function core_identity._apply_client_upload_logo(
     p_payload jsonb,
     p_pending_change_id uuid
@@ -351,18 +385,38 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
   declare
     v_client_id uuid;
     v_logo_data bytea;
+    v_max_size integer := 200000; -- 200 KB max
   begin
     v_client_id := (p_payload->>'client_id')::uuid;
-    v_logo_data := decode(p_payload->>'logo_data_base64', 'base64');
+    begin
+      v_logo_data := decode(p_payload->>'logo_data_base64', 'base64');
+    exception when others then
+      raise exception 'invalid_logo_base64' using errcode = '22023';
+    end;
     if v_client_id is null or v_logo_data is null then
       raise exception 'invalid_payload: client_id + logo_data_base64 required' using errcode = '22023';
+    end if;
+    if octet_length(v_logo_data) > v_max_size then
+      raise exception 'logo_too_large: % bytes (max %)', octet_length(v_logo_data), v_max_size using errcode = '22023';
+    end if;
+    -- Magic-bytes validering (PNG: 89 50 4E 47, JPEG: FF D8 FF, SVG: < ? x m l el. < s v g)
+    if not (
+      substring(v_logo_data from 1 for 4) = '\x89504e47'::bytea  -- PNG
+      or substring(v_logo_data from 1 for 3) = '\xffd8ff'::bytea  -- JPEG
+      or substring(v_logo_data from 1 for 5) in ('<?xml'::bytea, '<svg '::bytea)  -- SVG
+    ) then
+      raise exception 'invalid_logo_format: only PNG/JPEG/SVG allowed' using errcode = '22023';
     end if;
 
     set local stork.t10_write_authorized = 'true';
     update core_identity.clients set logo_data = v_logo_data where id = v_client_id;
+    if not found then
+      raise exception 'client_not_found: %', v_client_id using errcode = 'P0002';
+    end if;
     set local stork.t10_write_authorized = '';
   end;
   $$;
+  revoke execute on function core_identity._apply_client_upload_logo(jsonb, uuid) from public, anon, authenticated;
 
   -- _apply_client_set_field_value (jsonb-key på clients.fields)
   create or replace function core_identity._apply_client_set_field_value(
@@ -396,9 +450,13 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
     update core_identity.clients
       set fields = fields || jsonb_build_object(v_field_key, v_field_value)
       where id = v_client_id;
+    if not found then
+      raise exception 'client_not_found: %', v_client_id using errcode = 'P0002';
+    end if;
     set local stork.t10_write_authorized = '';
   end;
   $$;
+  revoke execute on function core_identity._apply_client_set_field_value(jsonb, uuid) from public, anon, authenticated;
 
   -- _apply_client_field_definition_create
   create or replace function core_identity._apply_client_field_definition_create(
@@ -407,26 +465,99 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
   ) returns void
   language plpgsql security definer set search_path = ''
   as $$
+  declare
+    v_client_id uuid;
+    v_field_key text;
+    v_definition_id uuid;
   begin
-    -- Validate payload keys: client_id, field_key, display_name, value_type, is_required, pii_level, match_role, display_order
+    v_client_id := (p_payload->>'client_id')::uuid;
+    v_field_key := p_payload->>'field_key';
+    if v_client_id is null or v_field_key is null or p_payload->>'display_name' is null or p_payload->>'value_type' is null then
+      raise exception 'invalid_payload: client_id + field_key + display_name + value_type required' using errcode = '22023';
+    end if;
+
     set local stork.t10_write_authorized = 'true';
     insert into core_compliance.client_field_definitions
       (client_id, field_key, display_name, value_type, is_required, pii_level, match_role, display_order)
     values (
-      (p_payload->>'client_id')::uuid,
-      p_payload->>'field_key',
+      v_client_id,
+      v_field_key,
       p_payload->>'display_name',
       p_payload->>'value_type',
       coalesce((p_payload->>'is_required')::boolean, false),
       coalesce(p_payload->>'pii_level', 'none'),
       p_payload->>'match_role',
       coalesce((p_payload->>'display_order')::integer, 0)
-    );
+    )
+    returning id into v_definition_id;
+    set local stork.t10_write_authorized = '';
+
+    update core_identity.pending_changes
+      set result_payload = jsonb_build_object('definition_id', v_definition_id)
+      where id = p_pending_change_id;
+  end;
+  $$;
+  revoke execute on function core_identity._apply_client_field_definition_create(jsonb, uuid) from public, anon, authenticated;
+
+  -- _apply_client_field_definition_update (fuldt skrevet)
+  create or replace function core_identity._apply_client_field_definition_update(
+    p_payload jsonb,
+    p_pending_change_id uuid
+  ) returns void
+  language plpgsql security definer set search_path = ''
+  as $$
+  declare
+    v_definition_id uuid;
+  begin
+    v_definition_id := (p_payload->>'definition_id')::uuid;
+    if v_definition_id is null then
+      raise exception 'invalid_payload: definition_id required' using errcode = '22023';
+    end if;
+
+    set local stork.t10_write_authorized = 'true';
+    update core_compliance.client_field_definitions
+      set
+        display_name = coalesce(p_payload->>'display_name', display_name),
+        value_type = coalesce(p_payload->>'value_type', value_type),
+        is_required = coalesce((p_payload->>'is_required')::boolean, is_required),
+        pii_level = coalesce(p_payload->>'pii_level', pii_level),
+        match_role = coalesce(p_payload->>'match_role', match_role),
+        display_order = coalesce((p_payload->>'display_order')::integer, display_order)
+      where id = v_definition_id and is_active = true;
+    if not found then
+      raise exception 'definition_not_found_or_inactive: %', v_definition_id using errcode = 'P0002';
+    end if;
     set local stork.t10_write_authorized = '';
   end;
   $$;
+  revoke execute on function core_identity._apply_client_field_definition_update(jsonb, uuid) from public, anon, authenticated;
 
-  -- _apply_client_field_definition_update + _apply_client_field_definition_deactivate (analog)
+  -- _apply_client_field_definition_deactivate (fuldt skrevet)
+  create or replace function core_identity._apply_client_field_definition_deactivate(
+    p_payload jsonb,
+    p_pending_change_id uuid
+  ) returns void
+  language plpgsql security definer set search_path = ''
+  as $$
+  declare
+    v_definition_id uuid;
+  begin
+    v_definition_id := (p_payload->>'definition_id')::uuid;
+    if v_definition_id is null then
+      raise exception 'invalid_payload: definition_id required' using errcode = '22023';
+    end if;
+
+    set local stork.t10_write_authorized = 'true';
+    update core_compliance.client_field_definitions
+      set is_active = false, deactivated_at = now()
+      where id = v_definition_id and is_active = true;
+    if not found then
+      raise exception 'definition_not_found_or_already_inactive: %', v_definition_id using errcode = 'P0002';
+    end if;
+    set local stork.t10_write_authorized = '';
+  end;
+  $$;
+  revoke execute on function core_identity._apply_client_field_definition_deactivate(jsonb, uuid) from public, anon, authenticated;
 
   -- Udvid pending_change_apply-dispatcher (T9's master-dispatcher)
   -- Tilføjer 7 nye case-grene i T9's _apply-switch
@@ -469,7 +600,7 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
 
 - **Step-kode:** T10.5
 - **Type:** migration (CREATE FUNCTION × 8, public-facing entry points)
-- **Hvad:** Wrapper-RPCs som UI kalder. Hver verificerer permission, opretter pending_change, returnerer change_id.
+- **Hvad:** Wrapper-RPCs som UI kalder. Hver verificerer permission, kalder T9's interne `pending_change_request()` (security invoker, revoked fra authenticated). Direct INSERT i pending_changes bruges IKKE — det er T9's eksplicitte mønster (Plan V3 Beslutning 12).
 - **Eksakt indhold:**
 
   ```sql
@@ -487,9 +618,13 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
       raise exception 'permission_denied: client.create required' using errcode = '42501';
     end if;
 
-    insert into core_identity.pending_changes (change_type, payload, requested_by, effective_from)
-    values ('client_create', jsonb_build_object('name', p_name), v_user_id, current_date)
-    returning id into v_change_id;
+    -- T9 pattern: kald pending_change_request, ikke INSERT direkte
+    v_change_id := core_identity.pending_change_request(
+      p_change_type := 'client_create',
+      p_target_id := null,  -- target_id er null ved create (klient findes ikke endnu)
+      p_payload := jsonb_build_object('name', p_name),
+      p_effective_from := current_date
+    );
 
     return v_change_id;
   end;
@@ -498,20 +633,47 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
   grant execute on function public.client_create(text) to authenticated;
 
   -- client_update(p_client_id uuid, p_name text) → uuid
+  -- target_id = p_client_id, change_type = 'client_update', payload = {client_id, name}
+
   -- client_deactivate(p_client_id uuid) → uuid
+  -- target_id = p_client_id, change_type = 'client_deactivate', payload = {client_id}
+
   -- client_upload_logo(p_client_id uuid, p_logo_base64 text) → uuid
+  -- target_id = p_client_id, change_type = 'client_upload_logo',
+  -- payload = {client_id, logo_data_base64}
+  -- Note: logo skal være normaliseret client-side (resize til 512x512 max)
+  -- FØR det kaldes ind hertil. DB-laget validerer kun størrelse + format.
+
   -- client_set_field_value(p_client_id uuid, p_field_key text, p_field_value jsonb) → uuid
-  -- client_field_definition_create(p_client_id uuid, p_field_key text, p_display_name text, p_value_type text, p_is_required boolean, p_pii_level text, p_match_role text, p_display_order integer) → uuid
+  -- target_id = p_client_id, change_type = 'client_set_field_value',
+  -- payload = {client_id, field_key, field_value}
+
+  -- client_field_definition_create(p_client_id uuid, p_field_key text, ...) → uuid
+  -- target_id = p_client_id (felt-def hører til klient)
+  -- change_type = 'client_field_definition_create'
+  -- payload = {client_id, field_key, display_name, value_type, is_required, pii_level, match_role, display_order}
+
   -- client_field_definition_update(p_definition_id uuid, ...) → uuid
+  -- target_id = p_definition_id (felt-def's id)
+  -- change_type = 'client_field_definition_update'
+  -- payload = {definition_id, display_name?, value_type?, is_required?, pii_level?, match_role?, display_order?}
+
   -- client_field_definition_deactivate(p_definition_id uuid) → uuid
+  -- target_id = p_definition_id, change_type = 'client_field_definition_deactivate'
+  -- payload = {definition_id}
   ```
 
   Alle wrapper-RPCs følger samme mønster:
   1. Tjek `auth.uid()`-permission via `core_identity.has_permission()`
-  2. Insert i `pending_changes`
+  2. Kald `core_identity.pending_change_request()` (T9 intern RPC, security invoker)
   3. Returnér `change_id` (UI viser status; apply sker via T9's apply-cron eller umiddelbart via approve-RPC).
 
-- **Afhængigheder:** T10.1-T10.4, T9 has_permission + pending_changes.
+  T9 håndhæver:
+  - `pending_change_request` er revoked fra authenticated (kun callable fra SECURITY DEFINER wrappers).
+  - Wrappers er SECURITY DEFINER + ejer-grant.
+  - RLS på pending_changes: SELECT-policy tillader requested_by = current_employee_id() eller is_admin().
+
+- **Afhængigheder:** T10.1-T10.4, T9 `has_permission`, T9 `pending_change_request`.
 - **Migration-fil:** `20260520000004_t10_public_wrappers.sql`
 - **Risiko:** lav. Pure wrapper-funktioner. Rollback: DROP FUNCTION.
 
@@ -601,7 +763,7 @@ Binder fremtidige pakker til: jsonb-format med {felt_key: værdi}-struktur. Felt
 
 | Tjek                                                               | Status | Reference                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var      | ja     | T10.1, T10.2 (RLS-policies + GRANT); T10.4 apply-handlers sætter `stork.t10_write_authorized`; T10.5 wrappers kalder via `pending_changes` → apply                                                                                                                                    |
+| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var      | ja     | T10.1+T10.2 (RLS + GRANT + session-var); T10.4 alle 9 apply-handlers har eksplicit `revoke execute from public, anon, authenticated` (V2-fix fund 1); T10.5 wrappers kalder T9's `pending_change_request` (V2-fix fund 2)                                                             |
 | Hver SELECT-policy bred nok til legitime læsere                    | ja     | T10.1 `clients_select` policy bruger `has_permission(client.view)` + write-authorized-bypass; T10.2 tilsvarende                                                                                                                                                                       |
 | Backdated guards på relevante handlers                             | N/A    | Trin 10 har ingen backdated-relevante writes. Klient-team-bindinger (med backdated) håndteres af T9's \_apply_client_place; trin 10 ændrer ikke det                                                                                                                                   |
 | Apply-dispatcher-extension specificeret per RPC                    | ja     | T10.4 viser 7 nye case-grene i `pending_change_apply` (client_create, client_update, client_deactivate, client_upload_logo, client_set_field_value, client_field_definition_create/update/deactivate)                                                                                 |
