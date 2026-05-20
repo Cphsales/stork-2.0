@@ -1,10 +1,33 @@
-# Trin 10 — Plan V7
+# Trin 10 — Plan V8
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V7 — klar til Codex plan-review-runde 7
+**Status:** V8 — klar til Codex plan-review-runde 8
 **Dato:** 2026-05-21
+
+---
+
+## Codex runde 7 + Code grundig walk-through (LØS — V5.3 svar-typer)
+
+Codex-runde 7 fandt 1 KRITISK. Code's parallel grundige walk-through (Mathias-instruks "fuldt gear") fandt 3 yderligere fund (2 KRITISK + 1 MELLEM) som Codex missede.
+
+| #   | Severity | V7-step                | Fund                                                                                                                                                                                                                                                                                        | Kilde             | V8-svar                                                                                                                                                                                                                                                                          |
+| --- | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | KRITISK  | T10.6                  | `clients_validate_fields()` trigger-funktion har `cfd.is_active = true` filter. Rammer fitness-check `legacy-is-active-readers` (`scripts/fitness.mjs:830-892`). T10.16 allowlister kun `client_field_definitions_list`.                                                                    | Codex runde 7     | **ACCEPT.** Udvid T10.16 med `core_identity.clients_validate_fields`. Forretningsmæssigt korrekt at filtrere på aktive felt-definitioner i validate-trigger (LENIENT: ukendte/inaktive keys → warning) — det er ikke R7d-pattern (employees-dual-column), bare lifecycle-signal. |
+| 2   | KRITISK  | T10.8                  | `client_upsert` UPDATE-branch sætter `is_active = p_is_active` (default `true`). En admin der opdaterer navn på en inaktiv klient uden eksplicit at sende p_is_active=false **reaktiverer klienten utilsigtet**. Bryder krav-dok §3.1's distinction af "Ændr klient" vs "Deaktivér klient". | Code walk-through | **ACCEPT.** Drop `is_active` fra T10.8's UPDATE-SET-klausul. p_is_active gælder kun INSERT-branch. Aktiv-toggle sker via `client_set_active` (T10.9). Matcher logo-pattern (rør'es ikke i client_upsert).                                                                        |
+| 3   | KRITISK  | T10.10                 | `client_field_definition_upsert` UPDATE-branch har **samme bug** med `p_is_active` default true → opdatering af inaktiv felt-definition reaktiverer den utilsigtet.                                                                                                                         | Code walk-through | **ACCEPT.** Drop `is_active` fra T10.10's UPDATE-SET-klausul. + ny T10.10a (se #4).                                                                                                                                                                                              |
+| 4   | MELLEM   | T10.10 / krav-dok §3.2 | Krav-dok §3.2 specificerer "Deaktivér felt-definition" som distinct funktion, men V7 har kun samlet `client_field_definition_upsert`. Ingen direct toggle-RPC.                                                                                                                              | Code walk-through | **ACCEPT.** Ny step **T10.10a**: `client_field_definition_set_active(p_field_id, p_is_active, p_change_reason)`. Matcher `client_set_active`-mønstret + krav-dok §3.2.                                                                                                           |
+
+**Superadmin-bypass-konsistens (Mathias-bekræftet 2026-05-21):** T10.7b's aktiv-check har superadmin-bypass (forretnings-invariant), men T10.10's `key`+`pii_level direct→non-direct` har **IKKE** bypass — det er **sikkerheds-invariant** (audit-PII-datalæk i klartekst), ikke forretnings-regel. Sikkerheds-invariants står over "superadmin må alt". Konsistent disciplin.
+
+**Code walk-through-pass verificeret (positivt):**
+
+- Alle 14 fitness-checks gennemgået; kun R7d ramt (T10.6 + T10.12 → T10.16-allowlist dækker begge)
+- migration-set-config-discipline: T10.4 + T10.13 sætter source_type + change_reason korrekt
+- pii_level escalation (none→indirect→direct) sikker — eksisterende klartekst-værdier i historisk audit_log er retro-acceptable (de blev IKKE hash'et da pii_level var none ved INSERT-tidspunktet)
+- audit_filter_values STABLE + mutable-tabel-læsning matcher T1-mønster
+- postgrest-sentinel-list rammer kun T9-RPCs, ikke T10
 
 ---
 
@@ -907,15 +930,19 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     perform set_config('stork.allow_clients_write', 'true', true);
 
     if p_client_id is null then
+      -- INSERT: p_is_active anvendes (default true for nye klienter)
       insert into core_identity.clients (name, fields, is_active)
       values (p_name, coalesce(p_fields, '{}'::jsonb), p_is_active)
       returning id into v_id;
     else
+      -- V8 (Code walk-through #2): UPDATE rør IKKE is_active (default true ville reaktivere
+      -- inaktiv klient utilsigtet ved ren navne-ændring). Brug client_set_active for toggle.
+      -- Matcher logo-pattern (rør'es heller ikke i client_upsert).
       update core_identity.clients
         set name = p_name,
-            fields = coalesce(p_fields, '{}'::jsonb),
-            is_active = p_is_active
-            -- logo-felter rør IKKE — håndteres af client_logo_set/clear
+            fields = coalesce(p_fields, '{}'::jsonb)
+            -- is_active rør IKKE (brug client_set_active)
+            -- logo-felter rør IKKE (brug client_logo_set/clear)
        where id = p_client_id
        returning id into v_id;
       if v_id is null then
@@ -1042,14 +1069,16 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
           using errcode = '22023', hint = 'For at saenke pii-niveau: INSERT ny definition med ny key.';
       end if;
 
+      -- V8 (Code walk-through #3): UPDATE rør IKKE is_active (default true ville reaktivere
+      -- inaktiv felt-definition utilsigtet ved ren navne-ændring). Brug client_field_definition_set_active.
       update core_identity.client_field_definitions
         set display_name = p_display_name,
             field_type = p_field_type,
             required = p_required,
             pii_level = p_pii_level,
-            display_order = p_display_order,
-            is_active = p_is_active
+            display_order = p_display_order
             -- key rør'es ikke (verificeret immutable ovenfor)
+            -- is_active rør IKKE (brug client_field_definition_set_active)
        where id = p_field_id
        returning id into v_id;
     end if;
@@ -1066,6 +1095,49 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
 - **Afhængigheder:** T10.2, T10.13
 - **Migration-fil:** `supabase/migrations/<ts>_t10_client_field_definition_upsert_rpc.sql`
+- **Risiko:** lav.
+
+### T10.10a — `client_field_definition_set_active` RPC (V8 — Code walk-through #4; krav-dok §3.2)
+
+- **Type:** migration (CREATE FUNCTION)
+- **Hvad:** Toggler `is_active` på felt-definition uden at røre øvrige felter. Matcher `client_set_active`-mønstret (T10.9) + krav-dok §3.2's "Deaktivér felt-definition" som distinct funktion. Adskilt RPC fordi UI-flowet er distinkt (knap "deaktiver felt" vs. "redigér felt").
+- **Eksakt indhold:**
+
+  ```sql
+  create or replace function core_identity.client_field_definition_set_active(
+    p_field_id uuid,
+    p_is_active boolean,
+    p_change_reason text
+  ) returns void
+  language plpgsql security definer set search_path = ''
+  as $$
+  begin
+    if not core_identity.has_permission('client_field_definitions', 'manage', true) then
+      raise exception 'client_field_definition_set_active: permission_denied' using errcode = '42501';
+    end if;
+    if p_change_reason is null or length(trim(p_change_reason)) = 0 then
+      raise exception 'client_field_definition_set_active: change_reason er paakraevet' using errcode = '22023';
+    end if;
+
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', p_change_reason, true);
+    perform set_config('stork.allow_client_field_definitions_write', 'true', true);
+
+    update core_identity.client_field_definitions
+      set is_active = p_is_active
+     where id = p_field_id;
+    if not found then
+      raise exception 'client_field_definition_set_active: field % findes ikke', p_field_id using errcode = 'P0002';
+    end if;
+  end;
+  $$;
+
+  revoke all on function core_identity.client_field_definition_set_active(uuid, boolean, text) from public, anon;
+  grant execute on function core_identity.client_field_definition_set_active(uuid, boolean, text) to authenticated;
+  ```
+
+- **Afhængigheder:** T10.2, T10.13
+- **Migration-fil:** samme som T10.10 eller separat
 - **Risiko:** lav.
 
 ### T10.11 — Logo-RPC'er (`client_logo_set` + `client_logo_clear` + `client_logo_get`)
@@ -1310,8 +1382,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
   | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
   | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres.                                                                                                                                                                                                                                                                                                                                     |
+  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter. **V8 (Code walk-through #2):** assert client_upsert UPDATE rør IKKE is_active (set inaktiv → upsert med ny name → read is_active stadig false).                                                                                                                                                                                                                                                                                                                                                                                                                         |
+  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres. **V8 (Code walk-through #3+#4):** assert client_field_definition_upsert UPDATE rør IKKE is_active. client_field_definition_set_active toggles is_active uafhængigt.                                                                                                                                                                 |
   | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
   | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT. **V6 (Code-validering fund #6):** Test SKAL være `begin;` + `rollback;`-wrapped (linje-niveau) — `core_identity.client_node_placements` er på `TX_WRAP_REQUIRED_FOR_TEST_INSERT` (`scripts/fitness.mjs:110`). Fitness-check `db-test-tx-wrap-on-immutable-insert` blokerer ellers.                                                                                                                                                                                                                                                                                                                                                               |
   | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false.                                                                                                                                                                                                                                                                                               |
@@ -1337,6 +1409,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     "core_identity.client_node_place",
     "core_identity.permission_elements_read",
     "core_identity.client_field_definitions_list", // V6 — T10.12 RPC; client_field_definitions har kun is_active, ingen status
+    "core_identity.clients_validate_fields", // V8 (Codex runde 7) — T10.6 trigger-funktion; filtrerer på aktive felt-definitioner som lifecycle-signal
   ]);
   ```
 
@@ -1473,9 +1546,18 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V7 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2). Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 17 steps + 1 sub-step skaber alle artefakter fra bunden.
+V8 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2). Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
 
-17 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+19 leverancer, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V8-ændringer ift. V7 (Codex runde 7 + Code grundig walk-through "fuldt gear"):
+
+- T10.16 udvidet: `core_identity.clients_validate_fields` tilføjet til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS` (Codex runde 7 KRITISK).
+- T10.8 `client_upsert` UPDATE: `is_active` fjernet fra SET-klausul. p_is_active anvendes kun ved INSERT. Toggle via client_set_active. Forhindrer utilsigtet reaktivering (Code walk-through #2).
+- T10.10 `client_field_definition_upsert` UPDATE: `is_active` fjernet fra SET-klausul (Code walk-through #3).
+- **Ny T10.10a:** `client_field_definition_set_active(p_field_id, p_is_active, p_change_reason)` RPC matcher krav-dok §3.2 "Deaktivér felt-definition" + client_set_active-mønstret (Code walk-through #4).
+- T10.15 udvidet: lifecycle-test assert client_upsert UPDATE bevarer is_active; field-defs-test assert UPDATE bevarer is_active + set_active toggler uafhængigt.
+- Superadmin-bypass: bevares på T10.7b (forretnings-invariant). **IKKE** udvidet til T10.10's key/pii_level-immutable (sikkerheds-invariant, Mathias-bekræftet).
 
 V7-ændringer ift. V6 (Mathias-terminal-review V6 + 2026-05-21 superadmin-rettelse):
 
@@ -1526,4 +1608,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 7.
+Klar til Codex plan-review-runde 8.
