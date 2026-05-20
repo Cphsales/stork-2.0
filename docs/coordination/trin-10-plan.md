@@ -1,10 +1,21 @@
-# Trin 10 — Plan V10
+# Trin 10 — Plan V11
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V10 — klar til Codex plan-review-runde 10
+**Status:** V11 — klar til Codex plan-review-runde 11
 **Dato:** 2026-05-21
+
+---
+
+## Codex runde 10 (LØS — V5.3 svar-typer)
+
+| #   | Severity          | V10-step                     | Fund                                                                                                                                                                                                                                      | V11-svar                                                                                                                                                                                                                        | Hvor i V11 |
+| --- | ----------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | KRITISK           | Fundament-tjek               | Tabellen nævner kun T10.8/T10.9/T10.10/T10.11 + T10.13. V10 tilføjer/ændrer write-veje i T10.7b (`client_node_place`, `client_node_close`, `_apply_client_place`) + T10.10a (`client_field_definition_set_active`) — manglende krydstjek. | **ACCEPT.** Fundament-tjek-tabel udvidet med T10.7b (GRANT/policy/session-var + apply-dispatch + jsonb payload producer/consumer) og T10.10a. Eksempel-row-tjek udvidet med immutable-key + pii-downgrade-block + active-check. |
+| 2   | G-NUMMER-KANDIDAT | T10.16 / Oprydnings-strategi | T10.16 nævner FK-coverage som G-nummer-kandidat, men oprydnings-strategi siger "Ingen G-numre forventet". Inkonsistent.                                                                                                                   | **ACCEPT.** **G058** registreret i `docs/teknisk/teknisk-gaeld.md` (FK-coverage-fitness-check ikke implementeret per master-plan §3.19). Oprydnings-strategi opdateret til at angive G057 + G058 som del af trin 10.            |
+
+Plus V10-amendment (`923543c` efter V10's hoved-commit): helper grants matcher is_admin's pattern (authenticated + anon + service_role).
 
 ---
 
@@ -1527,12 +1538,12 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
 ## Fundament-tjek-passeret
 
-| Tjek                                                           | Status | Reference                                                                                                                                                                                                                                                                                                      |
-| -------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var  | ja     | T10.8/T10.9/T10.10/T10.11 — `stork.allow_clients_write` / `allow_client_field_definitions_write` + `revoke/grant execute` + has_permission. **T10.13** (permission-seed) — `stork.t9_write_authorized` (V4-fix) som krævet af T9-supplement's INSERT-policies på permission_pages/tabs/role_permission_grants. |
-| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', 'manage', false) **tab-aware (V6-fix)**. T10.13 seeder kun tab-grants → null-tab matcher ikke; 'manage' matcher. T9-supplement's ACL-scoped policy på client_node_placements bevares uændret.                                              |
-| Eksempel-row verificeret gennem flow                           | ja     | T10.15 smoke-tests dækker INSERT + UPDATE + read-RPC + permission-spærring + audit-PII-hashing + logo-preserve + FK + LENIENT/strict                                                                                                                                                                           |
-| Plan-detaljer eksplicit (ingen TBD / Code afgør / overladelse) | ja     | Alle 16 steps har eksakt SQL/pseudo-SQL. Ingen "kan tilføjes senere"-noter.                                                                                                                                                                                                                                    |
+| Tjek                                                           | Status | Reference                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var  | ja     | T10.8/T10.9/T10.10/T10.10a/T10.11 — `stork.allow_clients_write` / `allow_client_field_definitions_write` + `revoke/grant execute` + has_permission('manage', true). **T10.7b** (`client_node_place` + `client_node_close` + `_apply_client_place`) — `stork.t9_write_authorized = 'true'` før `pending_change_request` (V9-fix); apply-handler tjekker eksistens (P0002) + aktiv (P0001) med employee-id-baseret admin-bypass (V10-fix); pending_change_apply-dispatcher (T9-supplement) cases `client_place` + `client_close` ramt automatisk. **T10.13** (permission-seed) — `stork.t9_write_authorized` (V4-fix) som krævet af T9-supplement's INSERT-policies på permission_pages/tabs/role_permission_grants. Default-privileges på `core_identity` schema (T1: `grant execute on functions to authenticated`) dækker GRANT for alle T10-RPC'er. |
+| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', 'manage', false) **tab-aware (V6-fix)**. T10.13 seeder kun tab-grants → null-tab matcher ikke; 'manage' matcher. T9-supplement's ACL-scoped policy på client_node_placements bevares uændret.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Eksempel-row verificeret gennem flow                           | ja     | T10.15 smoke-tests dækker INSERT + UPDATE + read-RPC + permission-spærring + audit-PII-hashing + logo-preserve + FK + LENIENT/strict + immutable-key + pii-downgrade-block + active-check (wrapper + apply-path + cron-context). **T10.7b apply-dispatch:** pending_change_apply (T9-fundament-supplement) dispatcher cases `client_place` + `client_close` rammer modificeret `_apply_client_place` + uændret `_apply_client_close`. **jsonb payload producer/consumer:** wrapper bygger payload via `jsonb_build_object(...)` (producer), apply-handler læser via `(p_payload->>'client_id')::uuid` etc. (consumer) — pattern matcher T9-supplement linje 88-102 + 295-301.                                                                                                                                                                         |
+| Plan-detaljer eksplicit (ingen TBD / Code afgør / overladelse) | ja     | Alle 16 steps har eksakt SQL/pseudo-SQL. Ingen "kan tilføjes senere"-noter.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 
@@ -1618,12 +1629,12 @@ Eksisterende tests opdateret i T10.7a:
 
 **Konsekvens-opdateringer for autoritative dokumenter:**
 
-| Dokument                                   | Konsekvens? | Opdatering der laves i denne pakke                                        |
-| ------------------------------------------ | ----------- | ------------------------------------------------------------------------- |
-| `docs/strategi/stork-2-0-master-plan.md`   | ja          | §1.8 + §4 trin 10 (T10.14) + rettelse-entry i Appendix C                  |
-| `docs/strategi/bygge-status.md`            | ja          | Trin 10 markeres som godkendt efter merge                                 |
-| `docs/coordination/mathias-afgoerelser.md` | nej         | Alle scope-/forretnings-beslutninger ligger allerede i 2026-05-20-entries |
-| `docs/teknisk/teknisk-gaeld.md`            | nej         | Ingen G-numre forventet i denne pakke                                     |
+| Dokument                                   | Konsekvens? | Opdatering der laves i denne pakke                                                                                                                                        |
+| ------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | ja          | §1.8 + §4 trin 10 (T10.14) + rettelse-entry i Appendix C                                                                                                                  |
+| `docs/strategi/bygge-status.md`            | ja          | Trin 10 markeres som godkendt efter merge                                                                                                                                 |
+| `docs/coordination/mathias-afgoerelser.md` | nej         | Alle scope-/forretnings-beslutninger ligger allerede i 2026-05-20-entries                                                                                                 |
+| `docs/teknisk/teknisk-gaeld.md`            | ja          | G057 (T9 forretnings-invariants uden superadmin-bypass) + G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19) registreret i forbindelse med trin 10 |
 
 **Standard-opdateringer:**
 
@@ -1652,9 +1663,14 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V10 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2) + session-var fix på T9-public-wrappers for client + employee-id-baseret admin-bypass i cron-context. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
+V11 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2) + session-var fix på T9-public-wrappers for client + employee-id-baseret admin-bypass i cron-context + komplet fundament-tjek-dækning. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
 
 19 leverancer, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V11-ændringer ift. V10 (Codex runde 10):
+
+- Fundament-tjek-tabel udvidet med T10.7b's komplette write-vej (`client_node_place` + `client_node_close` + `_apply_client_place` + apply-dispatch + jsonb producer/consumer) + T10.10a (`client_field_definition_set_active`).
+- G058 registreret i teknisk-gaeld.md (FK-coverage-fitness-check ikke implementeret per master-plan §3.19). Oprydnings-strategi-tabel opdateret til "ja" på teknisk-gaeld med G057 + G058.
 
 V10-ændringer ift. V9 (Codex runde 9):
 
@@ -1727,4 +1743,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 10.
+Klar til Codex plan-review-runde 11.
