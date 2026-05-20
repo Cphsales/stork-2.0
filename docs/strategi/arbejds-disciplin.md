@@ -154,18 +154,23 @@ Eneste beslutningstager. Forretning + endelig godkendelse.
 Tekniske beslutninger kan delegeres til Code når det er
 inden for godkendt plan.
 
-## Fire autoritative forretnings-dokumenter
+## Fire forretnings-dokumenter — én låst, to retningsgivende, én pakke-kontrakt
 
-Fire dokumenter har ligeværdig autoritativ rolle for at sikre retningen holder. Plan og slut-rapport skal verificere mod alle fire eksplicit. Claude.ai ejer dette tjek (Codex ejer kode-tjekket).
+Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport skal verificere mod alle fire, men modsigelses-håndtering differentieres efter dokument-status.
 
-| Dokument                                    | Rolle                                                             | Konflikt-præcedens                                                                |
-| ------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `docs/strategi/vision-og-principper.md`     | Vision + 9 principper. LÅST.                                      | Vinder over alt andet ved konflikt                                                |
-| `docs/strategi/stork-2-0-master-plan.md`    | Arkitektur, byggetrin, tabeller, CI-blockers, rettelser           | Vinder over krav-dok og mathias-afgørelser ved teknisk konflikt; taber mod vision |
-| `docs/coordination/mathias-afgoerelser.md`  | Ramme-niveau-beslutninger, forretnings-sandheder, disciplin-skift | Supplerer master-plan; vinder over krav-dok ved konflikt                          |
-| `docs/coordination/<pakke>-krav-og-data.md` | Pakke-specifik kontrakt mellem Mathias og Code                    | Specifik for pakken; må aldrig modsige de tre andre                               |
+| Dokument                                    | Status               | Modsigelses-håndtering                                                                                                                     |
+| ------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/strategi/vision-og-principper.md`     | **LÅST-AUTORITATIV** | KRITISK ved modsigelse — Code/Claude.ai STOPPER. Vinder over alt andet.                                                                    |
+| `docs/strategi/stork-2-0-master-plan.md`    | RETNINGSGIVENDE      | Modsigelse = trigger for master-plan-rettelse (Appendix C). Ikke automatisk blokering. Mathias afgør om plan eller master-plan rettes.     |
+| `docs/coordination/mathias-afgoerelser.md`  | RETNINGSGIVENDE      | Modsigelse = trigger for ny entry eller opdateret entry. Ikke automatisk blokering. Mathias afgør. Entries kan blive forældede.            |
+| `docs/coordination/<pakke>-krav-og-data.md` | PAKKE-KONTRAKT       | Inden pakke-build: krav-dok er kontrakt (efter Mathias-godkendelse). Modsigelse mod krav-dok under build = KRITISK, kræver re-godkendelse. |
+| `docs/coordination/<pakke>-plan.md`         | PAKKE-KONTRAKT       | Efter approval: plan er kontrakt. Code må ikke afvige under build uden Mathias-godkendelse.                                                |
 
-De tre øverste er rammen. Krav-dok er pakke-specifikt og må passe ind i rammen. Konflikt mellem krav-dok og rammen = blokering (Mathias afgør om krav-dok skal rettes).
+**Modsigelses-disciplin (V2 2026-05-20):**
+
+- Modsigelse mod vision: automatisk blokering, KRITISK.
+- Modsigelse mod master-plan eller mathias-afgørelser: rapport til Mathias, han afgør om rammen er forældet (rettes) eller om pakke-arbejdet skal justeres. Ikke automatisk blokering.
+- Modsigelse mod krav-dok eller plan inden for pakken: KRITISK indtil Mathias har afgjort retning.
 
 ## Codex-fund i teknisk-gaeld.md
 
@@ -462,32 +467,33 @@ Konkret:
 Hvis pull viser uventede commits: STOP, rapportér til Mathias før
 arbejdet fortsætter.
 
-## Modsigelses-disciplin (forretnings-dokumenter)
+## Modsigelses-disciplin (V2 2026-05-20)
 
-Når en pakke kører plan-runde-loop, er de fire forretnings-dokumenter
-(vision, master-plan, mathias-afgørelser, krav-dokument) **kontrakt** for
-plan-fasen. Plan-filen Code skriver SKAL være konsistent med alle fire.
+Differentieret efter dokument-status (se "Fire forretnings-dokumenter"-sektion ovenfor).
 
-### Stop-signal (modsigelse)
+### Modsigelse mod vision (LÅST-AUTORITATIV)
 
-Hvis Code eller Codex under plan-runden bemærker en modsigelse:
+Automatisk blokering. Code/Codex/Claude.ai STOPPER. Commit `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference. Modsigelse er KRITISK og ikke kandidat til G-nummer.
 
-- Internt i krav-dokumentet
-- Mellem krav-dokumentet og vision, master-plan, eller mathias-afgørelser
-- Mellem deres egne forslag og nogen af de fire dokumenter
+### Modsigelse mod master-plan eller mathias-afgørelser (RETNINGSGIVENDE)
 
-→ de **STOPPER** runden, committer
-`docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret
-reference til den linje/sektion der modsiges, og flagger til Mathias.
+Ikke automatisk blokering. Rapport til Mathias med:
 
-De **argumenterer ikke** sig videre inden for runden. Argumentation for
-ændring af krav-dokumentet eller anden ramme hører til en ny Mathias-runde,
-ikke til plan-fasen.
+- Konkret citat fra dokumentet der modsiges
+- Hvad i pakke-arbejdet der modsiger det
+- Forslag: er rammen forældet (skal rettes) eller skal pakke-arbejdet justeres?
 
-For Codex specifikt: hvis han under plan-review finder en modsigelse,
-markerer han det som KRITISK feedback og lader ikke planen passere på
-trods af modsigelsen. Modsigelse er ikke kandidat til G-nummer — den er
-plan-blokerende.
+Mathias afgør. Hvis ramme rettes: ny master-plan-rettelse (Appendix C) eller ny mathias-afgoerelser-entry. Hvis pakke justeres: krav-dok eller plan opdateres.
+
+### Modsigelse mod krav-dok eller plan inden for pakken (PAKKE-KONTRAKT)
+
+Efter Mathias-godkendelse er krav-dok + plan låst inden for pakken. Modsigelse under build = KRITISK. Code committer `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` og venter på Mathias-afgørelse om re-godkendelse eller pakke-justering.
+
+### Codex' rolle ved modsigelses-fund
+
+- Vision-modsigelse: KRITISK feedback, blokerer plan
+- Master-plan/mathias-afgørelser-modsigelse: rapport, ikke blokering — markeret som "TRIGGER: ramme kan være forældet"
+- Krav-dok-modsigelse inden for pakke: KRITISK feedback, blokerer plan
 
 ### Modsigelses-typer der udløser stop
 

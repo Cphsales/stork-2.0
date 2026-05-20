@@ -33,6 +33,50 @@ Din review-frekvens pr. pakke er **trigger-baseret**, ikke per plan-version:
 
 Hvor mange Claude.ai-runder kan en pakke have? Forventet: 1-2 (step 4 + step 6). Maks med fuld iteration: ~5 (hvis flere AFVIS-loops). Mathias-eskalation ved 4+ runder uden konvergens.
 
+## Krav-dok-fase — simplificeret 5-step flow (V2 2026-05-20)
+
+Erfaring fra trin 10: tre Claude.ai-roller (forfatter / krav-dok-reviewer / plan-reviewer) + separat forretningsspørgsmål-fil + separat krav-dok-feedback-mappe skabte unødigt bureaukrati. Workflow simplificeret til ét sammenhængende flow med Mathias som direkte validator.
+
+### Step 1.1 — Forstå steppet
+
+Læs master-plan §4 trin X + relateret §1.X. Identificér hvad pakken leverer. Stork 1.0-baggrund kan være i Project-files (extern fra repo); verificér eksistens via Filesystem-MCP før reference.
+
+### Step 1.2 — Identificér forretnings-punkter at afklare
+
+Liste af åbne forretnings-spørgsmål (ikke kode-detalje). Pakke-skala-vurdering baseret på antal:
+
+- 0-2 åbne → "Lille" pakke. Skip krav-dok helt. Master-plan + mathias-afgørelser er rammen, Code laver plan direkte.
+- 3-5 åbne → "Mellem" pakke. Kør krav-dok-fasen via step 1.3-1.5 nedenfor.
+- 6+ åbne → "Stor" pakke. Krav-dok-fasen kan kræve flere validerings-runder.
+
+### Step 1.3 — Recon
+
+For hvert åbent punkt: søg i master-plan, mathias-afgørelser, vision, eksisterende kode. Findes svaret allerede? Hvis ja: dokumentér kilde. Hvis nej: forberedt forretnings-spørgsmål til Mathias.
+
+### Step 1.4 — Validér eller spørg Mathias
+
+Punkt-for-punkt direkte med Mathias i chatten:
+
+- Findes svar i kilde → bekræft: "Per master-plan §X siger Y. Er det stadig retning?"
+- Ikke i kilde → spørg: "Hvad skal X være for trin 10?"
+
+Hvert spørgsmål skal kunne svares med ét forretnings-faktum. Ingen kode-detalje. Ingen ledende spørgsmål.
+
+### Step 1.5 — Skriv krav-dok
+
+Baseret på valideret + afklarede punkter, skriv `docs/coordination/<pakke>-krav-og-data.md` via Filesystem-MCP. Mathias godkender direkte (ingen separat reviewer-chat).
+
+### Hvad falder væk fra tidligere disciplin
+
+- Separat `<pakke>-forretningsspoergsmaal.md`-fil: spørgsmål kan ske i chat
+- Separat krav-dok-reviewer-rolle (ny chat for bias-rensning): Mathias er direkte validator
+- `docs/coordination/krav-dok-feedback/`-mappe: ingen committed reviewer-output
+- Tre Claude.ai-roller: kun forfatter (step 1) + slut-rapport-reviewer (step 5). Plan-fase-review droppes (Codex dækker det)
+
+### Sparring-på-tværs (uformelt sikkerhedsnet)
+
+Mathias kan paste indhold fra denne chat til Code (terminal) eller Codex for verifikation hvis han fornemmer noget i krav-dok-arbejdet. Det er ikke formel review-runde — bare ad-hoc sparring. Disciplinen er rammen, ikke isolation mellem AI'er.
+
 ## Forretningsspørgsmål-fase (FØR krav-dok) — forfatter-rolle
 
 Når Mathias signalerer ny pakke ("lad os lave en pakke om X" eller tilsvarende åbnings-signal), vurder om forretningsspørgsmål-fase er nødvendig per `docs/skabeloner/forretningsspoergsmaal-skabelon.md` skip-kriterier.
@@ -49,7 +93,7 @@ Hvis i tvivl: kør fasen. Beslutningen om at skippe dokumenteres kort i krav-dok
 
 ### Hvad du gør
 
-1. Læs fire forretnings-dokumenter (vision, master-plan, mathias-afgøelser, evt. relateret 1.0-bibel-sektion)
+1. Læs forretnings-dokumenter (vision, master-plan, mathias-afgøelser). Stork 1.0-baggrund kan være i Claude.ai Project-files (extern fra repo); referér ikke til 1.0-fil som obligatorisk repo-kilde uden at have verificeret eksistens via Filesystem-MCP først.
 2. Identificér uklarhed mellem rammen og pakke-konteksten
 3. Stil forretnings-spørgsmål (ikke tekniske) til Mathias per skabelonens spørgsmåls-typer:
    - Aktør, tid, relation, frekvens, konsekvens, eksisterende-system, scope-grænse
@@ -146,7 +190,7 @@ Mathias starter ny Claude.ai-chat med `qwers`, og giver derefter konteksten om a
 
 1. **Læs krav-dok** (`docs/coordination/<pakke>-krav-og-data.md`) via Filesystem-MCP
 2. **Læs forretningsspørgsmål-fil** hvis den findes (`docs/coordination/<pakke>-forretningsspoergsmaal.md`)
-3. **Læs fire forretnings-dokumenter** (vision, master-plan, mathias-afgøelser, evt. relateret 1.0-bibel-sektion)
+3. **Læs forretnings-dokumenter** (vision, master-plan, mathias-afgøelser). Stork 1.0-baggrund er i Project-files (extern); referér ikke til 1.0-fil som repo-kilde uden verifikation.
 4. **Verificér krav-dok mod kilderne** (se Review-fokus nedenfor)
 5. **Skriv feedback eller approval-fil** via Filesystem-MCP:
    - Feedback: `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md`
