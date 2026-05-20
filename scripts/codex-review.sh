@@ -28,13 +28,14 @@ Eksempel:
   $0 docs/coordination/Lag1-plan.md 2 --quick
   $0 docs/coordination/rapport-historik/2026-05-20-Lag1.md 1 --phase=slut-rapport
 
-V5.3 marker-protokol: scriptet parser output for halt-markers + log-markers + positive markers.
+V5.3 marker-protokol: scriptet parser output for halt-markers + severity-prefixes + log-markers + positive markers.
 Exit-koder:
   0  = clean eller G-NUMMER-KANDIDAT (fortsæt)
   1  = STOP-FOR-CLARIFICATION (info-mangel)
-  2  = BRUD-PAA-KRAV / TEKNISK-BLOKERING / PLAN-AFVIGELSE / KRITISK-SIKKERHEDSHUL (halt)
+  2  = halt-marker (BRUD-PAA-KRAV / TEKNISK-BLOKERING / PLAN-AFVIGELSE / KRITISK-SIKKERHEDSHUL)
+       ELLER severity-prefix (^KRITISK\b — stopper plan i alle runder per overvaagning)
   3  = WORKAROUND-INTRODUCERET (Mathias-gate)
-  4  = ESCALATE-konsensus eller iter > 3 auto-eskalation
+  4  = ESCALATE / AUTO-ESKALATION / NEEDS-MATHIAS (Mathias-judgment kræves før V<n+1>)
   124 = codex timeout
 EOF
   exit 64
@@ -199,9 +200,11 @@ echo "" >&2
 echo "▶ Marker-parsing:" >&2
 
 HALT_HIT=0
+SEVERITY_HIT=0
 WORKAROUND_HIT=0
 CLARIFICATION_HIT=0
 ESCALATE_HIT=0
+NEEDS_MATHIAS_HIT=0
 
 if grep -qE '^(STOP-FOR-CLARIFICATION):' "$RAW_OUTPUT"; then
   CLARIFICATION_HIT=1
@@ -211,6 +214,22 @@ fi
 if grep -qE '^(BRUD-PAA-KRAV|TEKNISK-BLOKERING|PLAN-AFVIGELSE|KRITISK-SIKKERHEDSHUL):' "$RAW_OUTPUT"; then
   HALT_HIT=1
   echo "  🛑 Halt-marker rejst — kræver LØS-dialog eller eskalation" >&2
+fi
+
+# Severity-prefix detection (NY 2026-05-20 — G055-fix)
+# KRITISK uden halt-marker er stadig blocker per overvaagning-disciplin
+# ("KRITISK — STOPPER plan i alle runder"). Halt-markeren kan være
+# eksplicit ("KRITISK — PLAN-AFVIGELSE:") eller alene ("KRITISK: <fund>").
+# Matcher ord-grænse efter KRITISK så "KRITISKE" ikke triggers false positive.
+if grep -qE '^KRITISK\b' "$RAW_OUTPUT"; then
+  SEVERITY_HIT=1
+  echo "  🛑 KRITISK-severity rejst — stopper plan i alle runder" >&2
+fi
+
+# NEEDS-MATHIAS — stopper plan og kræver Mathias-afgørelse før V<n+1>
+if grep -qE '^(\[NEEDS-MATHIAS\]|NEEDS-MATHIAS)\b' "$RAW_OUTPUT"; then
+  NEEDS_MATHIAS_HIT=1
+  echo "  🚦 NEEDS-MATHIAS rejst — Code må ikke lave V<n+1> før Mathias har afgjort" >&2
 fi
 
 if grep -qE '^(WORKAROUND-INTRODUCERET):' "$RAW_OUTPUT"; then
@@ -257,7 +276,10 @@ fi
 if [ "$ESCALATE_HIT" -eq 1 ]; then
   exit 4
 fi
-if [ "$HALT_HIT" -eq 1 ]; then
+if [ "$NEEDS_MATHIAS_HIT" -eq 1 ]; then
+  exit 4
+fi
+if [ "$HALT_HIT" -eq 1 ] || [ "$SEVERITY_HIT" -eq 1 ]; then
   exit 2
 fi
 
