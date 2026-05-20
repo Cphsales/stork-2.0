@@ -389,3 +389,21 @@ hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
   - Denne entry
 
 - **Konsekvens for fremtidige pakker:** Stor-pakker kører nu forretningsspørgsmål-fase → krav-dok → krav-dok-review → plan-fase. Reviewers kan markere NEEDS-MATHIAS som eskaleringsvej når dokument-modsigelse eller ramme-beslutning kræver Mathias-input. Code skal igennem 9-tjek-pre-push før plan-commit. Net-effekt: færre iterationer pr. pakke, men ekstra fase op-i-flowet (forretningsspørgsmål + krav-dok-review).
+
+### 2026-05-20 — Lag 1 disciplin-fundament komplet
+
+- **Beslutning:** Lag 1's disciplin-fundament er nu komplet etableret på main. Fundamentet består af fire komplementære lag:
+  1. **V5.3 workflow-spec** (PR #48 `708ab8d`): 7-step flow, marker-protokol (halt/log/positive markers), dialog-protokol (FLAG → LØS → STOP), `scripts/codex-review.sh`, `scripts/claude-ai-prompt.sh`, Cadence (Claude.ai trigger-baseret review-frekvens)
+  2. **PR #42's disciplin-indhold selektivt merget** (PR #52 `8898d3e`): forretningsspoergsmaal-fase (Claude.ai-forfatter), krav-dok-review-rolle (Claude.ai-reviewer separat fra forfatter), NEEDS-MATHIAS-severity (5. niveau parallel til KRITISK/MELLEM/KOSMETISK/OPGRADERING), end-to-end-tjek per write-vej (7 obligatoriske kode-tjek for Codex), Fundament-tjek-passeret-sektion i plan-skabelon, Plan-pre-push-tjekliste (9-tjek for Code før plan-commit), datamodel-STOP for Claude.ai, krav-dok-skrivnings-disciplin (kilde-disciplin + rene tanker)
+  3. **Lag 1 interne huller lukket** (PR #53 `048d021`): G055 — `scripts/codex-review.sh` parser udvidet med severity-prefix-detection (`^KRITISK\b` → exit 2, `^NEEDS-MATHIAS\b` → exit 4) så disciplin nu håndhæves på script-niveau, ikke konvention. G056 — `codex-overvaagning.md` rolle-grænse præciseret så forretnings-dokument-modsigelser altid går via OUT OF SCOPE-vejen (Claude.ai's bord), KRITISK + NEEDS-MATHIAS er kun for kode-niveau-fund hos Codex
+  4. **Workflow-skabelon konsistens** (del af PR #52): step 1-tabel udvidet med 3 sub-trin (forretningsspoergsmaal → krav-dok → krav-dok-review), Filer-pr-pakke-tabel udvidet med `<pakke>-forretningsspoergsmaal.md` + `krav-dok-feedback/*`
+
+- **Begrundelse:** PR #42 var Mathias' egen disciplin-pakke fra 18. maj 2026 men stod åben fordi den var skrevet FØR Lag 1 etablerede V5.3. Selektiv merge gennem Lag1-filter (PR #42-indhold kun inkluderet hvor det tilfører Lag 1 værdi uden at overskrive) lukker fundamentet uden friktion. Codex' meta-review bekræftede match og afslørede 2 latente huller i Lag 1 (G055+G056) som blev lukket samme dag. Resultat: én sammenhængende disciplin-pakke der dækker hele plan-automation-flowet fra forretningsspoergsmaal → krav-dok → krav-dok-review → plan → build → slut-rapport.
+
+- **Plan-reference:** 3 squash-commits på main:
+  - `8898d3e` PR #52 "Disciplin-fundament merge fra PR #42 (selektiv, Lag1-filteret)" — 11 commits squashed, 12 filer ændret
+  - `048d021` PR #53 "Lag 1 mini-disciplin: G055 + G056 lukket" — 1 commit, 3 filer ændret
+  - `41cf359` PR #54 "Arkivér PR42-handoff-doc efter merge" — 1 commit, 1 fil flyttet
+  - Slut-rapport: `docs/coordination/rapport-historik/2026-05-20-Lag1-disciplin-fundament.md` (denne pakke)
+
+- **Konsekvens for fremtidige pakker:** Disciplin-fundamentet er nu fuldt operationelt. Stor/mellem-pakker kan straks bruge forretningsspoergsmaal-fase + krav-dok-review-flow. NEEDS-MATHIAS-eskalering håndhæves på script-niveau (exit 4). KRITISK-severity blokerer automatisk (exit 2) selv uden halt-marker. Codex' rolle er ren — alle forretnings-konflikter går via OUT OF SCOPE-vejen til Claude.ai. Næste pakke kan starte step 1 uden yderligere disciplin-arbejde.
