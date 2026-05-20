@@ -407,3 +407,24 @@ hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
   - Slut-rapport: `docs/coordination/rapport-historik/2026-05-20-Lag1-disciplin-fundament.md` (denne pakke)
 
 - **Konsekvens for fremtidige pakker:** Disciplin-fundamentet er nu fuldt operationelt. Stor/mellem-pakker kan straks bruge forretningsspoergsmaal-fase + krav-dok-review-flow. NEEDS-MATHIAS-eskalering håndhæves på script-niveau (exit 4). KRITISK-severity blokerer automatisk (exit 2) selv uden halt-marker. Codex' rolle er ren — alle forretnings-konflikter går via OUT OF SCOPE-vejen til Claude.ai. Næste pakke kan starte step 1 uden yderligere disciplin-arbejde.
+
+### 2026-05-20 — Trin 10 forretnings-ramme: klient som forretnings-fundament
+
+- **Beslutning:** Forretnings-sandheder om klienten låses som ramme-niveau-afgørelser før trin 10 (klient-skabelon) bygges:
+  1. **Klient ejer rå data.** Salg, calls og andre rå data der kobles på klienten følger klienten ved team-skift. Teamet bevarer historik om at have ejet klienten i en periode, men ejer ikke dataen.
+
+  2. **Dato afgør sandheden.** Når et salg laves på dato X, og klienten på dato X var knyttet til team Y, så er den binding historisk fast. Senere ændringer i klient-team-tilknytning ændrer ikke gamle data. Annulleringer eller anden feedback der kommer senere på et salg rammer det team der ejede klienten på salgs-tidspunktet, ikke det nuværende team.
+
+  3. **Klient anonymiseres ikke.** Klient-navn er forretningsdata, ikke persondata. Klient-rækken bliver stående evigt så historik og audit-spor bevares. Felter på klienten kan dog være direkte persondata (fx en kontaktperson) — sådanne felter har egne sletteregler på felt-niveau, ikke klient-niveau.
+
+  4. **Klient-livscyklus = aktiv/inaktiv.** Ingen mellem-tilstande. Samme mønster som teams og afdelinger (jf. 2026-05-16 punkt 6). Inaktiv klient bliver stående for historik, men kan ikke vælges som ny team-tilknytning.
+
+  5. **Klient kan have logo.**
+
+  6. **Rettigheder til klient-handlinger styres i UI.** Hvem må oprette/ændre/deaktivere klienter defineres i rettigheds-systemet, ikke fastlagt i kode.
+
+  7. **Lønarter der refererer klient sættes op via formler i UI.** Formel-systemet (trin 13) leverer mekanikken; konfiguration sker i UI bagefter. Klient-skabelonen selv har ikke lønart-konfiguration på sig.
+
+- **Begrundelse:** Trin 10's krav-dok skal kunne pege på sporbare Mathias-kilder for hver påstand. Disse syv sandheder var implicit kendt fra tidligere afdæknings-sessioner men ikke registreret samlet for klient-specifikt scope. Registreres her som ramme-niveau-afgørelser så Code/Codex/Claude.ai kan reference dem uden gætning. Migration fra 1.0 er eksplicit udskudt til separat pakke.
+
+- **Plan-reference:** Denne commit. Trin 10-krav-dok refererer denne entry som primær kilde.
