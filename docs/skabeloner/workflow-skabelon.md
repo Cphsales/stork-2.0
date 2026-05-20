@@ -148,9 +148,9 @@ Max 3 LØS-iterationer per fund. Iter > 3 → auto-eskalation via mathias-gate/.
 
 | Marker                    | Trigger                                            | Routing ved STOP                                       |
 | ------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
-| `BRUD-PAA-KRAV`           | Build/plan modsiger krav-doc                       | → step 1 (revid krav)                                  |
-| `TEKNISK-BLOKERING`       | Ikke fysisk implementerbar (CI/tooling/dependency) | → step 3 (revid plan); fundamental: Mathias-eskalation |
-| `PLAN-AFVIGELSE`          | Build afviger fra approved plan uden krav-brud     | → step 3 (plan V2) eller Mathias-godkendelse           |
+| `BRUD-PAA-KRAV`           | Build/plan modsiger krav-doc                       | → step 1 (revid krav-dok)                              |
+| `TEKNISK-BLOKERING`       | Ikke fysisk implementerbar (CI/tooling/dependency) | → step 2 (revid plan); fundamental: Mathias-eskalation |
+| `PLAN-AFVIGELSE`          | Build afviger fra approved plan uden krav-brud     | → step 2 (plan V<n+1>) eller Mathias-godkendelse       |
 | `KRITISK-SIKKERHEDSHUL`   | RLS-hul, datatab, SQL-injection, sikkerheds-risiko | Fix i samme batch; ikke muligt → Mathias               |
 | `WORKAROUND-INTRODUCERET` | Bevidst kvalitets-sænkning                         | Mathias-gate (se to-fil-flow nedenfor)                 |
 | `STOP-FOR-CLARIFICATION`  | Info mangler genuint                               | Auto-STOP; mål-part svarer; genoptag                   |
@@ -189,16 +189,16 @@ Hvis en situation matcher flere markers: **Codex bruger den marker der bedst bes
 
 ### Routing-tabel
 
-| Trigger                             | Default routing                                      |
-| ----------------------------------- | ---------------------------------------------------- |
-| BRUD-PAA-KRAV                       | step 1 (revid krav-dok)                              |
-| TEKNISK-BLOKERING                   | step 3 (revid plan); fundamental: Mathias-eskalation |
-| PLAN-AFVIGELSE                      | step 3 (plan V2) eller Mathias-godkendelse via gate/ |
-| KRITISK-SIKKERHEDSHUL               | Fix i samme batch; ikke muligt → Mathias             |
-| WORKAROUND-INTRODUCERET             | Mathias-gate to-fil-flow                             |
-| STOP-FOR-CLARIFICATION              | Genoptag samme step efter mål-parts svar             |
-| ESCALATE-konsensus (begge ESCALATE) | Mathias-judgment via `mathias-gate/`                 |
-| Auto-eskalation (iter > 3)          | Tving ESCALATE-rute via `mathias-gate/`              |
+| Trigger                             | Default routing                                          |
+| ----------------------------------- | -------------------------------------------------------- |
+| BRUD-PAA-KRAV                       | step 1 (revid krav-dok)                                  |
+| TEKNISK-BLOKERING                   | step 2 (revid plan); fundamental: Mathias-eskalation     |
+| PLAN-AFVIGELSE                      | step 2 (plan V<n+1>) eller Mathias-godkendelse via gate/ |
+| KRITISK-SIKKERHEDSHUL               | Fix i samme batch; ikke muligt → Mathias                 |
+| WORKAROUND-INTRODUCERET             | Mathias-gate to-fil-flow                                 |
+| STOP-FOR-CLARIFICATION              | Genoptag samme step efter mål-parts svar                 |
+| ESCALATE-konsensus (begge ESCALATE) | Mathias-judgment via `mathias-gate/`                     |
+| Auto-eskalation (iter > 3)          | Tving ESCALATE-rute via `mathias-gate/`                  |
 
 ---
 
@@ -303,7 +303,7 @@ Codex læser typisk 8-10 filer i en dyb runde før den giver fund. Forventet tok
 
 ### 7. Konvergens typisk i 3 runder
 
-V1 → V2 → V3 = approval er det forventede mønster. **7-iter cap er rigelig margin.** Lag 1's workflow-stabilisering selv ramte V5.1 (6 plan-versioner) før APPROVAL — det er øvre normal-grænse for kompleks workflow-design. Hvis runde 8+ stadig viser KRITISK-fund: eskaler til Mathias (workflow-loop fra step 3 → Mathias).
+V1 → V2 → V3 = approval er det forventede mønster. **7-iter cap er rigelig margin.** Lag 1's workflow-stabilisering selv ramte V5.1 (6 plan-versioner) før APPROVAL — det er øvre normal-grænse for kompleks workflow-design. Hvis runde 8+ stadig viser KRITISK-fund: eskaler til Mathias (workflow-loop fra step 2 → Mathias).
 
 ### 8. Niveau 3-protokol — runde-afhængige stop-betingelser
 
