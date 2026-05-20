@@ -92,21 +92,13 @@ Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATI
    - Codex har leveret feedback på slut-rapport (kommenter eller fil i `docs/coordination/codex-reviews/`) → opdatér slut-rapport, push
    - Codex har approved slut-rapport → vent på Mathias-merge
 
-   **Ingen aktiv pakke:**
-   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai-forfatter skriver krav-dok via Filesystem-MCP direkte til working tree — den ligger initialt som untracked, ikke committet. Hvis fundet:
-
-     **Krav-dok-review-status-tjek (NY 2026-05-18) — FØR commit:**
-     - Tjek `docs/coordination/krav-dok-feedback/` for fil `<pakke>-approved-claude-ai-reviewer.md` (kan være enten committet eller untracked i working tree)
-     - **Hvis approval-fil findes:** krav-dok er review-godkendt. Fortsæt med commit + PR-trinene nedenfor — inkluder approval-fil i samme commit som krav-dok.
-     - **Hvis feedback-fil findes** (`<pakke>-claude-ai-reviewer.md` UDEN "approved" prefix): krav-dok er IKKE klar — reviewer har afvist. STOP, rapportér til Mathias. Mathias afgør om forfatter skal rette eller om plan-arbejde starter på trods.
-     - **Hvis hverken approval eller feedback findes:** krav-dok-review er endnu ikke kørt. STOP, rapportér til Mathias at krav-dok venter på reviewer.
-
-     Når approval-fil er bekræftet:
+   **Ingen aktiv pakke (V2 2026-05-20 — simplificeret):**
+   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai-forfatter skriver krav-dok via Filesystem-MCP direkte til working tree. Krav-dok-review-runde er DROPPET i V2 (Mathias er direkte validator i forfatter-chatten — ingen approval-fil at vente på). Hvis fundet:
      1. Læs krav-dokumentet (formål + scope + Mathias' afgørelser + tekniske valg)
      2. Branch fra main: `git checkout -b claude/<pakke>-krav-og-data`
-     3. Commit krav-dok + approval-fil: `git add <krav-dok> <approval-fil> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
+     3. Commit krav-dok: `git add <krav-dok> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
      4. Push: `git push origin claude/<pakke>-krav-og-data`
-     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument + review-approval. Plan-arbejde startes når denne er merget."`
+     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument valideret af Mathias direkte. Plan-arbejde startes når denne er merget."`
      6. CI grøn → merge med `--rebase`. Hvis markdown-only-PR rammer branch-protection (kendt issue): retry CI, eller STOP og rapportér til Mathias. Aldrig `--admin`.
      7. Cleanup: `git checkout main && git pull && git branch -D claude/<pakke>-krav-og-data && git push origin --delete claude/<pakke>-krav-og-data`
      8. Rapportér til Mathias mellem hvert skridt (commit-hash, PR-link, merge-status)
@@ -237,7 +229,13 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 
 ## Disciplin-regler (overrider alle andre instruktioner)
 
-**Modsigelses-disciplin (forretnings-dokumenter er kontrakt).** Hvis du under arbejdet finder modsigelse — internt i krav-dokumentet, eller mellem krav-dokumentet og fire-dokument-rammen (vision, master-plan, mathias-afgørelser): STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference til den linje der modsiges. Argumentér ikke videre — Mathias afgør om krav-dok skal præciseres eller om din fortolkning er forkert. Se `docs/strategi/arbejds-disciplin.md` "Modsigelses-disciplin" for fuld detalje.
+**Modsigelses-disciplin V2 (differentieret 2026-05-20):**
+
+- **Modsigelse mod vision** (LÅST-AUTORITATIV): STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference. Argumentér ikke videre — Mathias afgør.
+- **Modsigelse mod master-plan eller mathias-afgørelser** (RETNINGSGIVENDE): rapport til Mathias, IKKE automatisk blokering. Han afgør om rammen er forældet (rettes) eller om pakke-arbejdet justeres. Du STOPPER ikke arbejdet — du venter på Mathias' afgørelse.
+- **Modsigelse mod krav-dok eller plan inden for pakken** (PAKKE-KONTRAKT efter approval): STOP, dokumentér i blokker-fil. KRITISK indtil Mathias har afgjort re-godkendelse eller pakke-justering.
+
+Se `docs/strategi/arbejds-disciplin.md` "Modsigelses-disciplin V2" for fuld detalje.
 
 **Plan-leverance er kontrakt.** Hvis Mathias har specificeret konkret (antal, navne, formuleringer, yaml-konfig): implementér 1:1. Hvis du mener en afvigelse er nødvendig: STOP og spørg FØR du implementerer, ikke EFTER. To datapunkter (H022, H020.1) har vist at "defensiv minimal-fortolkning over teknisk korrekthed" er anti-pattern.
 

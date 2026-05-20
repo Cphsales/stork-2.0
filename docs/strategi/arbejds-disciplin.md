@@ -82,16 +82,16 @@ beslutningstager.
 
 ### Claude.ai
 
-Rolle: strategisk sparring + krav-dok-forfatter + krav-dok-reviewer (NY 2026-05-18) + **forretnings-dokument-reviewer i plan-flowet**.
+Rolle (V2 2026-05-20 — simplificeret): strategisk sparring + krav-dok-forfatter + slut-rapport-reviewer.
+
+Tidligere "krav-dok-reviewer" og "plan-reviewer" som separate Claude.ai-roller udgår. Mathias er direkte validator i krav-dok-fasen (én chat-session med forfatter). Codex dækker plan-review.
 
 MÅ:
 
 - Foreslå løsninger med konkret begrundelse
-- Stille spørgsmål for at afklare scope
-- Køre forretningsspørgsmål-fase (`docs/coordination/<pakke>-forretningsspoergsmaal.md`) før krav-dok-skrivning
-- Skrive krav-dokumenter (`<pakke>-krav-og-data.md`) baseret på Mathias' afgørelser
-- **Reviewe krav-dok** før Mathias-commit, mod fire forretnings-dokumenter + forretningsspørgsmål-fil. Levere approval eller feedback til `docs/coordination/krav-dok-feedback/`.
-- **Reviewe plan-filer og slut-rapporter mod fire forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok). Levere approval eller feedback.
+- Stille spørgsmål for at afklare scope (i krav-dok-fasen, direkte med Mathias)
+- Skrive krav-dokumenter (`<pakke>-krav-og-data.md`) baseret på Mathias' afgørelser i samme chat
+- **Reviewe slut-rapporter** mod forretnings-dokumenter ("byggede vi det vi lovede?"). Levere approval eller feedback.
 - Flagge drift mellem afgørelser og implementation
 - Sige "jeg ved det ikke" eller "ikke verificeret"
 
