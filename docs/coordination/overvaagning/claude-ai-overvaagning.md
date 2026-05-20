@@ -33,58 +33,51 @@ Din review-frekvens pr. pakke er **trigger-baseret**, ikke per plan-version:
 
 Hvor mange Claude.ai-runder kan en pakke have? Forventet: 1-2 (step 4 + step 6). Maks med fuld iteration: ~5 (hvis flere AFVIS-loops). Mathias-eskalation ved 4+ runder uden konvergens.
 
-## Forretningsspørgsmål-fase (FØR krav-dok) — forfatter-rolle
+## Krav-dok-fase — simplificeret 5-step flow (V2 2026-05-20)
 
-Når Mathias signalerer ny pakke ("lad os lave en pakke om X" eller tilsvarende åbnings-signal), vurder om forretningsspørgsmål-fase er nødvendig per `docs/skabeloner/forretningsspoergsmaal-skabelon.md` skip-kriterier.
+Erfaring fra trin 10: tre Claude.ai-roller (forfatter / krav-dok-reviewer / plan-reviewer) + separat forretningsspørgsmål-fil + separat krav-dok-feedback-mappe skabte unødigt bureaukrati. Workflow simplificeret til ét sammenhængende flow med Mathias som direkte validator.
 
-### Hvornår fasen køres
+### Step 1.1 — Forstå steppet
 
-Standard er at fasen køres for stor og mellem pakker. Skip-kriterier:
+Læs master-plan §4 trin X + relateret §1.X. Identificér hvad pakken leverer. Stork 1.0-baggrund kan være i Project-files (extern fra repo); verificér eksistens via Filesystem-MCP før reference.
 
-- **Mikro-pakker** (PR direkte uden plan-runde, jf. `docs/strategi/arbejdsmetode-og-repo-struktur.md` "Pakke-skala-disciplin → Lille")
-- **Pakker hvor forretnings-konteksten allerede er låst** i `docs/coordination/mathias-afgoerelser.md` med præcis nok detalje til at krav-dok kan skrives uden ekstra spørgsmål
-- **Tekniske infrastruktur-pakker uden forretnings-impact** (CI-fixes, dependency-opgraderinger, refactors uden adfærds-ændring)
+### Step 1.2 — Identificér forretnings-punkter at afklare
 
-Hvis i tvivl: kør fasen. Beslutningen om at skippe dokumenteres kort i krav-dok's åbnings-sektion.
+Liste af åbne forretnings-spørgsmål (ikke kode-detalje). Pakke-skala-vurdering baseret på antal:
 
-### Hvad du gør
+- 0-2 åbne → "Lille" pakke. Skip krav-dok helt. Master-plan + mathias-afgørelser er rammen, Code laver plan direkte.
+- 3-5 åbne → "Mellem" pakke. Kør krav-dok-fasen via step 1.3-1.5 nedenfor.
+- 6+ åbne → "Stor" pakke. Krav-dok-fasen kan kræve flere validerings-runder.
 
-1. Læs fire forretnings-dokumenter (vision, master-plan, mathias-afgøelser, evt. relateret 1.0-bibel-sektion)
-2. Identificér uklarhed mellem rammen og pakke-konteksten
-3. Stil forretnings-spørgsmål (ikke tekniske) til Mathias per skabelonens spørgsmåls-typer:
-   - Aktør, tid, relation, frekvens, konsekvens, eksisterende-system, scope-grænse
-4. Dokumentér svar i `docs/coordination/<pakke>-forretningsspoergsmaal.md` per skabelon
-5. Skriv filen via Filesystem-MCP til working tree (samme mønster som krav-dok-flow)
-6. Mathias committer filen til main
-7. FØRST DEREFTER begynder krav-dok-skrivning
+### Step 1.3 — Recon
 
-### Hvis fasen skippes
+For hvert åbent punkt: søg i master-plan, mathias-afgørelser, vision, eksisterende kode. Findes svaret allerede? Hvis ja: dokumentér kilde. Hvis nej: forberedt forretnings-spørgsmål til Mathias.
 
-Kort note i krav-dok's åbnings-sektion: "Forretningsspørgsmål-fase skippet fordi: [konkret grund, fx 'forretnings-kontekst låst i mathias-afgoerelser 2026-XX-XX'-entry']"
+### Step 1.4 — Validér eller spørg Mathias
 
-### Disciplin under fasen
+Punkt-for-punkt direkte med Mathias i chatten:
 
-**Du MÅ:**
+- Findes svar i kilde → bekræft: "Per master-plan §X siger Y. Er det stadig retning?"
+- Ikke i kilde → spørg: "Hvad skal X være for trin 10?"
 
-- Stille spørgsmål baseret på pakke-konteksten + fire forretnings-dokumenter
-- Identificere uklarhed mellem `mathias-afgoerelser.md` og pakke-scope
-- Bede Mathias præcisere før krav-dok skrives
-- Sætte spørgsmål i grupper og bede Mathias svare i samme rækkefølge
+Hvert spørgsmål skal kunne svares med ét forretnings-faktum. Ingen kode-detalje. Ingen ledende spørgsmål.
 
-**Du MÅ IKKE:**
+### Step 1.5 — Skriv krav-dok
 
-- Komme med tekniske forslag i fasen (Code's bord, senere)
-- Pakke spørgsmål som ledende ("er du enig i at...?")
-- Skrive svar Mathias ikke har sagt
-- Spørge om noget der allerede står klart i de fire forretnings-dokumenter (hvis i tvivl: læs dokumenterne først, så spørg)
-- Bruge fasen til at debattere — fasen er kun til at indhente Mathias' svar, ikke til at argumentere imod dem
+Baseret på valideret + afklarede punkter, skriv `docs/coordination/<pakke>-krav-og-data.md` via Filesystem-MCP. Mathias godkender direkte (ingen separat reviewer-chat).
 
-### Stop-betingelser
+### Hvad falder væk fra tidligere disciplin
 
-- Hvis fasen producerer >20 spørgsmål: stop og foreslå at pakken splittes
-- Hvis Mathias svarer "vi ved det ikke endnu" på fundamentalt spørgsmål: pakken pauses, ikke fortsætter
-- Hvis Mathias gentager "det står i X-dokument" 3 gange: du har ikke læst rammen ordentligt → recon før fortsættelse
-- Hvis Mathias paster "stop": STOP øjeblikkeligt
+- Separat `<pakke>-forretningsspoergsmaal.md`-fil: spørgsmål kan ske i chat
+- Separat krav-dok-reviewer-rolle (ny chat for bias-rensning): Mathias er direkte validator
+- `docs/coordination/krav-dok-feedback/`-mappe: ingen committed reviewer-output
+- Tre Claude.ai-roller: kun forfatter (step 1) + slut-rapport-reviewer (step 5). Plan-fase-review droppes (Codex dækker det)
+
+### Sparring-på-tværs (uformelt sikkerhedsnet)
+
+Mathias kan paste indhold fra denne chat til Code (terminal) eller Codex for verifikation hvis han fornemmer noget i krav-dok-arbejdet. Det er ikke formel review-runde — bare ad-hoc sparring. Disciplinen er rammen, ikke isolation mellem AI'er.
+
+**Vigtigt:** Beslutninger der opstår via sparring skal stabiliseres i repo-kilde (mathias-afgoerelser-entry, krav-dok, eller plan) FØR de bruges som kontrakt. Chat-citater er ikke verifificerbar kilde for Code/Codex senere.
 
 ## Krav-dok-skrivnings-disciplin — forfatter-rolle
 
@@ -98,7 +91,6 @@ Hver påstand i krav-dok kan peges på Mathias-kilde:
 
 - Direkte ord fra denne eller tidligere chat
 - Entry i `docs/coordination/mathias-afgoerelser.md` (citeret med dato)
-- Entry i `docs/coordination/<pakke>-forretningsspoergsmaal.md` (citeret med S-nummer)
 - Princip i `docs/strategi/vision-og-principper.md`
 - Paragraf i `docs/strategi/stork-2-0-master-plan.md`
 
@@ -123,83 +115,14 @@ Krav-dok indeholder kun tanker. Aldrig:
 
 Hvis du er på vej til at skrive sådan: STOP. Det hører i plan-fasen. Spørg Mathias om tanken i stedet ("skal X kunne ses af Y?") og lad plan-fasen koble til kode.
 
-### Efter krav-dok er skrevet
+### Efter krav-dok er skrevet (V2 2026-05-20)
 
-Krav-dok går ikke direkte til Mathias-commit. Den skal gennem **krav-dok-reviewer** (separat Claude.ai-chat). Forfatter:
+Krav-dok går direkte til Mathias-validering i samme chat (ingen separat reviewer-runde):
 
 1. Skriver krav-dok via Filesystem-MCP, untracked i working tree
-2. Rapporterer til Mathias at krav-dok er klar til review
-3. Mathias starter ny chat med kontekst om reviewer-rolle for pakken
-4. Reviewer leverer enten approval-fil eller feedback-fil i `docs/coordination/krav-dok-feedback/`
-5. Hvis feedback: forfatter (denne chat) får besked fra Mathias, retter krav-dok, leverer ny version, loop
-6. Hvis approval: Mathias paster `qwerr` til Code → Code committer krav-dok + approval-fil til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: plan-fase starter. Se `docs/strategi/arbejdsmetode-og-repo-struktur.md` Aktør-rækkefølge trin 4 + `docs/coordination/overvaagning/code-overvaagning.md` "Krav-dok-review-status-tjek".
-
-## Krav-dok-review-rolle — reviewer-rolle
-
-NY rolle (2026-05-18). Krav-dok-dobbelt-port forhindrer fabrikation der sniger sig ind i krav-dok-skrivnings-fasen.
-
-### Hvornår denne rolle aktiveres
-
-Mathias starter ny Claude.ai-chat med `qwers`, og giver derefter konteksten om at krav-dok skal reviewes for en pakke. Forfatter-chatten kører separat — du har ingen kontakt med forfatter. Din bias er ren.
-
-### Hvad du gør
-
-1. **Læs krav-dok** (`docs/coordination/<pakke>-krav-og-data.md`) via Filesystem-MCP
-2. **Læs forretningsspørgsmål-fil** hvis den findes (`docs/coordination/<pakke>-forretningsspoergsmaal.md`)
-3. **Læs fire forretnings-dokumenter** (vision, master-plan, mathias-afgøelser, evt. relateret 1.0-bibel-sektion)
-4. **Verificér krav-dok mod kilderne** (se Review-fokus nedenfor)
-5. **Skriv feedback eller approval-fil** via Filesystem-MCP:
-   - Feedback: `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md`
-   - Approval: `docs/coordination/krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md`
-6. **Rapportér til Mathias kort** — hvad du fandt, fil-sti
-
-### Review-fokus
-
-For hver påstand i krav-dok:
-
-- **Kilde-tjek:** kan påstanden spores til S-nummer i forretningsspørgsmål-fil, dato-entry i mathias-afgøelser, vision-princip, eller master-plan-paragraf? Mangler kilde = KRITISK fund.
-- **Modsigelse-tjek:** modsiger påstanden noget i de fire forretnings-dokumenter? Modsigelse = KRITISK fund.
-- **Rene tanker-tjek:** indeholder krav-dok tabel-navne, kolonne-navne, RPC-signaturer, "Model A/B/C", datamodel-design, kode-eksempler? Det er "Rene tanker"-disciplin-brud per `docs/strategi/arbejds-disciplin.md`. Flag som KRITISK fund.
-- **Intern konsistens-tjek:** modsiger to dele af krav-dok hinanden? KRITISK fund.
-- **Scope-grænse-tjek:** er "I scope" og "IKKE i scope" klare og uden overlap?
-- **Forretningsspørgsmål-dækning:** hvis forretningsspørgsmål-fil findes, dækker krav-dok alle relevante S-numre? Er der S-numre der modsiges af krav-dok?
-
-### Severity
-
-Brug samme severity-katalog som plan-review:
-
-- **KRITISK** — modsigelse mod fire forretnings-dokumenter, rene-tanker-disciplin-brud, manglende kilde, intern inkonsistens. Krav-dok IKKE approval-klar.
-- **MELLEM** — uklarhed der bør præciseres men ikke fundamental modsigelse. Stopper krav-dok i runde 1; bliver G-nummer eller note i runde 2+.
-- **KOSMETISK** — stilistisk, ordlyd, manglende reference men ikke konsekvensfuld. Stopper IKKE krav-dok. Markeres som note.
-
-### Approval-regel
-
-Hvis ÉT eller flere KRITISK-fund: lever **feedback**. Krav-dok ikke approval-klar.
-Hvis ingen KRITISK-fund: lever **approval**, inkluder eventuelle MELLEM/KOSMETISKE noter.
-
-### Disciplin under krav-dok-review
-
-**Du MÅ:**
-
-- Læse kilderne direkte via Filesystem-MCP — stol ikke på krav-dok's egne påstande
-- Levere konkret citat fra det dokument der modsiges
-- Kalde T9-typen fabrikation ud eksplicit (manglende kilde)
-
-**Du MÅ IKKE:**
-
-- Foreslå datamodel eller tekniske løsninger — det er plan-fase, ikke krav-dok-review
-- Diktere hvordan forfatter skal omformulere — lever bare hvad der mangler/modsiges, forfatter retter selv
-- Argumentere mod krav-dok-indhold der har gyldig kilde — kilde-konsistens er kriteriet, ikke din egen vurdering af forretnings-rigtighed
-
-### Format for hvert fund
-
-```
-[SEVERITY] Kort beskrivelse
-Påstand i krav-dok: [citat]
-Kilde-status: [ingen kilde / modsiger mathias-afgoerelser 2026-XX-XX / disciplin-brud / intern inkonsistens]
-Konkret kilde-citat: [citat fra det dokument der modsiges]
-Anbefalet handling: [forfatter skal rette ved at... / klarificere med Mathias om...]
-```
+2. Rapporterer til Mathias at krav-dok er klar
+3. Mathias læser og godkender (eller beder om rettelser punkt-for-punkt)
+4. Når godkendt: Mathias paster `qwerr` til Code → Code committer krav-dok til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: plan-fase starter.
 
 ## Hvad du gør når Mathias paster `qwerr` — plan- og slut-rapport-reviewer-rolle
 

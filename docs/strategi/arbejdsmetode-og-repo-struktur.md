@@ -185,23 +185,32 @@ Overvaagnings-prompts ligger i `docs/coordination/overvaagning/`:
 
 Mathias paster `qwers` som første besked i ny session for hver aktør. Aktøren læser sin egen overvågnings-fil fra repo (Filesystem-MCP for Claude.ai, direkte fra working tree for Code og Codex) og bekræfter rollen.
 
-### Aktør-rækkefølge
+### Aktør-rækkefølge (V2 2026-05-20 — simplificeret)
 
-1. **Claude.ai-forfatter kører forretningsspørgsmål-fase** (`docs/coordination/<pakke>-forretningsspoergsmaal.md`) hvis pakken kræver det. Se `docs/skabeloner/forretningsspoergsmaal-skabelon.md` for skip-kriterier og struktur. Output committes til main af Mathias inden krav-dok-skrivning starter. Hvis fasen skippes: dokumentér kort hvorfor i krav-dok's åbnings-sektion.
-2. **Claude.ai-forfatter leverer krav-og-data-dokument** (`docs/coordination/<pakke>-krav-og-data.md`) med formål, scope, Mathias' afgørelser, og tekniske valg overladt til Code. Krav-dokumentet refererer eksplicit til forretningsspørgsmål-filen (hvis fase blev kørt) som primær kilde. Skrives via Filesystem-MCP, untracked i working tree. Krav-dokumentet er **kontrakt**.
-3. **Claude.ai-krav-dok-reviewer leverer krav-dok-review** mod fire forretnings-dokumenter + forretningsspørgsmål-fil. Skriver `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md` (feedback) ELLER `docs/coordination/krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md` (approval). Hvis feedback: loop tilbage til 2 (forfatter retter krav-dok). Hvis approval: trin 4.
-4. **Mathias godkender krav-dok + approval-fil. `qwerr` til Code** → Code committer krav-dok + approval-fil til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: Code fortsætter til plan-arbejde (trin 5) uden ny qwerr.
-5. **Code skriver plan** (`docs/coordination/<pakke>-plan.md`) per `docs/skabeloner/plan-skabelon.md` baseret på krav-dokumentet. Push til `claude/<pakke>-plan`-branch. Codex-notify trigger "ny-plan-version" comment til tracker-issue.
-6. **`qwerr` til Codex** → Codex reviewer planen og committer `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md` (feedback) eller `<pakke>-V<n>-approved-codex.md` (approval).
-7. **`qwerr` til Claude.ai-plan-reviewer** → Claude.ai-plan-reviewer reviewer planen mod krav-dokumentet. Hvis feedback: skriver `docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` til disk; Mathias committer.
-8. Hvis EN af to har feedback: **`qwerr` til Code** → Code laver V<n+1> baseret på feedback. Loop tilbage til 6-7.
-9. Når BÅDE Codex og Claude.ai-plan-reviewer har approved: plan er klar til Mathias-godkendelse.
-10. **Mathias godkender plan** + paster **`qwerg` til Code** → Code starter build-fase. Opretter `claude/<pakke>-build`-branch, laver fil-cluster-commits, push, opretter PR.
-11. **Mathias merger build-PR** efter CI grøn.
-12. **`qwerr` til Code** → Code laver slut-rapport (`docs/coordination/rapport-historik/<dato>-<pakke>.md`) + arkiverer plan-filer + rydder aktiv-plan. Push til `claude/<pakke>-slut-rapport`. Opretter PR. Codex-notify trigger "slut-rapport-push".
-13. **`qwerr` til Codex** → Codex reviewer slut-rapport. Feedback eller approval.
-14. Hvis feedback: **`qwerr` til Code** → Code opdaterer slut-rapport på samme branch. Loop tilbage til 13.
-15. Når Codex har approved: **Mathias merger slut-rapport-PR**.
+Erfaring fra trin 10-forsøget (2026-05-20): tidligere 15-trins flow med tre Claude.ai-roller + separat forretningsspørgsmål-fil + krav-dok-reviewer-runde skabte unødigt bureaukrati. Workflow simplificeret. Plan-fase (Code+Codex) bevares uændret — Codex' review fangede fabrikation effektivt.
+
+1. **Pakke-skala-vurdering** (Mathias). Hvor mange åbne forretnings-spørgsmål? 0-2 = Lille (skip krav-dok). 3-5 = Mellem (krav-dok via simplificeret flow). 6+ = Stor (krav-dok + ekstra valideringer).
+2. **Claude.ai-forfatter laver krav-dok** i ÉN chat-session med Mathias som direkte validator. Forfatter:
+   - Forstår steppet (læser master-plan §4 trin X + §1.X)
+   - Identificérer forretnings-punkter at afklare
+   - Recon: søger svar i master-plan + mathias-afgørelser + vision + eksisterende kode
+   - Validér eller spørg Mathias punkt-for-punkt
+   - Skriver `docs/coordination/<pakke>-krav-og-data.md` via Filesystem-MCP
+3. **Mathias godkender krav-dok direkte** (ingen separat reviewer-chat). Paster `qwerr` til Code.
+4. **Code committer krav-dok** til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: Code fortsætter til plan-arbejde uden ny qwerr.
+5. **Code laver recon-først** (NY 2026-05-20): læser hver tidligere-trins migration-fil planen refererer. Skriver "Verificerede afhængigheder"-sektion. Antagelser om API'er uden file:linje-reference = KRITISK-fabrikation.
+6. **Code skriver plan** baseret på krav-dok + verificerede afhængigheder. Push til `claude/<pakke>-plan`-branch.
+7. **Code kører selv `scripts/codex-review.sh <plan-fil> <n> --phase=plan`** for hver V<n>. Codex leverer feedback eller approval. Ingen manuel paste-instruktion til Mathias.
+8. **Code iterér plan V1 → V2 → ...** baseret på Codex-feedback. Hvis Codex finder KRITISK-fund vedr. fabrikation: STOP, recon-først skal gentages, rapport til Mathias.
+9. **Når Codex har approved: rapport til Mathias**. Plan er klar til godkendelse.
+10. **Mathias godkender plan** + paster **`qwerg` til Code** → Code starter build-fase.
+11. **Code bygger** på `claude/<pakke>-build`-branch. Fil-cluster-commits. Inkluder oprydning (arkivér krav-dok + plan). Opretter PR.
+12. **Mathias merger build-PR** efter CI grøn.
+13. **`qwerr` til Code** → Code laver slut-rapport. Push til `claude/<pakke>-slut-rapport`. Opretter PR. Codex-notify trigger "slut-rapport-push".
+14. **Claude.ai (bias-frisk slut-rapport-reviewer)** leverer review: "byggede vi det vi lovede?" mod fire forretnings-dokumenter.
+15. Hvis feedback: Code opdaterer + ny review-runde. Hvis approval: Mathias merger slut-rapport-PR.
+
+**Sparring-på-tværs (uformelt sikkerhedsnet):** Mathias kan paste indhold fra én chat til en anden AI for verifikation hvis han fornemmer noget. Disciplinen er rammen, ikke isolation mellem aktører.
 
 ### Approval-regel (strict)
 

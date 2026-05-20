@@ -92,21 +92,13 @@ Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATI
    - Codex har leveret feedback på slut-rapport (kommenter eller fil i `docs/coordination/codex-reviews/`) → opdatér slut-rapport, push
    - Codex har approved slut-rapport → vent på Mathias-merge
 
-   **Ingen aktiv pakke:**
-   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai-forfatter skriver krav-dok via Filesystem-MCP direkte til working tree — den ligger initialt som untracked, ikke committet. Hvis fundet:
-
-     **Krav-dok-review-status-tjek (NY 2026-05-18) — FØR commit:**
-     - Tjek `docs/coordination/krav-dok-feedback/` for fil `<pakke>-approved-claude-ai-reviewer.md` (kan være enten committet eller untracked i working tree)
-     - **Hvis approval-fil findes:** krav-dok er review-godkendt. Fortsæt med commit + PR-trinene nedenfor — inkluder approval-fil i samme commit som krav-dok.
-     - **Hvis feedback-fil findes** (`<pakke>-claude-ai-reviewer.md` UDEN "approved" prefix): krav-dok er IKKE klar — reviewer har afvist. STOP, rapportér til Mathias. Mathias afgør om forfatter skal rette eller om plan-arbejde starter på trods.
-     - **Hvis hverken approval eller feedback findes:** krav-dok-review er endnu ikke kørt. STOP, rapportér til Mathias at krav-dok venter på reviewer.
-
-     Når approval-fil er bekræftet:
+   **Ingen aktiv pakke (V2 2026-05-20 — simplificeret):**
+   - **Først:** tjek `git status` for untracked krav-dok-fil (`docs/coordination/<pakke>-krav-og-data.md`). Claude.ai-forfatter skriver krav-dok via Filesystem-MCP direkte til working tree. Krav-dok-review-runde er DROPPET i V2 (Mathias er direkte validator i forfatter-chatten — ingen approval-fil at vente på). Hvis fundet:
      1. Læs krav-dokumentet (formål + scope + Mathias' afgørelser + tekniske valg)
      2. Branch fra main: `git checkout -b claude/<pakke>-krav-og-data`
-     3. Commit krav-dok + approval-fil: `git add <krav-dok> <approval-fil> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
+     3. Commit krav-dok: `git add <krav-dok> && git commit -m "<pakke> krav-og-data: <kort beskrivelse fra formål>"`
      4. Push: `git push origin claude/<pakke>-krav-og-data`
-     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument + review-approval. Plan-arbejde startes når denne er merget."`
+     5. PR: `gh pr create --title "<pakke> krav-og-data" --body "Krav-dokument valideret af Mathias direkte. Plan-arbejde startes når denne er merget."`
      6. CI grøn → merge med `--rebase`. Hvis markdown-only-PR rammer branch-protection (kendt issue): retry CI, eller STOP og rapportér til Mathias. Aldrig `--admin`.
      7. Cleanup: `git checkout main && git pull && git branch -D claude/<pakke>-krav-og-data && git push origin --delete claude/<pakke>-krav-og-data`
      8. Rapportér til Mathias mellem hvert skridt (commit-hash, PR-link, merge-status)
@@ -152,27 +144,51 @@ Når du skriver en plan, **skal** den indeholde "Fire-dokument-konsultation"-sek
 
 **Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Claude.ai blokere planen med KRITISK feedback.** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
 
-## Plan-pre-push-tjekliste (obligatorisk før commit, ny 2026-05-18)
+## Recon-først (obligatorisk FØR plan-skrivning, ny 2026-05-20)
 
-Før du committer plan-V<n> til `claude/<pakke>-plan`-branch: gå igennem denne tjekliste. Manglende tjek = potentielt reviewer-runde der kunne være forhindret. Mål: spare iterationer ved at fange basale mangler i din egen runde, ikke i Codex' eller Claude.ai's.
+Trin 10-erfaringen: Code (mig) fabrikerede T9-API'er, kolonner og dispatcher-struktur i plan V1 + V2 fordi jeg gættede i stedet for at læse migration-filerne. Codex fangede det først i runde 1 + 2.
 
-| Tjek | Beskrivelse                                                                                                                                                                        | Hvor                                                      |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 1    | Formåls-sætning matcher krav-dok                                                                                                                                                   | Plan øverst                                               |
-| 2    | Fire-dokument-konsultations-tabel udfyldt med konkrete referencer (paragraf-numre, dato-citater)                                                                                   | Plan-sektion                                              |
-| 3    | Fundament-tjek-passeret-sektion udfyldt med 7-række-tabel (GRANT+policy+session-var, SELECT-bredde, backdated guards, Apply-dispatcher, jsonb-format, Eksempel-row, Plan-detaljer) | Plan-sektion                                              |
-| 4    | Oprydnings- og opdaterings-strategi-sektion udfyldt med konkrete filer der arkiveres/slettes/opdateres                                                                             | Plan-sektion                                              |
-| 5    | Plan-leverancer dækker ALLE krav-dok-leverancer (ingen droppet stiltiende)                                                                                                         | Krydsetjek                                                |
-| 6    | Plan-leverancer går IKKE ud over krav-dok scope ("IKKE i scope"-listen respekteret)                                                                                                | Krydsetjek                                                |
-| 7    | Implementations-rækkefølge har Type/Hvad/Eksakt indhold/Afhængigheder/Migration-fil/Risiko per leverance                                                                           | Plan-sektion                                              |
-| 8    | Ingen tekniske beslutninger modsiger eksisterende mathias-afgørelser                                                                                                               | Krydsetjek mod `docs/coordination/mathias-afgoerelser.md` |
-| 9    | Hvis plan introducerer ny ramme-beslutning (terminologi, standard, disciplin): er den foreslået som NEEDS-MATHIAS-flag i plan, ikke implicit antaget?                              | Plan-sektion                                              |
+**Disciplin:** Før du skriver plan-indhold, lav recon-først:
 
-**Hvis du finder et "nej" på noget tjek:** ret FØR du committer. Det er ikke acceptabelt at pushe plan med vidende mangler — det spilder reviewer-tid og forlænger pakke-leverancen.
+1. Identificér hver tidligere-trins API, RPC, tabel, kolonne, dispatcher-pattern din plan refererer
+2. Læs hver migration-fil der definerer dem (åbn filen, læs signatur og kolonner)
+3. Skriv "Verificerede afhængigheder"-sektion ØVERST i plan med konkrete file:linje-referencer
 
-**Hvis du er i tvivl om et tjek:** STOP, rapportér til Mathias FØR commit, vent på afklaring. "Jeg pushede og lod review fange det" er ikke gyldig handling.
+**Format:**
 
-**Hvis Mathias' tidligere prompt har specificeret konkrete elementer i planen** (antal, navne, formuleringer, yaml-konfig): verificér at de er implementeret 1:1 (jf. Plan-leverance-kontrakt-regel). Afvigelser flagges FØR push, ikke EFTER.
+```
+## Verificerede afhængigheder
+
+| Reference | Defineret i | Linje | Brug i denne plan |
+|---|---|---|---|
+| core_identity.pending_change_request(text, uuid, jsonb, date) | 20260518000000_t9_pending_changes.sql | 234 | Wrappers kalder denne i T10.5 |
+| core_identity.has_permission(text, text, boolean) | 20260518000006_t9_grants_and_helpers.sql | 89 | Wrappers tjekker permission i T10.5 |
+| ... | ... | ... | ... |
+```
+
+**Antagelser om API'er, kolonner, eller dispatcher-struktur uden konkret file:linje-reference = KRITISK-fabrikation.** Det stopper plan-arbejdet — recon-først skal gentages før V<n+1>.
+
+## Plan-pre-push-tjekliste (reduceret 2026-05-20)
+
+Før du committer plan-V<n> til `claude/<pakke>-plan`-branch:
+
+| Tjek | Beskrivelse                                                                                                   |
+| ---- | ------------------------------------------------------------------------------------------------------------- |
+| 1    | Formåls-sætning matcher krav-dok                                                                              |
+| 2    | "Verificerede afhængigheder"-sektion udfyldt med konkrete file:linje-referencer (recon-først)                 |
+| 3    | Plan-leverancer dækker ALLE krav-dok-leverancer (ingen droppet stiltiende) og går IKKE ud over krav-dok scope |
+| 4    | Implementations-rækkefølge har Type/Hvad/Eksakt indhold/Afhængigheder/Risiko per leverance                    |
+| 5    | Oprydnings- og opdaterings-strategi-sektion udfyldt                                                           |
+
+**Hvis "nej" på noget tjek:** ret FØR du committer.
+
+**Mathias' tidligere prompt har specificeret konkrete elementer** (antal, navne, formuleringer): verificér 1:1-implementation (Plan-leverance-kontrakt). Afvigelser flagges FØR push.
+
+## Codex KRITISK-fund vedrørende fabrikation = STOP (ny 2026-05-20)
+
+Hvis Codex finder KRITISK-fund i runde 1 OG fundet vedrører fabrikation (Code refererede API/kolonne/struktur der ikke eksisterer): **STOP plan-arbejdet**. Recon-først skal gentages mod faktisk kode FØR V<n+1>. Rapport til Mathias om fabrikations-mønstret.
+
+Det forhindrer V<n+1> i at bygge ovenpå fabrikation (som skete i trin 10's plan V2).
 
 ## Hvad du gør når Mathias paster `qwerg`
 
@@ -213,7 +229,13 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 
 ## Disciplin-regler (overrider alle andre instruktioner)
 
-**Modsigelses-disciplin (forretnings-dokumenter er kontrakt).** Hvis du under arbejdet finder modsigelse — internt i krav-dokumentet, eller mellem krav-dokumentet og fire-dokument-rammen (vision, master-plan, mathias-afgørelser): STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference til den linje der modsiges. Argumentér ikke videre — Mathias afgør om krav-dok skal præciseres eller om din fortolkning er forkert. Se `docs/strategi/arbejds-disciplin.md` "Modsigelses-disciplin" for fuld detalje.
+**Modsigelses-disciplin V2 (differentieret 2026-05-20):**
+
+- **Modsigelse mod vision** (LÅST-AUTORITATIV): STOP. Dokumentér i `docs/coordination/plan-feedback/<pakke>-V<n>-blokeret.md` med konkret reference. Argumentér ikke videre — Mathias afgør.
+- **Modsigelse mod master-plan eller mathias-afgørelser** (RETNINGSGIVENDE): rapport til Mathias, IKKE automatisk blokering. Han afgør om rammen er forældet (rettes) eller om pakke-arbejdet justeres. Du STOPPER ikke arbejdet — du venter på Mathias' afgørelse.
+- **Modsigelse mod krav-dok eller plan inden for pakken** (PAKKE-KONTRAKT efter approval): STOP, dokumentér i blokker-fil. KRITISK indtil Mathias har afgjort re-godkendelse eller pakke-justering.
+
+Se `docs/strategi/arbejds-disciplin.md` "Modsigelses-disciplin V2" for fuld detalje.
 
 **Plan-leverance er kontrakt.** Hvis Mathias har specificeret konkret (antal, navne, formuleringer, yaml-konfig): implementér 1:1. Hvis du mener en afvigelse er nødvendig: STOP og spørg FØR du implementerer, ikke EFTER. To datapunkter (H022, H020.1) har vist at "defensiv minimal-fortolkning over teknisk korrekthed" er anti-pattern.
 

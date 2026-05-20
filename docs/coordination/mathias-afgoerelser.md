@@ -428,3 +428,31 @@ hvad planen leverer → "OUT OF SCOPE — kræver Mathias-runde".
 - **Begrundelse:** Trin 10's krav-dok skal kunne pege på sporbare Mathias-kilder for hver påstand. Disse syv sandheder var implicit kendt fra tidligere afdæknings-sessioner men ikke registreret samlet for klient-specifikt scope. Registreres her som ramme-niveau-afgørelser så Code/Codex/Claude.ai kan reference dem uden gætning. Migration fra 1.0 er eksplicit udskudt til separat pakke.
 
 - **Plan-reference:** Denne commit. Trin 10-krav-dok refererer denne entry som primær kilde.
+
+### 2026-05-20 — Workflow-justering V2 efter trin 10-forsøget
+
+- **Beslutning:** Plan-automation-flowet simplificeres baseret på 30 disciplin-fund fra trin 10-forsøget (dokumenteret i `docs/coordination/rapport-historik/2026-05-20-trin-10-workflow-fund.md`). Kerne-ændringer:
+  1. **Dokument-hierarki differentieres.** Kun `vision-og-principper.md` er LÅST-AUTORITATIV. `stork-2-0-master-plan.md` og `mathias-afgoerelser.md` er RETNINGSGIVENDE (kan rettes løbende). `<pakke>-krav-og-data.md` og `<pakke>-plan.md` er PAKKE-KONTRAKT efter approval (låst inden for pakken). Modsigelses-håndtering differentieres efter status: vision-modsigelse = automatisk blokering; master-plan/mathias-afgørelser-modsigelse = trigger for opdatering (Mathias afgør); krav-dok/plan-modsigelse efter approval = KRITISK.
+
+  2. **Krav-dok-fase simplificeres til 5-step Claude.ai-flow med Mathias som direkte validator.** Tre Claude.ai-roller reduceres til to (forfatter + slut-rapport-reviewer). Separat krav-dok-reviewer-chat udgår. Separat `<pakke>-forretningsspoergsmaal.md`-fil udgår. `docs/coordination/krav-dok-feedback/`-mappe udgår. Spørgsmål-runde mellem Claude.ai-forfatter og Mathias sker direkte i chat — ingen committed mellem-artefakter.
+
+  3. **Pakke-skala-vurdering som step 0** (Mathias afgør): Lille (0-2 åbne spm) skip krav-dok helt, Mellem (3-5) kører simplificeret krav-dok-fase, Stor (6+) kører fuld flow med ekstra validering.
+
+  4. **Code's recon-først som obligatorisk forudsætning for plan-skrivning.** Code SKAL læse hver tidligere-trins migration-fil planen refererer FØR plan-indhold skrives. "Verificerede afhængigheder"-sektion med konkrete file:linje-referencer er obligatorisk. Antagelser om API'er = KRITISK-fabrikation. Trin 10's plan V1+V2 fejlede præcis fordi Code (mig) fabrikerede T9-API'er i stedet for at læse migration-filerne.
+
+  5. **Codex KRITISK-fund vedr. fabrikation = STOP** (ikke "fix og fortsæt"). Recon-først skal gentages før V<n+1>. Det forhindrer V<n+1> i at bygge ovenpå fabrikation (som skete i trin 10).
+
+  6. **Plan-fase Code+Codex bevares uændret.** Codex' tekniske review fangede fabrikationer effektivt — det er essentielt sikkerhedsnet. Code kører `scripts/codex-review.sh` selv (ingen manuel paste-instruktion til Mathias).
+
+  7. **Sparring-på-tværs som uformelt sikkerhedsnet.** Mathias kan paste indhold fra én AI-chat til en anden for verifikation. Disciplinen er rammen, ikke isolation mellem AI'er.
+
+- **Begrundelse:** Trin 10-forsøget brugte ~2½ time på at producere en plan der ikke holdt. Hoved-årsager: pakke-skala-mismatch (Stor-flow på Mellem-pakke), Code's egen fabrikation af T9-API'er (ikke fanget af eksisterende disciplin), tre Claude.ai-roller skabte ekstra runder uden at fange de rigtige fejl, master-plan + mathias-afgørelser behandlet som låste når kun vision faktisk er låst. Simplificeringen rammer specifikt krav-dok-fasen (hvor over-disciplin skabte bureaukrati) + tilføjer recon-først for Code (hvor under-disciplin tillod fabrikation). Plan-fase bevares fordi den virkede.
+
+- **Plan-reference:** Denne commit. Ændrede filer:
+  - `docs/strategi/arbejds-disciplin.md` — dokument-hierarki + modsigelses-disciplin V2
+  - `docs/coordination/overvaagning/code-overvaagning.md` — recon-først, reduceret pre-push-tjekliste, Codex KRITISK STOP
+  - `docs/coordination/overvaagning/claude-ai-overvaagning.md` — simplificeret 5-step krav-dok-fase + sparring-på-tværs + 1.0-bibel-reference præciseret
+  - `docs/strategi/arbejdsmetode-og-repo-struktur.md` — Aktør-rækkefølge V2 (15-trin → 15-trin men simplificeret)
+  - `docs/coordination/rapport-historik/2026-05-20-trin-10-workflow-fund.md` — fund-katalog (30 fund) bevaret som læringskilde
+
+- **Konsekvens for fremtidige pakker:** Krav-dok-fase forventes at tage 25-50% mindre tid for Mellem-pakker. Lille-pakker har ingen krav-dok-overhead. Plan-fase er mere robust mod fabrikation pga. recon-først. Næste pakke der genoptager trin 10 vil køre den nye workflow direkte.
