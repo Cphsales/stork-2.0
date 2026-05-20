@@ -1,10 +1,20 @@
-# Trin 10 — Plan V3
+# Trin 10 — Plan V4
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V3 — klar til Codex plan-review-runde 3
+**Status:** V4 — klar til Codex plan-review-runde 4
 **Dato:** 2026-05-20
+
+---
+
+## Codex V3-fund-håndtering (LØS — V5.3 svar-typer)
+
+Codex runde 3 (review-fil: `docs/coordination/codex-reviews/2026-05-20-trin-10-runde-3.md` på `claude/trin-10-plan-v3`) leverede 1 fund.
+
+| #   | Severity | V3-step | Fund                                                                                                                                                                                                                                                                                                                                | V4-svar                                                                                                                                 | Hvor i V4               |
+| --- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 1   | KRITISK  | T10.13  | T10.13 sætter `stork.source_type` + `stork.change_reason` men IKKE `stork.t9_write_authorized = 'true'` som T9-supplements INSERT-policies på `permission_pages` / `permission_tabs` / `role_permission_grants` kræver. Brudt niveau 1-prefix end-to-end-tjek for INSERT/UPDATE/DELETE-veje (GRANT + policy + session-var-tre-pak). | **ACCEPT.** Tilføj `select set_config('stork.t9_write_authorized', 'true', false);` før INSERTs i T10.13. Opdater Fundament-tjek-tabel. | T10.13 + Fundament-tjek |
 
 ---
 
@@ -1023,6 +1033,9 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   select set_config('stork.source_type', 'migration', false);
   select set_config('stork.change_reason',
     'T10.13: seed permissions for trin 10 RPCs i grant-modellen', false);
+  -- V4 (Codex V3 KRITISK): T9-supplement's INSERT-policies på permission_pages
+  -- / permission_tabs / role_permission_grants kræver stork.t9_write_authorized.
+  select set_config('stork.t9_write_authorized', 'true', false);
 
   -- 1. Pages under org_structure-area
   with org_area as (
@@ -1100,12 +1113,12 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 
 ## Fundament-tjek-passeret
 
-| Tjek                                                           | Status | Reference                                                                                                                                                                   |
-| -------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var  | ja     | T10.8, T10.9, T10.10, T10.11 — `stork.allow_clients_write`/`allow_client_field_definitions_write` + `revoke/grant execute` + has_permission                                 |
-| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', null, false). T9-supplement's eksisterende ACL-scoped policy på client_node_placements bevares uændret. |
-| Eksempel-row verificeret gennem flow                           | ja     | T10.15 smoke-tests dækker INSERT + UPDATE + read-RPC + permission-spærring + audit-PII-hashing + logo-preserve + FK + LENIENT/strict                                        |
-| Plan-detaljer eksplicit (ingen TBD / Code afgør / overladelse) | ja     | Alle 16 steps har eksakt SQL/pseudo-SQL. Ingen "kan tilføjes senere"-noter.                                                                                                 |
+| Tjek                                                           | Status | Reference                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var  | ja     | T10.8/T10.9/T10.10/T10.11 — `stork.allow_clients_write` / `allow_client_field_definitions_write` + `revoke/grant execute` + has_permission. **T10.13** (permission-seed) — `stork.t9_write_authorized` (V4-fix) som krævet af T9-supplement's INSERT-policies på permission_pages/tabs/role_permission_grants. |
+| Hver SELECT-policy bred nok til legitime læsere                | ja     | T10.1, T10.2 — has_permission('clients'/'client_field_definitions', null, false). T9-supplement's eksisterende ACL-scoped policy på client_node_placements bevares uændret.                                                                                                                                    |
+| Eksempel-row verificeret gennem flow                           | ja     | T10.15 smoke-tests dækker INSERT + UPDATE + read-RPC + permission-spærring + audit-PII-hashing + logo-preserve + FK + LENIENT/strict                                                                                                                                                                           |
+| Plan-detaljer eksplicit (ingen TBD / Code afgør / overladelse) | ja     | Alle 16 steps har eksakt SQL/pseudo-SQL. Ingen "kan tilføjes senere"-noter.                                                                                                                                                                                                                                    |
 
 ---
 
@@ -1223,9 +1236,14 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V3 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V4 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
 
 16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V4-ændring ift. V3 (Codex runde 3 ACCEPT):
+
+- T10.13: tilføjet `set_config('stork.t9_write_authorized', 'true', false)` før INSERTs — krævet af T9-supplement's INSERT-policies på permission_pages/tabs/role_permission_grants (Codex V3 KRITISK).
+- Fundament-tjek-tabel udvidet med T10.13's session-var-disciplin.
 
 V3-ændringer ift. V2 (Codex runde 2 ACCEPT på begge fund):
 
@@ -1252,4 +1270,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 3.
+Klar til Codex plan-review-runde 4.
