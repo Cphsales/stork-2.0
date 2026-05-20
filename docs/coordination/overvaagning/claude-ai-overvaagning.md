@@ -91,7 +91,6 @@ Hver påstand i krav-dok kan peges på Mathias-kilde:
 
 - Direkte ord fra denne eller tidligere chat
 - Entry i `docs/coordination/mathias-afgoerelser.md` (citeret med dato)
-- Entry i `docs/coordination/<pakke>-forretningsspoergsmaal.md` (citeret med S-nummer)
 - Princip i `docs/strategi/vision-og-principper.md`
 - Paragraf i `docs/strategi/stork-2-0-master-plan.md`
 
