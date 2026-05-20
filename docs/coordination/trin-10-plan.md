@@ -1,10 +1,25 @@
-# Trin 10 — Plan V8
+# Trin 10 — Plan V9
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V8 — klar til Codex plan-review-runde 8
+**Status:** V9 — klar til Codex plan-review-runde 9
 **Dato:** 2026-05-21
+
+---
+
+## Codex runde 8 (LØS — V5.3 svar-typer)
+
+Codex runde 8 fandt 1 TEKNISK-BLOKERING + 1 G-nummer-kandidat. Code's parallel walk-through fandt ingen yderligere fund.
+
+| #   | Severity                  | V8-step                    | Fund                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | V9-svar                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Hvor i V9      |
+| --- | ------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | TEKNISK-BLOKERING         | T10.7b + client_node_close | `client_node_place` kalder `pending_change_request` som INSERT'er i `core_identity.pending_changes`. Tabellen har INSERT-policy (T9-fundament-supplement `20260518100000:49-51`) der kræver `current_setting('stork.t9_write_authorized', true) = 'true'`. T10.7b's CREATE OR REPLACE sætter ikke session-var → INSERT vil fejle for authenticated-bruger med FORCE RLS. Samme latente T9-bug findes i `client_node_close` (uændret af V8) og de øvrige 5 T9-pending-wrappers (org*node_upsert, etc.) — men trin 10's scope er kun client-RPC'erne. **Code walk-through missede dette** fordi T9-tests bruger `\_apply*\*`-handlers direkte, aldrig fuld wrapper-vej. | **ACCEPT.** T10.7b udvides: `client_node_place` sætter `set_config('stork.t9_write_authorized', 'true', true)` efter aktiv-check, før `pending_change_request`. Plus ny CREATE OR REPLACE af `client_node_close` med samme session-var (uden aktiv-check — `client_node_close` skal kunne lukke placement på inaktiv klient). Default-privileges på `core_identity` schema (`grant execute on functions to authenticated`, T1) dækker GRANT-kravet — explicit GRANT er ikke nødvendigt. | T10.7b udvidet |
+| 2   | G-NUMMER-KANDIDAT → ADOPT | T10.13                     | Tab/grant-INSERT-queries filtrerer på `p.name in ('clients', 'client_field_definitions')` uden at scope til `org_structure`-area. Hvis nogen senere tilføjer page med samme navn i andet area (usandsynligt, men ikke robust).                                                                                                                                                                                                                                                                                                                                                                                                                                        | **ADOPT.** Trivielt fix: scope queries til `org_structure`-area via JOIN på area_id.                                                                                                                                                                                                                                                                                                                                                                                                    | T10.13         |
+
+**T9-public-wrapper-bug (Code-observation):** Codex' fund afslører at T9's 7 public-wrappers (`org_node_upsert`, `org_node_deactivate`, `team_close`, `employee_place`, `employee_remove_from_node`, `client_node_place`, `client_node_close`) alle mangler `t9_write_authorized`-session-var. Trin 10's scope er kun de to client-RPC'er; de øvrige 5 er T9-arbejde der skal adresseres som G-nummer/separat pakke (T9 ville fungere i tests fordi `_apply_*`-handlers er SECURITY DEFINER og kan kaldes direkte, men authenticated-bruger via wrapper-vej er broken).
+
+**Walk-through-disciplin V9:** "Fuldt gear" skal omfatte sporing af hver RPC's komplette write-vej til alle berørte RLS-tabeller, ikke kun den direkte tabel. Hver write-RPC's call-chain skal verificeres mod alle policies på destination-tabeller.
 
 ---
 
@@ -791,6 +806,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
       raise exception 'client_inactive: % er sat is_active=false (krav-dok §2.5.2: inaktiv klient kan ikke vælges som ny team-tilknytning)', p_client_id
         using errcode = '22023';
     end if;
+    -- V9 (Codex runde 8 TEKNISK-BLOKERING): pending_changes-INSERT-policy
+    -- (T9-fundament-supplement) kræver session-var. T9-public-wrapper sætter
+    -- den ikke (latent bug); trin 10 lukker for client-RPC'erne.
+    perform set_config('stork.t9_write_authorized', 'true', true);
     v_request_id := core_identity.pending_change_request(
       'client_place', p_client_id,
       jsonb_build_object(
@@ -804,6 +823,34 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   end; $$;
 
   revoke execute on function core_identity.client_node_place(uuid, uuid, date) from public, anon;
+
+  -- V9 (Codex runde 8 TEKNISK-BLOKERING): client_node_close får også t9_write_authorized.
+  -- INGEN aktiv-check (krav-dok §2.5.2 gælder ikke for lukning; deaktivering skal kunne
+  -- lukke placement).
+  create or replace function core_identity.client_node_close(
+    p_client_id uuid,
+    p_effective_from date
+  ) returns uuid language plpgsql security definer set search_path = ''
+  as $$
+  declare v_request_id uuid;
+  begin
+    if not core_identity.has_permission('client_placements', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    -- V9: pending_changes-INSERT-policy kræver session-var.
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    v_request_id := core_identity.pending_change_request(
+      'client_close', p_client_id,
+      jsonb_build_object(
+        'client_id', p_client_id::text,
+        'effective_from', p_effective_from::text
+      ),
+      p_effective_from
+    );
+    return v_request_id;
+  end; $$;
+
+  revoke execute on function core_identity.client_node_close(uuid, date) from public, anon;
 
   -- Apply-handler: tilføj klient-eksistens + aktiv-check FØR INSERT/UPDATE
   create or replace function core_identity._apply_client_place(
@@ -1336,14 +1383,16 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   from org_area, (values ('clients'), ('client_field_definitions')) as p(page_name)
   on conflict (area_id, name) do nothing;
 
-  -- 2. Tabs: 'manage' for hver ny page
+  -- 2. Tabs: 'manage' for hver ny page (V9: scope til org_structure-area for robusthed)
   insert into core_identity.permission_tabs (page_id, name)
   select p.id, 'manage'
   from core_identity.permission_pages p
+  join core_identity.permission_areas a on a.id = p.area_id
   where p.name in ('clients', 'client_field_definitions')
+    and a.name = 'org_structure'
   on conflict (page_id, name) do nothing;
 
-  -- 3. Superadmin grants på tab-niveau
+  -- 3. Superadmin grants på tab-niveau (V9: scope til org_structure-area for robusthed)
   insert into core_identity.role_permission_grants
     (role_id, area_id, page_id, tab_id, can_access, can_write, visibility)
   select
@@ -1352,7 +1401,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     true, true, 'all'
   from core_identity.permission_tabs t
   join core_identity.permission_pages p on p.id = t.page_id
-  where p.name in ('clients', 'client_field_definitions') and t.name = 'manage'
+  join core_identity.permission_areas a on a.id = p.area_id
+  where p.name in ('clients', 'client_field_definitions')
+    and a.name = 'org_structure'
+    and t.name = 'manage'
   on conflict (role_id, coalesce(area_id::text, ''),
               coalesce(page_id::text, ''), coalesce(tab_id::text, ''))
   do nothing;
@@ -1546,9 +1598,15 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V8 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2). Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
+V9 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er + aktiv-check ved nye team-tilknytninger (krav-dok §2.5.2) + session-var fix på T9-public-wrappers for client. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps + 3 sub-steps (T10.7a, T10.7b, T10.10a) skaber alle artefakter fra bunden.
 
 19 leverancer, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V9-ændringer ift. V8 (Codex runde 8):
+
+- T10.7b udvidet: `client_node_place` + ny CREATE OR REPLACE af `client_node_close` sætter `stork.t9_write_authorized = 'true'` før `pending_change_request`. T9-fundament-supplement's `pending_changes_insert`-policy kræver session-var (Codex runde 8 TEKNISK-BLOKERING).
+- T10.13 robusthed: tab/grant-INSERT-queries scope'es til `org_structure`-area via JOIN på area_id (Codex G-NUMMER → ADOPT).
+- Walk-through-disciplin V9: hver T10-RPC's write-vej spores til ALLE berørte RLS-tabeller, ikke kun direkte tabel.
 
 V8-ændringer ift. V7 (Codex runde 7 + Code grundig walk-through "fuldt gear"):
 
@@ -1608,4 +1666,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 8.
+Klar til Codex plan-review-runde 9.
