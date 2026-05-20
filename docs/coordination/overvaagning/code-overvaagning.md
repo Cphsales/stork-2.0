@@ -8,7 +8,7 @@ Når Mathias paster `qwers`: læs denne fil fra repo, bekræft rolle, vent på `
 
 - **`qwers`** — Mathias paster denne som første besked i sessionen. Du læser `docs/coordination/overvaagning/code-overvaagning.md` fra repo og bekræfter rollen kort: "Rolle bekræftet som Code i plan-automation-flow. Klar til qwerr og qwerg."
 - **`qwerr`** — Mathias paster denne hver gang det er din tur i plan-fasen. Du finder selv ud af hvad du skal via tracker-issue #12.
-- **`qwerg`** — Mathias paster denne når plan er approved af BÅDE Codex og Claude.ai, OG Mathias selv har godkendt planen. Det betyder: "byg nu efter approved plan". Du starter build-fasen.
+- **`qwerg`** — Mathias paster denne når plan er approved af Codex (V2 — Claude.ai-plan-reviewer-rolle udgået) OG Mathias selv har godkendt planen. Det betyder: "byg nu efter approved plan". Du starter build-fasen.
 
 ## Din rolle
 
@@ -52,11 +52,8 @@ Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATI
 4. **Find ud af din tilstand** baseret på kombination af tracker + PR-state:
 
    **Plan-fase tilstande (tracker-comment-baseret):**
-   - `ny-plan-version` → vent (Codex + Claude.ai's tur). Du paster bare "venter på review"
+   - `ny-plan-version` → vent (Codex' tur). Du paster bare "venter på review"
    - `codex-feedback` → læs feedback-fil i `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`, lav V<n+1>
-   - `claude-ai-feedback` → Claude.ai's feedback-fil. To muligheder:
-     - **Fil committet på plan-branch** (`docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` synlig efter `git pull`): læs, lav V<n+1>
-     - **Fil ligger som untracked i working tree** (skrevet af Claude.ai via Filesystem-MCP, ikke endnu committet): commit den først på plan-branchen som separat commit (`git add <fil> && git commit -m "<pakke> V<n>-feedback fra Claude.ai"`), derefter læs + lav V<n+1>. Mathias committer ikke selv mellem runder — du committer Claude.ai's feedback på hendes vegne.
    - `plan-blokeret` → læs blokker-fil, stop, rapportér til Mathias
    - `codex-feedback med OPGRADERING-fund` → Codex har leveret feedback eller approval med ét eller flere OPGRADERING-forslag. Du skal i V<n+1>'s åbnings-sektion eksplicit håndtere hvert OPGRADERING-forslag:
      - **AFVIS** med konkret teknisk begrundelse, ELLER
@@ -72,15 +69,14 @@ Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATI
 
      Du må ikke ignorere et OPGRADERING-forslag stiltiende.
 
-   - `codex-feedback eller claude-ai-feedback med NEEDS-MATHIAS-fund` (ny 2026-05-18) — reviewer har leveret feedback med ét eller flere NEEDS-MATHIAS-fund. Du MÅ IKKE lave V<n+1> baseret på dette. STOP plan-arbejdet, rapportér til Mathias med konkret citat af hvert NEEDS-MATHIAS-spørgsmål. Vent på Mathias-afgørelse — enten via:
+   - `codex-feedback med NEEDS-MATHIAS-fund` (ny 2026-05-18) — Codex har leveret feedback med ét eller flere NEEDS-MATHIAS-fund. Du MÅ IKKE lave V<n+1> baseret på dette. STOP plan-arbejdet, rapportér til Mathias med konkret citat af hvert NEEDS-MATHIAS-spørgsmål. Vent på Mathias-afgørelse — enten via:
      - Ny entry i `docs/coordination/mathias-afgoerelser.md` (committet til main), ELLER
      - Ny krav-dok-version, ELLER
      - Direkte besked til dig om hvilken vej der tages
 
      Når Mathias' afgørelse er dokumenteret: lav V<n+1> der eksplicit refererer til afgørelsen i åbnings-sektion under "NEEDS-MATHIAS-håndtering".
 
-   - `plan-approved-codex` ELLER `plan-approved-claude-ai` (kun én af to) → vent. Plan er IKKE approved før begge har approved
-   - `plan-approved-begge` → vent på Mathias-godkendelse (han paster `qwerg`)
+   - `plan-approved-codex` → vent på Mathias-godkendelse (han paster `qwerg`). V2 — Claude.ai-plan-reviewer-rolle udgået, så Codex' approval er eneste plan-approval-port.
 
    **Build-fase tilstande (PR-state-baseret):**
    - Build-PR åben og CI grøn → vent på Mathias-merge (han merger selv)
@@ -114,22 +110,20 @@ Brug format: `SPARRING-OENSKE: <kode-spørgsmål> KONTEKST: <baggrund> ALTERNATI
    - Slut-rapport: `claude/<pakke>-slut-rapport`
 7. **Rapportér til Mathias kort** — hvad du gjorde, commit-hash, hvad er næste forventede event
 
-## Approval-regel (vigtigt)
+## Approval-regel (V2 vigtigt)
 
-En plan er KUN approved når BÅDE Codex og Claude.ai har leveret approved.
+En plan er approved når Codex har leveret approval. V2 — Claude.ai-plan-reviewer-rolle udgået. Plan-fase er Code + Codex.
 
-- Hvis kun Codex approver og Claude.ai har feedback → V<n+1>
-- Hvis kun Claude.ai approver og Codex har feedback → V<n+1>
-- Hvis begge approver → plan klar til Mathias-godkendelse
+- Codex har feedback → V<n+1>
+- Codex approver → plan klar til Mathias-godkendelse
 
-Du må ikke begynde build før Mathias eksplicit har godkendt approved plan.
+Du må ikke begynde build før Mathias eksplicit har godkendt approved plan (`qwerg`).
 
-**Rolle-rensning (fra fire-dokument-disciplinen 2026-05-16):**
+**Rolle-rensning (V2 2026-05-20):**
 
-- **Codex** reviewer kode-niveau: bugs, RLS-huller, SQL-fejl, edge cases, teknisk gæld
-- **Claude.ai** reviewer forretnings-dokument-konsistens: lever planen op til vision, master-plan, mathias-afgørelser, krav-dok
-
-Naturligt parallelt review: to forskellige bord, samme plan.
+- **Codex** reviewer plan på kode- OG forretnings-dokument-niveau: bugs, RLS-huller, SQL-fejl, edge cases, teknisk gæld + fire-dokument-konsistens (vision, master-plan, mathias-afgørelser, krav-dok)
+- **Code** har selv-disciplin om at udfylde "Fire-dokument-konsultation"-tabel i planen FØR plan-commit (jf. plan-pre-push-tjekliste). Codex blokerer hvis tabellen mangler eller er forkert udfyldt.
+- **Claude.ai** er udelukkende krav-dok-forfatter (step 1) og slut-rapport-reviewer (step 5). Ingen plan-fase-involvering.
 
 ## Plan-skabelon-krav: Fire-dokument-konsultations-tabel
 
@@ -142,7 +136,7 @@ Når du skriver en plan, **skal** den indeholde "Fire-dokument-konsultation"-sek
 | `docs/coordination/mathias-afgoerelser.md`  | ja          | [konkrete datoer + emner]             | ja/nej             |
 | `docs/coordination/<pakke>-krav-og-data.md` | ja          | [sektioner]                           | ja/nej             |
 
-**Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Claude.ai blokere planen med KRITISK feedback.** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
+**Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Codex blokere planen med KRITISK feedback (V2 — Claude.ai-plan-reviewer-rolle udgået; tjekket er Code's selv-disciplin via pre-push-tjekliste + Codex' kontrol i plan-review).** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
 
 ## Recon-først (obligatorisk FØR plan-skrivning, ny 2026-05-20)
 
@@ -193,7 +187,7 @@ Det forhindrer V<n+1> i at bygge ovenpå fabrikation (som skete i trin 10's plan
 ## Hvad du gør når Mathias paster `qwerg`
 
 1. **Pull main** + **pull plan-branch** (`claude/<pakke>-plan`)
-2. **Verificér approval-state**: tjek at både `<pakke>-approved-codex.md` OG `<pakke>-approved-claude-ai.md` (eller tilsvarende approval-signaler) ligger i `docs/coordination/plan-feedback/`. Hvis ikke: STOP, rapportér til Mathias.
+2. **Verificér approval-state**: tjek at `<pakke>-approved-codex.md` (eller tilsvarende approval-signal) ligger i `docs/coordination/plan-feedback/`. V2 — kun Codex-approval kræves. Hvis ikke: STOP, rapportér til Mathias.
 3. **Verificér at plan har "Oprydnings- og opdaterings-strategi"-sektion**. Hvis ikke: STOP, rapportér — plan er ikke approval-klar uden den.
 4. **Opret build-branch** fra main: `git checkout -b claude/<pakke>-build`
 5. **Læs godkendt plan** og start build per implementations-rækkefølge

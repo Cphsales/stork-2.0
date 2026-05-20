@@ -343,4 +343,4 @@ PUSHBACK, REQUEST-RAAD, STOP-FOR-CLARIFICATION blev IKKE brugt i workflow-stabil
 
 ---
 
-**Sidste opdatering:** 2026-05-20 — Workflow V2 finalize. 7-step flow reduceret til 5-step flow (jf. `mathias-afgoerelser.md` "Workflow-justering V2" 2026-05-20). Krav-dok-fase simplificeret til direkte chat mellem Claude.ai-forfatter og Mathias; separat reviewer-rolle + forretningsspoergsmaal-fil + krav-dok-feedback-mappe udgået. Pakke-skala-vurdering nu eksplicit step 0. Recon-først obligatorisk i plan-fasen.
+**Sidste opdatering:** 2026-05-20 — Workflow V2 finalize (jf. `mathias-afgoerelser.md` "Workflow-justering V2" 2026-05-20). Flow simplificeret til 5-step. Krav-dok-fase reduceret til direkte chat mellem Claude.ai-forfatter og Mathias; separat reviewer-rolle + forretningsspoergsmaal-fil + krav-dok-feedback-mappe udgået. Pakke-skala-vurdering nu eksplicit step 0. Recon-først obligatorisk i plan-fasen. Konsekvens-opdaterings-disciplin tilføjet for autoritative dokumenter (master-plan, bygge-status, mathias-afgoerelser, teknisk-gaeld).

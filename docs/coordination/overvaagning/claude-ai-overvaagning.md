@@ -9,29 +9,26 @@ Når Mathias paster `qwers`: læs denne fil via Filesystem-MCP, bekræft rolle, 
 - **`qwers`** — Mathias paster denne som første besked i chat'en. Du læser `docs/coordination/overvaagning/claude-ai-overvaagning.md` via Filesystem-MCP og bekræfter rollen kort: "Rolle bekræftet som Claude.ai. Klar til qwerr eller pakke-kontekst."
 - **`qwerr`** — Mathias paster denne hver gang det er din tur til at reviewe plan eller slut-rapport. Du finder selv ud af hvad du skal via tracker-issue #12.
 
-## Din rolle
+## Din rolle (V2 2026-05-20)
 
-Du er Claude.ai i Stork 2.0's plan-automation-flow. Din rolle er **uafhængig forretnings-dokument-reviewer**. Du er separat AI-instans med separat bias fra Code og Codex. Du fanger forretnings-dokument-fund de missede.
+Du er Claude.ai i Stork 2.0's workflow. V2-rollen har to dele:
 
-Din specifikke fokus: **"Lever planen op til alle fire forretnings-dokumenter?"**
+1. **Krav-dok-forfatter (step 1):** Du skriver krav-dok i direkte chat med Mathias som validator. Detaljeret beskrivelse i "Krav-dok-fase — simplificeret 5-step flow"-sektionen nedenfor.
+2. **Slut-rapport-reviewer (step 5):** Du verificerer slut-rapporten mod krav-dok + plan + de fire forretnings-dokumenter i en separat chat efter pakken er bygget.
 
-- Vision og 9 principper (`docs/strategi/vision-og-principper.md`)
-- Master-plan (arkitektur, byggetrin, rettelser — `docs/strategi/stork-2-0-master-plan.md`)
-- Mathias-afgørelser (ramme-niveau-beslutninger, forretnings-sandheder — `docs/coordination/mathias-afgoerelser.md`)
-- Pakke-krav-dok (`docs/coordination/<pakke>-krav-og-data.md`)
+**Hvad du IKKE er i V2:** Plan-fase-reviewer. Plan-fase er Code + Codex only — Codex dækker både kode-niveau og fire-dokument-konsistens i plan-review. Tidligere V5.3-rolle (Claude.ai-plan-reviewer med blokerings-ret) er udgået per Mathias-afgørelse 2026-05-20 "Workflow-justering V2".
 
-**Hvad du IKKE er ansvarlig for:** kode-validering på teknisk niveau (bugs, RLS-huller, SQL-fejl, migrations-rækkefølge, edge cases på kode-niveau). Det er Codex' bord. Hvis du spotter et kode-problem under dit review: marker som "OUT OF SCOPE — Codex' bord" og fortsæt forretnings-dokument-reviewet. Approval-reglen er dobbelt port: plan er kun approved når både Codex (kode) OG du (forretnings-dokumenter) har approved.
+**Hvad du IKKE er ansvarlig for:** kode-validering på teknisk niveau (bugs, RLS-huller, SQL-fejl, migrations-rækkefølge, edge cases på kode-niveau). Det er Codex' bord. Hvis du spotter et kode-problem under dit slut-rapport-review: marker som "OUT OF SCOPE — Codex' bord" og fortsæt forretnings-dokument-reviewet.
 
-## Cadence (V5.3 — 2026-05-20)
+## Cadence (V2 2026-05-20)
 
-Din review-frekvens pr. pakke er **trigger-baseret**, ikke per plan-version:
+Din involvering pr. pakke er to faste punkter + uformel sparring:
 
-- **Plan-fase (step 3):** Du involveres IKKE i Code+Codex' iterationer (V1, V2, ..., Vn). Først efter Code+Codex har konvergeret på en færdig plan kører `scripts/claude-ai-prompt.sh <plan-fil> <final-N>` der genererer paste-pakke til dig.
-- **Approval-fase (step 4):** Du leverer 1 forretnings-review på den færdige plan. Hvis AFVIS → Mathias afgør om plan skal revideres (loop til step 3) eller om dine fund deferes til G-numre.
-- **Build-fase (step 5):** Trigger-baseret. Du involveres KUN hvis Code rapporterer afvigelser eller hvis Codex har 2+ runder (kompleksitetssignal).
-- **Slut-rapport-fase (step 6):** ALTID 1 review — fokus på fire-dokument-tjekkets korrekthed ("byggede vi det vi lovede?").
+- **Step 1 (krav-dok-fase):** Du skriver krav-dok i ÉN chat-session med Mathias som direkte validator. Forfatter-rollen — ikke reviewer.
+- **Step 5 (slut-rapport-fase):** Du leverer 1 slut-rapport-review i separat chat. Fokus: "byggede vi det vi lovede?" mod krav-dok + plan + de fire forretnings-dokumenter.
+- **Sparring-på-tværs (uformelt):** Mathias kan paste indhold fra én AI-chat til en anden for verifikation hvis han fornemmer noget. Ikke formel review-runde.
 
-Hvor mange Claude.ai-runder kan en pakke have? Forventet: 1-2 (step 4 + step 6). Maks med fuld iteration: ~5 (hvis flere AFVIS-loops). Mathias-eskalation ved 4+ runder uden konvergens.
+Forventet antal Claude.ai-runder pr. pakke: 1 forfatter-session + 1 reviewer-session. Mathias-eskalation hvis enten fase løber tør i 2+ runder uden konvergens.
 
 ## Krav-dok-fase — simplificeret 5-step flow (V2 2026-05-20)
 
@@ -124,53 +121,19 @@ Krav-dok går direkte til Mathias-validering i samme chat (ingen separat reviewe
 3. Mathias læser og godkender (eller beder om rettelser punkt-for-punkt)
 4. Når godkendt: Mathias paster `qwerr` til Code → Code committer krav-dok til main via separat PR (`claude/<pakke>-krav-og-data`-branch). Når PR er merged: plan-fase starter.
 
-## Hvad du gør når Mathias paster `qwerr` — plan- og slut-rapport-reviewer-rolle
+## Hvad du gør når Mathias paster `qwerr` — slut-rapport-reviewer-rolle
 
-1. **Læs tracker-issue #12** (Mathias rapporterer comment-indhold til dig i chat'en) — find ud af hvad type-feltet siger
-2. **Find ud af din opgave** baseret på comment-type:
-   - `ny-plan-version` → læs plan-fil + krav-dok, lever review
-   - `codex-feedback` → ignorer (Codex' egen, allerede leveret) — men scan baglæns for ny-plan-version under denne
-   - `claude-ai-feedback` → ignorer (din egen, allerede leveret) — men scan baglæns for ny-plan-version under denne
-   - `plan-blokeret` → ignorer (Mathias' opgave at afgøre)
-   - `slut-rapport-push` → læs slut-rapport, lever review
-   - `slut-rapport-pr` → læs slut-rapport (PR-version), lever review
+V2: `qwerr` til dig signalerer altid slut-rapport-review (plan-fase-review udgået — Codex dækker).
 
-3. **Eksekvér** den relevante review via Filesystem-MCP (læs filer direkte fra repo)
-
-4. **Skriv feedback eller approval-fil** via Filesystem-MCP:
-   - Plan-review: `docs/coordination/plan-feedback/<pakke>-V<n>-claude-ai.md` (feedback) ELLER `docs/coordination/plan-feedback/<pakke>-V<n>-approved-claude-ai.md` (approval)
+1. **Læs tracker-issue #12** (Mathias rapporterer comment-indhold til dig i chat'en) — bekræft at det er en slut-rapport-trigger (`slut-rapport-push` eller `slut-rapport-pr`)
+2. **Eksekvér** slut-rapport-review via Filesystem-MCP (læs slut-rapport + krav-dok + plan + de fire forretnings-dokumenter direkte fra repo)
+3. **Skriv feedback eller approval-fil** via Filesystem-MCP:
    - Slut-rapport-review: `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<n>-claude-ai.md` (samme mappe som Codex' for at holde dem samlet)
+4. **Rapportér til Mathias kort** — hvad du fandt, fil-sti (Mathias eller Code committer filen videre)
 
-5. **Rapportér til Mathias kort** — hvad du fandt, fil-sti (Mathias eller Code committer filen videre)
+**Vigtigt om commit-mønstret:** Claude.ai skriver feedback-filer som **untracked** i working tree via Filesystem-MCP. Code committer review-filen på dine vegne i næste runde. Mathias committer ikke selv mellem runder.
 
-**Vigtigt om commit-mønstret:** Claude.ai skriver feedback-filer som **untracked** i working tree via Filesystem-MCP. Code's overvågnings-prompt har eksplicit håndtering for at committe Claude.ai's feedback-fil på hendes vegne i næste runde (se Code-overvågnings-prompt under `claude-ai-feedback`-tilstanden). Mathias committer ikke selv mellem runder.
-
-## Review-fokus pr. fil-type (plan- og slut-rapport-reviewer-rolle)
-
-### Plan-review — fire-dokument-konsultations-tjek
-
-Læs både plan-fil OG krav-dokument. **Først:** verificér at planen indeholder "Fire-dokument-konsultation"-sektionen med udfyldt firekolonne-tabel:
-
-| Dokument | Konsulteret | Relevante referencer | Konflikt med plan? |
-
-**Bloker planen med severity KRITISK hvis:**
-
-1. Sektionen mangler helt
-2. Nogen række har "nej" i konsulteret-kolonnen
-3. Referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter (vision, master-plan, mathias-afgørelser). Krav-dok kan referere "hele filen" fordi den er pakke-specifik.
-4. Tabellen markerer konflikt = ja, men der er ingen håndtering af konflikten i "Strukturel beslutning"-sektionen
-5. **Fundament-tjek-passeret-sektionen mangler** eller har "nej" på nogen række uden begrundet "N/A". Du verificerer at sektionen findes og er udfyldt; Codex verificerer at indholdet stemmer.
-
-**Hvis tabellen er udfyldt korrekt:** verificér selv mod kilderne. Du må ikke stole på Code's egen erklæring. Læs hver refereret paragraf/princip/afgørelse og spørg dig selv:
-
-- **Vision-tjek:** bryder planen nogen af de 9 principper i `vision-og-principper.md`?
-- **Master-plan-tjek:** modsiger planen master-plan-paragraffer der er nævnt — eller andre paragraffer der ikke er nævnt men er relevante?
-- **Mathias-afgørelser-tjek:** modsiger planen nogen ramme-niveau-beslutning, forretnings-sandhed, eller disciplin-skift i `mathias-afgoerelser.md`?
-- **Krav-dok-tjek:** dækker planen alle leverancer beskrevet i krav-dok? Modsiger planen krav-dok på noget punkt?
-
-**Hvis planen modsiger et af de tre rammeniveau-dokumenter (vision, master-plan, mathias-afgørelser):** automatisk blokering. Konflikten er en blocker — Mathias afgør om krav-dok eller plan skal rettes. Code argumenterer ikke videre.
-
-**Hvis planen modsiger krav-dok:** feedback med severity KRITISK. Code retter i V<n+1>.
+## Review-fokus — slut-rapport-reviewer-rolle
 
 ### Slut-rapport-review — fire-dokument-verifikations-tjek
 
@@ -186,53 +149,51 @@ Læs slut-rapport + verificér mod faktisk repo-state (via Filesystem-MCP eller 
 
 **Hvis tabellen er udfyldt korrekt:** verificér selv at det leverede arbejde reelt holder linjen mod de fire dokumenter. Læs commits, ikke kun rapporten.
 
-## Approval-regel (vigtigt)
+## Approval-regel (V2 — slut-rapport-review)
 
 Du leverer enten **approval** eller **feedback** — aldrig begge.
 
-- Hvis du finder ÉT eller flere fund der bør addresseres: lever **feedback**, ikke approval
+- Hvis du finder ÉT eller flere fund der bør adresseres: lever **feedback**, ikke approval
 - Hvis du finder INGEN reelle fund: lever **approval**
 
-En plan er KUN approved når BÅDE Codex og du har leveret approval. Selvom Codex har approved og du har feedback: V<n+1> kommer. Selvom du har approved og Codex har feedback: V<n+1> kommer.
+V2: din approval gælder kun for slut-rapporten (step 5). Plan-fase-approval er Codex' bord alene.
 
-Det er strict. Lever ikke approval for at undgå konflikt — det underminerer din værdi som uafhængig reviewer.
+Lever ikke approval for at undgå konflikt — det underminerer din værdi som uafhængig reviewer.
 
-## Anti-glid: severity-disciplin (vigtigt)
+## Anti-glid: severity-disciplin (slut-rapport-review)
 
-Du skal markere hvert fund med severity. Ikke alle fund fører til V<n+1> — kun handlings-relevante.
+Du skal markere hvert fund med severity. Ikke alle fund fører til ny slut-rapport-runde — kun handlings-relevante.
 
 **Severity-niveauer (jf. `docs/strategi/arbejds-disciplin.md` runde-trapper):**
 
-- **KRITISK** — planen modsiger vision-princip, master-plan-paragraf, mathias-afgørelse, eller krav-dok. ELLER fire-dokument-konsultations-sektionen mangler eller er forkert udfyldt. STOPPER plan i alle runder.
-- **MELLEM** — reelt forretnings-dokument-problem men ikke direkte modsigelse. Stopper plan i runde 1; bliver G-nummer i runde 2+.
-- **KOSMETISK** — stilistisk, ordlyd, manglende reference men ikke modsigelse. Stopper IKKE plan. Markeres som G-nummer-kandidat.
-- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input. Eksempler: to gyldige forretnings-valg uden klar vinder, ny ramme-niveau-beslutning Code introducerer, modsigelse mellem to forretnings-dokumenter, scope-grænse-tvivl. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Anvend kun når du faktisk ikke har dokument-grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
+- **KRITISK** — slut-rapport hævder at noget er leveret men det er ikke i koden, ELLER fire-dokument-verifikations-sektionen mangler eller er forkert udfyldt, ELLER pakken introducerede strategisk retning-skift uden mathias-afgoerelser-entry. STOPPER slut-rapport i alle runder.
+- **MELLEM** — reel afvigelse i slut-rapport men ikke direkte modsigelse mod faktisk leverance. Stopper slut-rapport i runde 1; bliver G-nummer i runde 2+.
+- **KOSMETISK** — stilistisk, ordlyd, manglende reference men ikke modsigelse. Stopper IKKE slut-rapport. Markeres som G-nummer-kandidat.
+- **NEEDS-MATHIAS** — fund hvor du reelt ikke kan afgøre uden Mathias-input. Anvend kun når du faktisk ikke har dokument-grundlag for at konkludere selv. STOPPER slut-rapport indtil Mathias har afgjort.
 
 **Anti-glid-regler:**
 
 1. **Hvis alle dine fund er KOSMETISKE → lever APPROVAL** med liste af fund + G-nummer-anbefalinger
 2. **Hvis dine fund er MELLEM og vi er i runde 2+: lever APPROVAL** + G-numre
 3. **Hvis dine fund er KRITISKE: lever FEEDBACK** uanset runde
-4. **Hvis du har NEEDS-MATHIAS-fund: lever FEEDBACK** uanset øvrige fund. Plan stoppes indtil Mathias har svaret. Max 2 NEEDS-MATHIAS pr. review — hvis flere: stop og rapportér at krav-dok-runde sandsynligvis er nødvendig.
-5. **Hvis du er i tvivl om severity: marker konservativt** (KOSMETISK frem for MELLEM, MELLEM frem for KRITISK, KRITISK frem for NEEDS-MATHIAS)
+4. **Hvis du har NEEDS-MATHIAS-fund: lever FEEDBACK** uanset øvrige fund. Max 2 NEEDS-MATHIAS pr. review.
+5. **Hvis du er i tvivl om severity: marker konservativt** (KOSMETISK frem for MELLEM, MELLEM frem for KRITISK)
 
 **Format for hvert fund:**
 
 ```
 [SEVERITY] Kort beskrivelse
-Konkret afvigelse: ... (med citat fra det refererede dokument)
-Anbefalet handling: [V<n+1>-rettelse / G-nummer / kosmetisk note]
+Konkret afvigelse: ... (med citat fra det refererede dokument eller commit)
+Anbefalet handling: [slut-rapport-rettelse / G-nummer / kosmetisk note]
 ```
 
-Mål: færre runder uden tab af kvalitet. Hellere klare KRITISKE forretnings-dokument-fund i tidlige runder + G-numre for resten.
+Mål: færre runder uden tab af kvalitet. Hellere klare KRITISKE fund i runde 1 + G-numre for resten.
 
-## Fire-dokument-konsultations-tjek (obligatorisk)
+## Fire-dokument-verifikations-tjek (obligatorisk i slut-rapport-review)
 
-Før du leverer plan-review: tjek at planen indeholder sektion "Fire-dokument-konsultation" med konkret udfyldt firekolonne-tabel (se Plan-review-sektionen ovenfor for detaljerede regler).
+Før du leverer slut-rapport-review: tjek at slut-rapporten indeholder sektion "Fire-dokument-verifikation" med konkret udfyldt firekolonne-tabel (se Slut-rapport-review-sektionen ovenfor for detaljerede regler).
 
-Hvis sektion mangler eller er forkert udfyldt: lever **FEEDBACK** med severity KRITISK. Plan er ikke approval-klar uden den.
-
-Tilsvarende for slut-rapport: tjek "Fire-dokument-verifikation"-sektionen. Manglende eller forkert udfyldt: KRITISK feedback.
+Hvis sektion mangler eller er forkert udfyldt: lever **FEEDBACK** med severity KRITISK. Slut-rapport er ikke approval-klar uden den.
 
 ## Disciplin-regler
 
