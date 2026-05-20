@@ -505,6 +505,24 @@ Generisk evaluator implementeret samme commit som G025/G026. retention-cron læs
 - **Risiko hvis glemt:** Lav (build-time-fanget) men gentager bug-klasse.
 - **Plan:** Fitness-check der scanner alle CREATE OR REPLACE FUNCTION i migration-filer; sammenligner argument-signatur (inkl. DEFAULTs) med pre-existing definition (live introspection); fejler hvis defaults fjernes eller arg-count ændres. Implementation-kompleksitet: medium.
 
+### [G056] MELLEM — `codex-overvaagning.md` rolle-grænse er selv-modsigende for forretnings-dokument-modsigelser
+
+- **Beskrivelse:** `docs/coordination/overvaagning/codex-overvaagning.md:24,76,104` siger eksplicit at forretnings-dokument-konflikter (vision-princip, master-plan, mathias-afgørelser, krav-dok) er "OUT OF SCOPE — Claude.ai's bord", og Codex skal markere + fortsætte uden at blokere. Men `:136-140` lader severity-listen KRITISK dække "...ELLER modsiger forretnings-dokument-rammen (vision, master-plan, mathias-afgørelser, krav-dok). STOPPER plan i alle runder." og NEEDS-MATHIAS dække "modsigelse mellem to forretnings-dokumenter".
+- **Vision-svækkelse:** Rolle-disciplin (Codex = kode, Claude.ai = forretning). Hvis Codex kan markere forretnings-konflikter som KRITISK/NEEDS-MATHIAS, så er rollen ikke ren — det fjerner pointen med dobbelt-port-review.
+- **Introduceret:** Lag 1 build (PR #48) + PR #52 (NEEDS-MATHIAS-tilføjelse). Spotted af Codex selv 2026-05-20 i meta-review af PR #52.
+- **Skal løses:** Lag 2 eller mini-disciplin-pakke. Beslut autoritativt: enten (a) Codex MÅ markere forretnings-konflikter som KRITISK med tvungen "OUT OF SCOPE"-prefix (og ikke blokere), ELLER (b) fjern forretnings-modsigelse fra Codex' severity-listen helt og lad alle sådanne fund gå via OUT OF SCOPE-vejen.
+- **Risiko hvis glemt:** MELLEM. Codex kan utilsigtet blokere plan på forretnings-konflikt der burde være Claude.ai's bord — det skaber friktion i parallelt review.
+
+### [G055] MELLEM — `scripts/codex-review.sh` marker-parser fanger ikke severity-prefixes alene
+
+- **Beskrivelse:** `scripts/codex-review.sh:206-260` tjekker for V5.3 halt-markers (`BRUD-PAA-KRAV`, `TEKNISK-BLOKERING`, `PLAN-AFVIGELSE`, `KRITISK-SIKKERHEDSHUL`, `WORKAROUND-INTRODUCERET`, `STOP-FOR-CLARIFICATION`, `ESCALATE`, `AUTO-ESKALATION`) som exit-2-trigger. Severity-prefixes (`KRITISK:`, `MELLEM:`, `LAV:`, `HUL:`) som overvaagning-filerne kræver bliver ikke parset selvstændigt. En ren `KRITISK: <fund>`-linje uden halt-marker giver exit 0, selvom `docs/coordination/overvaagning/codex-overvaagning.md:136` siger "KRITISK ... STOPPER plan i alle runder".
+- **Vision-svækkelse:** Disciplin-håndhævelse. Driftsikkerhed: hvis Codex leverer et reelt KRITISK-fund uden at kombinere med halt-marker, så ser scriptet det ikke som blokerende — Code kan eksekvere videre på forkerte præmisser.
+- **Introduceret:** Lag 1 build (PR #48 V5.3 marker-protokol). Spotted af Codex selv 2026-05-20 i meta-review af PR #52.
+- **Skal løses:** Lag 2 eller mini-disciplin-pakke. To valgmuligheder:
+  - (a) Udvid parser med `^KRITISK:` → exit 2 mapping (severity-baseret blokering parallelt til halt-marker)
+  - (b) Krav-pakke til codex-overvaagning: KRITISK SKAL altid kombineres med tilsvarende halt-marker (`KRITISK — BRUD-PAA-KRAV:` osv.). Faktisk runde 1-output i PR #52 fulgte (b)-mønstret allerede ("MELLEM — PLAN-AFVIGELSE: ..."), så (b) er måske den faktisk-praktiserede disciplin der mangler dokumentation.
+- **Risiko hvis glemt:** MELLEM. Latent — sandsynligvis afhænger af Codex' egen disciplin om at kombinere severity+marker. Bør ikke leve på konvention alene.
+
 ### [G052] LAV — Vej B i PR #40 skabte præcedens for "ret merged-til-main migration når ej applied"
 
 - **Beskrivelse:** PR #40 rettede `20260518000011_t9_classify.sql` (84 rows fra `{"days":2555}` til `{"max_days":2555}`) trods filen var merged til main. Begrundelse: atomic rollback ved første push betød filen aldrig var applied til remote — ingen historisk DB-state at beskytte. Mathias-godkendt 2026-05-19 som "Vej B".

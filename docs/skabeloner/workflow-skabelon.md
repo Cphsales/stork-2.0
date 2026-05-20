@@ -70,15 +70,15 @@ Strategi-grundlaget (hvorfor flowet ser sådan ud) står i [`docs/strategi/arbej
 
 ## Aktører + ansvar pr. step
 
-| Step | Aktør(er)                               | Output                                 | Skabelon                                                                   |
-| ---- | --------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
-| 0    | Mathias initierer, alle aktører briefes | `<pakke>-data-grundlag.md`             | —                                                                          |
-| 1    | Mathias + Claude.ai                     | `<pakke>-krav-og-data.md`              | [`forretningsspoergsmaal-skabelon.md`](forretningsspoergsmaal-skabelon.md) |
-| 2    | Code + Codex                            | `<pakke>-krav-afklaring.md`            | —                                                                          |
-| 3    | Code + Codex (iterativt)                | `<pakke>-plan.md`                      | [`plan-skabelon.md`](plan-skabelon.md)                                     |
-| 4    | Mathias + Claude.ai                     | Godkendelse i `mathias-afgoerelser.md` | —                                                                          |
-| 5    | Code bygger, Codex validerer            | PR + commits + codex-review-filer      | [`codex-review-prompt.md`](codex-review-prompt.md)                         |
-| 6    | Code + Codex + Claude.ai + Mathias      | `rapport-historik/<dato>-<pakke>.md`   | [`rapport-skabelon.md`](rapport-skabelon.md)                               |
+| Step | Aktør(er)                               | Output                                                                                                                                                                                                                                                                                                                                                                                                    | Skabelon                                                                   |
+| ---- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 0    | Mathias initierer, alle aktører briefes | `<pakke>-data-grundlag.md`                                                                                                                                                                                                                                                                                                                                                                                | —                                                                          |
+| 1    | Mathias + Claude.ai                     | `<pakke>-forretningsspoergsmaal.md` (hvis fasen kører) → `<pakke>-krav-og-data.md` → `krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md`. Step 1 har 3 sub-trin: forretningsspørgsmål → krav-dok → krav-dok-review. Se [`forretningsspoergsmaal-skabelon.md`](forretningsspoergsmaal-skabelon.md) for skip-kriterier; `arbejdsmetode-og-repo-struktur.md` Aktør-rækkefølge trin 1-4 for fuld flow. | [`forretningsspoergsmaal-skabelon.md`](forretningsspoergsmaal-skabelon.md) |
+| 2    | Code + Codex                            | `<pakke>-krav-afklaring.md`                                                                                                                                                                                                                                                                                                                                                                               | —                                                                          |
+| 3    | Code + Codex (iterativt)                | `<pakke>-plan.md`                                                                                                                                                                                                                                                                                                                                                                                         | [`plan-skabelon.md`](plan-skabelon.md)                                     |
+| 4    | Mathias + Claude.ai                     | Godkendelse i `mathias-afgoerelser.md`                                                                                                                                                                                                                                                                                                                                                                    | —                                                                          |
+| 5    | Code bygger, Codex validerer            | PR + commits + codex-review-filer                                                                                                                                                                                                                                                                                                                                                                         | [`codex-review-prompt.md`](codex-review-prompt.md)                         |
+| 6    | Code + Codex + Claude.ai + Mathias      | `rapport-historik/<dato>-<pakke>.md`                                                                                                                                                                                                                                                                                                                                                                      | [`rapport-skabelon.md`](rapport-skabelon.md)                               |
 
 ---
 
@@ -215,20 +215,23 @@ Hvis en situation matcher flere markers: **Codex bruger den marker der bedst bes
 
 Forventet filsæt for en pakke kaldet `<pakke>`:
 
-| Fil                                                           | Step | Vedligeholdes af                                                             |
-| ------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------- |
-| `docs/coordination/<pakke>-data-grundlag.md`                  | 0    | Auto (`data-grundlag.sh`)                                                    |
-| `docs/coordination/<pakke>-krav-og-data.md`                   | 1    | Mathias + Claude.ai                                                          |
-| `docs/coordination/<pakke>-krav-afklaring.md`                 | 2    | Auto (`krav-afklar.sh`) + Code/Codex                                         |
-| `docs/coordination/<pakke>-plan.md`                           | 3    | Code (V1-Vn)                                                                 |
-| `docs/coordination/plan-feedback/<pakke>-V<N>-codex.md`       | 3    | Auto via `codex-review.sh`                                                   |
-| `docs/coordination/plan-feedback/<pakke>-V<N>-claude-ai.md`   | 4    | Mathias paster fra web (`claude-ai-prompt.sh` genererer paste-pakke)         |
-| `docs/coordination/plan-feedback/<pakke>-approved-codex.md`   | 3-5  | Auto-konsolideret ved approval                                               |
-| `docs/coordination/mathias-gate/<pakke>-<type>-<N>.md`        | 5    | AFVENTER-entries (build-fase Mathias-gate); arkiveres efter trufne afgørelse |
-| `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<N>.md` | 5    | Auto via `codex-review.sh`                                                   |
-| `docs/coordination/rapport-historik/<dato>-<pakke>.md`        | 6    | Code                                                                         |
+| Fil                                                                          | Step | Vedligeholdes af                                                             |
+| ---------------------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------- |
+| `docs/coordination/<pakke>-data-grundlag.md`                                 | 0    | Auto (`data-grundlag.sh`)                                                    |
+| `docs/coordination/<pakke>-forretningsspoergsmaal.md`                        | 1    | Claude.ai-forfatter (hvis fasen kører — se skip-kriterier)                   |
+| `docs/coordination/<pakke>-krav-og-data.md`                                  | 1    | Claude.ai-forfatter (via Filesystem-MCP, untracked)                          |
+| `docs/coordination/krav-dok-feedback/<pakke>-claude-ai-reviewer.md`          | 1    | Claude.ai-krav-dok-reviewer (feedback, separat chat)                         |
+| `docs/coordination/krav-dok-feedback/<pakke>-approved-claude-ai-reviewer.md` | 1    | Claude.ai-krav-dok-reviewer (approval, separat chat)                         |
+| `docs/coordination/<pakke>-krav-afklaring.md`                                | 2    | Auto (`krav-afklar.sh`) + Code/Codex                                         |
+| `docs/coordination/<pakke>-plan.md`                                          | 3    | Code (V1-Vn)                                                                 |
+| `docs/coordination/plan-feedback/<pakke>-V<N>-codex.md`                      | 3    | Auto via `codex-review.sh`                                                   |
+| `docs/coordination/plan-feedback/<pakke>-V<N>-claude-ai.md`                  | 4    | Mathias paster fra web (`claude-ai-prompt.sh` genererer paste-pakke)         |
+| `docs/coordination/plan-feedback/<pakke>-approved-codex.md`                  | 3-5  | Auto-konsolideret ved approval                                               |
+| `docs/coordination/mathias-gate/<pakke>-<type>-<N>.md`                       | 5    | AFVENTER-entries (build-fase Mathias-gate); arkiveres efter trufne afgørelse |
+| `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<N>.md`                | 5    | Auto via `codex-review.sh`                                                   |
+| `docs/coordination/rapport-historik/<dato>-<pakke>.md`                       | 6    | Code                                                                         |
 
-Ved pakke-lukning (efter step 6) flyttes plan + krav-og-data + V1-Vn plan-feedback til `docs/coordination/arkiv/` med prefix `<pakke>-*`.
+Ved pakke-lukning (efter step 6) flyttes plan + krav-og-data + forretningsspoergsmaal + V1-Vn plan-feedback + krav-dok-feedback til `docs/coordination/arkiv/` med prefix `<pakke>-*`.
 
 ---
 
