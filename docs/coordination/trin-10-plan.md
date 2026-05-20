@@ -1,10 +1,23 @@
-# Trin 10 — Plan V1
+# Trin 10 — Plan V2
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V1 — klar til Codex plan-review-runde 1
+**Status:** V2 — klar til Codex plan-review-runde 2
 **Dato:** 2026-05-20
+
+---
+
+## Codex V1-fund-håndtering (LØS — V5.3 svar-typer)
+
+Codex runde 1 (review-fil: `docs/coordination/codex-reviews/2026-05-20-trin-10-runde-1.md` på `claude/trin-10-plan-v3`) leverede 4 fund.
+
+| #   | Severity              | V1-step | Fund                                                                                                                                                                      | V2-svar                                                                                                                                                                                               | Hvor i V2             |
+| --- | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 1   | KRITISK               | T10.1   | `clients.fields` mangler `CHECK (jsonb_typeof = 'object')` — scalar/array kan lagre uden audit-PII-walking.                                                               | **ACCEPT.** Tilføj CHECK på T10.1. Smoke-test i T10.15 udvides.                                                                                                                                       | T10.1 + T10.15        |
+| 2   | KRITISK-SIKKERHEDSHUL | T10.5   | audit_filter_values clients-special-case filtrerer `is_active = true` → hvis felt deaktiveres, hashes værdier i eksisterende fields ikke længere. Datalæk i audit-flowet. | **ACCEPT.** Fjern `is_active = true`-filter fra audit_filter_values clients-special-case. Hash alle direct-PII keys uanset is_active. Validation-trigger kan stadig behandle inactive som ukendt key. | T10.5                 |
+| 3   | MELLEM                | T10.15  | Smoke-tests dækker ukendt key lenient/strict, men ikke non-object `fields`.                                                                                               | **ACCEPT.** Tilføj test for CHECK-violation ved non-object.                                                                                                                                           | T10.15                |
+| 4   | G-NUMMER-KANDIDAT     | T10.4   | INSERT mangler `ON CONFLICT do nothing` (T9-classify bruger det). Ikke blocker for greenfield.                                                                            | **DEFER → G-nummer.** Greenfield-migration kører én gang; idempotens ikke nødvendig nu. Registreres som G-nummer for senere ensretning.                                                               | Optimerings-hypoteser |
 
 ---
 
@@ -165,6 +178,9 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     logo_filename text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
+    -- V2 (Codex V1 KRITISK #1): fields skal være jsonb object — scalar/array forhindres
+    -- så audit_filter_values' clients-special-case kan walke direct-PII keys.
+    constraint clients_fields_is_object check (jsonb_typeof(fields) = 'object'),
     constraint clients_logo_consistency check (
       (logo_bytes is null and logo_content_type is null and logo_filename is null)
       or
@@ -392,7 +408,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 ### T10.5 — Omskrive `core_compliance.audit_filter_values` med clients-fields-jsonb-walking
 
 - **Type:** migration (CREATE OR REPLACE FUNCTION)
-- **Hvad:** Genskab D5's clients-special-case-mønster: walker `clients.fields` jsonb og hashes hver key der har `pii_level='direct'` i `client_field_definitions`. Resten af T1-logikken bevares uændret.
+- **Hvad:** Genskab D5's clients-special-case-mønster: walker `clients.fields` jsonb og hashes hver key der har `pii_level='direct'` i `client_field_definitions`. **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** ingen `is_active = true`-filter på direct-PII keys — ellers ville deaktivering af et felt skabe datalæk for værdier i eksisterende fields jsonb. Validation-trigger T10.6 behandler stadig inactive som ukendt-key (LENIENT warning), men audit-hashing rammer alle direct-PII definitioner. Resten af T1-logikken bevares uændret.
 - **Eksakt indhold:**
 
   ```sql
@@ -455,7 +471,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     end loop;
 
     -- Trin 10 clients-special-case: walker clients.fields jsonb og hashes direct-PII keys
-    -- pr. client_field_definitions.
+    -- pr. client_field_definitions. V2 (Codex V1 KRITISK-SIKKERHEDSHUL #2): hashes
+    -- ALLE direct-PII definitioner, uafhængigt af is_active — ellers ville deaktivering
+    -- af et felt skabe datalæk for værdier der allerede ligger i eksisterende fields.
+    -- T10.1's clients_fields_is_object-CHECK garanterer at fields er object her.
     if p_schema = 'core_identity'
        and p_table = 'clients'
        and v_result ? 'fields'
@@ -463,7 +482,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
       v_fields := v_result -> 'fields';
       for v_field_key in
         select key from core_identity.client_field_definitions
-        where pii_level = 'direct' and is_active = true
+        where pii_level = 'direct'
       loop
         if v_fields ? v_field_key then
           v_field_value := v_fields -> v_field_key;
@@ -1026,13 +1045,13 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Hvad:** Fem smoke-tests dækker centrale flows.
 - **Test-filer:**
 
-  | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                     |
-  | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                             |
-  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash.                     |
-  | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL. |
-  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT.                                                                                                                                      |
-  | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception.                                                                                                     |
+  | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+  | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                           |
+  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash.                                                                                                                                                                                                                                   |
+  | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                               |
+  | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT.                                                                                                                                                                                                                                                                                                                                                    |
+  | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false. |
 
 - **Afhængigheder:** alle migrations i T10.1-T10.13
 - **Migration-fil:** test-filer
@@ -1099,6 +1118,7 @@ Eksisterende tests opdateret i T10.7a:
 - **Hypotese 1:** Logo-MIME-validering kunne håndhæves som CHECK constraint på `logo_content_type` (`IN ('image/png', 'image/jpeg', 'image/svg+xml')`) frem for app-niveau. Codex kan rejse som OPTIMERING-FORSLAG.
 - **Hypotese 2:** `client_list` kunne tilbyde valgfri filter på is_active (p_include_inactive default false). Codex kan rejse som ADOPT i build.
 - **Hypotese 3:** `core_compliance.audit_filter_values`'s clients-special-case kan ekstraheres til en generel "jsonb-walking via field-definition-tabel"-mekanik for fremtidige jsonb-felter. Ikke implementeret nu (premature abstraction).
+- **Hypotese 4 (G-nummer-kandidat fra Codex V1 #4):** T10.4 klassifikations-INSERT mangler `ON CONFLICT do nothing` (T9-classify bruger det). Greenfield-migration kører kun én gang så idempotens er ikke nødvendig nu — men ensretning med T9-mønstret er værd at lave senere. **G-nummer for ensretning af classify-migration-pattern på tværs af alle pakker.**
 
 ---
 
@@ -1171,20 +1191,27 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V1 (genstart) bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V2 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
 
 16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V2-ændringer ift. V1 (Codex runde 1 ACCEPT på 3 fund + DEFER på 1):
+
+- T10.1: tilføjet `CHECK (jsonb_typeof(fields) = 'object')` — forhindrer scalar/array i fields-kolonnen (Codex KRITISK #1)
+- T10.5: fjernet `is_active = true`-filter fra audit_filter_values clients-special-case — alle direct-PII keys hashes uanset is_active for at undgå datalæk ved felt-deaktivering (Codex KRITISK-SIKKERHEDSHUL #2)
+- T10.15: smoke-test for non-object fields-reject + audit-PII-hashing efter is_active=false (Codex MELLEM #3 + V2-supplement til #2)
+- T10.4 ON CONFLICT: DEFER → G-nummer (greenfield-engangsmigration)
 
 Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen):
 
 - Plan baseret på CREATE TABLE fra bunden (ikke ALTER på droppet D5)
 - Klienter i `core_identity` (ikke `public`)
 - Klassifikation i `core_compliance.data_field_definitions` (ikke `public`)
-- audit_filter_values omskrives med clients-special-case (jsonb-walking)
+- audit_filter_values omskrives med clients-special-case (jsonb-walking, alle direct-PII keys)
 - is_permanent_allowed udvides med de to nye tabeller
 - Logo-håndtering i separate RPC'er (forhindrer datatab via client_upsert)
 - T9-supplement-policy uændret
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 1.
+Klar til Codex plan-review-runde 2.
