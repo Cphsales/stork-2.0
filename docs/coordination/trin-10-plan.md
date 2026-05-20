@@ -1,10 +1,21 @@
-# Trin 10 — Plan V2
+# Trin 10 — Plan V3
 
 **Pakke:** §4 trin 10 — Klient-skabelon + felt-definitioner
 **Krav-dok:** `docs/coordination/trin-10-krav-og-data.md` (PR #63, commit `8c3c7b9`)
 **Branch:** `claude/trin-10-plan-v3`
-**Status:** V2 — klar til Codex plan-review-runde 2
+**Status:** V3 — klar til Codex plan-review-runde 3
 **Dato:** 2026-05-20
+
+---
+
+## Codex V2-fund-håndtering (LØS — V5.3 svar-typer)
+
+Codex runde 2 (review-fil: `docs/coordination/codex-reviews/2026-05-20-trin-10-runde-2.md` på `claude/trin-10-plan-v3`) leverede 2 fund.
+
+| #   | Severity              | V2-step        | Fund                                                                                                                                                                                                                                                                                                 | V3-svar                                                                                                                                                                                                                     | Hvor i V3                          |
+| --- | --------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 1   | KRITISK-SIKKERHEDSHUL | T10.10 / T10.5 | Audit-hashing afhænger af mutable `client_field_definitions.key`/`pii_level`. Hvis felt-definitionen senere får ny `key` eller `pii_level='none'`, vil eksisterende `clients.fields`-værdier skrives i klartekst i audit. V2-fixet for `is_active=false` dækker ikke key-rename eller pii-downgrade. | **ACCEPT.** Gør `key` og `pii_level` effektivt immutable for eksisterende definitions via T10.10's RPC: blokér UPDATE af `key`; blokér `pii_level` direct → non-direct. Tilføj smoke-test der verificerer begge invariants. | T10.10 + T10.15                    |
+| 2   | KRITISK               | T10.3          | Min plan baserede sig på D1b's gamle allowlist og missede P1a's tilføjelse af `('core_compliance', 'anonymization_strategies', null)`. CREATE OR REPLACE ville regressere allowlisten og kan blokere fremtidige updates af permanent-klassifikationer for den tabel.                                 | **ACCEPT.** T10.3 baseres på P1a's VALUES-blok (15 entries) + tilføjer 2 nye trin 10-entries (17 total). Recon-først udvidet med P1a's omskrivning.                                                                         | T10.3 + Verificerede afhængigheder |
 
 ---
 
@@ -38,7 +49,8 @@ Recon-først per `docs/coordination/overvaagning/code-overvaagning.md`. Hver på
 | `core_compliance.data_field_definitions` (tabel)                                                       | `supabase/migrations/20260514120005_t1_data_field_definitions.sql:9-30`                                        | `id, table_schema, table_name, column_name, category text CHECK IN ('operationel','konfiguration','master_data','audit','raw_payload'), pii_level CHECK IN ('none','indirect','direct'), retention_type CHECK IN ('time_based','event_based','legal','manual'), retention_value jsonb, match_role text, purpose text NOT NULL, created_at, updated_at`. UNIQUE (table_schema, table_name, column_name). |
 | `core_compliance.data_field_definitions` retention-types udvidet til 'permanent'                       | `supabase/migrations/20260514170003_c001_retention_not_null.sql:42-46`                                         | CHECK udvidet: `('time_based', 'event_based', 'legal', 'manual', 'permanent')`. retention_type SET NOT NULL. Permanent → retention_value NULL.                                                                                                                                                                                                                                                          |
 | Retention-types efter legal-drop                                                                       | `supabase/migrations/20260514180500_d1_d2_drop_legal_convert_rows.sql:49-51`                                   | CHECK: `(retention_type is null or retention_type in ('time_based', 'event_based', 'manual', 'permanent'))`. Legal fjernet (mathias-afgoerelse 2026-05-14). retention_type drop not null.                                                                                                                                                                                                               |
-| `core_compliance.is_permanent_allowed(p_table_schema, p_table_name, p_column_name)` allowlist          | `supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql:14-46`                                        | IMMUTABLE-funktion med hardkodet VALUES-blok. Trin 10 SKAL tilføje `core_identity.clients` + `core_identity.client_field_definitions` til allowlist hvis retention_type='permanent' skal bruges.                                                                                                                                                                                                        |
+| `core_compliance.is_permanent_allowed` D1b-original                                                    | `supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql:14-46`                                        | IMMUTABLE-funktion med 14 entries i VALUES-blok.                                                                                                                                                                                                                                                                                                                                                        |
+| `core_compliance.is_permanent_allowed` P1a-omskrivning (nuværende state på main)                       | `supabase/migrations/20260515110100_p1a_anonymization_strategies.sql:230-262`                                  | CREATE OR REPLACE med 15 entries (D1b + `('core_compliance', 'anonymization_strategies', null)`). **Trin 10 SKAL baseres på P1a's komplette VALUES**, ikke D1b's gamle baseline — ellers regression (Codex V2 KRITISK #2).                                                                                                                                                                              |
 | `core_compliance.validate_permanent_classification()` trigger                                          | `supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql:14-31`                           | BEFORE INSERT/UPDATE på data_field_definitions. Raiser hvis retention_type='permanent' AND ikke i allowlist.                                                                                                                                                                                                                                                                                            |
 | `core_compliance.audit_filter_values(p_schema, p_table, p_values jsonb)`                               | `supabase/migrations/20260514120006_t1_audit_filter_values.sql:9-86`                                           | Walker top-level kolonner. pii_level='direct' → sha256-hash. LENIENT-default ved ukendt schema/tabel/kolonne; strict via `stork.audit_filter_strict='true'`. **Ingen clients-special-case** (D5's omskrivning blev droppet med T1). Trin 10 SKAL omskrive til at walke `clients.fields jsonb`.                                                                                                          |
 | `core_compliance.stork_audit()` trigger-funktion                                                       | Refereret af alle T9-tabeller (`20260518000004_t9_client_node_placements.sql:55` etc.)                         | Generel audit-trigger der bruges `AFTER INSERT OR UPDATE OR DELETE` på alle write-tabeller. Skriver til `core_compliance.audit_log` via `audit_filter_values`.                                                                                                                                                                                                                                          |
@@ -311,10 +323,11 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
     select exists (
       select 1
       from (values
-        -- Eksisterende rækker bevares (jf. D1b)
+        -- P1a-baseline (15 entries fra 20260515110100_p1a_anonymization_strategies.sql:230-258)
         ('core_compliance', 'audit_log',                   null::text),
         ('core_compliance', 'anonymization_mappings',      null::text),
         ('core_compliance', 'anonymization_state',         null::text),
+        ('core_compliance', 'anonymization_strategies',    null::text),
         ('core_compliance', 'break_glass_operation_types', null::text),
         ('core_compliance', 'data_field_definitions',      null::text),
         ('core_compliance', 'superadmin_settings',         null::text),
@@ -326,7 +339,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
         ('core_identity',   'employees',                   'created_at'),
         ('core_identity',   'employees',                   'updated_at'),
         ('core_money',      'pay_period_settings',         null::text),
-        -- Trin 10 (nye)
+        -- Trin 10 (2 nye)
         ('core_identity',   'clients',                     null::text),
         ('core_identity',   'client_field_definitions',    null::text)
       ) as allowlist(t_schema, t_name, t_column)
@@ -337,7 +350,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   $$;
   ```
 
-  Komplet VALUES-blok kopieret fra D1b + 2 nye rækker. CREATE OR REPLACE bevarer signatur. Allowlist-ændring er kode-commit + review per master-plan rettelse 29.
+  **V3 (Codex V2 KRITISK #2):** baseret på P1a's komplette VALUES-blok (15 entries inkl. `anonymization_strategies`), ikke D1b's gamle baseline. Plus 2 trin 10-entries = 17 total. CREATE OR REPLACE bevarer signatur. Allowlist-ændring er kode-commit + review per master-plan rettelse 29.
 
 - **Afhængigheder:** D1b (eksisterende allowlist)
 - **Migration-fil:** `supabase/migrations/<ts>_t10_is_permanent_allowed_extend.sql`
@@ -737,10 +750,10 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
 - **Migration-fil:** samme som T10.8
 - **Risiko:** lav.
 
-### T10.10 — `client_field_definition_upsert` RPC (uden p_match_role)
+### T10.10 — `client_field_definition_upsert` RPC (uden p_match_role; V3: immutable key + pii_level-downgrade-block)
 
 - **Type:** migration (CREATE FUNCTION)
-- **Hvad:** SECURITY DEFINER write-RPC for client_field_definitions. has_permission('client_field_definitions', 'manage', true).
+- **Hvad:** SECURITY DEFINER write-RPC for client_field_definitions. has_permission('client_field_definitions', 'manage', true). **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE forbyder ændring af `key` (audit-PII-hash i clients.fields ville miste reference); UPDATE forbyder pii_level direct → non-direct (eksisterende værdier ville pludselig skrives i klartekst i audit). For at ændre `key`: marker den gamle definition `is_active=false` og INSERT en ny. For at sænke pii-niveau: behandl som ny definition.
 - **Eksakt indhold:**
 
   ```sql
@@ -759,6 +772,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   as $$
   declare
     v_id uuid;
+    v_existing_key text;
+    v_existing_pii text;
   begin
     if not core_identity.has_permission('client_field_definitions', 'manage', true) then
       raise exception 'client_field_definition_upsert: permission_denied' using errcode = '42501';
@@ -781,19 +796,34 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
         (p_key, p_display_name, p_field_type, p_required, p_pii_level, p_display_order, p_is_active)
       returning id into v_id;
     else
+      -- V3 (Codex V2 KRITISK-SIKKERHEDSHUL): forbyd key-rename og direct → non-direct
+      -- for eksisterende definitions. Audit-PII-hashing i clients.fields stoler på at
+      -- key+pii_level er stabile for værdier der allerede ligger i jsonb.
+      select key, pii_level into v_existing_key, v_existing_pii
+        from core_identity.client_field_definitions
+       where id = p_field_id;
+      if not found then
+        raise exception 'client_field_definition_upsert: field % findes ikke', p_field_id using errcode = 'P0002';
+      end if;
+      if v_existing_key is distinct from p_key then
+        raise exception 'client_field_definition_upsert: key er immutable (% -> %). For at omdøbe: marker eksisterende felt is_active=false og INSERT et nyt.', v_existing_key, p_key
+          using errcode = '22023', hint = 'Audit-PII-hash i clients.fields binder til key.';
+      end if;
+      if v_existing_pii = 'direct' and p_pii_level <> 'direct' then
+        raise exception 'client_field_definition_upsert: pii_level direct -> % afvist. Eksisterende vaerdier i clients.fields ville pludselig skrives i klartekst i audit-log.', p_pii_level
+          using errcode = '22023', hint = 'For at saenke pii-niveau: INSERT ny definition med ny key.';
+      end if;
+
       update core_identity.client_field_definitions
-        set key = p_key,
-            display_name = p_display_name,
+        set display_name = p_display_name,
             field_type = p_field_type,
             required = p_required,
             pii_level = p_pii_level,
             display_order = p_display_order,
             is_active = p_is_active
+            -- key rør'es ikke (verificeret immutable ovenfor)
        where id = p_field_id
        returning id into v_id;
-      if v_id is null then
-        raise exception 'client_field_definition_upsert: field % findes ikke', p_field_id using errcode = 'P0002';
-      end if;
     end if;
 
     return v_id;
@@ -803,6 +833,8 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   revoke all on function core_identity.client_field_definition_upsert(text, text, text, text, text, boolean, integer, boolean, uuid) from public, anon;
   grant execute on function core_identity.client_field_definition_upsert(text, text, text, text, text, boolean, integer, boolean, uuid) to authenticated;
   ```
+
+  **Semantik (V3):** `key` er funktionelt immutable efter INSERT — audit-PII-hash i `clients.fields` binder til key. `pii_level` kan eskaleres (none → indirect → direct) men ikke downgrades fra direct (eksisterende klartekst-værdier ville opstå i audit). For at ændre key eller sænke pii-niveau: deaktiver eksisterende definition + INSERT ny.
 
 - **Afhængigheder:** T10.2, T10.13
 - **Migration-fil:** `supabase/migrations/<ts>_t10_client_field_definition_upsert_rpc.sql`
@@ -1048,7 +1080,7 @@ Hver step: Type, Hvad, Eksakt indhold (pseudo-SQL), Afhængigheder, Migration-fi
   | Test-fil                                                 | Hvad verificeres                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
   | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
   | `supabase/tests/smoke/t10_client_lifecycle.sql`          | client_upsert (INSERT + UPDATE), client_set_active toggle, client_get returnerer korrekt is_active. has_permission-spærring uden permission-row. is_active toggle bevarer øvrige felter.                                                                                                                                                                                                                                                                           |
-  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash.                                                                                                                                                                                                                                   |
+  | `supabase/tests/smoke/t10_client_field_definitions.sql`  | client_field_definition_upsert (INSERT + UPDATE), is_active toggle, client_field_definitions_list respekterer p_include_inactive. **Audit-PII-hashing:** insert med pii_level='direct' key i fields → audit_log har sha256-hash. **V3 (Codex V2 KRITISK-SIKKERHEDSHUL):** UPDATE af `key` afvises (errcode 22023). UPDATE af pii_level direct → none afvises (errcode 22023). pii_level none → indirect → direct accepteres.                                       |
   | `supabase/tests/smoke/t10_client_logo.sql`               | client_logo_set + client_logo_get + client_logo_clear. **Assert client_upsert UPDATE af name/fields bevarer logo_bytes uændret** (read før+efter; sammenlign). consistency-CHECK blokerer partiel logo. client_logo_set fejler hvis ét felt er NULL.                                                                                                                                                                                                               |
   | `supabase/tests/smoke/t10_client_node_placements_fk.sql` | FK virker: INSERT med ikke-eksisterende client_id fejler. DELETE af klient med åbne placements fejler RESTRICT.                                                                                                                                                                                                                                                                                                                                                    |
   | `supabase/tests/smoke/t10_clients_validate_fields.sql`   | LENIENT-default: unknown key i fields → warning, INSERT accepteret. Strict-mode (`stork.clients_fields_strict='true'`): unknown key → exception. **V2 (Codex V1 MELLEM):** assert at non-object fields (`'"scalar"'::jsonb`, `'[1,2]'::jsonb`) afvises af `clients_fields_is_object`-CHECK (errcode 23514). **V2 (Codex V1 KRITISK-SIKKERHEDSHUL):** assert audit-PII-hashing rammer direct-PII keys i fields selv efter felt-definitionen er sat is_active=false. |
@@ -1191,9 +1223,15 @@ Eksisterende tests opdateret i T10.7a:
 
 ## Konklusion
 
-V2 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
+V3 bringer trin 10 i mål: klient-skabelonen etableres greenfield i `core_identity` med aktiv/inaktiv-livscyklus + logo + FK fra T9's klient-til-team-tilknytning + permission-baserede write-RPC'er. Klient-tabel eksisterer ikke på main før denne pakke (T1 droppede D5's pre-fundament); 16 steps skaber alle artefakter fra bunden.
 
 16 steps, alle med eksakt SQL/pseudo-SQL. Risiko lav-mellem på alle migrations, hver rollbar individuelt.
+
+V3-ændringer ift. V2 (Codex runde 2 ACCEPT på begge fund):
+
+- T10.3: baseret på P1a's komplette VALUES-blok (15 entries inkl. `anonymization_strategies`) + 2 trin 10-entries = 17 total. V2's D1b-baseline var regression (Codex V2 KRITISK #2).
+- T10.10: `key` er funktionelt immutable for eksisterende definitions (UPDATE blokeres). `pii_level` direct → non-direct afvises. Forhindrer audit-PII-datalæk via key-rename eller pii-downgrade (Codex V2 KRITISK-SIKKERHEDSHUL #1).
+- T10.15 smoke-test udvidet med immutable-key + pii-downgrade-block assertions.
 
 V2-ændringer ift. V1 (Codex runde 1 ACCEPT på 3 fund + DEFER på 1):
 
@@ -1214,4 +1252,4 @@ Hovedlinjer ift. tidligere fabrikerede V1-V3 (`claude/trin-10-plan-v2`-branchen)
 - Grant-modellen seedes (ikke legacy role_page_permissions)
 - T9-smoke-tests opdateres med clients-fixture FØR FK aktiveres
 
-Klar til Codex plan-review-runde 2.
+Klar til Codex plan-review-runde 3.
