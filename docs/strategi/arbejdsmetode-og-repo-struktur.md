@@ -34,7 +34,6 @@ docs/
 │   ├── mathias-afgoerelser.md
 │   ├── cutover-checklist.md
 │   ├── codex-reviews/
-│   ├── krav-dok-feedback/
 │   ├── plan-feedback/
 │   ├── rapport-historik/
 │   └── arkiv/
@@ -48,8 +47,7 @@ docs/
 └── skabeloner/            # genbrugelige skabeloner
     ├── plan-skabelon.md
     ├── rapport-skabelon.md
-    ├── codex-review-prompt.md
-    └── forretningsspoergsmaal-skabelon.md
+    └── codex-review-prompt.md
 ```
 
 **Princip:** én sti til alt. Sporing via git, ikke chat-arkæologi.
@@ -167,7 +165,7 @@ Efter R-runde-2 er færdig:
 
 Alle planlagte pakker (I-pakker, H-pakker) bruger commit-baseret plan-runde-loop frem for chat-baseret. Round-trip-feedback håndteres via `docs/coordination/plan-feedback/`-mappen og codex-notify-workflow.
 
-**Operationel reference:** [`docs/skabeloner/workflow-skabelon.md`](../skabeloner/workflow-skabelon.md) er autoritativ for hvordan flowet køres step-by-step (7 steps + 4 loops + meta-regel + marker-protokol + Mathias-gate to-fil-flow). Denne fil dækker hvorfor — workflow-skabelon dækker hvordan. V5.3 marker-protokol etableret 2026-05-20 via Lag 1 workflow-stabilisering.
+**Operationel reference:** [`docs/skabeloner/workflow-skabelon.md`](../skabeloner/workflow-skabelon.md) er autoritativ for hvordan flowet køres step-by-step (5-step V2 flow + loops + meta-regel + marker-protokol + Mathias-gate to-fil-flow). Denne fil dækker hvorfor — workflow-skabelon dækker hvordan. V5.3 marker-protokol bevaret fra Lag 1; flow-strukturen forenklet i V2 2026-05-20.
 
 ### Trigger-ord (overvågnings-system)
 
@@ -212,17 +210,16 @@ Erfaring fra trin 10-forsøget (2026-05-20): tidligere 15-trins flow med tre Cla
 
 **Sparring-på-tværs (uformelt sikkerhedsnet):** Mathias kan paste indhold fra én chat til en anden AI for verifikation hvis han fornemmer noget. Disciplinen er rammen, ikke isolation mellem aktører.
 
-### Approval-regel (strict)
+### Approval-regel (V2 strict)
 
-En plan er KUN approved når BÅDE Codex og Claude.ai-plan-reviewer har leveret approval.
+V2 simplificerer plan-approval. Plan-fase er Code + Codex (Claude.ai-plan-reviewer-rolle udgår per V2-justering 2026-05-20):
 
-- Kun Codex approver, Claude.ai-plan-reviewer har feedback → V<n+1>
-- Kun Claude.ai-plan-reviewer approver, Codex har feedback → V<n+1>
-- Begge approver → plan klar til Mathias-godkendelse (`qwerg`)
+- Codex har feedback → V<n+1>
+- Codex approver → plan klar til Mathias-godkendelse (`qwerg`)
 
 Code må IKKE begynde build før Mathias eksplicit har pastet `qwerg`.
 
-**Krav-dok-approval er separat:** Et krav-dok går ikke til Mathias-godkendelse før Claude.ai-krav-dok-reviewer har leveret approval på det. Hvis feedback: forfatter retter, leverer ny version, reviewer ser igen. Loop indtil approval.
+**Krav-dok-approval i V2:** Mathias er direkte validator i krav-dok-fasen (step 1). Ingen separat Claude.ai-krav-dok-reviewer-rolle. Forfatter skriver krav-dok via Filesystem-MCP, Mathias bekræfter direkte i chat. Spørgsmål-runden sker også i chat — ingen committed mellem-artefakter.
 
 ### Anti-glid: severity-disciplin
 
@@ -245,17 +242,15 @@ Reviewer-anti-glid-regler:
 
 Reference: `docs/strategi/arbejds-disciplin.md` runde-trapper.
 
-### Pakke-skala-disciplin
+### Pakke-skala-disciplin (V2 2026-05-20)
 
-Proces-vægten skaleres til pakke-størrelsen. Tre niveauer:
+Mathias afgør pakke-skala i step 0 baseret på antal åbne forretnings-spørgsmål. Tre niveauer:
 
-- **Stor (I-pakke / kompleks H-pakke)**: fuld plan-runde-proces (krav-dok → krav-dok-review → plan → review → build → slut-rapport)
-- **Mellem (H-pakke)**: plan + ét review (kan være Codex eller Claude.ai afhængigt af om det er teknisk eller krav-relateret), derefter build
-- **Lille (mikro-H-pakke)**: PR direkte uden plan-runde. Codex reviewer PR'en. Mathias merger.
+- **Stor (6+ åbne spm)**: fuld V2-flow (krav-dok-fase med Mathias som direkte validator → plan-fase Code+Codex → build → slut-rapport + Claude.ai-review). Ekstra validerings-runder kan kræves i krav-dok-fasen.
+- **Mellem (3-5 åbne spm)**: simplificeret krav-dok-fase (få spm direkte i chat, derefter krav-dok) → plan-fase Code+Codex → build → slut-rapport + Claude.ai-review.
+- **Lille (0-2 åbne spm)**: skip krav-dok-fase. PR direkte uden plan-runde for mikro-fix; ellers Code skriver plan direkte mod master-plan + mathias-afgørelser-rammen, Codex reviewer, Mathias merger.
 
-Krav-dokumentet specificerer pakke-størrelse i "Type"-feltet. Standard er fuld proces hvis ikke andet står.
-
-**Krav-dok-review skippes for mellem og lille:** Krav-dok-dobbelt-port-disciplinen gælder primært stor-pakker. For mellem-pakker er Mathias' egen review tilstrækkelig (krav-dok er kortere, scope er mindre). For lille-pakker er der ikke krav-dok overhovedet.
+Krav-dok-review udgår i V2 (Mathias er direkte validator). Plan-review er Code+Codex only.
 
 ### Oprydnings- og opdaterings-disciplin
 
@@ -263,12 +258,12 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 
 **Plan-skabelon-sektion (obligatorisk):** "Oprydnings- og opdaterings-strategi" lister:
 
-- Filer der skal flyttes til `docs/coordination/arkiv/` (standard: krav-dok, plan, plan-feedback-filer, krav-dok-feedback-filer, forretningsspørgsmål-fil)
+- Filer der skal flyttes til `docs/coordination/arkiv/` (V2 standard: krav-dok, plan, plan-feedback-filer)
 - Filer der skal slettes (hvis pakken gør dem irrelevante)
 - Dokumenter der skal opdateres som konsekvens (aktiv-plan, seneste-rapport, mathias-afgoerelser, bygge-status, master-plan, teknisk-gaeld)
 - Reference-konsekvenser (grep-verifikation for omdøbte/flyttede stier)
 
-**Approval-blocker:** plan uden "Oprydnings- og opdaterings-strategi"-sektion er ikke approval-klar. Codex og Claude.ai bør levere FEEDBACK hvis sektionen mangler eller er tom.
+**Approval-blocker:** plan uden "Oprydnings- og opdaterings-strategi"-sektion er ikke approval-klar. Code skal selv sikre sektionen er udfyldt før plan-commit (selv-disciplin i pre-push-tjekliste); Codex flagger sektionens mangel som KRITISK i plan-review.
 
 **Code's ansvar:** udfør oprydning + opdatering som DEL af build-leverancen, ikke som separat trin. Slut-rapporten verificerer at det er gjort i sektion "Oprydning + opdatering udført".
 
@@ -278,26 +273,15 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 
 Krav-dokumentet er **kontrakt**. Detaljer + brud-typer dokumenteret i `docs/strategi/arbejds-disciplin.md` sektion "Krav-dokument-disciplin". Hvis et plan-forslag ville modsige krav-dokumentet, committes `<pakke>-V<n>-blokeret.md` og runden stoppes — argumentation hører i ny krav-dokument-runde, ikke i plan-runden.
 
-### Filnavngivning i `krav-dok-feedback/`
-
-| Fil                                      | Skrevet af                       | Trigger-comment |
-| ---------------------------------------- | -------------------------------- | --------------- |
-| `<pakke>-claude-ai-reviewer.md`          | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
-| `<pakke>-approved-claude-ai-reviewer.md` | Claude.ai-reviewer (via Mathias) | (manuel, ingen) |
-
-Krav-dok-feedback-filer udløser ikke codex-notify trigger — krav-dok-fasen er pre-plan og ligger uden for plan-automation-flowet's normal tracker-comments.
-
 ### Filnavngivning i `plan-feedback/`
 
-| Fil                                  | Skrevet af                  | Trigger-comment           |
-| ------------------------------------ | --------------------------- | ------------------------- |
-| `<pakke>-V<n>-codex.md`              | Codex                       | `codex-feedback`          |
-| `<pakke>-V<n>-claude-ai.md`          | Claude.ai (via Mathias)     | `claude-ai-feedback`      |
-| `<pakke>-V<n>-approved-codex.md`     | Codex                       | `plan-approved-codex`     |
-| `<pakke>-V<n>-approved-claude-ai.md` | Claude.ai (via Mathias)     | `plan-approved-claude-ai` |
-| `<pakke>-V<n>-blokeret.md`           | Code, Codex eller Claude.ai | `plan-blokeret`           |
+| Fil                              | Skrevet af       | Trigger-comment       |
+| -------------------------------- | ---------------- | --------------------- |
+| `<pakke>-V<n>-codex.md`          | Codex            | `codex-feedback`      |
+| `<pakke>-V<n>-approved-codex.md` | Codex            | `plan-approved-codex` |
+| `<pakke>-V<n>-blokeret.md`       | Code eller Codex | `plan-blokeret`       |
 
-**Bemærk:** codex-notify.yml-workflowet differentierer endnu ikke fuldt mellem `codex-feedback` og `claude-ai-feedback` (begge poster generisk "Codex-feedback"-comment pt.). Code's overvågnings-prompt kompenserer ved at læse filerne direkte i `plan-feedback/`. Workflow-opdatering er separat H-pakke når prioriteret.
+**V2-note:** Claude.ai-plan-reviewer-rolle udgået i V2 (jf. `mathias-afgoerelser.md` 2026-05-20). Plan-fase er Code + Codex; `<pakke>-V<n>-claude-ai.md` og `<pakke>-V<n>-approved-claude-ai.md` fra V5.3 produceres ikke længere. Eventuelle eksisterende sådanne filer på historiske pakke-branches arkiveres ved pakke-lukning som hidtil.
 
 ---
 

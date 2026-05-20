@@ -1,3 +1,220 @@
+# Codex review — workflow-skabelon runde 1
+
+**Pakke:** workflow-skabelon
+**Fase:** build
+**Plan-fil:** docs/skabeloner/workflow-skabelon.md
+**Plan-SHA:** d00c918
+**Dato:** 2026-05-20
+**Reasoning:** xhigh
+**Max ord:** 350
+**Command:** `scripts/codex-review.sh docs/skabeloner/workflow-skabelon.md 1 --xhigh --phase=build` (re-run via samme args inkl. flags)
+
+---
+
+Reading additional input from stdin...
+OpenAI Codex v0.131.0
+--------
+workdir: /home/mathias/stork-2.0
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR] (network access enabled)
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019e46bc-2137-7aa1-aa74-84868a24c6d3
+--------
+user
+Læs disse filer:
+1. docs/skabeloner/codex-review-prompt.md (niveau 1-prefix — anvend ordret)
+2. docs/skabeloner/workflow-skabelon.md (build-fasen for pakke workflow-skabelon)
+
+RUNDE-NUMMER: 1
+FASE: build
+FORMÅL: udledes af "## Formål"-sektionen i docs/skabeloner/workflow-skabelon.md.
+
+Følg niveau 1-prefixens scope-krav + marker-protokol + dialog-regler.
+
+Max 350 ord output. Brug marker-format fra niveau 1-prefix (KRITISK/MELLEM/LAV/HUL/OPTIMERING-FORSLAG/G-NUMMER-KANDIDAT etc.). Hvis du ikke har fund: skriv "APPROVAL — Runde 1".
+codex
+Jeg læser de to skabeloner først og udleder derefter build-scope og markerformatet direkte fra dem.
+exec
+/bin/bash -lc "sed -n '1,240p' docs/skabeloner/codex-review-prompt.md" in /home/mathias/stork-2.0
+ succeeded in 0ms:
+# Codex-review-prompt-skabelon
+
+Skabelon for prompts der sendes til Codex ved hver review-runde.
+Sikrer at Codex holder sig inden for kode-validering og ikke
+træder ind i funktions-beslutninger.
+
+Håndhæver REGEL: Codex-runder = kode-validering, ikke
+funktions-beslutning (fra `docs/strategi/arbejds-disciplin.md`).
+
+---
+
+## Niveau 1 — Prompt-prefix (ordret)
+
+Hver Codex-review-prompt indledes med følgende prefix. Kopieres
+ordret ind før den runde-specifikke instruks:
+
+```
+SCOPE-KRAV (kode-niveau, fra fire-dokument-disciplinen 2026-05-16, udvidet V5.3 2026-05-20):
+
+Du svarer KUN på kode-niveau:
+- Leverer koden formålet teknisk?
+- Er der bugs, sikkerhedshuller, RLS-huller, SQL-fejl?
+- Er der edge cases der bryder formålet på kode-niveau?
+- Akkumulerer planen teknisk gæld?
+- Følger koden disciplin-pakken (CI-blockers, fitness-checks)?
+
+END-TO-END-TJEK PER WRITE-VEJ (obligatoriske):
+
+For hver write-RPC og INSERT/UPDATE/DELETE-vej i planen — verificér:
+- GRANT + policy + session-var-tre-pak
+- SELECT-policy bredde
+- Backdated guards
+- Apply-dispatcher-extension specificeret per RPC
+- jsonb-format konsistens producer/consumer
+- Eksempel-row gennem flow (gerne som non-admin)
+- Krydsetjek mod Fundament-tjek-passeret-sektion
+
+Manglende ét af tjekkene på write-vej = KRITISK fund.
+
+Du svarer IKKE på:
+- Skulle formålet have været anderledes
+- Mangler features, er funktionalitet rigtig, bedre forretnings-løsninger
+- Lever planen op til vision, master-plan, mathias-afgørelser, eller krav-dok på forretnings-niveau — dette er Claude.ai's bord (parallelt review)
+
+OUT OF SCOPE-markering:
+- Funktions-spørgsmål: "OUT OF SCOPE — kræver Mathias-runde" + fortsæt
+- Forretnings-dokument-konflikt: "OUT OF SCOPE — Claude.ai's bord" + fortsæt
+
+MARKER-PROTOKOL (V5.3 — anvendt i build-fase + plan-fase):
+
+Halt-markers (defensive — 6 typer, FLAG → LØS → STOP):
+- BRUD-PAA-KRAV: <hvad>           — build/plan modsiger krav-doc
+- TEKNISK-BLOKERING: <hvad>       — ikke fysisk implementerbar
+- PLAN-AFVIGELSE: <hvad>          — afviger fra approved plan
+- KRITISK-SIKKERHEDSHUL: <hvad>   — RLS/datatab/SQL-injection
+- WORKAROUND-INTRODUCERET: <hvad> — bevidst kvalitets-sænkning (Mathias-gate)
+- STOP-FOR-CLARIFICATION: <hvad>  — info mangler genuint (auto-STOP)
+
+Log-marker:
+- G-NUMMER-KANDIDAT: <hvad>       — forbedring der ikke blokerer; log + fortsæt
+
+Positive markers (offensive — HALTER ALDRIG):
+- OPGRADERING (KUN plan-fase, per Mathias-afgørelse 2026-05-17):
+    Code-svar: AFVIS / IMPLEMENTER (binær)
+- OPTIMERING-FORSLAG (build + slut-rapport):
+    Code-svar: ADOPT / DEFER / DISMISS; Codex: CONFIRM-MOVE-ON
+- SPARRING-OENSKE (Code rejser, build + slut-rapport):
+    Codex-svar: CONFIRM / TIMING / AVOID
+
+Trigger-format (når du mangler info eller anden vinkel):
+- REQUEST-RAAD Mathias: <funktions-spørgsmål>
+- REQUEST-RAAD Claude.ai: <forretnings-spørgsmål>
+- REQUEST-RAAD Codex: <kode-spørgsmål>
+- REQUEST-RAAD CONTEXT: <hvad-skal-tjekkes>
+
+DIALOG-PROTOKOL (FLAG → LØS → STOP):
+
+Per fund er max 3 LØS-iterationer tilladt:
+- Iter 1: Code-svar (ACCEPT/PUSHBACK/PROPOSE-ALTERNATIVE), Codex-modsvar (AGREE/REFINE/ESCALATE)
+- Iter 2: refine
+- Iter 3: sidste forsøg
+- Iter 4: AUTO-ESKALATION via mathias-gate/
+
+STOP (eskalation) udløses kun ved:
+- Nogen rejser ESCALATE, ELLER
+- Iter > 3, ELLER
+- WORKAROUND-INTRODUCERET (gate uanset konsensus), ELLER
+- STOP-FOR-CLARIFICATION (auto-STOP)
+
+MARKER-VALG VED OVERLAP:
+Hvis flere markers matcher samme fund: brug den marker der bedst beskriver primær problem. Sekundære nævnes i body som G-nummer-kandidater (ikke separat fund).
+
+RUNDE-NUMMER: [1 | 2 | 3 | ... max 7]
+
+Niveau 3-protokol — runde-afhængige stop-betingelser:
+Runde 1: alle fund vurderes
+Runde 2: kun HØJ/KRITISK stopper; MELLEM → G-numre
+Runde 3+: kun KRITISK stopper; LAV/MELLEM → G-numre
+
+FORMÅL FOR DENNE PAKKE: [indsættes fra plan-skabelonens
+Formål-sektion]
+
+Vurder kode-fund mod formålet:
+Bringer fundet os tættere på formålet teknisk? → ACCEPT (eller ADOPT for OPTIMERING)
+Er fundet uafhængigt af formålet? → G-nummer-kandidat, ikke blocker
+```
+
+---
+
+## Niveau 2 — Post-processing-scan
+
+Når Codex-output modtages, scannes outputtet for funktions-forslag-
+mønstre der IKKE er markeret "OUT OF SCOPE":
+
+Røde-flag-fraser (kun problematiske hvis IKKE under sektion "OPTIMERING-FORSLAG"):
+
+- "kunne overveje at..."
+- "ville være bedre hvis..."
+- "burde måske tilføje..."
+- "alternativ tilgang..."
+- "bedre design ville være..."
+- "anbefaler at refaktorere til..."
+- "feature mangler:..."
+- "mangler funktionalitet for..."
+
+NB (V5.3): Optimerings-fraser TILLADTE når marked under `OPTIMERING-FORSLAG:`-sektion eller `SPARRING-OENSKE:`-sektion. De er ikke disciplin-brud — de er forventet positive-marker-output.
+
+Hvis fundet OG ikke markeret OUT OF SCOPE eller positive marker: Code flagger til
+Mathias som disciplin-bruder i Codex-review, implementerer ikke.
+
+Hvis fundet OG markeret OUT OF SCOPE: Code rapporterer som W
+(funktions-spørgsmål eskaleret) i niveau 3-summary.
+
+---
+
+## Niveau 3 — Mathias-godkendelse-protokol
+
+Hver Codex-review-runde afsluttes med Code's vurderings-summary
+i følgende format:
+
+```
+CODEX-REVIEW SUMMARY — [Pakke-navn] runde [N]
+Bug-fixes inden for formålet (Code fixer): X
+Implementations-ændringer inden for formålet (Code vurderer): Y
+G-numre tilføjet (later): Z
+Funktions-spørgsmål (OUT OF SCOPE — eskaleret til Mathias): W
+Disciplin-brudere (Codex svarede uden OUT OF SCOPE-markering): V
+PUSHBACK-fund (Code afviste fund med begrundelse): P
+Optimerings-forslag adopteret (build-fase ADOPT): O_ADOPT
+Optimerings-forslag deferred til G-nummer: O_DEFER
+Halt-eskaleringer via mathias-gate/: G
+[Hvis V > 0: liste hver instans med citat fra Codex-output]
+[Hvis W > 0: liste hver instans for Mathias-vurdering]
+[Hvis G > 0: liste hver mathias-gate/ entry for opfølgning]
+```
+
+Mathias kan beslutte W-forslagene i ny planlægnings-runde.
+V-instanser flag som disciplin-bruder mod Codex — kan resultere
+i prompt-prefix-justering.
+
+---
+
+## Brug
+
+1. Code kopierer niveau 1-prefix ind før hver Codex-review-prompt
+2. Indsætter runde-nummer + formål fra aktuel plan
+3. Tilføjer runde-specifik instruks (hvilke filer, hvilke fokus-
+   områder)
+4. Sender til Codex
+5. Modtager output, scanner niveau 2
+6. Rapporterer niveau 3-summary til Mathias
+
+exec
+/bin/bash -lc "sed -n '1,260p' docs/skabeloner/workflow-skabelon.md" in /home/mathias/stork-2.0
+ succeeded in 0ms:
 # Workflow-skabelon — Stork 2.0
 
 Operationel reference for hvordan en pakke kører gennem systemet fra Mathias' intention til pakkens lukning.
@@ -148,9 +365,9 @@ Max 3 LØS-iterationer per fund. Iter > 3 → auto-eskalation via mathias-gate/.
 
 | Marker                    | Trigger                                            | Routing ved STOP                                       |
 | ------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
-| `BRUD-PAA-KRAV`           | Build/plan modsiger krav-doc                       | → step 1 (revid krav-dok)                              |
-| `TEKNISK-BLOKERING`       | Ikke fysisk implementerbar (CI/tooling/dependency) | → step 2 (revid plan); fundamental: Mathias-eskalation |
-| `PLAN-AFVIGELSE`          | Build afviger fra approved plan uden krav-brud     | → step 2 (plan V<n+1>) eller Mathias-godkendelse       |
+| `BRUD-PAA-KRAV`           | Build/plan modsiger krav-doc                       | → step 1 (revid krav)                                  |
+| `TEKNISK-BLOKERING`       | Ikke fysisk implementerbar (CI/tooling/dependency) | → step 3 (revid plan); fundamental: Mathias-eskalation |
+| `PLAN-AFVIGELSE`          | Build afviger fra approved plan uden krav-brud     | → step 3 (plan V2) eller Mathias-godkendelse           |
 | `KRITISK-SIKKERHEDSHUL`   | RLS-hul, datatab, SQL-injection, sikkerheds-risiko | Fix i samme batch; ikke muligt → Mathias               |
 | `WORKAROUND-INTRODUCERET` | Bevidst kvalitets-sænkning                         | Mathias-gate (se to-fil-flow nedenfor)                 |
 | `STOP-FOR-CLARIFICATION`  | Info mangler genuint                               | Auto-STOP; mål-part svarer; genoptag                   |
@@ -189,16 +406,16 @@ Hvis en situation matcher flere markers: **Codex bruger den marker der bedst bes
 
 ### Routing-tabel
 
-| Trigger                             | Default routing                                          |
-| ----------------------------------- | -------------------------------------------------------- |
-| BRUD-PAA-KRAV                       | step 1 (revid krav-dok)                                  |
-| TEKNISK-BLOKERING                   | step 2 (revid plan); fundamental: Mathias-eskalation     |
-| PLAN-AFVIGELSE                      | step 2 (plan V<n+1>) eller Mathias-godkendelse via gate/ |
-| KRITISK-SIKKERHEDSHUL               | Fix i samme batch; ikke muligt → Mathias                 |
-| WORKAROUND-INTRODUCERET             | Mathias-gate to-fil-flow                                 |
-| STOP-FOR-CLARIFICATION              | Genoptag samme step efter mål-parts svar                 |
-| ESCALATE-konsensus (begge ESCALATE) | Mathias-judgment via `mathias-gate/`                     |
-| Auto-eskalation (iter > 3)          | Tving ESCALATE-rute via `mathias-gate/`                  |
+| Trigger                             | Default routing                                      |
+| ----------------------------------- | ---------------------------------------------------- |
+| BRUD-PAA-KRAV                       | step 1 (revid krav-dok)                              |
+| TEKNISK-BLOKERING                   | step 3 (revid plan); fundamental: Mathias-eskalation |
+| PLAN-AFVIGELSE                      | step 3 (plan V2) eller Mathias-godkendelse via gate/ |
+| KRITISK-SIKKERHEDSHUL               | Fix i samme batch; ikke muligt → Mathias             |
+| WORKAROUND-INTRODUCERET             | Mathias-gate to-fil-flow                             |
+| STOP-FOR-CLARIFICATION              | Genoptag samme step efter mål-parts svar             |
+| ESCALATE-konsensus (begge ESCALATE) | Mathias-judgment via `mathias-gate/`                 |
+| Auto-eskalation (iter > 3)          | Tving ESCALATE-rute via `mathias-gate/`              |
 
 ---
 
@@ -217,27 +434,6 @@ Forventet filsæt for en pakke kaldet `<pakke>`:
 | `docs/coordination/rapport-historik/<dato>-<pakke>.md`        | 5    | Code (Claude.ai-reviewer verificerer i separat chat)                         |
 
 Ved pakke-lukning (efter step 5) flyttes plan + krav-og-data + V1-Vn plan-feedback til `docs/coordination/arkiv/` med prefix `<pakke>-*`.
-
----
-
-## Konsekvens-opdaterings-disciplin (V2 2026-05-20)
-
-**Princip:** rammer en pakke noget der hører til et autoritativt dokument, opdateres dokumentet som del af samme pakke. Det gælder uanset om konsekvensen opdages i krav-dok-fasen, plan-fasen, build-fasen eller slut-rapport-fasen.
-
-**Fire autoritative dokumenter med obligatorisk vurdering:**
-
-| Dokument                                   | Hvornår rammes det?                                                                     | Hvad opdateres                                                      |
-| ------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `docs/strategi/stork-2-0-master-plan.md`   | Pakken ændrer §-indhold, indfører ny arkitektur-detalje, eller binder fremtidige pakker | Relevant § + ny rettelse i Appendix C med beskrivelse + commit-hash |
-| `docs/strategi/bygge-status.md`            | Pakken færdiggør eller skifter status på et byggetrin (vision-tjek-historik)            | Trin-status + vision-tjek-entry i historikken                       |
-| `docs/coordination/mathias-afgoerelser.md` | Pakken indeholder strategisk retning-skift eller låser ramme på tværs af pakker         | Ny append-only entry med dato + begrundelse + plan-reference        |
-| `docs/teknisk/teknisk-gaeld.md`            | Pakken tilføjer G-numre (kendt gæld) eller løser eksisterende G-numre                   | G-nummer-entries med status (kandidat/lukket) + reference           |
-
-**Plan-skabelon-håndhævelse:** "Oprydnings- og opdaterings-strategi"-sektionens "Konsekvens-opdateringer for autoritative dokumenter"-tabel kræver eksplicit ja/nej for alle fire — tom række = plan ikke approval-klar.
-
-**Slut-rapport-håndhævelse:** "Oprydning + opdatering udført"-sektionen verificerer konkret commit-hash for hver opdatering der var markeret "ja" i planen. Manglende opdatering = afvigelse der skal flagges i Plan-afvigelser-sektionen.
-
-**Hvorfor:** uden eksplicit disciplin vokser drift mellem autoritative dokumenter og koden. Master-plan beskriver intentionen; bygge-status reflekterer faktisk fremgang; mathias-afgoerelser fanger rammer; teknisk-gæld viser akkumuleret hjørner. Når én ændres, skal de andre tjekkes samme runde — ikke "senere".
 
 ---
 
@@ -279,6 +475,20 @@ Codex læser selv hurtigere end at parse store embedded-prompts. Streaming-event
 
 ### 4. Non-json mode for live progress på store reviews
 
+
+codex
+Prefixen kræver kun kode-niveau og runde 1 betyder, at alle fund vurderes. Jeg søger nu efter selve `## Formål`-sektionen og build-fasens konkrete regler, så outputtet ikke gætter på pakken.
+exec
+/bin/bash -lc 'rg -n "''^## Formål|Formål|Build-fase|BUILD|Step 4|build-fase" docs/skabeloner/workflow-skabelon.md' in /home/mathias/stork-2.0
+ succeeded in 0ms:
+48:│ 4. BUILD                                                     │
+145:## Build-fase marker-protokol (V5.3)
+215:| `docs/coordination/mathias-gate/<pakke>-<type>-<N>.md`        | 4    | AFVENTER-entries (build-fase Mathias-gate); arkiveres efter trufne afgørelse |
+
+exec
+/bin/bash -lc "sed -n '260,560p' docs/skabeloner/workflow-skabelon.md" in /home/mathias/stork-2.0
+ succeeded in 0ms:
+
 `--json` batcher events til slut når reasoning er tung. For live-feedback brug standard output mode + `tail -F` + grep mod kendte markers:
 
 ```bash
@@ -303,7 +513,7 @@ Codex læser typisk 8-10 filer i en dyb runde før den giver fund. Forventet tok
 
 ### 7. Konvergens typisk i 3 runder
 
-V1 → V2 → V3 = approval er det forventede mønster. **7-iter cap er rigelig margin.** Lag 1's workflow-stabilisering selv ramte V5.1 (6 plan-versioner) før APPROVAL — det er øvre normal-grænse for kompleks workflow-design. Hvis runde 8+ stadig viser KRITISK-fund: eskaler til Mathias (workflow-loop fra step 2 → Mathias).
+V1 → V2 → V3 = approval er det forventede mønster. **7-iter cap er rigelig margin.** Lag 1's workflow-stabilisering selv ramte V5.1 (6 plan-versioner) før APPROVAL — det er øvre normal-grænse for kompleks workflow-design. Hvis runde 8+ stadig viser KRITISK-fund: eskaler til Mathias (workflow-loop fra step 3 → Mathias).
 
 ### 8. Niveau 3-protokol — runde-afhængige stop-betingelser
 
@@ -343,4 +553,18 @@ PUSHBACK, REQUEST-RAAD, STOP-FOR-CLARIFICATION blev IKKE brugt i workflow-stabil
 
 ---
 
-**Sidste opdatering:** 2026-05-20 — Workflow V2 finalize (jf. `mathias-afgoerelser.md` "Workflow-justering V2" 2026-05-20). Flow simplificeret til 5-step. Krav-dok-fase reduceret til direkte chat mellem Claude.ai-forfatter og Mathias; separat reviewer-rolle + forretningsspoergsmaal-fil + krav-dok-feedback-mappe udgået. Pakke-skala-vurdering nu eksplicit step 0. Recon-først obligatorisk i plan-fasen. Konsekvens-opdaterings-disciplin tilføjet for autoritative dokumenter (master-plan, bygge-status, mathias-afgoerelser, teknisk-gaeld).
+**Sidste opdatering:** 2026-05-20 — Workflow V2 finalize. 7-step flow reduceret til 5-step flow (jf. `mathias-afgoerelser.md` "Workflow-justering V2" 2026-05-20). Krav-dok-fase simplificeret til direkte chat mellem Claude.ai-forfatter og Mathias; separat reviewer-rolle + forretningsspoergsmaal-fil + krav-dok-feedback-mappe udgået. Pakke-skala-vurdering nu eksplicit step 0. Recon-først obligatorisk i plan-fasen.
+
+codex
+STOP-FOR-CLARIFICATION: `docs/skabeloner/workflow-skabelon.md` indeholder ingen `## Formål`-sektion, så FORMÅL FOR DENNE PAKKE kan ikke udledes som instrueret.
+
+REQUEST-RAAD CONTEXT: Skal formålet udledes fra topbeskrivelsen “Operationel reference for hvordan en pakke kører gennem systemet...” i stedet, eller mangler der en `## Formål`-sektion i filen?
+
+Runde 1 stoppes her efter marker-protokollen, fordi formålet er obligatorisk grundlag for kode-niveau-vurderingen.
+tokens used
+33,260
+STOP-FOR-CLARIFICATION: `docs/skabeloner/workflow-skabelon.md` indeholder ingen `## Formål`-sektion, så FORMÅL FOR DENNE PAKKE kan ikke udledes som instrueret.
+
+REQUEST-RAAD CONTEXT: Skal formålet udledes fra topbeskrivelsen “Operationel reference for hvordan en pakke kører gennem systemet...” i stedet, eller mangler der en `## Formål`-sektion i filen?
+
+Runde 1 stoppes her efter marker-protokollen, fordi formålet er obligatorisk grundlag for kode-niveau-vurderingen.

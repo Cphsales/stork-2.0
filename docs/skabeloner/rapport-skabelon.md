@@ -136,7 +136,20 @@ Verifikation mod plan-filens "Oprydnings- og opdaterings-strategi"-sektion. Hver
 
 **Filer slettet:** [liste eller "ingen"]
 
-**Dokumenter opdateret:**
+**Konsekvens-opdateringer for autoritative dokumenter** (V2 2026-05-20 — verifikation af plan-tabellen):
+
+Spejler plan-filens "Konsekvens-opdateringer"-tabel. Hver række der var "ja" i planen skal have konkret commit-hash her. "Nej" i planen + ingen ændring i build = "ingen ændring (jf. plan)".
+
+| Dokument                                   | Plan-vurdering | Faktisk udført                                                       |
+| ------------------------------------------ | -------------- | -------------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | ja / nej       | [commit-hash + § + rettelse-nummer ELLER "ingen ændring (jf. plan)"] |
+| `docs/strategi/bygge-status.md`            | ja / nej       | [commit-hash + trin + ny status ELLER "ingen ændring (jf. plan)"]    |
+| `docs/coordination/mathias-afgoerelser.md` | ja / nej       | [commit-hash + entry-dato ELLER "ingen ændring (jf. plan)"]          |
+| `docs/teknisk/teknisk-gaeld.md`            | ja / nej       | [commit-hash + G-numre ELLER "ingen ændring (jf. plan)"]             |
+
+**Afvigelse fra plan:** Hvis Plan-vurdering var "nej" men build viste konsekvens (eller omvendt): flag i Plan-afvigelser-sektionen ovenfor med begrundelse og ny rettelse.
+
+**Andre dokumenter opdateret:**
 
 - [dokument-sti]: [hvad blev ændret] (commit-hash)
 - [...]

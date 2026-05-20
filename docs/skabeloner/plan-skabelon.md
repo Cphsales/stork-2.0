@@ -2,7 +2,19 @@
 
 Skabelon for plan-filer der leveres FØR implementation (Code → Codex → Mathias-godkendelse → Code bygger).
 
-Hver plan starter med Formål-sektionen ordret. Resten af strukturen er vejledende — udelad sektioner der ikke gælder for pakken, men hold rækkefølgen.
+Hver plan starter med Verificerede afhængigheder + Formål-sektionerne ordret. Resten af strukturen er vejledende — udelad sektioner der ikke gælder for pakken, men hold rækkefølgen.
+
+---
+
+## Verificerede afhængigheder
+
+**Obligatorisk sektion ØVERST** (V2 2026-05-20 — recon-først per `docs/coordination/overvaagning/code-overvaagning.md`). Code SKAL læse hver tidligere-trins migration-fil og hver kode-fil planen refererer FØR plan-indhold skrives. Antagelser om API'er (signaturer, return-typer, side-effects) uden file:linje-reference = KRITISK-fabrikation; Codex blokerer planen og recon-først gentages.
+
+| Afhængighed (RPC / tabel / view / migration / type) | Verificeret fra (file:linje) | Note (signatur, return-type, invariant)   |
+| --------------------------------------------------- | ---------------------------- | ----------------------------------------- |
+| `<navn>`                                            | `<sti>:<linje>`              | `<faktisk signatur eller relevant fakta>` |
+
+Hvis denne pakke ikke bygger ovenpå eksisterende artefakter (rent greenfield i isoleret område): marker "N/A — greenfield, ingen eksterne afhængigheder" og forklar kort. Default antagelse er at sektionen er udfyldt.
 
 ---
 
@@ -62,17 +74,14 @@ Konkret rækkefølge for migrations / kode-ændringer. Hver step skal indeholde 
 
 ## Fundament-tjek-passeret
 
-**Obligatorisk sektion** (parallel til "Fire-dokument-konsultation" og "Oprydnings- og opdaterings-strategi"). Mangler denne sektion eller har "nej" på nogen række uden begrundet "N/A": planen er ikke approval-klar (KRITISK feedback fra Codex og Claude.ai).
+**Obligatorisk for Mellem/Stor-pakker** (parallel til "Fire-dokument-konsultation" og "Oprydnings- og opdaterings-strategi"). Valgfri for Lille-pakker (mikro-fix, doc-rettelse, oprydning under 100 linjer). Mangler sektionen i Mellem/Stor uden begrundet "N/A": planen er ikke approval-klar (KRITISK feedback fra Codex i plan-review; Code's pre-push-tjekliste skal fange det først).
 
-Tabellen viser at hver write-vej er gennemtænkt på fundament-niveau. Codex verificerer at indholdet stemmer; Claude.ai verificerer at tabellen findes og er udfyldt.
+V2-reduktion (2026-05-20): tabellen er reduceret fra 7 til 4 essentielle tjek. Recon-først (Verificerede afhængigheder-sektionen øverst) dækker det tidligere "Apply-dispatcher-extension"-, "jsonb-format"- og "Backdated guards"-tjek der nu er en del af recon-disciplinen. Codex verificerer at indholdet stemmer (V2 — Claude.ai-plan-reviewer-rolle udgået).
 
 | Tjek                                                               | Status     | Reference  |
 | ------------------------------------------------------------------ | ---------- | ---------- |
 | Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var      | ja/nej/N/A | step-koder |
 | Hver SELECT-policy bred nok til legitime læsere                    | ja/nej/N/A | step-koder |
-| Backdated guards på relevante handlers                             | ja/nej/N/A | step-koder |
-| Apply-dispatcher-extension specificeret per RPC                    | ja/nej/N/A | step-koder |
-| jsonb-format konsistent mellem producer og consumer                | ja/nej/N/A | step-koder |
 | Eksempel-row verificeret gennem flow                               | ja/nej/N/A | reference  |
 | Plan-detaljer eksplicit (ingen "TBD" / "Code afgør" / overladelse) | ja/nej     | —          |
 
@@ -138,15 +147,27 @@ Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op 
 
 - [Liste eller "ingen"]
 
-**Dokumenter der skal opdateres** (som konsekvens af pakkens leverance):
+**Konsekvens-opdateringer for autoritative dokumenter** (V2 2026-05-20 — obligatorisk tabel):
+
+Hver pakke skal eksplicit vurdere konsekvens for alle fire autoritative dokumenter — også hvis svaret er "nej, ingen ændring". Manglende vurdering på nogen række = plan ikke approval-klar.
+
+| Dokument                                   | Konsekvens? | Opdatering der laves i denne pakke                               |
+| ------------------------------------------ | ----------- | ---------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | ja / nej    | [hvis ja: hvilket §, rettelse-nummer i Appendix C; ellers "nej"] |
+| `docs/strategi/bygge-status.md`            | ja / nej    | [hvis ja: hvilket trin + ny status; ellers "nej"]                |
+| `docs/coordination/mathias-afgoerelser.md` | ja / nej    | [hvis ja: entry-dato + emne; ellers "nej, kun pakke-leverance"]  |
+| `docs/teknisk/teknisk-gaeld.md`            | ja / nej    | [hvis ja: G-numre tilføjet/løst; ellers "nej"]                   |
+
+**Regel for "ja":** Hvis pakken rammer indhold i et autoritativt dokument — uanset om Mathias har rejst det eller Code/Codex har fundet det undervejs — skal opdateringen leveres som del af samme pakke (ikke udskudt til senere). Det forhindrer dokument-drift.
+
+**Regel for "nej":** Hvis ingen konsekvens, marker eksplicit "nej". Tom række = ikke vurderet.
+
+**Standard-opdateringer** (altid):
 
 - `docs/coordination/aktiv-plan.md` → ryd til "ingen aktiv plan" eller peg på næste
-- `docs/coordination/seneste-rapport.md` → peger på ny slut-rapport (standard)
-- `docs/coordination/mathias-afgoerelser.md` → entry hvis pakken indeholder strategiske retning-skift (ikke pakke-leverancer)
-- `docs/strategi/bygge-status.md` → hvis pakken ændrer trin-status
-- `docs/strategi/stork-2-0-master-plan.md` → hvis pakken introducerer rettelse (Appendix C)
-- `docs/teknisk/teknisk-gaeld.md` → hvis pakken tilføjer/løser G-numre
-- [Andre pakke-specifikke dokument-opdateringer]
+- `docs/coordination/seneste-rapport.md` → peger på ny slut-rapport
+
+**Andre pakke-specifikke dokument-opdateringer:** [liste eller "ingen"]
 
 **Reference-konsekvenser** (hvis pakken om-døber eller flytter filer):
 
@@ -167,21 +188,27 @@ Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op 
 
 ## Fire-dokument-konsultation
 
-**Obligatorisk sektion.** Hver plan skal eksplicit dokumentere konsultation af de fire autoritative forretnings-dokumenter (defineret i `docs/strategi/arbejds-disciplin.md` sektionen "Fire autoritative forretnings-dokumenter"). Mangler denne sektion eller har "nej" på konsulteret-kolonnen: Claude.ai blokerer planen med severity KRITISK.
+**Obligatorisk sektion.** Hver plan skal eksplicit dokumentere konsultation af de fire autoritative forretnings-dokumenter (defineret i `docs/strategi/arbejds-disciplin.md` sektionen "Fire autoritative forretnings-dokumenter"). Mangler denne sektion eller har "nej" på konsulteret-kolonnen: Codex blokerer planen med severity KRITISK i plan-review (V2 — Claude.ai-plan-reviewer-rolle udgået; Code har selv-disciplin om at udfylde tabellen før plan-commit).
 
-| Dokument                                    | Konsulteret | Relevante referencer                                                                   | Konflikt med plan? |
-| ------------------------------------------- | ----------- | -------------------------------------------------------------------------------------- | ------------------ |
-| `docs/strategi/vision-og-principper.md`     | ja / nej    | [konkrete princip-numre, fx "princip 1, 7, 9"]                                         | ja / nej           |
-| `docs/strategi/stork-2-0-master-plan.md`    | ja / nej    | [konkrete paragraf-numre + rettelser, fx "§1.7, §3, §4 trin 9, rettelse 19 C1"]        | ja / nej           |
-| `docs/coordination/mathias-afgoerelser.md`  | ja / nej    | [konkrete datoer + emner, fx "2026-05-16 (forretningssandhed), 2026-05-15 (T9 pause)"] | ja / nej           |
-| `docs/coordination/<pakke>-krav-og-data.md` | ja / nej    | [hele filen, eller specifikke sektioner]                                               | ja / nej           |
+V2 dokument-hierarki (jf. `mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2"):
+
+- `vision-og-principper.md` = **LÅST-AUTORITATIV**. Konflikt → automatisk blokering.
+- `stork-2-0-master-plan.md` + `mathias-afgoerelser.md` = **RETNINGSGIVENDE** (kan rettes løbende). Konflikt → trigger-for-opdatering, Mathias afgør om plan ændres eller dokumentet opdateres. Ikke automatisk blokering.
+- `<pakke>-krav-og-data.md` = **PAKKE-KONTRAKT** efter approval (låst inden for pakken). Konflikt → blokering med severity KRITISK.
+
+| Dokument                                    | Konsulteret | Status           | Relevante referencer                                                                   | Konflikt med plan?                                             |
+| ------------------------------------------- | ----------- | ---------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `docs/strategi/vision-og-principper.md`     | ja / nej    | LÅST-AUTORITATIV | [konkrete princip-numre, fx "princip 1, 7, 9"]                                         | ja / nej — ja = automatisk blokering                           |
+| `docs/strategi/stork-2-0-master-plan.md`    | ja / nej    | RETNINGSGIVENDE  | [konkrete paragraf-numre + rettelser, fx "§1.7, §3, §4 trin 9, rettelse 19 C1"]        | ja / nej — ja = trigger-for-opdatering (Mathias afgør)         |
+| `docs/coordination/mathias-afgoerelser.md`  | ja / nej    | RETNINGSGIVENDE  | [konkrete datoer + emner, fx "2026-05-16 (forretningssandhed), 2026-05-15 (T9 pause)"] | ja / nej — ja = trigger-for-opdatering (Mathias afgør)         |
+| `docs/coordination/<pakke>-krav-og-data.md` | ja / nej    | PAKKE-KONTRAKT   | [hele filen, eller specifikke sektioner]                                               | ja / nej — ja = blokering KRITISK (krav-dok eller plan rettes) |
 
 **Regler:**
 
-- "Konsulteret = nej" på nogen række = plan blokeret af Claude.ai
+- "Konsulteret = nej" på nogen række = plan blokeret af Codex i plan-review (V2 — Code's selv-disciplin skal udfylde tabellen før plan-commit; Claude.ai-plan-reviewer-rolle udgået)
 - "Referencer" må ikke være "hele filen" som dovent svar på vision/master-plan/mathias-afgørelser — skal være konkrete (paragraf-numre, princip-numre, datoer)
-- "Konflikt = ja" på nogen række kræver eksplicit håndtering i Strukturel beslutning-sektionen ovenfor med konkret beskrivelse af konflikt og hvordan planen håndterer den
-- Konflikt mellem rammen (vision, master-plan, mathias-afgørelser) og krav-dok = automatisk blokering. Mathias afgør om krav-dok skal rettes før plan kan fortsætte
+- "Konflikt = ja" på nogen række kræver eksplicit håndtering i Strukturel beslutning-sektionen ovenfor med konkret beskrivelse af konflikt og hvordan planen håndterer den (eller hvilket dokument der opdateres)
+- Vision-konflikt = automatisk blokering. Master-plan/mathias-afgørelser-konflikt = trigger-for-opdatering, ikke automatisk blokering. Krav-dok-konflikt (efter approval) = KRITISK fordi krav-dok er PAKKE-KONTRAKT.
 
 ---
 
