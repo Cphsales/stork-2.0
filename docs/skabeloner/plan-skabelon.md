@@ -176,7 +176,7 @@ Obligatorisk sektion. Hver plan skal eksplicit beskrive hvad der skal ryddes op 
 
 ## Fire-dokument-konsultation
 
-**Obligatorisk sektion.** Hver plan skal eksplicit dokumentere konsultation af de fire autoritative forretnings-dokumenter (defineret i `docs/strategi/arbejds-disciplin.md` sektionen "Fire autoritative forretnings-dokumenter"). Mangler denne sektion eller har "nej" på konsulteret-kolonnen: Claude.ai blokerer planen med severity KRITISK.
+**Obligatorisk sektion.** Hver plan skal eksplicit dokumentere konsultation af de fire autoritative forretnings-dokumenter (defineret i `docs/strategi/arbejds-disciplin.md` sektionen "Fire autoritative forretnings-dokumenter"). Mangler denne sektion eller har "nej" på konsulteret-kolonnen: Codex blokerer planen med severity KRITISK i plan-review (V2 — Claude.ai-plan-reviewer-rolle udgået; Code har selv-disciplin om at udfylde tabellen før plan-commit).
 
 V2 dokument-hierarki (jf. `mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2"):
 

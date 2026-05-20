@@ -165,7 +165,7 @@ Efter R-runde-2 er færdig:
 
 Alle planlagte pakker (I-pakker, H-pakker) bruger commit-baseret plan-runde-loop frem for chat-baseret. Round-trip-feedback håndteres via `docs/coordination/plan-feedback/`-mappen og codex-notify-workflow.
 
-**Operationel reference:** [`docs/skabeloner/workflow-skabelon.md`](../skabeloner/workflow-skabelon.md) er autoritativ for hvordan flowet køres step-by-step (7 steps + 4 loops + meta-regel + marker-protokol + Mathias-gate to-fil-flow). Denne fil dækker hvorfor — workflow-skabelon dækker hvordan. V5.3 marker-protokol etableret 2026-05-20 via Lag 1 workflow-stabilisering.
+**Operationel reference:** [`docs/skabeloner/workflow-skabelon.md`](../skabeloner/workflow-skabelon.md) er autoritativ for hvordan flowet køres step-by-step (5-step V2 flow + loops + meta-regel + marker-protokol + Mathias-gate to-fil-flow). Denne fil dækker hvorfor — workflow-skabelon dækker hvordan. V5.3 marker-protokol bevaret fra Lag 1; flow-strukturen forenklet i V2 2026-05-20.
 
 ### Trigger-ord (overvågnings-system)
 
@@ -242,17 +242,15 @@ Reviewer-anti-glid-regler:
 
 Reference: `docs/strategi/arbejds-disciplin.md` runde-trapper.
 
-### Pakke-skala-disciplin
+### Pakke-skala-disciplin (V2 2026-05-20)
 
-Proces-vægten skaleres til pakke-størrelsen. Tre niveauer:
+Mathias afgør pakke-skala i step 0 baseret på antal åbne forretnings-spørgsmål. Tre niveauer:
 
-- **Stor (I-pakke / kompleks H-pakke)**: fuld plan-runde-proces (krav-dok → krav-dok-review → plan → review → build → slut-rapport)
-- **Mellem (H-pakke)**: plan + ét review (kan være Codex eller Claude.ai afhængigt af om det er teknisk eller krav-relateret), derefter build
-- **Lille (mikro-H-pakke)**: PR direkte uden plan-runde. Codex reviewer PR'en. Mathias merger.
+- **Stor (6+ åbne spm)**: fuld V2-flow (krav-dok-fase med Mathias som direkte validator → plan-fase Code+Codex → build → slut-rapport + Claude.ai-review). Ekstra validerings-runder kan kræves i krav-dok-fasen.
+- **Mellem (3-5 åbne spm)**: simplificeret krav-dok-fase (få spm direkte i chat, derefter krav-dok) → plan-fase Code+Codex → build → slut-rapport + Claude.ai-review.
+- **Lille (0-2 åbne spm)**: skip krav-dok-fase. PR direkte uden plan-runde for mikro-fix; ellers Code skriver plan direkte mod master-plan + mathias-afgørelser-rammen, Codex reviewer, Mathias merger.
 
-Krav-dokumentet specificerer pakke-størrelse i "Type"-feltet. Standard er fuld proces hvis ikke andet står.
-
-**Krav-dok-review skippes for mellem og lille:** Krav-dok-dobbelt-port-disciplinen gælder primært stor-pakker. For mellem-pakker er Mathias' egen review tilstrækkelig (krav-dok er kortere, scope er mindre). For lille-pakker er der ikke krav-dok overhovedet.
+Krav-dok-review udgår i V2 (Mathias er direkte validator). Plan-review er Code+Codex only.
 
 ### Oprydnings- og opdaterings-disciplin
 
@@ -265,7 +263,7 @@ Hver plan-fase skal eksplicit beskrive hvad der ryddes op og opdateres som konse
 - Dokumenter der skal opdateres som konsekvens (aktiv-plan, seneste-rapport, mathias-afgoerelser, bygge-status, master-plan, teknisk-gaeld)
 - Reference-konsekvenser (grep-verifikation for omdøbte/flyttede stier)
 
-**Approval-blocker:** plan uden "Oprydnings- og opdaterings-strategi"-sektion er ikke approval-klar. Codex og Claude.ai bør levere FEEDBACK hvis sektionen mangler eller er tom.
+**Approval-blocker:** plan uden "Oprydnings- og opdaterings-strategi"-sektion er ikke approval-klar. Code skal selv sikre sektionen er udfyldt før plan-commit (selv-disciplin i pre-push-tjekliste); Codex flagger sektionens mangel som KRITISK i plan-review.
 
 **Code's ansvar:** udfør oprydning + opdatering som DEL af build-leverancen, ikke som separat trin. Slut-rapporten verificerer at det er gjort i sektion "Oprydning + opdatering udført".
 
