@@ -48,13 +48,35 @@ Liste af konkrete afgørelser Mathias har truffet før plan blev skrevet. Plan e
 
 ## Implementations-rækkefølge
 
-Konkret rækkefølge for migrations / kode-ændringer. Pr. step:
+Konkret rækkefølge for migrations / kode-ændringer. Hver step skal indeholde nok detalje til at Codex kan verificere end-to-end uden at gætte. Pr. step:
 
 - **Step-kode** (R7a, P1b, etc.)
-- **Hvad:** [én sætning]
-- **Hvorfor først/sidst:** [afhængighed til andre steps]
-- **Migration-fil:** [forventet navn]
-- **Risiko:** [lav/mellem/høj + rollback]
+- **Type:** [RPC / migration / policy / GRANT / trigger / cron / test / view / edge-function / andet]
+- **Hvad:** [én sætning om intentionen]
+- **Eksakt indhold:** For RPC: signatur + body-skitse. For policy: USING + WITH CHECK. For migration: DDL. For GRANT: statement. For trigger: trigger-definition + funktion. Ikke prosa-beskrivelse — pseudo-SQL eller pseudo-TS.
+- **Afhængigheder:** hvilke andre steps den bygger på
+- **Migration-fil:** forventet navn
+- **Risiko:** lav/mellem/høj + rollback
+
+---
+
+## Fundament-tjek-passeret
+
+**Obligatorisk sektion** (parallel til "Fire-dokument-konsultation" og "Oprydnings- og opdaterings-strategi"). Mangler denne sektion eller har "nej" på nogen række uden begrundet "N/A": planen er ikke approval-klar (KRITISK feedback fra Codex og Claude.ai).
+
+Tabellen viser at hver write-vej er gennemtænkt på fundament-niveau. Codex verificerer at indholdet stemmer; Claude.ai verificerer at tabellen findes og er udfyldt.
+
+| Tjek                                                               | Status     | Reference  |
+| ------------------------------------------------------------------ | ---------- | ---------- |
+| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var      | ja/nej/N/A | step-koder |
+| Hver SELECT-policy bred nok til legitime læsere                    | ja/nej/N/A | step-koder |
+| Backdated guards på relevante handlers                             | ja/nej/N/A | step-koder |
+| Apply-dispatcher-extension specificeret per RPC                    | ja/nej/N/A | step-koder |
+| jsonb-format konsistent mellem producer og consumer                | ja/nej/N/A | step-koder |
+| Eksempel-row verificeret gennem flow                               | ja/nej/N/A | reference  |
+| Plan-detaljer eksplicit (ingen "TBD" / "Code afgør" / overladelse) | ja/nej     | —          |
+
+"N/A" = denne pakke har ingen leverancer der rammer dette tjek (skal begrundes kort i Reference-kolonnen).
 
 ---
 
