@@ -14,6 +14,16 @@
 
 ## Åben gæld
 
+### [G057] MELLEM — T9 forretnings-invariants uden superadmin-bypass (inkonsistent med Mathias 2026-05-21)
+
+- **Beskrivelse:** Mathias-afgørelse 2026-05-21 "superadmin må alt" etablerede bypass-disciplin for forretnings-invariants. Trin 10 (T10.7b) tilføjede bypass på klient-aktiv-check via `is_admin()` (wrapper) + `is_admin_by_employee_id()` (apply). T9 har to lignende forretnings-invariants UDEN bypass: `client_placement_requires_active_team` (`_apply_client_place`, T9-supplement linje 317) + `team_close_already_inactive` (`_apply_team_close`, T9-supplement linje 594). Superadmin kan derfor ikke placere klient på lige-lukket team, eller lukke allerede-inaktivt team — selvom "superadmin må alt".
+- **Vision-svækkelse:** Princip 2 (superadmin = eneste hardkodede rolle, må bypasse forretnings-invariants for nød-operationer).
+- **Strukturelle invariants forbliver uden bypass** (`client_placement_node_not_team`, `team_close_not_team`, `node_not_team_or_inactive`): data-model holder kun ved team-niveau-binding; bypass ville korrumpere.
+- **Introduceret:** T9-supplement (`20260520000000_t9_supplement.sql:284-352, 557-619`)
+- **Skal løses:** Næste T9-supplement-pakke (efter trin 10-build). Trin 10 fixer kun klient-RPC'erne; org_node/team-RPC'er er ude af scope.
+- **Risiko hvis glemt:** Mellem. Superadmin kan blive blokeret i edge-cases. Workaround: deaktiver først, place efter — eller manuel UPDATE som superadmin med break-glass.
+- **Plan:** Migration der CREATE OR REPLACE `_apply_client_place` (team-aktiv-check) + `_apply_team_close` (already-inactive-check) med samme employee-id-baseret bypass-mønster som T10.7b.
+
 ### [G001] HØJ — `audit_filter_values` LENIENT-default ved ukendt schema/table
 
 - **Beskrivelse:** Hvis migration INSERT'er på en tabel uden klassifikation, returnerer `audit_filter_values` WARNING + lader værdier passere uændret. Strict-mode kræver eksplicit `stork.audit_filter_strict='true'` session-var.
