@@ -297,16 +297,49 @@
 
 ---
 
+### Vores trin 6 — Klient-skabelon (§4 trin 10)
+
+**Status: godkendt 2026-05-21**
+
+**Leverancer:**
+
+- `core_identity.clients` greenfield (T1 droppede D5's `public.clients`): id, name, fields jsonb, is_active, logo (bytea+content_type+filename), timestamps. Consistency-CHECK på logo (alle tre eller intet). jsonb-object-CHECK på fields. FORCE RLS + tab-aware SELECT-policy + INSERT/UPDATE-policies med session-var. DML-GRANT til authenticated.
+- `core_identity.client_field_definitions` global registry: key UNIQUE, display_name, field_type, required, pii_level (none/indirect/direct), display_order, is_active.
+- `core_compliance.is_permanent_allowed` udvidet med 2 nye tabeller (17 entries total).
+- Klassifikation (19 kolonner) i `core_compliance.data_field_definitions`. logo_bytes + logo_filename pii_level='direct' (V12 KRITISK-SIKKERHEDSHUL).
+- `core_compliance.audit_filter_values` omskrevet med clients-fields-jsonb-walking. Hashes ALLE direct-PII keys uanset is_active (V2 KRITISK-SIKKERHEDSHUL: forhindrer datalæk ved felt-deaktivering).
+- `core_identity.clients_validate_fields` BEFORE INSERT/UPDATE-trigger (LENIENT default + strict via session-var).
+- T9-permission-seed: 2 pages (clients + client_field_definitions) under org_structure-area + manage-tab + superadmin grants.
+- FK `core_identity.client_node_placements.client_id` → `core_identity.clients(id)` ON DELETE RESTRICT.
+- T9-smoke-tests opdateret med clients-fixture (T10.7a).
+- Ny helper `core_identity.is_admin_by_employee_id(p_employee_id uuid)` — admin-tjek via employee-id for cron-apply-context.
+- `client_node_place` + `client_node_close` + `_apply_client_place` CREATE OR REPLACE med klient-eksistens-check (krav-dok §3.4) + aktiv-check (krav-dok §2.5.2) + superadmin-bypass (employee-id-baseret for apply-cron-context).
+- 11 RPC'er: client_upsert, client_set_active, client_field_definition_upsert (immutable key + pii-downgrade-block), client_field_definition_set_active, client_logo_set/clear/get, client_get, client_list, client_field_definitions_list.
+- Master-plan §1.8 + §4 trin 10 rettet (V36 i Appendix C).
+- Fitness-script R7d-allowlist udvidet (client_field_definitions_list + clients_validate_fields).
+- 6 smoke-tests dækker lifecycle + felt-def + logo + FK + validate_fields + active_check.
+
+**Migrations (12):**
+
+- `20260521000001_t10_tables.sql`
+- `20260521000002_t10_is_permanent_allowed_extend.sql`
+- `20260521000003_t10_classify.sql`
+- `20260521000004_t10_audit_filter_values.sql`
+- `20260521000005_t10_clients_validate_fields.sql`
+- `20260521000006_t10_seed_permissions.sql`
+- `20260521000007_t10_client_node_placements_fk.sql`
+- `20260521000008_t10_client_active_check.sql`
+- `20260521000009_t10_client_rpcs.sql`
+- `20260521000010_t10_client_field_definition_rpcs.sql`
+- `20260521000011_t10_client_logo_rpcs.sql`
+- `20260521000012_t10_client_read_rpcs.sql`
+
+**G-numre rejst:** G057 (T9 forretnings-invariants uden superadmin-bypass), G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19).
+
+**Plan-rejse:** 14 Codex-runder + 13+ Code walk-through-passes. Codex V5 gav falsk-positiv APPROVAL (Mathias-terminal-review + Code-validering fandt 6 fund). V14 verificeret med konsekvent Codex APPROVAL + Code walk-through konfirmeret krav-dok-konform § for §.
+
+---
+
 ## Næste op
 
-**Trin 10 (klient-skabelon) er næste i master-plan-rækkefølge**, men T9-supplement-pakken bør håndteres først:
-
-- KRITISK 1 Team-retype trigger-fix (envejs blokering på node_type-ændring)
-- KRITISK 4 Backdated effective_from guards på 5 apply-handlers
-- KRITISK 3 API/schema exposure (kræver Mathias' Supabase Dashboard-handling)
-- Import-stubs scope-afklaring (Step 10 leverede .mjs stubs ikke discovery/upload)
-- Type-codegen (database.ts er placeholder)
-- Read-RPC gates (Codex MELLEM)
-- Step 12 superadmin-robusthed (else-branch logik-gap)
-
-Se `docs/coordination/aktiv-plan.md` for T9-supplement-skitse.
+Trin 10 afsluttet. Næste pakke afventer Mathias-valg.
