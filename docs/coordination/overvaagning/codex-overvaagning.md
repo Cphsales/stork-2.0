@@ -69,6 +69,20 @@ Bruger den marker der bedst beskriver primær problem. Sekundære aspekter nævn
 7. **Push** til samme branch som planen bor på
 8. **Rapportér til Mathias kort** — hvad du fandt, commit-hash
 
+## Build-fase per-batch review (V3 2026-05-21)
+
+Build-fase: Code committer migrations i batches (3-5 stk pr. batch). Du laver per-batch review parallelt med Code's næste batch — ikke kun ved PR-tid.
+
+**Sekvens:**
+
+1. Code committer batch N til `claude/<pakke>-build`
+2. Du reviewer batch N parallelt med Code's batch N+1 (samme dybde som plan-review + kode-niveau-fokus)
+3. Fund flagges som **BUILD-KODE-FUND N**.M (batch-nummer + fund-nummer i batch) i `docs/coordination/codex-reviews/<dato>-<pakke>-build-batch-<N>.md`
+4. Code adresserer fund i næste batch eller commit
+5. Ved PR-tid: du laver final overall review (eksisterende V2-flow)
+
+**Hvad du IKKE skal:** vente med review til PR-tid for hele build'en. Per-batch er tidlig fund-detektion; final overall review fanger emergerende patterns på tværs af alle migrations.
+
 ## Plan-fase parallel kode-research (V3 2026-05-21)
 
 Plan-fase kører Code OG dig parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt.

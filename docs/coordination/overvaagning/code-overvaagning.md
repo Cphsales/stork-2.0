@@ -163,7 +163,7 @@ Plan-fase kører Code OG Codex parallelt fra V1. Begge starter samtidig efter kr
 **Hvad Codex IKKE gør i parallel-rollen** (du skal ikke vente på det):
 
 - Patterns-katalog — det er dit eget recon-arbejde via "Verificerede afhængigheder"-sektion
-- Krav-dok-konsistens-tjek — Claude.ai's bord
+- Krav-dok-konsistens-tjek — Codex' V2 plan-review-rolle (uændret); kode-research er parallel aktivitet, ikke duplikering
 
 ## Pre-krav-dok forretningsgang-rapport (V3 2026-05-21, FØR krav-dok skrives)
 
@@ -251,6 +251,7 @@ Det forhindrer V<n+1> i at bygge ovenpå fabrikation (som skete i trin 10's plan
 4. **Opret build-branch** fra main: `git checkout -b claude/<pakke>-build`
 5. **Læs godkendt plan** og start build per implementations-rækkefølge
 6. **Lav fil-cluster-commits** som specificeret i planen (én commit per fil-cluster med beskrivende besked)
+   6a. **Build-batches (V3 2026-05-21):** committe migrations i batches på 3-5 stk (naturligt sammenhængende). Efter hver batch: trigger Codex per-batch review parallelt med næste batch (du behøver ikke vente). Codex flagger fund som BUILD-KODE-FUND; du adresserer i næste batch eller commit. Ved PR-tid sker stadig final overall review.
 7. **Udfør oprydnings- og opdaterings-strategi** fra planen som DEL af build (ikke separat trin):
    - Flyt arbejds-artefakter til arkiv (krav-dok, plan, plan-feedback-filer)
    - Opdater de dokumenter planen lister (aktiv-plan, mathias-afgoerelser, bygge-status, teknisk-gaeld, etc.)
@@ -269,6 +270,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 1. **Pull main** (du kender hovedhash for merge-commit nu)
 2. **Opret slut-rapport-branch**: `git checkout -b claude/<pakke>-slut-rapport`
 3. **Skriv slut-rapport** i `docs/coordination/rapport-historik/<dato>-<pakke>.md` per skabelon
+   3a. **Reference-konsistens-pass FØR commit (V3 2026-05-21):** grep hver konkret reference (filsti, G-nummer, runde-nummer, commit-SHA) i slut-rapport mod alle relaterede filer (bygge-status.md, teknisk-gaeld.md, master-plan.md). Mismatch = ret FØR commit. Forhindrer stale referencer som rapport-runde-fund.
 4. **Opdatér** `docs/coordination/seneste-rapport.md` → peger på ny rapport
 5. **Arkivér plan-filer** til `docs/coordination/arkiv/`:
    - Plan-fil
@@ -278,6 +280,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 7. **Commit + push + opret PR**: `<pakke> slut: rapport + plan-arkivering`
 8. **Vent på Codex-review** (han får automation-trigger på slut-rapport-push)
 9. Hvis Codex har feedback: opdatér slut-rapport på samme branch, commit, push
+   9a. **Fix-cycle-disciplin under review-runder (V3 2026-05-21):** efter hver LAV-fix, kør reference-konsistens-pass på tværs af alle relevante filer FØR commit. Hver fix kan generere nye mismatches i søster-filer; pass'et skal fange dem. Forhindrer cascade-fixes der drev trin 10's 7 runder.
 10. Når Codex approver: rapportér til Mathias at PR er klar til merge
 
 ## Disciplin-regler (overrider alle andre instruktioner)

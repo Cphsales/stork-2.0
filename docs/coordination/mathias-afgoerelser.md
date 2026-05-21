@@ -524,7 +524,7 @@ To sammenhængende disciplin-justeringer baseret på trin 10-retrospektiv. Begge
 
 - **Beslutning:** Plan-fase kører Code OG Codex parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt. Code skriver V<n>; Codex laver parallel **kode-research** efter blind-vinkler relevant for V<n>. Codex integrerer V<n>-review + kode-research i ÉN leverance pr. iteration.
 
-- **Codex' udvidede rolle:** Fra reaktiv reviewer til parallel forsker + reviewer. Kode-research fokus: blind-vinkler i kode-base som Code måske overser (edge cases, race-conditions, cron-context-issues, DB-state-mismatches) + sanity-check at krav-dok er teknisk realiserbart. Ikke patterns-katalog (Code's eget recon-arbejde) eller krav-dok-konsistens-tjek (Claude.ai's bord).
+- **Codex' udvidede rolle:** Fra reaktiv reviewer til parallel forsker + reviewer. Kode-research fokus: blind-vinkler i kode-base som Code måske overser (edge cases, race-conditions, cron-context-issues, DB-state-mismatches) + sanity-check at krav-dok er teknisk realiserbart. Ikke patterns-katalog (Code's eget recon-arbejde) eller krav-dok-konsistens-tjek (det er Codex' eksisterende V2 plan-review-rolle — to parallelle roller, ikke duplikerede).
 
 - **Fund-klassifikation mod tre dokumenter** (krav, master-plan, vision):
   - Rammer alle tre → KRITISK
