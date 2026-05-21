@@ -260,6 +260,8 @@ begin
   -- ══════════════════════════════════════════════════════════════════════
   -- T4a (V14): client_node_close på non-existent → P0002
   -- ══════════════════════════════════════════════════════════════════════
+  -- Sæt auth tilbage (T4 cron-apply rensede jwt → wrapper-call kræver auth)
+  perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   begin
     v_caught := null;
     perform core_identity.client_node_close(gen_random_uuid(), current_date);
