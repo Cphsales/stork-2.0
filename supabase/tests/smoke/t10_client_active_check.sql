@@ -296,6 +296,8 @@ begin
   --     (requester-bypass: admin-requester gør apply OK selv på inaktiv)
   -- ══════════════════════════════════════════════════════════════════════
   -- Step 1: Mathias (admin) opretter pending mens klient er aktiv
+  -- (T5 cron-apply rensede jwt → genetabler auth-context før wrapper-call)
+  perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   v_pending_id := core_identity.client_node_place(v_client_t6, v_team_node_id, current_date);
 
   -- Step 2: deaktiver klient
