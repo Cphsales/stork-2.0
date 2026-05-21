@@ -218,7 +218,7 @@ Du leverer enten **approval** eller **feedback** — aldrig begge.
 - Hvis du finder ÉT eller flere fund der bør addresseres: lever **feedback**, ikke approval
 - Hvis du finder INGEN reelle fund: lever **approval**
 
-En plan er KUN approved når BÅDE du og Claude.ai har leveret approval. Selvom Claude.ai har approved og du har feedback: V<n+1> kommer. Selvom du har approved og Claude.ai har feedback: V<n+1> kommer.
+En plan er KUN approved når DU har leveret approval (V2 2026-05-20 — Claude.ai's plan-reviewer-rolle udgået; enkelt port). Du dækker BÅDE kode-niveau OG fire-dokument-konsistens i plan-review.
 
 Det er strict. Lever ikke approval for at undgå konflikt — det underminerer din værdi som uafhængig reviewer.
 
@@ -230,11 +230,11 @@ Du skal markere hvert fund med severity. Ikke alle fund fører til V<n+1> — ku
 
 **Severity-niveauer (jf. `docs/strategi/arbejds-disciplin.md` runde-trapper):**
 
-- **KRITISK** — planen kan ikke bygges som beskrevet (teknisk umulighed), vil ramme produktion-risiko (RLS-hul, SQL-fejl, data-tab, migrations-rekkefølge-fejl), eller bryder en teknisk invariant (FORCE RLS, audit-trigger-dækning, helper-renhed). STOPPER plan i alle runder. **Forretnings-dokument-modsigelse er IKKE KRITISK for Codex** — det er Claude.ai's bord. Hvis du spotter en konflikt mellem plan og vision/master-plan/mathias-afgørelser/krav-dok: marker som "OUT OF SCOPE — Claude.ai's bord" (se linje 24, 76, 104) og fortsæt kode-reviewet uden at blokere.
+- **KRITISK** — planen kan ikke bygges som beskrevet (teknisk umulighed), vil ramme produktion-risiko (RLS-hul, SQL-fejl, data-tab, migrations-rekkefølge-fejl), eller bryder en teknisk invariant (FORCE RLS, audit-trigger-dækning, helper-renhed). STOPPER plan i alle runder. **Forretnings-dokument-modsigelse KAN være KRITISK for Codex** (V2 2026-05-20 — fire-dokument-konsistens er Codex' bord per "Workflow-justering V2"): vision-modsigelse = KRITISK automatisk blokering; krav-dok-modsigelse = MELLEM/KRITISK afhængigt af scope-ramning; master-plan-modsigelse = trigger for master-plan-rettelse (ikke automatisk blokering).
 - **MELLEM** — reelt kode-niveau-problem men ikke produktion-blokerende. Stopper plan i runde 1; bliver G-nummer i runde 2+.
 - **KOSMETISK** — stilistisk, ordlyd, eller mindre praktisk forbedring. Stopper IKKE plan. Markeres som G-nummer-kandidat.
 - **OPGRADERING** (ny 2026-05-17) — du har en bedre kodemetode end Code har planlagt. Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Du må levere APPROVAL og samtidig foreslå OPGRADERING.
-- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input på **teknisk niveau**. Eksempler: to gyldige tekniske valg uden klar vinder, ny teknisk ramme-beslutning Code introducerer (ny datamodel-standard, ny RPC-pattern), scope-grænse-tvivl der kræver Mathias-afklaring. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. **Modsigelse mellem to forretnings-dokumenter er Claude.ai's bord** (se OUT OF SCOPE-håndtering ovenfor). Anvend kun NEEDS-MATHIAS når du faktisk ikke har teknisk grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
+- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input. Eksempler: to gyldige tekniske valg uden klar vinder, ny teknisk ramme-beslutning Code introducerer (ny datamodel-standard, ny RPC-pattern), scope-grænse-tvivl der kræver Mathias-afklaring, **modsigelse mellem to forretnings-dokumenter** der kræver Mathias' afgørelse om hvilket vinder. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Anvend kun NEEDS-MATHIAS når du faktisk ikke har grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
 
 **Anti-glid-regler:**
 
