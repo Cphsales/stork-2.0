@@ -1,7 +1,15 @@
-# T9-supplement-2 — Plan V14
+# T9-supplement-2 — Plan V15
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V14)
+
+Codex V14-review leverede 1 KRITISK-SIKKERHEDSHUL. ADRESSERET i V15.
+
+- **KODE-FUND V14-1 (KRITISK-SIKKERHEDSHUL — M3b SELECT-policy bredere end approve-gate):** V11's M3b tillod SELECT for enhver med `has_permission_action(action_id)` — men M5 begrænser approve til ancestor (for `above`) eller superadmin (for `superadmin`). Konsekvens: non-admin med action-grant i sibling-gren kunne SELECTe `above`-pending payload selv om approve afvises. Det er RLS-overread på `pending_changes`. **ADRESSERET** i M3b (V15): action-grenen udvidet med subquery der spejler approve-eligibility — kun læsere der også er gyldige approvere kan SELECTe. Plus negativ smoke A10+A11 i T3.
 
 ---
 
@@ -614,10 +622,26 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
         and change_type in ('client_place', 'client_close')
         and core_identity.has_permission('client_placements', null, true)
       )
-      -- V11 ny: action-baseret SELECT for approvere (respekterer bypass_tab_write)
+      -- V11/V15 (Codex V14 KRITISK-SIKKERHEDSHUL fix): action-baseret SELECT spejler approve-eligibility
+      -- (forhindrer RLS-overread hvor non-eligible læser kunne SELECTe pending payload)
       or (
         action_id is not null
         and core_identity.has_permission_action(action_id)
+        and exists (
+          select 1 from core_identity.permission_actions act
+          where act.id = action_id
+            and (
+              -- Action uden 2.-approver-krav: action-grant er nok for SELECT
+              act.requires_second_approver = false
+              -- Action kræver 'above': læser skal være higher-level af requester
+              or (
+                act.requires_second_approver = true
+                and act.second_approver_type = 'above'
+                and core_identity.current_employee_id() = any(core_identity.acl_higher_level_employees(requested_by))
+              )
+              -- Action kræver 'superadmin': kun superadmin (allerede dækket af is_admin() ovenfor; ingen ekstra gren)
+            )
+        )
       )
     );
   ```
@@ -1215,6 +1239,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - A7b (`has_undo=false`, V4 Codex V3 KRITISK-SIKKERHEDSHUL fix): action med `requires_second_approver=true, has_undo=false` → efter approve er `undo_deadline=now()` (nul-sekund vindue); `pending_change_undo`-kald afvises med `undo_deadline_expired` (now() <= now() = true → raise); `pending_change_apply` kan eksekvere umiddelbart (now() > now() = false); cron-selection inkluderer row (now() <= now() = true)
   - A8 (superadmin requester): superadmin opretter pending på action med `requires_second_approver=true` → superadmin selv-approver → succeeds (superadmin-undtagelse)
   - A9 (V14 Codex V13 KRITISK-SIKKERHEDSHUL-test): requester opretter pending på action med `requires_second_approver=false` MEN requester mangler action-grant — direkte `pending_change_approve`-kald af requester → raise `42501 permission_denied`. Verificerer at requester ikke kan bypasse via egen SELECT-adgang.
+  - A10 (V15 Codex V14 KRITISK-SIKKERHEDSHUL-test): non-admin med action-grant placeret i sibling-gren (ikke ancestor af requester) — kald `pending_changes_read()` på `above`-action-pending → row IKKE returneret (RLS blokerer SELECT). Verificerer at action-grant alene ikke giver SELECT-overread.
+  - A11 (V15 RLS-overread-test): non-superadmin med action-grant — kald `pending_changes_read()` på `superadmin`-action-pending → row IKKE returneret.
 
 ### Step T4 — Smoke-test for handlings-granularitet
 
@@ -1344,4 +1370,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V14-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V15-review.**
