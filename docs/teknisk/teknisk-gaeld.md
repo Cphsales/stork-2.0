@@ -18,7 +18,7 @@
 
 - **Beskrivelse:** 5 T9 public-wrapper-RPC'er (`org_node_upsert`, `org_node_deactivate`, `team_close`, `employee_place`, `employee_remove_from_node`) INSERT'er i `core_identity.pending_changes` via `pending_change_request`. Tabellen har RLS INSERT-policy (T9-supplement `20260518100000:49-51`) der kræver `current_setting('stork.t9_write_authorized', true) = 'true'`. Wrapperne sætter ikke session-var → INSERT vil fejle for authenticated-bruger med FORCE RLS. Trin 10 fixede de to client-RPC'er (`client_node_place` + `client_node_close`) i T10.7b; de øvrige 5 forblev broken. T9-smoke-tests bruger `_apply_*`-handlers direkte (SECURITY DEFINER) og rammer ikke wrapper-vejen.
 - **Vision-svækkelse:** Princip 2 (rettigheder der virker — authenticated-bruger kan ikke køre pending-skabende org/employee-RPC'er via wrapper-vej).
-- **Introduceret:** T9-supplement (`20260518100000_t9_pending_change_rls.sql:49-51` policy + 7 wrappers uden session-var-set).
+- **Introduceret:** T9-supplement (`20260518100000_t9_fundament_supplement.sql:49` policy + 7 wrappers uden session-var-set).
 - **Skal løses:** Næste T9-supplement-pakke (Codex build-review-runde 4 fund 2026-05-21). Trin 10 fixede kun de to client-RPC'er.
 - **Risiko hvis glemt:** Mellem. Manifest sig først når frontend kalder T9-wrappers direkte (intet sker så længe kun `_apply_*` kaldes fra cron/tests).
 - **Plan:** Migration der CREATE OR REPLACE 5 wrappers med `perform set_config('stork.t9_write_authorized', 'true', true)` før `pending_change_request`. Smoke-test der kalder hver wrapper som authenticated-bruger og verificerer pending oprettes.
