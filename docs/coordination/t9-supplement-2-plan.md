@@ -1,7 +1,17 @@
-# T9-supplement-2 — Plan V4
+# T9-supplement-2 — Plan V5
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V4)
+
+Codex V4-review leverede 1 KRITISK-SIKKERHEDSHUL. ADRESSERET i V5.
+
+- **KODE-FUND V4-1 (KRITISK-SIKKERHEDSHUL — `action_id IS NULL` åbner non-admin self-approve):** Codex flaggede at M5 fjerner self-approve-blok men lader legacy-flow (`action_id IS NULL`) gå uden ekstra tjek. Konsekvens: non-admin requester kan oprette wrapper-pending (alle real T9-wrappers, da actions ikke seedes per krav-dok §4) og approve egen pending — REGRESSION fra eksisterende disciplin (`20260518100000:224`). **ADRESSERET** i M5: bevar self-approve-forbud for `action_id IS NULL`. Default selv-approve tillades KUN når action eksisterer og `requires_second_approver=false`. Legacy-disciplin bevares uændret indtil senere pakke seeder actions + udvider wrappers.
+
+  Per krav-dok §2.5: "Default-regel: Bruger med can_write=true på page/tab kan udføre handlingen direkte... Den nuværende fastlåste blokering af selv-approve for ikke-admin er forkert som default og fjernes." Denne "fjernes" gælder under action-baseret konfig — ikke for legacy-flow. V5 respekterer begge dele: action-konfigurerede pendings følger §2.5's nye regel; legacy pendings (action_id NULL) bevarer eksisterende disciplin indtil action-seed-pakke aktiverer dem.
 
 ---
 
@@ -545,8 +555,17 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
       raise exception 'permission_denied: approve % kræver can_edit på %', v_change.change_type, v_page_key using errcode = '42501';
     end if;
 
-    -- NY: action-baseret approve-disciplin
-    if v_change.action_id is not null then
+    -- V5 (Codex V4-1 KRITISK-SIKKERHEDSHUL fix): action-baseret approve-disciplin
+    -- Legacy (action_id IS NULL): bevar eksisterende self-approve-blok som regression-beskyttelse
+    -- Konfigureret (action_id IS NOT NULL): følg §2.5 ny regel
+    if v_change.action_id is null then
+      -- Legacy-disciplin: bevar self-approve-forbud for non-admin (uændret fra T9-fundament-supplement)
+      if v_change.requested_by = v_approver and not core_identity.is_admin() then
+        raise exception 'pending_change_self_approve_forbidden'
+          using errcode = '42501', hint = 'requester må ikke selv approve (medmindre admin); action-baseret konfig kommer i senere pakke';
+      end if;
+    else
+      -- Action-baseret evaluering per krav-dok §2.5
       select requires_second_approver, second_approver_type into v_action
         from core_identity.permission_actions where id = v_change.action_id;
 
@@ -565,9 +584,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
             using errcode = '42501';
         end if;
       end if;
-      -- requires_second_approver=false → ingen ekstra tjek; can_edit er nok (default selv-approve OK)
+      -- requires_second_approver=false → ingen ekstra tjek; default selv-approve tilladt per §2.5
     end if;
-    -- Legacy: action_id IS NULL → ingen ekstra tjek (bevarer eksisterende non-action-pendings)
 
     -- V2/V3 (Codex KODE-FUND 3 + V2-1): has_undo håndhæves
     -- Hvis action_id IS NOT NULL AND has_undo=false → undo_deadline=NULL (undo blokeres automatisk)
@@ -963,8 +981,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V4 adresserer Codex V3's 1 KRITISK-SIKKERHEDSHUL (undo_deadline=NULL ikke blokerende → fixed til undo_deadline=now() for has_undo=false) + Code's egen recon-fund (role_permissions_read mangler action-grenen). V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET). G-nummer-kandidat deferred til UI-pakke.
+V5 adresserer Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V4-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V5-review.**
