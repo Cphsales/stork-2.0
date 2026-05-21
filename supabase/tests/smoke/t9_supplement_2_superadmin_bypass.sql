@@ -1,6 +1,4 @@
 -- T9-supplement-2 T2: G057 superadmin-bypass smoke-tests
---
--- CI-note: hop ud hvis migrations ikke anvendt.
 
 begin;
 
@@ -16,18 +14,6 @@ declare
   v_pending_id uuid;
   v_caught text;
 begin
-  -- Pre-flight: hop ud hvis _apply_team_close-version uden bypass
-  -- (testen kræver M2's bypass-version)
-  if not exists (
-    select 1 from information_schema.columns
-    where table_schema = 'core_identity'
-      and table_name = 'pending_changes'
-      and column_name = 'action_id'
-  ) then
-    raise notice 'T2 skip: M4 (pending_changes.action_id) ikke anvendt — M2-bypass ikke garanteret anvendt';
-    return;
-  end if;
-
   select e.id into v_admin_emp_id
   from core_identity.employees e
   join core_identity.role_page_permissions p on p.role_id = e.role_id
@@ -35,16 +21,14 @@ begin
   limit 1;
 
   if v_admin_emp_id is null then
-    raise notice 'T2 skip: ingen admin-employee i seed';
-    return;
+    raise exception 'T2 fejl: ingen admin-employee i seed';
   end if;
 
   select node_id into v_root_id from core_identity.org_node_versions
     where parent_id is null and is_active = true
     limit 1;
   if v_root_id is null then
-    raise notice 'T2 skip: ingen root-knude';
-    return;
+    raise exception 'T2 fejl: ingen root-knude';
   end if;
 
   -- B2 (positiv): superadmin → admin-bypass på _apply_team_close idempotency
@@ -77,7 +61,7 @@ begin
     raise notice 'T2 B2 OK: _apply_team_close no-op return for admin på allerede-inaktivt team';
   exception when others then
     v_caught := sqlerrm;
-    raise exception 'T2 B2 fejl: % ', v_caught;
+    raise exception 'T2 B2 fejl: %', v_caught;
   end;
 
   raise notice 'T2 smoke OK';
