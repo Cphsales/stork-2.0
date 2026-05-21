@@ -1,7 +1,36 @@
-# T9-supplement-2 — Plan V10
+# T9-supplement-2 — Plan V11
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Mathias-review post-V10-APPROVAL)
+
+Mathias' egen gennemlæsning post-Codex-APPROVAL afslørede 3 blokerende, 3 mellem og 4 lave fund. Alle ADRESSERET i V11.
+
+### Blokerende
+
+- **MATHIAS-FUND B1 (BLOK — `pending_change_approve` can_edit-pre-check bryder bypass_tab_write):** M5 har `if not has_permission(page, null, true)` FØR action-baseret evaluering. Når en godkender har `bypass_tab_write=true`-action-grant uden tab-can_write, fejler can_edit-checken → approve afvises trods korrekt action-grant. **ADRESSERET** i M5 (V11): drop can_edit-pre-check for actions. Action-baseret logik er suveræn — den evaluerer hele approver-rettigheden (ancestor / superadmin) som krav-dok §2.5 specificerer. Legacy (`action_id IS NULL`) bevarer can_edit-check.
+
+- **MATHIAS-FUND B2 (BLOK — `pending_changes_select`-policy er can_edit-baseret):** Eksisterende policy (`20260518100000:66-83`) tillader SELECT kun for: requester, admin, eller `has_permission(area, null, can_edit=true)`. En legitim godkender med `bypass_tab_write=true` (uden tab-can_write) kan ikke SELECTe pending'en → kan ikke approve. **ADRESSERET** i ny Step M3b (RLS-policy-refactor): udvid SELECT-policy med action-baseret tjek der inkluderer godkendere ifølge action-konfig.
+
+- **MATHIAS-FUND B3 (BLOK — `has_permission_action` læser `is_active=true` uden allowlist):** `scripts/fitness.mjs:149` har `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`-set med live-check. Min nye `has_permission_action` læser `permission_actions where is_active=true` men er ikke i allowlisten → fitness blokerer. **ADRESSERET** i M4 + ny ikke-migration-step: tilføj `core_identity.has_permission_action` til allowlist i `scripts/fitness.mjs`.
+
+### Mellem
+
+- **MATHIAS-FUND M1 (MELLEM — `role_permission_grant_remove` ikke udvidet til action):** Symmetri-brud med `_set`. **ADRESSERET** i M6 (V11): udvid remove-RPC med 'action'-element-type.
+
+- **MATHIAS-FUND M2 (MELLEM — `pending_changes_read()` returnerer ikke action_id; `permission_elements_read()` ikke actions):** Backend-rammen for UI svækkes. **ADRESSERET** i ny Step M6b: udvid begge read-RPCs.
+
+- **MATHIAS-FUND M3 (MELLEM — `pending_change_apply` mangler service_role grant; test-tekst antager service_role):** **ADRESSERET** i V11: ret test-tekst — smoke-tests bruger postgres-superuser-context (DO-block kører som superuser), ikke service_role. Eksplicit service_role-grant ikke nødvendig hvis smoke kører som superuser.
+
+### Lav
+
+- **MATHIAS-FUND L1**: Stale kommentar "has_undo=false → undo_deadline=NULL" rettes til "now()" — cleanup.
+- **MATHIAS-FUND L2**: aktiv-plan.md V1/V3 → V11.
+- **MATHIAS-FUND L3**: Test-summary T4 H1-H8 → H1-H11.
+- **MATHIAS-FUND L4**: `employee_role_assign`/`remove` (direkte ikke-pending RPCs) — registreret som G-nummer-kandidat: ikke samme systemiske grant-issue (de er SECURITY INVOKER og bruger has_permission internt) men deserverer eksplicit grant for konsistens. Out-of-scope for denne pakke.
 
 ---
 
@@ -524,6 +553,49 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 - **Migration-fil:** `supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql` (V9: skubbet fra "100002")
 - **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`, restore gammel `role_permissions_read` uden action-gren. Regression-tjek: `m1_permission_matrix.sql` smoke-test passer uændret (eksisterende grants har action_id=NULL — ekskluderes ikke fra UNION-grene).
 
+### Step M3b — RLS-policy-refactor: `pending_changes_select` action-aware (V11 ny)
+
+- **Type:** migration (DROP POLICY + CREATE POLICY)
+- **Hvad:** Eksisterende `pending_changes_select`-policy (`20260518100000:66-83`) tillader SELECT for requester, admin, eller `has_permission(area, null, can_edit=true)`. Når action har `bypass_tab_write=true`, kan legitim approver med kun se-rettighed + action-grant ikke SELECTe pending'en → kan ikke godkende. **Mathias-fund B2 fix:** udvid SELECT-policy med action-baseret tjek.
+- **Eksakt indhold:**
+
+  ```sql
+  -- V11 (Mathias-fund B2 fix): pending_changes_select policy udvides
+  drop policy if exists pending_changes_select on core_identity.pending_changes;
+
+  create policy pending_changes_select on core_identity.pending_changes
+    for select to authenticated
+    using (
+      requested_by = core_identity.current_employee_id()
+      or core_identity.is_admin()
+      -- Legacy can_edit-baserede grene (uændret for action_id IS NULL)
+      or (
+        action_id is null
+        and change_type in ('org_node_upsert', 'org_node_deactivate', 'team_close')
+        and core_identity.has_permission('org_nodes', null, true)
+      )
+      or (
+        action_id is null
+        and change_type in ('employee_place', 'employee_remove')
+        and core_identity.has_permission('employee_placements', null, true)
+      )
+      or (
+        action_id is null
+        and change_type in ('client_place', 'client_close')
+        and core_identity.has_permission('client_placements', null, true)
+      )
+      -- V11 ny: action-baseret SELECT for approvere (respekterer bypass_tab_write)
+      or (
+        action_id is not null
+        and core_identity.has_permission_action(action_id)
+      )
+    );
+  ```
+
+- **Afhængigheder:** M3 (`permission_actions`) + M4 (`has_permission_action`).
+- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_pending_changes_select_policy.sql` (V11: M3b indsat før M4; M4-M6 skubbes til 100005-100007 for fitness-regel-compliance)
+- **Risiko:** mellem. Rollback: restore original policy. Regression-tjek: eksisterende callers af pending_changes_select via T9-smoke-tests og T10.7b-smoke skal fortsætte passere (legacy-grenene er bevaret uændret når action_id=NULL).
+
 ### Step M4 — Approve-disciplin: `has_permission_action` + helper for ancestor + `pending_changes.action_id`
 
 - **Type:** migration (CREATE/ALTER + nye helpers)
@@ -622,7 +694,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 (permission_actions + role_permission_grants-udvidelse).
-- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql` (V9: skubbet fra "100003")
+- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_approve_helpers.sql` (V11: skubbet fra "100004" pga. M3b)
+- **V11 (Mathias-fund B3 fix) — separat allowlist-opdatering:** Ud over migrationen tilføjes `'core_identity.has_permission_action'` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`-set i `scripts/fitness.mjs:149` (samme allowlist som `client_node_place`, `permission_elements_read`, m.fl.). Det er en separat code-ændring (ikke migration), commited som del af denne pakkens build-PR. Begrundelse: `permission_actions` har kun `is_active`-kolonne (matcher T9-pattern, ikke employees-dual-column-pattern).
 - **Risiko:** mellem. Rollback: drop column `pending_changes.action_id`, drop functions.
 
 ### Step M5 — Refactor `pending_change_approve` + drop self-approve-blok
@@ -685,10 +758,15 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
         raise exception 'unknown_change_type for approve-gate: %', v_change.change_type using errcode = '42883';
     end case;
 
-    -- Basis-tjek: approver skal have can_edit på page (uændret)
-    if not core_identity.has_permission(v_page_key, null, true) then
-      raise exception 'permission_denied: approve % kræver can_edit på %', v_change.change_type, v_page_key using errcode = '42501';
+    -- V11 (Mathias-fund B1 fix): can_edit-pre-check KUN for legacy pendings
+    -- For actions: action-baseret approve-logik er suveræn (respekterer bypass_tab_write)
+    if v_change.action_id is null then
+      -- Legacy: behold can_edit-check på page
+      if not core_identity.has_permission(v_page_key, null, true) then
+        raise exception 'permission_denied: approve % kræver can_edit på %', v_change.change_type, v_page_key using errcode = '42501';
+      end if;
     end if;
+    -- For actions: skip can_edit-pre-check (action-baseret logik nedenfor er gate)
 
     -- V5 (Codex V4-1 KRITISK-SIKKERHEDSHUL fix): action-baseret approve-disciplin
     -- Legacy (action_id IS NULL): bevar eksisterende self-approve-blok som regression-beskyttelse
@@ -723,7 +801,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     end if;
 
     -- V2/V3 (Codex KODE-FUND 3 + V2-1): has_undo håndhæves
-    -- Hvis action_id IS NOT NULL AND has_undo=false → undo_deadline=NULL (undo blokeres automatisk)
+    -- Hvis action_id IS NOT NULL AND has_undo=false → undo_deadline=now() (nul-sekund vindue blokerer undo + tillader apply)
     -- Legacy (action_id IS NULL) bevarer eksisterende adfærd (undo_deadline sat ud fra undo_settings)
     v_has_undo := true;  -- default for legacy
     if v_change.action_id is not null then
@@ -762,7 +840,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   **Vigtigt (V5):** Self-approve-blok BEVARES for legacy-flow (`action_id IS NULL`) som regression-beskyttelse indtil senere pakke seeder actions. Default selv-approve tillades KUN for konfigurerede actions med `requires_second_approver=false`. Krav-dok §2.5's "fjernes"-formulering gælder under action-baseret konfig, ikke for legacy real-wrapper-flow.
 
 - **Afhængigheder:** M3 + M4 (`permission_actions`, `acl_higher_level_employees`).
-- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_pending_change_approve.sql` (V9: skubbet fra "100004")
+- **Migration-fil:** `supabase/migrations/20260521100006_t9_supplement_2_pending_change_approve.sql` (V11: skubbet fra "100005" pga. M3b)
 - **Risiko:** mellem. Rollback: revert til T9-fundament-supplement-version med self-approve-blok.
 
 ### Step M6 — UI-RPCs + udvid `role_permission_grant_set` til action
@@ -904,6 +982,35 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   revoke execute on function core_identity.permission_action_set_approver_type(uuid, text) from public, anon;
   grant execute on function core_identity.permission_action_set_approver_type(uuid, text) to authenticated;
 
+  -- V11 (Mathias-fund M1 fix): udvid role_permission_grant_remove med 'action'-element-type
+  -- (symmetri-fix med role_permission_grant_set som blev udvidet i V3)
+  create or replace function core_identity.role_permission_grant_remove(
+    p_role_id uuid,
+    p_element_type text,
+    p_element_id uuid
+  ) returns void language plpgsql security invoker set search_path = '' as $$
+  begin
+    if not core_identity.has_permission('permissions', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'role_permission_grant_remove', true);
+
+    if p_element_type = 'area' then
+      delete from core_identity.role_permission_grants where role_id = p_role_id and area_id = p_element_id;
+    elsif p_element_type = 'page' then
+      delete from core_identity.role_permission_grants where role_id = p_role_id and page_id = p_element_id;
+    elsif p_element_type = 'tab' then
+      delete from core_identity.role_permission_grants where role_id = p_role_id and tab_id = p_element_id;
+    elsif p_element_type = 'action' then
+      delete from core_identity.role_permission_grants where role_id = p_role_id and action_id = p_element_id;
+    else
+      raise exception 'invalid_element_type: %', p_element_type using errcode = '22023';
+    end if;
+  end; $$;
+  -- Existing grants/revoke bevares via CREATE OR REPLACE; M1b har allerede grant til authenticated
+
   -- pending_change_eligible_approvers: hvem må approve denne pending
   -- Returnerer: alle medarbejdere der må approve (baseret på action-config + requester-placering + superadmin)
   create or replace function core_identity.pending_change_eligible_approvers(
@@ -951,7 +1058,18 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 + M4.
-- **Migration-fil:** `supabase/migrations/20260521100006_t9_supplement_2_ui_rpcs.sql` (V9: skubbet fra "100005")
+- **Migration-fil:** `supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql` (V11: skubbet fra "100006" pga. M3b)
+
+### Step M6b — Udvid read-RPCs med action-info (V11 ny, Mathias-fund M2)
+
+- **Type:** migration (CREATE OR REPLACE 2 RPCs)
+- **Hvad:** Udvid `pending_changes_read()` til at returnere `action_id`; udvid `permission_elements_read()` til at returnere actions under tabs. Backend-rammen for UI.
+- **Eksakt indhold:** (kort skitse — fuld pseudo-SQL i build-fase)
+  - `pending_changes_read()`: tilføj `action_id uuid` til return-table; tilføj kolonnen i SELECT.
+  - `permission_elements_read()`: tilføj UNION ALL-gren for actions: `select id, 'action'::text, tab_id as parent_id, name, is_active, sort_order from permission_actions`.
+- **Afhængigheder:** M3 (`permission_actions`) + M4 (`pending_changes.action_id`).
+- **Migration-fil:** `supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql`
+- **Risiko:** lav. Rollback: revert RPCs til prior version.
 - **Risiko:** lav. Rollback: revert `role_permission_grant_set` til prior version, drop nye RPCs.
 
 ### Step T1 — Smoke-test for G059 wrapper-flow
@@ -1033,7 +1151,7 @@ Alle 4 smoke-test-filer er nye:
 - `supabase/tests/smoke/t9_supplement_2_wrappers.sql` — G059 end-to-end (W1-W7)
 - `supabase/tests/smoke/t9_supplement_2_superadmin_bypass.sql` — G057 bypass (B1-B4)
 - `supabase/tests/smoke/t9_supplement_2_approve_disciplin.sql` — approve-disciplin (A1-A8)
-- `supabase/tests/smoke/t9_supplement_2_handlings_granularitet.sql` — granularitet (H1-H8)
+- `supabase/tests/smoke/t9_supplement_2_handlings_granularitet.sql` — granularitet (H1-H11, inkl. RPC-flow-tests fra V2-MELLEM-fix)
 
 **Forventet status:** alle grønne.
 
@@ -1119,8 +1237,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V9 adresserer Codex V8's 2 TEKNISK-BLOKERING (M1b filnavn bryder fitness-regel → renummeret; nye kolonner mangler klassifikation → klassifikations-inserts tilføjet i M3+M4). V8 adresserede Codex V7's 1 KRITISK (manglende grants på G059-wrappers) + G-nummer-kandidat (T10-client-wrappers) + Code systemisk recon (11 T9-fundament-supplement-RPCs med samme issue). Mathias-afgørelse 2026-05-22: fix alle 18 berørte RPCs som del af denne pakke. Ny M1b grants-fix-migration. V7 adresserede Codex V6's 1 KRITISK (pending_change_approve grant). V6 adresserede Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
+V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT-policy, fitness-allowlist; 3 mellem: grant_remove + reads + service_role; 4 lave). V10 modtog Codex APPROVAL med 2 G-nummer-kandidater. V9 adresserer Codex V8's 2 TEKNISK-BLOKERING (M1b filnavn bryder fitness-regel → renummeret; nye kolonner mangler klassifikation → klassifikations-inserts tilføjet i M3+M4). V8 adresserede Codex V7's 1 KRITISK (manglende grants på G059-wrappers) + G-nummer-kandidat (T10-client-wrappers) + Code systemisk recon (11 T9-fundament-supplement-RPCs med samme issue). Mathias-afgørelse 2026-05-22: fix alle 18 berørte RPCs som del af denne pakke. Ny M1b grants-fix-migration. V7 adresserede Codex V6's 1 KRITISK (pending_change_approve grant). V6 adresserede Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V10-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V11-review.**
