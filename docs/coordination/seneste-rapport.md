@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-20-Lag1-disciplin-fundament.md` (PR #52 + #53 + #54 merget; commit-range `8898d3e^..41cf359`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-21-trin-10.md` (PR #64 squash-merged til main 2026-05-21; commit `1831760`)
 
 Når ny rapport leveres:
 
