@@ -1,0 +1,851 @@
+# T9-supplement-2 — Plan V1
+
+**Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
+**Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Verificerede afhængigheder
+
+| Afhængighed                                                                                                            | Verificeret fra (file:linje)                                                      | Note (signatur, return-type, invariant)                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core_identity.org_node_upsert(uuid, text, uuid, text, boolean, date) → uuid`                                          | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:9-43`              | SECURITY DEFINER. Mangler session-var FØR `pending_change_request`. G059.                                                                          |
+| `core_identity.org_node_deactivate(uuid, date) → uuid`                                                                 | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:47-62`             | SECURITY DEFINER. Mangler session-var. G059.                                                                                                       |
+| `core_identity.team_close(uuid, date) → uuid`                                                                          | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:66-91`             | SECURITY DEFINER. Pre-check node_type='team' (linje 76-83). Mangler session-var. G059.                                                             |
+| `core_identity.employee_place(uuid, uuid, date) → uuid`                                                                | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:94-114`            | SECURITY DEFINER. Mangler session-var. G059.                                                                                                       |
+| `core_identity.employee_remove_from_node(uuid, date) → uuid`                                                           | `supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql:118-136`           | SECURITY DEFINER. Mangler session-var. G059.                                                                                                       |
+| `core_identity.client_node_place(uuid, uuid, date) → uuid`                                                             | `supabase/migrations/20260521000008_t10_client_active_check.sql:50-95`            | SECURITY DEFINER. T10.7b-version har session-var allerede.                                                                                         |
+| `core_identity.client_node_close(uuid, date) → uuid`                                                                   | `supabase/migrations/20260521000008_t10_client_active_check.sql:102-129`          | SECURITY DEFINER. T10.7b-version har session-var allerede.                                                                                         |
+| `core_identity._apply_client_place(jsonb, uuid)`                                                                       | `supabase/migrations/20260521000008_t10_client_active_check.sql:134-228`          | T10.7b-version. Team-aktiv-check linje 159-167 UDEN bypass. Klient-aktiv-bypass etableret. G057.                                                   |
+| `core_identity._apply_team_close(jsonb, uuid)`                                                                         | `supabase/migrations/20260520000000_t9_supplement.sql:557-640`                    | Linje 598-601 raiser `team_close_already_inactive` UDEN bypass. Strukturel vagt `team_close_not_team` (linje 593-595) bevares uden bypass. G057.   |
+| `core_identity.is_admin_by_employee_id(uuid) → boolean`                                                                | `supabase/migrations/20260521000008_t10_client_active_check.sql:25-40`            | SQL STABLE SECURITY INVOKER. Genbruges i `_apply_team_close`-bypass.                                                                               |
+| `pending_changes_insert` policy                                                                                        | `supabase/migrations/20260518100000_t9_fundament_supplement.sql:49-51`            | INSERT-policy kræver `stork.t9_write_authorized='true'`.                                                                                           |
+| `pending_change_approve(uuid)`                                                                                         | `supabase/migrations/20260518100000_t9_fundament_supplement.sql:170-250`          | SECURITY INVOKER. Self-approve-blok linje 222-227. Dispatcher (change_type → page_key) linje 204-217.                                              |
+| `pending_change_undo(uuid)`                                                                                            | `supabase/migrations/20260518100000_t9_fundament_supplement.sql:257-319`          | SECURITY INVOKER. Tjekker `undo_deadline > now()` linje 283-287.                                                                                   |
+| `pending_change_request(text, uuid, jsonb, date) → uuid`                                                               | (kaldet af alle wrappers)                                                         | INSERT i `pending_changes` — rammer `pending_changes_insert` policy.                                                                               |
+| `core_identity.role_permission_grants`-tabel                                                                           | `supabase/migrations/20260518000006_t9_grants_and_helpers.sql:6-25`               | Schema: id, role_id, area_id, page_id, tab_id, can_access, can_write, visibility. CHECK præcis ét af (area/page/tab). UNIQUE pr. (role × element). |
+| `core_identity.permission_resolve(role_id, element_type, element_id) → (can_access, can_write, visibility)`            | `supabase/migrations/20260518000006_t9_grants_and_helpers.sql:77-141`             | Arve-aware lookup: tab → page → area → default-deny.                                                                                               |
+| `core_identity.has_permission(page_key, tab_key, can_edit) → boolean`                                                  | `supabase/migrations/20260518000009_t9_migrate_role_page_permissions.sql:147-216` | STABLE SECURITY INVOKER. Resolve via grants (tab → page → area) + legacy fallback.                                                                 |
+| `core_identity.role_permission_grant_set(role_id, element_type, element_id, can_access, can_write, visibility) → uuid` | `supabase/migrations/20260518000006_t9_grants_and_helpers.sql:180-221`            | SECURITY INVOKER. Element-type CHECK: area/page/tab. UI-write-RPC for grants.                                                                      |
+| `core_identity.permission_pages` + `core_identity.permission_tabs`                                                     | T9 step 6 (`20260518000005_t9_permission_elements.sql`)                           | Tabeller for permission-hierarki. Tabs har `page_id`-FK.                                                                                           |
+| `core_identity.acl_subtree_org_nodes(employee_id) → uuid[]`                                                            | `supabase/migrations/20260518000006_t9_grants_and_helpers.sql:51-58`              | Returnerer node_ids i caller's subtree via `org_node_closure`. Inverteret bruges som ancestor-tjek.                                                |
+| `core_identity.org_node_closure`-tabel                                                                                 | T9 step 4 (`20260518000003_t9_org_node_closure.sql`)                              | (ancestor_id, descendant_id, depth)-rækker. Bruges til ancestor-traversal.                                                                         |
+| `core_identity.current_employee_id() → uuid`                                                                           | T9 helpers                                                                        | Returnerer authenticated brugers employee_id via auth.uid()-join.                                                                                  |
+| `core_identity.employee_node_placements`                                                                               | T9 step                                                                           | (employee_id, node_id, effective_from, effective_to). Bruges til at finde requesterens placering.                                                  |
+| Smoke-test rolle-swap-mønster                                                                                          | `supabase/tests/smoke/t10_client_active_check.sql:1-60`                           | 2 auth-backed superadmins swappes til non-admin roller; buffer-admin floor; ROLLBACK restorer. Genbruges + udvides.                                |
+
+---
+
+## Formål
+
+> Denne pakke leverer: backend-rammen for de fire forretnings-emner i `t9-supplement-2-krav-og-data.md` — G059 wrapper-fix, G057 superadmin-bypass, approve-disciplin pr. handling med UI-valgt godkender-type, og handlings-granularitet via `permission_actions`. UI bygges senere som lag F.
+>
+> Hvis fundet under review ikke bringer os tættere på dette: G-nummer, ikke blocker.
+
+---
+
+## Scope
+
+**I scope:**
+
+- Krav-dok §3.1 — wrapper-vejen virker for almindelig bruger (G059)
+- Krav-dok §3.2 — superadmin-bypass på 2 T9 forretnings-vagter (G057)
+- Krav-dok §3.3 — approve-disciplin pr. handling
+- Krav-dok §3.4 — handlings-granularitet
+- Krav-dok §3.5 — smoke-tests for alle fire leverancer
+
+**IKKE i scope** (per krav-dok §4):
+
+- Øvrige T9-supplement-skitse-punkter (team-type-konvertering, tilbageskuende-dato-validering, API-eksponering, import-stubs, type-genering, læse-funktions-gates, step 12 robusthed)
+- Selve fortrydelses-mekanikens parametre (periodelængde, gælder-dato, audit) — bevares uændret
+- Frontend / UI — kun backend
+- Konkrete handlinger-seed for eksisterende funktioner — kun rammen
+- Multi-godkender-mønster — låst på præcis 1
+- Eksplicit valg af konkret godkender — auto-reference er rammen
+- G058 (FK-coverage-fitness-check)
+
+---
+
+## Strukturel beslutning
+
+To strukturelle beslutninger som binder fremtidige pakker:
+
+1. **`permission_actions` som ny dimension under tabs.** Konfigurerede handlinger gates additivt (tab-can_write + action-grant). Kode-styrede flag på action-niveau (`requires_second_approver`, `has_undo`, `bypass_tab_write`). UI-redigerbart pr. action: `second_approver_type` + handlings-tildelinger.
+
+2. **Approve-disciplin pr. action via `pending_changes.action_id`-reference.** Pending-rækken bærer action-id som `pending_change_approve` bruger til at evaluere konfigurationen. Wrappers seedes med rette action-id. Eksisterende dispatcher (change_type → page_key) bevares som fallback for pending uden action_id (legacy).
+
+---
+
+## Mathias' afgørelser (input til denne plan)
+
+- **2026-05-21 — Superadmin-bypass på forretnings-invarianter + idempotency-model** (PR #67, commit 8690bf9). Kilde for §3.2.
+- **2026-05-21 — Approve-disciplin pr. handling** (PR #71, commit 76d00ae). Kilde for §3.3.
+- **2026-05-21 — Handlings-granularitet** (PR #71, commit 76d00ae). Kilde for §3.4.
+- **2026-05-17 — T9-omstart-rammen** (T9-fundament-pakke). Punkt 6 (klient-til-team-only), punkt 10 (synlighed=Alt), punkt 12-13 (UI-rettighed for org-handlinger + pending-flow). Kilde for §2.1, §2.3, §2.4 i krav-dok.
+
+---
+
+## Implementations-rækkefølge
+
+Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem migrations.
+
+### Step M1 — G059: session-var-fix på 5 wrappers
+
+- **Type:** migration (CREATE OR REPLACE 5 RPCs)
+- **Hvad:** Tilføj `perform set_config('stork.t9_write_authorized', 'true', true)` EFTER `has_permission`-check og FØR `pending_change_request`-kald.
+- **Eksakt indhold:** Pr. RPC indsættes ét stmt umiddelbart efter `if not has_permission(...)`-blok. Signaturer bevares. `revoke execute ... from public, anon` bevares.
+  - `org_node_upsert(uuid, text, uuid, text, boolean, date)` — insert FØR linje 29
+  - `org_node_deactivate(uuid, date)` — insert FØR linje 56
+  - `team_close(uuid, date)` — insert FØR linje 84
+  - `employee_place(uuid, uuid, date)` — insert FØR linje 104
+  - `employee_remove_from_node(uuid, date)` — insert FØR linje 127
+- **Afhængigheder:** ingen (frittstående CREATE OR REPLACE)
+- **Migration-fil:** `supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql`
+- **Risiko:** lav. Rollback: revert til T9-supplement-version uden session-var.
+
+### Step M2 — G057: superadmin-bypass på 2 apply-handlers
+
+- **Type:** migration (CREATE OR REPLACE 2 RPCs)
+- **Hvad:** Tilføj `v_admin_involved`-bypass på (a) team-aktiv-checken i `_apply_client_place` (linje 159-167 i T10.7b-version) og (b) allerede-inaktiv-checken i `_apply_team_close` (linje 598-601 i T9-supplement).
+- **Eksakt indhold:**
+
+  **`_apply_client_place`** — udvider T10.7b-version. Genbruger eksisterende `v_admin_involved`-variabel (declared linje 148). `v_admin_involved`-beregning flyttes ØVERST (FØR team-aktiv-check) så bypass kan bruges på begge invarianter:
+
+  ```sql
+  -- Beregn v_admin_involved ØVERST
+  v_admin_involved := false;
+  if p_pending_change_id is not null then
+    select requested_by, approved_by into v_requested_by, v_approved_by
+      from core_identity.pending_changes where id = p_pending_change_id;
+    v_admin_involved := core_identity.is_admin_by_employee_id(v_requested_by)
+      or (v_approved_by is not null and core_identity.is_admin_by_employee_id(v_approved_by));
+  end if;
+
+  -- Team-aktiv-check med bypass
+  if not exists (...team aktiv på effective_from...) and not v_admin_involved then
+    raise exception 'client_placement_requires_active_team: %' using errcode = 'P0001';
+  end if;
+
+  -- Resten uændret (klient-eksistens-check, klient-aktiv-check, placement-INSERT/UPDATE/split)
+  ```
+
+  **`_apply_team_close`** — udvider T9-supplement-version. Tilføj `v_admin_involved`-beregning + bypass-logik FØR `team_close_already_inactive`-raise. Strukturelle vagter (`team_close_no_active_version_at` P0002 + `team_close_not_team` 22023) bevares UDEN bypass:
+
+  ```sql
+  -- Tilføj declares:
+  --   v_requested_by uuid;
+  --   v_approved_by uuid;
+  --   v_admin_involved boolean;
+
+  -- Beregn v_admin_involved efter strukturelle vagter
+  v_admin_involved := false;
+  if p_pending_change_id is not null then
+    select requested_by, approved_by into v_requested_by, v_approved_by
+      from core_identity.pending_changes where id = p_pending_change_id;
+    v_admin_involved := core_identity.is_admin_by_employee_id(v_requested_by)
+      or (v_approved_by is not null and core_identity.is_admin_by_employee_id(v_approved_by));
+  end if;
+
+  -- Forretnings-vagt med bypass + idempotency
+  if not v_active.is_active then
+    if v_admin_involved then
+      return;  -- Idempotency-no-op: target allerede inaktiv → handler returnerer uden mutationer
+    end if;
+    raise exception 'team_close_already_inactive: %' using errcode = '22023';
+  end if;
+
+  -- Resten uændret (split-at-boundary + cascade på employee/client-placements)
+  ```
+
+- **Afhængigheder:** M1 (rækkefølge-disciplin). Bruger `is_admin_by_employee_id` fra T10.7b.
+- **Migration-fil:** `supabase/migrations/20260521100001_t9_supplement_2_superadmin_bypass.sql`
+- **Risiko:** mellem. Rollback: revert begge RPCs til prior version.
+
+### Step M3 — Handlings-granularitet: `permission_actions`-tabel + grants-udvidelse
+
+- **Type:** migration (CREATE TABLE + ALTER TABLE)
+- **Hvad:** Opret `permission_actions`-tabel + udvid `role_permission_grants` med `action_id` + opdater CHECK + UNIQUE-index + udvid `permission_resolve` til at handle action-niveau.
+- **Eksakt indhold:**
+
+  ```sql
+  -- Ny tabel: permission_actions
+  create table core_identity.permission_actions (
+    id uuid primary key default gen_random_uuid(),
+    tab_id uuid not null references core_identity.permission_tabs(id) on delete cascade,
+    name text not null,
+    is_active boolean not null default true,
+    sort_order integer not null default 0,
+    requires_second_approver boolean not null default false,
+    has_undo boolean not null default false,
+    second_approver_type text not null default 'above'
+      check (second_approver_type in ('above', 'superadmin')),
+    bypass_tab_write boolean not null default false,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    -- Invariant fra krav-dok §2.5: fortrydelse uden 2. godkender er ulovlig
+    check (not has_undo or requires_second_approver)
+  );
+
+  create unique index permission_actions_unique_name_per_tab
+    on core_identity.permission_actions (tab_id, name);
+
+  alter table core_identity.permission_actions enable row level security;
+  alter table core_identity.permission_actions force row level security;
+  revoke all on table core_identity.permission_actions from public, anon, service_role;
+  grant select on table core_identity.permission_actions to authenticated;
+  grant insert, update on table core_identity.permission_actions to authenticated;
+
+  -- Policies: select bredt, insert/update via session-var
+  create policy permission_actions_select on core_identity.permission_actions
+    for select to authenticated using (true);
+  create policy permission_actions_insert on core_identity.permission_actions
+    for insert to authenticated
+    with check (current_setting('stork.t9_write_authorized', true) = 'true');
+  create policy permission_actions_update on core_identity.permission_actions
+    for update to authenticated
+    using (current_setting('stork.t9_write_authorized', true) = 'true');
+
+  create trigger permission_actions_audit
+    after insert or update or delete on core_identity.permission_actions
+    for each row execute function core_compliance.stork_audit();
+
+  -- Udvid role_permission_grants med action_id
+  alter table core_identity.role_permission_grants
+    add column action_id uuid references core_identity.permission_actions(id) on delete cascade;
+
+  -- Drop eksisterende CHECK + opret ny der inkluderer action
+  alter table core_identity.role_permission_grants
+    drop constraint role_permission_grants_check;  -- gammel CHECK uden navn? brug \d for at finde
+  alter table core_identity.role_permission_grants
+    add constraint role_permission_grants_one_element check (
+      (case when area_id   is not null then 1 else 0 end) +
+      (case when page_id   is not null then 1 else 0 end) +
+      (case when tab_id    is not null then 1 else 0 end) +
+      (case when action_id is not null then 1 else 0 end) = 1
+    );
+
+  -- Opdater UNIQUE-index til at inkludere action
+  drop index core_identity.role_permission_grants_unique;
+  create unique index role_permission_grants_unique
+    on core_identity.role_permission_grants (
+      role_id,
+      coalesce(area_id::text, ''),
+      coalesce(page_id::text, ''),
+      coalesce(tab_id::text, ''),
+      coalesce(action_id::text, '')
+    );
+
+  -- Udvid permission_resolve med action-niveau (action → tab → page → area → default-deny)
+  create or replace function core_identity.permission_resolve(
+    p_role_id uuid,
+    p_element_type text,
+    p_element_id uuid
+  ) returns table (can_access boolean, can_write boolean, visibility text)
+  language plpgsql stable security invoker set search_path = '' as $$
+  declare
+    v_tab_id uuid;
+    v_page_id uuid;
+    v_area_id uuid;
+    v_grant record;
+  begin
+    -- Først: action-niveau grant?
+    if p_element_type = 'action' then
+      select * into v_grant from core_identity.role_permission_grants
+      where role_id = p_role_id and action_id = p_element_id limit 1;
+      if found then
+        can_access := v_grant.can_access; can_write := v_grant.can_write; visibility := v_grant.visibility;
+        return next; return;
+      end if;
+      -- Fald tilbage til tab via action's tab_id
+      select tab_id into v_tab_id from core_identity.permission_actions where id = p_element_id;
+    elsif p_element_type = 'tab' then
+      v_tab_id := p_element_id;
+    end if;
+
+    -- Resten af eksisterende logik uændret (tab → page → area → default-deny)
+    if v_tab_id is not null then
+      select * into v_grant from core_identity.role_permission_grants
+      where role_id = p_role_id and tab_id = v_tab_id limit 1;
+      if found then
+        can_access := v_grant.can_access; can_write := v_grant.can_write; visibility := v_grant.visibility;
+        return next; return;
+      end if;
+      select page_id into v_page_id from core_identity.permission_tabs where id = v_tab_id;
+    elsif p_element_type = 'page' then
+      v_page_id := p_element_id;
+    end if;
+
+    if v_page_id is not null then
+      select * into v_grant from core_identity.role_permission_grants
+      where role_id = p_role_id and page_id = v_page_id limit 1;
+      if found then
+        can_access := v_grant.can_access; can_write := v_grant.can_write; visibility := v_grant.visibility;
+        return next; return;
+      end if;
+      select area_id into v_area_id from core_identity.permission_pages where id = v_page_id;
+    end if;
+
+    if p_element_type = 'area' then v_area_id := p_element_id; end if;
+
+    if v_area_id is not null then
+      select * into v_grant from core_identity.role_permission_grants
+      where role_id = p_role_id and area_id = v_area_id limit 1;
+      if found then
+        can_access := v_grant.can_access; can_write := v_grant.can_write; visibility := v_grant.visibility;
+        return next; return;
+      end if;
+    end if;
+
+    can_access := false; can_write := false; visibility := 'self';
+    return next;
+  end; $$;
+  ```
+
+- **Afhængigheder:** ingen direkte (selvstændig DDL). Bygger på eksisterende `permission_tabs` + `role_permission_grants`.
+- **Migration-fil:** `supabase/migrations/20260521100002_t9_supplement_2_permission_actions.sql`
+- **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`.
+
+### Step M4 — Approve-disciplin: `has_permission_action` + helper for ancestor + `pending_changes.action_id`
+
+- **Type:** migration (CREATE/ALTER + nye helpers)
+- **Hvad:** Tilføj `pending_changes.action_id`-kolonne, helper `acl_higher_level_employees`, funktion `has_permission_action`. (Ikke `pending_change_approve` endnu — kommer i M5.)
+- **Eksakt indhold:**
+
+  ```sql
+  -- Tilføj pending_changes.action_id (nullable for legacy pendings før denne pakke)
+  alter table core_identity.pending_changes
+    add column action_id uuid references core_identity.permission_actions(id) on delete restrict;
+
+  -- Helper: medarbejdere placeret på strengt højere knude (ancestor) end requester
+  create or replace function core_identity.acl_higher_level_employees(p_requester_employee_id uuid)
+  returns uuid[] language sql stable security invoker set search_path = '' as $$
+    -- Find requester's placerings-knuder + alle deres ancestors (depth > 0) via org_node_closure.
+    -- Medarbejdere placeret på en sådan ancestor-knude er "højere placerede".
+    select coalesce(array_agg(distinct emp.employee_id), '{}'::uuid[])
+    from core_identity.employee_node_placements req
+    join core_identity.org_node_closure c
+      on c.descendant_id = req.node_id
+      and c.depth > 0  -- strengt højere
+    join core_identity.employee_node_placements emp
+      on emp.node_id = c.ancestor_id
+      and emp.effective_from <= current_date
+      and (emp.effective_to is null or emp.effective_to > current_date)
+    where req.employee_id = p_requester_employee_id
+      and req.effective_from <= current_date
+      and (req.effective_to is null or req.effective_to > current_date)
+      and emp.employee_id <> p_requester_employee_id;  -- ekskluder requester selv
+  $$;
+
+  comment on function core_identity.acl_higher_level_employees(uuid) is
+    'T9-supplement-2: employees placeret på en strengt højere knude end requester (depth > 0 via org_node_closure). Bruges af pending_change_approve til "above"-type-validering og af UI til eligible-approvers-lookup.';
+
+  -- has_permission_action: kombineret tjek for action-grant
+  -- Returnerer true hvis bruger har (a) can_access på tab + (b) action-grant + (c) can_write på tab — UNDTAGEN hvis bypass_tab_write=true
+  create or replace function core_identity.has_permission_action(
+    p_action_id uuid
+  ) returns boolean
+  language plpgsql stable security invoker set search_path = '' as $$
+  declare
+    v_employee_id uuid;
+    v_role_id uuid;
+    v_action record;
+    v_tab_grant record;
+    v_action_grant record;
+  begin
+    v_employee_id := core_identity.current_employee_id();
+    if v_employee_id is null then return false; end if;
+    select role_id into v_role_id from core_identity.employees where id = v_employee_id;
+    if v_role_id is null then return false; end if;
+
+    -- Hent action-config
+    select tab_id, bypass_tab_write into v_action
+      from core_identity.permission_actions where id = p_action_id and is_active = true;
+    if not found then return false; end if;
+
+    -- (a) Tab-can_access tjek via permission_resolve
+    select * into v_tab_grant from core_identity.permission_resolve(v_role_id, 'tab', v_action.tab_id);
+    if not v_tab_grant.can_access then return false; end if;
+
+    -- (b) Action-grant tjek (specifik grant til denne action)
+    select * into v_action_grant from core_identity.permission_resolve(v_role_id, 'action', p_action_id);
+    if not v_action_grant.can_access then return false; end if;
+
+    -- (c) Tab-can_write tjek — undtagen hvis bypass_tab_write
+    if not v_action.bypass_tab_write then
+      if not v_tab_grant.can_write then return false; end if;
+    end if;
+
+    return true;
+  end; $$;
+
+  comment on function core_identity.has_permission_action(uuid) is
+    'T9-supplement-2 krav-dok §2.6: kombineret tjek for konfigureret action — kræver can_access på tab + action-grant + (can_write på tab UNDTAGEN hvis bypass_tab_write=true).';
+
+  -- GRANT mønster matcher andre helpers
+  revoke all on function core_identity.acl_higher_level_employees(uuid) from public;
+  grant execute on function core_identity.acl_higher_level_employees(uuid) to authenticated;
+  revoke all on function core_identity.has_permission_action(uuid) from public;
+  grant execute on function core_identity.has_permission_action(uuid) to authenticated;
+  ```
+
+- **Afhængigheder:** M3 (permission_actions + role_permission_grants-udvidelse).
+- **Migration-fil:** `supabase/migrations/20260521100003_t9_supplement_2_approve_helpers.sql`
+- **Risiko:** mellem. Rollback: drop column `pending_changes.action_id`, drop functions.
+
+### Step M5 — Refactor `pending_change_approve` + drop self-approve-blok
+
+- **Type:** migration (CREATE OR REPLACE 1 RPC)
+- **Hvad:** Refactor `pending_change_approve` til at evaluere action-config i stedet for fast non-admin self-approve-regel.
+- **Eksakt indhold:**
+
+  ```sql
+  -- Refactor pending_change_approve
+  -- Drop self-approve-blok (linje 222-227 i T9-fundament-supplement)
+  -- Tilføj action-baseret evaluering:
+  --   1. Hvis pending har action_id → hent action-config
+  --   2. Hvis requires_second_approver=false ELLER action_id IS NULL (legacy) → tillad alle med can_edit
+  --   3. Hvis requires_second_approver=true AND second_approver_type='above':
+  --      - Tillad hvis approver er i acl_higher_level_employees(requested_by)
+  --      - Tillad hvis approver er superadmin (bypass)
+  --      - Ellers raise
+  --   4. Hvis requires_second_approver=true AND second_approver_type='superadmin':
+  --      - Tillad KUN hvis approver er superadmin
+  --      - Ellers raise
+  create or replace function core_identity.pending_change_approve(
+    p_change_id uuid
+  ) returns void
+  language plpgsql security invoker set search_path = '' as $$
+  declare
+    v_change record;
+    v_approver uuid;
+    v_undo_period integer;
+    v_page_key text;
+    v_action record;
+    v_higher_level_employees uuid[];
+  begin
+    v_approver := core_identity.current_employee_id();
+    if v_approver is null then
+      raise exception 'no_authenticated_employee' using errcode = '42501';
+    end if;
+
+    select * into v_change from core_identity.pending_changes where id = p_change_id for update;
+    if not found then
+      raise exception 'pending_change_not_found %', p_change_id using errcode = 'P0002';
+    end if;
+    if v_change.status <> 'pending' then
+      raise exception 'pending_change_wrong_status: % (expected pending)', v_change.status using errcode = '22023';
+    end if;
+
+    -- Page-key dispatcher (uændret — bruges af can_edit-tjek nedenfor)
+    case v_change.change_type
+      when 'org_node_upsert'     then v_page_key := 'org_nodes';
+      when 'org_node_deactivate' then v_page_key := 'org_nodes';
+      when 'team_close'          then v_page_key := 'org_nodes';
+      when 'employee_place'      then v_page_key := 'employee_placements';
+      when 'employee_remove'     then v_page_key := 'employee_placements';
+      when 'client_place'        then v_page_key := 'client_placements';
+      when 'client_close'        then v_page_key := 'client_placements';
+      else
+        raise exception 'unknown_change_type for approve-gate: %', v_change.change_type using errcode = '42883';
+    end case;
+
+    -- Basis-tjek: approver skal have can_edit på page (uændret)
+    if not core_identity.has_permission(v_page_key, null, true) then
+      raise exception 'permission_denied: approve % kræver can_edit på %', v_change.change_type, v_page_key using errcode = '42501';
+    end if;
+
+    -- NY: action-baseret approve-disciplin
+    if v_change.action_id is not null then
+      select requires_second_approver, second_approver_type into v_action
+        from core_identity.permission_actions where id = v_change.action_id;
+
+      if v_action.requires_second_approver then
+        if core_identity.is_admin() then
+          -- Superadmin bypasser (jf. krav-dok §2.5 superadmin-undtagelse)
+          null;
+        elsif v_action.second_approver_type = 'above' then
+          v_higher_level_employees := core_identity.acl_higher_level_employees(v_change.requested_by);
+          if not (v_approver = any(v_higher_level_employees)) then
+            raise exception 'approver_not_higher_level: % er ikke placeret højere end requester %', v_approver, v_change.requested_by
+              using errcode = '42501';
+          end if;
+        elsif v_action.second_approver_type = 'superadmin' then
+          raise exception 'approver_must_be_superadmin: action % kræver superadmin-godkendelse', v_change.action_id
+            using errcode = '42501';
+        end if;
+      end if;
+      -- requires_second_approver=false → ingen ekstra tjek; can_edit er nok (default selv-approve OK)
+    end if;
+    -- Legacy: action_id IS NULL → ingen ekstra tjek (bevarer eksisterende non-action-pendings)
+
+    -- Find undo-periode (uændret hvis action ikke har has_undo)
+    select undo_period_seconds into v_undo_period
+    from core_identity.undo_settings where change_type = v_change.change_type;
+    if v_undo_period is null then v_undo_period := 24 * 3600; end if;
+
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'pending_change_approve', true);
+
+    update core_identity.pending_changes
+    set status = 'approved',
+        approved_by = v_approver,
+        approved_at = now(),
+        undo_deadline = now() + (v_undo_period || ' seconds')::interval,
+        updated_at = now()
+    where id = p_change_id;
+  end; $$;
+  revoke execute on function core_identity.pending_change_approve(uuid) from public, anon;
+  ```
+
+  **Vigtigt:** Self-approve-blok (linje 222-227) er FJERNET. Default er nu selv-approve OK når action ikke kræver 2. godkender.
+
+- **Afhængigheder:** M3 + M4 (`permission_actions`, `acl_higher_level_employees`).
+- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_pending_change_approve.sql`
+- **Risiko:** mellem. Rollback: revert til T9-fundament-supplement-version med self-approve-blok.
+
+### Step M6 — UI-RPCs + udvid `role_permission_grant_set` til action
+
+- **Type:** migration (CREATE OR REPLACE existing + nye funktioner)
+- **Hvad:** Udvid `role_permission_grant_set` til at acceptere `'action'`-element-type. Tilføj `permission_action_upsert`, `permission_action_deactivate`, `permission_action_set_approver_type`, `pending_change_eligible_approvers`.
+- **Eksakt indhold:**
+
+  ```sql
+  -- Udvid role_permission_grant_set til at acceptere 'action'-element-type
+  create or replace function core_identity.role_permission_grant_set(
+    p_role_id uuid,
+    p_element_type text,
+    p_element_id uuid,
+    p_can_access boolean,
+    p_can_write boolean,
+    p_visibility text
+  ) returns uuid language plpgsql security invoker set search_path = '' as $$
+  declare
+    v_id uuid;
+    v_area_id uuid;
+    v_page_id uuid;
+    v_tab_id uuid;
+    v_action_id uuid;
+  begin
+    if not core_identity.has_permission('permissions', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+
+    if    p_element_type = 'area'   then v_area_id   := p_element_id;
+    elsif p_element_type = 'page'   then v_page_id   := p_element_id;
+    elsif p_element_type = 'tab'    then v_tab_id    := p_element_id;
+    elsif p_element_type = 'action' then v_action_id := p_element_id;
+    else raise exception 'invalid_element_type: %', p_element_type using errcode = '22023';
+    end if;
+
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'role_permission_grant_set', true);
+
+    insert into core_identity.role_permission_grants
+      (role_id, area_id, page_id, tab_id, action_id, can_access, can_write, visibility)
+    values
+      (p_role_id, v_area_id, v_page_id, v_tab_id, v_action_id, p_can_access, p_can_write, p_visibility)
+    on conflict (role_id, coalesce(area_id::text, ''), coalesce(page_id::text, ''), coalesce(tab_id::text, ''), coalesce(action_id::text, ''))
+    do update set
+      can_access = excluded.can_access,
+      can_write = excluded.can_write,
+      visibility = excluded.visibility,
+      updated_at = now()
+    returning id into v_id;
+
+    return v_id;
+  end; $$;
+
+  -- permission_action_upsert (UI-RPC) — kun navn, sort_order, is_active. requires_second_approver/has_undo/bypass_tab_write sættes IKKE her (kode-låst via separate migration-seed).
+  create or replace function core_identity.permission_action_upsert(
+    p_id uuid,
+    p_tab_id uuid,
+    p_name text,
+    p_is_active boolean default true,
+    p_sort_order integer default 0
+  ) returns uuid language plpgsql security invoker set search_path = '' as $$
+  declare v_id uuid;
+  begin
+    if not core_identity.has_permission('permissions', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'permission_action_upsert', true);
+
+    if p_id is null then
+      insert into core_identity.permission_actions (tab_id, name, is_active, sort_order)
+      values (p_tab_id, p_name, p_is_active, p_sort_order) returning id into v_id;
+    else
+      insert into core_identity.permission_actions (id, tab_id, name, is_active, sort_order)
+      values (p_id, p_tab_id, p_name, p_is_active, p_sort_order)
+      on conflict (id) do update
+      set tab_id = excluded.tab_id, name = excluded.name,
+          is_active = excluded.is_active, sort_order = excluded.sort_order,
+          updated_at = now()
+      returning id into v_id;
+    end if;
+    return v_id;
+  end; $$;
+  revoke execute on function core_identity.permission_action_upsert(uuid, uuid, text, boolean, integer) from public, anon;
+
+  -- permission_action_deactivate (UI-RPC)
+  create or replace function core_identity.permission_action_deactivate(p_action_id uuid)
+  returns void language plpgsql security invoker set search_path = '' as $$
+  begin
+    if not core_identity.has_permission('permissions', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'permission_action_deactivate', true);
+    update core_identity.permission_actions set is_active = false, updated_at = now()
+      where id = p_action_id;
+  end; $$;
+  revoke execute on function core_identity.permission_action_deactivate(uuid) from public, anon;
+
+  -- permission_action_set_approver_type (UI-RPC) — kun UI-redigerbart felt
+  create or replace function core_identity.permission_action_set_approver_type(
+    p_action_id uuid,
+    p_type text
+  ) returns void language plpgsql security invoker set search_path = '' as $$
+  declare v_requires boolean;
+  begin
+    if not core_identity.has_permission('permissions', 'manage', true) then
+      raise exception 'permission_denied' using errcode = '42501';
+    end if;
+    if p_type not in ('above', 'superadmin') then
+      raise exception 'invalid_approver_type: % (forventet: above eller superadmin)', p_type using errcode = '22023';
+    end if;
+    -- Kun tilladt på actions hvor requires_second_approver=true
+    select requires_second_approver into v_requires
+      from core_identity.permission_actions where id = p_action_id;
+    if not found then
+      raise exception 'permission_action_not_found: %', p_action_id using errcode = 'P0002';
+    end if;
+    if not v_requires then
+      raise exception 'cannot_set_approver_type_when_not_required: action % har requires_second_approver=false', p_action_id
+        using errcode = '22023';
+    end if;
+    perform set_config('stork.t9_write_authorized', 'true', true);
+    perform set_config('stork.source_type', 'manual', true);
+    perform set_config('stork.change_reason', 'permission_action_set_approver_type', true);
+    update core_identity.permission_actions
+      set second_approver_type = p_type, updated_at = now()
+      where id = p_action_id;
+  end; $$;
+  revoke execute on function core_identity.permission_action_set_approver_type(uuid, text) from public, anon;
+
+  -- pending_change_eligible_approvers: hvem må approve denne pending
+  -- Returnerer: alle medarbejdere der må approve (baseret på action-config + requester-placering + superadmin)
+  create or replace function core_identity.pending_change_eligible_approvers(
+    p_pending_change_id uuid
+  ) returns uuid[] language plpgsql stable security invoker set search_path = '' as $$
+  declare
+    v_change record;
+    v_action record;
+    v_eligible uuid[];
+    v_superadmin_ids uuid[];
+  begin
+    select * into v_change from core_identity.pending_changes where id = p_pending_change_id;
+    if not found then return '{}'::uuid[]; end if;
+
+    -- Find alle superadmins (placerings-uafhængigt)
+    select coalesce(array_agg(e.id), '{}'::uuid[]) into v_superadmin_ids
+    from core_identity.employees e
+    join core_identity.role_page_permissions p on p.role_id = e.role_id
+    where core_identity.is_active_employee_state(e.anonymized_at, e.termination_date)
+      and p.page_key = 'system' and p.tab_key = 'manage'
+      and p.scope = 'all' and p.can_edit = true;
+
+    -- Hvis action_id IS NULL eller requires_second_approver=false → alle med can_edit på page kan approve (returner kun superadmins som "garanteret eligible"; UI viser bredere liste)
+    if v_change.action_id is null then
+      return v_superadmin_ids;  -- Legacy pendings: superadmins er always-eligible; can_edit-tjek sker i approve-RPC
+    end if;
+
+    select requires_second_approver, second_approver_type into v_action
+      from core_identity.permission_actions where id = v_change.action_id;
+
+    if not v_action.requires_second_approver then
+      return v_superadmin_ids;  -- Default selv-approve OK; superadmins always-eligible
+    end if;
+
+    if v_action.second_approver_type = 'superadmin' then
+      return v_superadmin_ids;
+    end if;
+
+    -- second_approver_type='above': returner higher-level + superadmins
+    v_eligible := core_identity.acl_higher_level_employees(v_change.requested_by);
+    return (select array(select unnest(v_eligible) union select unnest(v_superadmin_ids)));
+  end; $$;
+  revoke execute on function core_identity.pending_change_eligible_approvers(uuid) from public, anon;
+  grant execute on function core_identity.pending_change_eligible_approvers(uuid) to authenticated;
+  ```
+
+- **Afhængigheder:** M3 + M4.
+- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_ui_rpcs.sql`
+- **Risiko:** lav. Rollback: revert `role_permission_grant_set` til prior version, drop nye RPCs.
+
+### Step T1 — Smoke-test for G059 wrapper-flow
+
+- **Type:** test (1 fil)
+- **Hvad:** End-to-end test af 5 G059-wrappers + 2 client-wrappers gennem `pending_change_apply` med tabel-effekt-assertion. Bruger 2-non-admin-rolle-swap-mønster fra T10.7b.
+- **Test-fil:** `supabase/tests/smoke/t9_supplement_2_wrappers.sql`
+- **Test-cases:**
+  - W1: `org_node_upsert` → ny pending → approve via 2. non-admin (action ikke konfigureret → selv-approve OK; brug 2-user for konsistens) → apply via service_role → ny række i `org_node_versions`
+  - W2: `org_node_deactivate(team_id, today)` → versioning mutation
+  - W3: `team_close(team_id, today)` → versioning + cascade på `employee_node_placements`
+  - W4: `employee_place(emp_id, team_id, today)` → ny række i `employee_node_placements`
+  - W5: `employee_remove_from_node(emp_id, today)` → effective_to sat
+  - W6 (regression): `client_node_place(...)` virker som T10.7b
+  - W7 (regression): `client_node_close(...)` virker som T10.7b
+
+### Step T2 — Smoke-test for G057 superadmin-bypass
+
+- **Type:** test (1 fil)
+- **Hvad:** Positive + negative kontroller for de 2 bypass-scenarier.
+- **Test-fil:** `supabase/tests/smoke/t9_supplement_2_superadmin_bypass.sql`
+- **Test-cases:**
+  - B1 (positiv): superadmin opretter + approver pending `client_place` på team der bliver inaktivt før apply → `_apply_client_place` succeeds (team-aktiv-bypass via `v_admin_involved`)
+  - B2 (positiv): superadmin opretter + approver pending `team_close` mod allerede-inaktivt team (via direct UPDATE før apply) → `_apply_team_close` no-op return, status='applied', ingen ny `org_node_versions`-mutation
+  - B3 (negativ): 2 non-admin (requester + approver) opretter pending `client_place` på aktivt team, inaktivér team før apply → raise `client_placement_requires_active_team` P0001
+  - B4 (negativ): 2 non-admin opretter pending `team_close` mod team der inaktiveres før apply → raise `team_close_already_inactive` 22023
+
+### Step T3 — Smoke-test for approve-disciplin
+
+- **Type:** test (1 fil)
+- **Hvad:** Verificér default selv-approve, 'above'-type med ancestor, 'superadmin'-type, fortrydelses-frist, superadmin-bypass.
+- **Test-fil:** `supabase/tests/smoke/t9_supplement_2_approve_disciplin.sql`
+- **Test-cases:**
+  - A1 (default selv-approve): action med `requires_second_approver=false` → requester selv-approve egen pending succeeds
+  - A2 (`above`-type, ancestor OK): non-admin requester på team-knude, non-admin approver på ancestor-knude → approve succeeds
+  - A3 (`above`-type, ikke-ancestor afvist): non-admin approver på sibling-gren → raise `approver_not_higher_level`
+  - A4 (`above`-type, superadmin OK): non-admin requester, superadmin approver → succeeds via bypass
+  - A5 (`superadmin`-type, superadmin OK): non-admin requester, superadmin approver → succeeds
+  - A6 (`superadmin`-type, ancestor afvist): non-admin requester, non-admin ancestor approver → raise `approver_must_be_superadmin`
+  - A7 (`has_undo`): action med `requires_second_approver=true, has_undo=true` → efter approve er `undo_deadline` sat; `pending_change_undo` virker indenfor frist
+  - A8 (superadmin requester): superadmin opretter pending på action med `requires_second_approver=true` → superadmin selv-approver → succeeds (superadmin-undtagelse)
+
+### Step T4 — Smoke-test for handlings-granularitet
+
+- **Type:** test (1 fil)
+- **Hvad:** Verificér `has_permission_action`, additivt mønster, `bypass_tab_write`-undtagelse.
+- **Test-fil:** `supabase/tests/smoke/t9_supplement_2_handlings_granularitet.sql`
+- **Test-cases:**
+  - H1 (standard handling): tab uden actions → can_write på tab giver adgang som i dag
+  - H2 (konfigureret handling, fuld grant): action med `bypass_tab_write=false`, bruger har can_write på tab + action-grant → `has_permission_action`=true
+  - H3 (konfigureret handling, mangler action-grant): bruger har can_write på tab men ingen action-grant → `has_permission_action`=false
+  - H4 (konfigureret handling, mangler tab-can_write): bruger har action-grant men ikke can_write på tab → `has_permission_action`=false
+  - H5 (`bypass_tab_write=true`, kun can_access): bruger har can_access (ikke can_write) på tab + action-grant → `has_permission_action`=true
+  - H6 (`bypass_tab_write=true`, mangler can_access): bruger har action-grant men ikke can_access på tab → `has_permission_action`=false
+  - H7 (`role_permission_grant_set('action', ...)`): UI-RPC opretter action-grant; verificér row i `role_permission_grants`
+  - H8 (invariant CHECK): forsøg på at INSERT action med `has_undo=true, requires_second_approver=false` → CHECK raise
+
+---
+
+## Fundament-tjek-passeret
+
+| Tjek                                                               | Status | Reference                                                                                                                                                                              |
+| ------------------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hver write-RPC har GRANT + INSERT/UPDATE-policy + session-var      | ja     | M3 tilføjer policies + session-var-krav til `permission_actions`; M1 tilføjer session-var på 5 wrappers; eksisterende `role_permission_grants` har policies; M5 ændrer ikke RLS-model. |
+| Hver SELECT-policy bred nok til legitime læsere                    | ja     | `permission_actions` får `using (true)` (alle authenticated kan læse permission-katalog — matcher `permission_pages`/`permission_tabs`/`role_permission_grants`-mønster).              |
+| Eksempel-row verificeret gennem flow                               | ja     | T1-T4 dækker alle leverancer end-to-end.                                                                                                                                               |
+| Plan-detaljer eksplicit (ingen "TBD" / "Code afgør" / overladelse) | ja     | M1-M6 har pseudo-SQL pr. RPC + tabel; T1-T4 har konkrete test-cases.                                                                                                                   |
+
+---
+
+## Test-konsekvens
+
+Alle 4 smoke-test-filer er nye:
+
+- `supabase/tests/smoke/t9_supplement_2_wrappers.sql` — G059 end-to-end (W1-W7)
+- `supabase/tests/smoke/t9_supplement_2_superadmin_bypass.sql` — G057 bypass (B1-B4)
+- `supabase/tests/smoke/t9_supplement_2_approve_disciplin.sql` — approve-disciplin (A1-A8)
+- `supabase/tests/smoke/t9_supplement_2_handlings_granularitet.sql` — granularitet (H1-H8)
+
+**Forventet status:** alle grønne.
+
+**Regression-tjek:** eksisterende `t9_public_wrapper_rpcs.sql`, `t9_pending_changes.sql`, `t10_client_active_check.sql` skal fortsat passere — `pending_change_approve`-refactor må ikke bryde eksisterende non-action pending-flow (action_id IS NULL-grenen bevarer can_edit-only-disciplin).
+
+---
+
+## Build-fase halt-håndtering
+
+- **Forventede WORKAROUND-kandidater:** ingen. Alle mønstre genbruger eksisterende infrastruktur (session-var, is_admin_by_employee_id, role_permission_grants-struktur).
+- **Forventede PLAN-AFVIGELSE-scenarier:** ingen. 6 migrations + 4 smoke-tests er konkret afgrænset.
+- **Kritiske invarianter der ikke må brydes:**
+  - FORCE RLS på `pending_changes` bevares (M1 session-var; M4 tilføjer action_id-kolonne uden policy-ændring)
+  - Strukturelle vagter bevares uden bypass (`team_close_not_team`, `team_close_no_active_version_at`, `client_placement_node_not_team`)
+  - `is_admin_by_employee_id` signatur uændret (M2 genbruger, ændrer ikke)
+  - Eksisterende klient-aktiv-bypass i `_apply_client_place` bevares funktionelt (M2 restrukturerer kun)
+  - Invariant CHECK på `permission_actions` håndhæver `has_undo ⇒ requires_second_approver`
+  - `pending_change_approve` legacy-flow (action_id IS NULL) virker uændret for pre-pakke-pendings
+
+---
+
+## Risiko + kompensation
+
+| Migration                                    | Værste-case                                                                                                                                                                                                                                          | Sandsynlighed | Rollback                                                               |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------- |
+| M1 (5 wrappers)                              | session-var sættes på SECURITY DEFINER → outer-scope policy påvirkes. **Mitigation:** verificeret at `set_config(..., true)` (transaction-local) virker for T10.7b-klient-wrappers.                                                                  | lav           | revert til T9-supplement-version uden session-var                      |
+| M2 (`_apply_*` bypass)                       | bypass-restrukturering ændrer check-rækkefølgen. **Mitigation:** pseudo-SQL specificerer eksakt rækkefølge; klient-eksistens-check bevares position.                                                                                                 | lav           | revert begge RPCs til prior version                                    |
+| M3 (`permission_actions` + grants-udvidelse) | CHECK + UNIQUE-rebuild kan fejle på eksisterende rows. **Mitigation:** tabellen er tom indtil seed; existing grants har ikke action_id (null OK i nye CHECK fordi præcis 1 af 4 skal være sat — area/page/tab er allerede sat på eksisterende rows). | mellem        | drop tabel + column, restore prior CHECK + UNIQUE + permission_resolve |
+| M4 (helpers + action_id)                     | `acl_higher_level_employees` performance på dybe træer. **Mitigation:** brug `org_node_closure`-tabel (precomputed); join på indekserede ancestor_id/descendant_id.                                                                                  | lav           | drop column + funktioner                                               |
+| M5 (`pending_change_approve`-refactor)       | Approve-flow ændret for ALLE pending — risiko for regression på legacy. **Mitigation:** action_id IS NULL-grenen bevarer eksisterende ikke-action can_edit-only-flow; smoke-test T3 + regression-tjek på eksisterende tests.                         | mellem        | revert til T9-fundament-supplement-version                             |
+| M6 (UI-RPCs + grant_set udvidelse)           | `role_permission_grant_set`-signatur uændret men action-element-type tilføjet. **Mitigation:** CHECK håndhæver præcis 1 element-niveau; eksisterende callers virker uændret.                                                                         | lav           | revert + drop nye RPCs                                                 |
+| T1-T4 (smoke-tests)                          | Rolle-swap + buffer-admin-floor-mønster valideret i T10.7b. Risiko for org-træ-test-fixture-fejl (lave et fungerende træ med assistent/leder). **Mitigation:** brug minimal træ-fixture (2-niveau: leder → team) for de fleste cases.                | lav           | drop testene (pakke-leverance er migrations)                           |
+
+**Kompensation hvis hele pakken fejler under build:** revert M1-M6 migrations. G057 + G059 forbliver åbne. Cutover er ikke berørt (G057 + G059 er ikke cutover-blockers).
+
+---
+
+## Oprydnings- og opdaterings-strategi
+
+**Filer der skal flyttes til arkiv** (efter pakken er merget):
+
+- `docs/coordination/t9-supplement-2-plan.md` → `docs/coordination/arkiv/`
+- `docs/coordination/t9-supplement-2-krav-og-data.md` → `docs/coordination/arkiv/`
+- `docs/coordination/t9-supplement-2-forretningsgang-{code,codex,claude-ai,konsolideret}.md` → `docs/coordination/arkiv/`
+- Alle `docs/coordination/plan-feedback/t9-supplement-2-*.md` → `docs/coordination/arkiv/`
+
+**Filer der skal slettes:** ingen.
+
+**Konsekvens-opdateringer for autoritative dokumenter:**
+
+| Dokument                                   | Konsekvens? | Opdatering der laves i denne pakke                                                                                                                        |
+| ------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/strategi/stork-2-0-master-plan.md`   | ja          | Tilføj rettelse i Appendix C der refererer §1.7 (T9-omstart-rammen) med ny approve-disciplin pr. action + handlings-granularitet via `permission_actions` |
+| `docs/strategi/bygge-status.md`            | ja          | Tilføj entry: T9-supplement-2 fuldført (G057 + G059 lukket; ny approve-disciplin + handlings-granularitet etableret som backend-ramme)                    |
+| `docs/coordination/mathias-afgoerelser.md` | nej         | Tre relevante entries er allerede committed (PR #67 + PR #71). Pakken anvender dem.                                                                       |
+| `docs/teknisk/teknisk-gaeld.md`            | ja          | Flyt G057 og G059 fra "Åben gæld" til arkiv-sektion (LØST 2026-05-21 via T9-supplement-2)                                                                 |
+
+**Standard-opdateringer:**
+
+- `docs/coordination/aktiv-plan.md` → opdater til "Aktuel: T9-supplement-2 (plan V1)" under plan-fase; ryd efter merge
+- `docs/coordination/seneste-rapport.md` → opdater til slut-rapport-fil efter merge
+
+**Reference-konsekvenser:** ingen filer om-døbes inden for pakken (kun arkivering efter merge).
+
+---
+
+## Konsistens-tjek
+
+- **Disciplin-pakke:** Plan-leverance er kontrakt; recon-først udført med file:linje på alle afhængigheder; krav-dok §3.1-§3.5 er 1:1-mappet til Step M1-M6 + T1-T4.
+
+---
+
+## Fire-dokument-konsultation
+
+| Dokument                                            | Konsulteret | Status           | Relevante referencer                                                                                                                                                                                                                                             | Konflikt med plan? |
+| --------------------------------------------------- | ----------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `docs/strategi/vision-og-principper.md`             | ja          | LÅST-AUTORITATIV | Princip 2 (Superadmin er eneste hardkodede rolle) — etableret som basis for §3.2 + §3.3 superadmin-bypass                                                                                                                                                        | nej                |
+| `docs/strategi/stork-2-0-master-plan.md`            | ja          | RETNINGSGIVENDE  | §1.7 T9-omstart-rammen punkt 12 (UI-rettigheder for org-handlinger) + punkt 13 (pending-flow med gælder-dato)                                                                                                                                                    | nej                |
+| `docs/coordination/mathias-afgoerelser.md`          | ja          | RETNINGSGIVENDE  | 2026-05-21 superadmin-bypass-ramme + idempotency (PR #67); 2026-05-21 approve-disciplin pr. handling (PR #71); 2026-05-21 handlings-granularitet (PR #71); 2026-05-17 punkt 6 (strukturelle invarianter); 2026-05-17 punkt 12-13 (UI-rettigheder + pending-flow) | nej                |
+| `docs/coordination/t9-supplement-2-krav-og-data.md` | ja          | PAKKE-KONTRAKT   | §3.1 (G059) → M1; §3.2 (G057) → M2; §3.3 (approve-disciplin) → M4+M5+M6; §3.4 (handlings-granularitet) → M3+M4+M6; §3.5 (tests) → T1-T4                                                                                                                          | nej                |
+
+---
+
+## Konklusion
+
+Pakken implementerer fire forretnings-leverancer fra krav-dok. Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex parallel kode-research V1.**

@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv pakke — venter på næste pakke-valg fra Mathias.
+**Aktuel:** T9-supplement-2 (Stor pakke) — plan V1 under Codex parallel kode-research (V3 plan-fase). Plan: `docs/coordination/t9-supplement-2-plan.md`. Krav-dok: `docs/coordination/t9-supplement-2-krav-og-data.md` (PR #72, merget 2026-05-21). Ramme-kilder: PR #67 (superadmin-bypass) + PR #71 (approve-disciplin + handlings-granularitet).
 
 Workflow-spec V2 (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2") er etableret som autoritativ operationel guide for kommende pakker. Detaljer i `docs/skabeloner/workflow-skabelon.md` + overvaagning-filer.
 
