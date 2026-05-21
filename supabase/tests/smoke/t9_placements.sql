@@ -135,6 +135,14 @@ begin
   end if;
 
   -- ─── T5: _apply_client_place → team-only validering ──────────────────
+  -- Trin 10 T10.7a: seed core_identity.clients-fixture FØR _apply_client_place
+  -- (FK på client_node_placements.client_id → clients.id kræver eksistens; trin 10
+  -- tilføjer aktiv-check i apply-handler der kræver klient findes + aktiv).
+  perform set_config('stork.allow_clients_write', 'true', true);
+  insert into core_identity.clients (id, name)
+  values (v_client_id, 'T9-smoke fixture client')
+  on conflict (id) do nothing;
+
   perform core_identity._apply_client_place(
     jsonb_build_object('client_id', v_client_id::text, 'node_id', v_team_id::text, 'effective_from', current_date::text),
     null

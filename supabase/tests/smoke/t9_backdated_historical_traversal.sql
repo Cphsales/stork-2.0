@@ -164,6 +164,13 @@ begin
   -- ═══════════════════════════════════════════════════════════════════════
   -- BLOCK 3 — _apply_client_place + _apply_client_close (parallelt mønster)
   -- ═══════════════════════════════════════════════════════════════════════
+  -- Trin 10 T10.7a: seed core_identity.clients-fixture FØR INSERT i
+  -- client_node_placements (FK + apply-handler aktiv-check kræver klient eksisterer).
+  perform set_config('stork.allow_clients_write', 'true', true);
+  insert into core_identity.clients (id, name)
+  values (v_client_id, 'T9-backdated fixture client')
+  on conflict (id) do nothing;
+
   insert into core_identity.client_node_placements (client_id, node_id, effective_from, effective_to) values
     (v_client_id, v_node_team_a_id, '2026-04-01', '2026-06-01'),
     (v_client_id, v_node_team_b_id, '2026-06-01', null);
