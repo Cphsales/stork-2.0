@@ -1,7 +1,15 @@
-# T9-supplement-2 — Plan V15
+# T9-supplement-2 — Plan V16
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V15)
+
+Codex V15-review leverede 1 TEKNISK-BLOKERING. ADRESSERET i V16.
+
+- **KODE-FUND V15-1 (TEKNISK-BLOKERING — T4 mangler DELETE-vej-smoke for action-grant):** M6 udvider `role_permission_grant_remove` med 'action'-element-type, men T4 har ikke end-to-end-test af DELETE-vejen. Niveau 1-prefix kræver eksempel-row pr. write-vej. **ADRESSERET** i T4 (V16): tilføj H12 — opret action-grant via `_set`, slet via `_remove('action')`, assert row væk + `has_permission_action=false`.
 
 ---
 
@@ -1259,6 +1267,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - H9 (RPC-flow, V2 Codex KODE-FUND 5): `permission_action_upsert(NULL, tab_id, 'test-action', true, 0)` → ny række i `permission_actions`; verificér via SELECT
   - H10 (RPC-flow): `permission_action_set_approver_type(action_id, 'superadmin')` på action med `requires_second_approver=true` → opdaterer felt; verificér via SELECT. Negativ kontrol: kald på action med `requires_second_approver=false` → raise `cannot_set_approver_type_when_not_required`.
   - H11 (RPC-flow): `permission_action_deactivate(action_id)` → `is_active=false`; verificér at `has_permission_action` returnerer false for deaktiveret action selv med eksplicit grant
+  - H12 (V16 Codex V15 TEKNISK-BLOKERING fix — DELETE-vej smoke): non-admin med `permissions/manage`-permission opretter action-grant via `role_permission_grant_set('action', role_id, action_id, true, true, 'self')`, derefter kalder `role_permission_grant_remove('action', role_id, action_id)`. Assert: row er DELETE'd fra `role_permission_grants`; `has_permission_action(action_id)` returnerer `false` for samme rolle.
 
 ---
 
@@ -1370,4 +1379,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V15-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V16-review.**
