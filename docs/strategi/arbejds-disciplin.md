@@ -215,7 +215,7 @@ Plan-fase kører Code OG Codex parallelt fra V1 — ikke ping-pong-sekvens. Begg
 - Find **blind-vinkler** i kode-base som Code måske overser (edge cases, race-conditions, cron-context-issues, DB-state-mismatches)
 - **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
 - IKKE patterns-katalog (det er Code's eget recon-arbejde via "Verificerede afhængigheder"-sektion)
-- IKKE krav-dok-konsistens-tjek (Claude.ai's bord)
+- IKKE krav-dok-konsistens-tjek (det er Codex' eksisterende plan-review-rolle, V2 uændret — to parallelle roller, ikke duplikerede)
 
 **Fund-klassifikation mod tre dokumenter (krav, master-plan, vision):**
 
@@ -252,6 +252,11 @@ Skal være sjælden — disciplinen er fuldstyrke fra start.
 - OPGRADERING-disciplin (eksisterende, kører parallelt med KODE-FUND-håndtering)
 
 ## Plan- og bygge-fase overholder 3 dokumenter (V3 2026-05-21)
+
+**Vigtigt — ord-forskel:**
+
+- **KONSULTATION** (fire-dokument-konsultation, eksisterende V2): alle fire dokumenter LÆSES for kontekst. Bevares uændret. Mathias-afgørelser indgår.
+- **OVERHOLDES** (V3 ny præcisering): kun tre dokumenter er overholdelses-KONTRAKT i plan/bygge. Mathias-afgørelser konsulteres men er ikke kontrakt.
 
 I plan-fase og bygge-fase OVERHOLDES tre dokumenter:
 

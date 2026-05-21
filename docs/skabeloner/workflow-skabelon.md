@@ -109,17 +109,17 @@ Flow pauser → mål-part (Mathias / Claude.ai / Codex) svarer → flow fortsæt
 
 ---
 
-## Step 0 — pakke-skala-vurdering (V2)
+## Step 0 — pakke-skala-vurdering (V2, præciseret V3)
 
-Step 0 er obligatorisk. Mathias afgør pakke-skala ud fra antal åbne forretnings-spørgsmål:
+Step 0 er obligatorisk. Mathias afgør **foreløbig** pakke-skala ud fra antal åbne forretnings-spørgsmål. Step 1.0 (3-AI forretningsgang-recon, V3) kan justere vurderingen hvis recon afslører flere åbne spørgsmål end først antaget.
 
-| Skala  | Åbne spm | Step 1 (krav-dok-fase)                           | Step 2 (plan-fase) |
-| ------ | -------- | ------------------------------------------------ | ------------------ |
-| Lille  | 0-2      | Skippes — direkte PR uden plan-runde mulig       | Skippes for mikro  |
-| Mellem | 3-5      | Simplificeret (få spm i chat, derefter krav-dok) | Fuld plan-fase     |
-| Stor   | 6+       | Fuld krav-dok-fase + ekstra validering           | Fuld plan-fase     |
+| Skala  | Åbne spm | Step 1.0 (recon, V3) | Step 1 (krav-dok-fase)                           | Step 2 (plan-fase) |
+| ------ | -------- | -------------------- | ------------------------------------------------ | ------------------ |
+| Lille  | 0-2      | Sker (alle pakker)   | Step 1.5 skippes — Code laver plan direkte       | Skippes for mikro  |
+| Mellem | 3-5      | Sker                 | Simplificeret (få spm i chat, derefter krav-dok) | Fuld plan-fase     |
+| Stor   | 6+       | Sker                 | Fuld krav-dok-fase + ekstra validering           | Fuld plan-fase     |
 
-**Mikro/hot-fix:** PR direkte uden plan-runde (typo-fix, doc-rettelse, oprydning under 100 linjer, hot-fix med klar rod-årsag) hører under Lille.
+**Mikro/hot-fix:** PR direkte uden plan-runde (typo-fix, doc-rettelse, oprydning under 100 linjer, hot-fix med klar rod-årsag) hører under Lille — Step 1.0 kan også skippes hvis ændring er trivielt teknisk uden forretnings-implikation.
 
 Skala-vurdering noteres af Mathias i åbnings-signal eller af Claude.ai-forfatter øverst i krav-dok når den skrives.
 

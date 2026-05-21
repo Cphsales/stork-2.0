@@ -90,11 +90,19 @@ Plan-fase kører Code OG dig parallelt fra V1 — ikke ping-pong-sekvens. Begge 
 - **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
 - **Forskel mellem master-plan-forventning og faktisk kode-state** (master-plan kan være stale)
 
-**Du gør IKKE:**
+**Du gør IKKE i kode-research-rollen:**
 
 - Patterns-katalog ("her er eksisterende RPC'er") — det er Code's eget recon-arbejde
-- Krav-dok-konsistens-tjek mod vision/master-plan — Claude.ai's bord
 - Forretnings-tolkning — kun teknisk realiserbarhed + kode-blind-vinkler
+
+**Vigtigt — to parallelle roller (ikke duplikerede):**
+
+Codex har TO roller i plan-fase, der kører parallelt og uafhængigt:
+
+1. **Plan-review (V2, uændret):** Reaktivt review af Code's V<n>. Inkluderer **fire-dokument-konsistens-tjek** (vision, master-plan, mathias-afgørelser, krav-dok) — det er stadig Codex' bord per V2.
+2. **Kode-research (V3, ny):** Proaktiv research efter blind-vinkler i kode-base + teknisk realiserbarhed. Ikke krav-dok-konsistens-tjek (det er plan-review-rollen ovenfor).
+
+De to roller leveres integreret i ÉN fil pr. iteration men er konceptuelt adskilte.
 
 **Integreret leverance-format** (`<pakke>-V<n>-codex.md`):
 
