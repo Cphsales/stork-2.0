@@ -1,7 +1,25 @@
-# T9-supplement-2 — Plan V1
+# T9-supplement-2 — Plan V2
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V1)
+
+Codex V1-review (`docs/coordination/codex-reviews/2026-05-21-t9-supplement-2-runde-1.md`) leverede 4 KRITISK + 1 MELLEM + 1 G-nummer-kandidat. Håndtering pr. fund:
+
+- **KODE-FUND 1 (KRITISK — `pending_changes.action_id` får kun consumer, ingen producer):** Codex flaggede at wrappers og `pending_change_request` ikke sætter `action_id`, så approve-disciplin aldrig aktiveres i real-flow. **AFVIST som ved design.** Krav-dok §4 specificerer eksplicit: "Konkrete actions-seed for eksisterende handlinger. Pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind." Pakken leverer infrastrukturen; aktivering pr. T9-wrapper kommer i en senere pakke (action-seed + wrapper-udvidelse til at sende `p_action_id`). Smoke-tests T3 bruger fixture-actions for at validere disciplinens flow. M5's `pending_change_approve` behandler `action_id IS NULL` som legacy-flow (eksisterende `can_edit`-baseret approve uændret). V2 gør dette eksplicit i M5-Step + Konklusion.
+
+- **KODE-FUND 2 (KRITISK — `has_permission_action` falder tilbage til tab via `permission_resolve('action')`):** Codex flaggede at M3's `permission_resolve('action', id)`-fallback bryder additive-modellen. **ADRESSERET** i M4: `has_permission_action` slår direkte op i `role_permission_grants` på `action_id` UDEN at gå via `permission_resolve`. Manglende action-grant → false. M3's `permission_resolve('action')`-fallback bevares for OTHER callers (intet brud på arve-aware lookup-kontrakt), men `has_permission_action` bypasser den. Se opdateret M4 nedenfor.
+
+- **KODE-FUND 3 (KRITISK — `has_undo` håndhæves ikke; `undo_deadline` sættes altid):** Codex flaggede at M5's `pending_change_approve` sætter `undo_deadline` uafhængigt af action's `has_undo`-flag. **ADRESSERET** i M5: når `action_id IS NOT NULL`, evalueres `has_undo`. Hvis `has_undo=false` sættes `undo_deadline=NULL` (undo blokeres automatisk af eksisterende `pending_change_undo`-tjek `undo_deadline > now()`). T3 case A7 udvides til at teste BÅDE positiv has_undo (undo virker) OG negativ has_undo (undo afvises). Se opdateret M5 nedenfor.
+
+- **KODE-FUND 4 (KRITISK — backdated guards som disciplin-hul på write-veje):** Codex flaggede at M1/T1 dækker date-baserede wrapper-write-veje uden backdated-vagter. **AFVIST som ved design.** Krav-dok §4 eksplicit out-of-scope: "tilbageskuende-dato-validering på handlings-veje" håndteres separat. Smoke-tests T1 bruger `current_date` eller fremtidige datoer for `effective_from`. Backdated-flow er en separat pakke (G-nummer-kandidat hvis ikke allerede registreret).
+
+- **KODE-FUND 5 (MELLEM — T4 tester direct INSERT, ikke UI-RPC-flow):** Codex flaggede at `permission_action_upsert/deactivate/set_approver_type` ikke testes via RPC. **ADRESSERET** i T4 udvidet med RPC-flow-cases (H9-H11 nedenfor).
+
+- **KODE-FUND 6 (G-nummer-kandidat — `pending_change_eligible_approvers` returnerer kun superadmins for legacy):** Codex flaggede misvisende kontrakt. **DEFER** som G-nummer-kandidat; kontrakt-justering kommer i UI-pakke når reelle approver-lister bruges. M6's nuværende implementation bevares.
 
 ---
 
@@ -340,7 +358,9 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     'T9-supplement-2: employees placeret på en strengt højere knude end requester (depth > 0 via org_node_closure). Bruges af pending_change_approve til "above"-type-validering og af UI til eligible-approvers-lookup.';
 
   -- has_permission_action: kombineret tjek for action-grant
-  -- Returnerer true hvis bruger har (a) can_access på tab + (b) action-grant + (c) can_write på tab — UNDTAGEN hvis bypass_tab_write=true
+  -- V2 (Codex KODE-FUND 2): direkte action-grant lookup UDEN fallback til tab/page/area.
+  -- permission_resolve('action') har fallback for andre callers; has_permission_action skal være additivt og kan IKKE bruge fallback.
+  -- Returnerer true hvis bruger har (a) can_access på tab + (b) EKSPLICIT action-grant + (c) can_write på tab — UNDTAGEN hvis bypass_tab_write=true
   create or replace function core_identity.has_permission_action(
     p_action_id uuid
   ) returns boolean
@@ -362,13 +382,15 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
       from core_identity.permission_actions where id = p_action_id and is_active = true;
     if not found then return false; end if;
 
-    -- (a) Tab-can_access tjek via permission_resolve
+    -- (a) Tab-can_access tjek (via permission_resolve — fallback OK for tab→page→area)
     select * into v_tab_grant from core_identity.permission_resolve(v_role_id, 'tab', v_action.tab_id);
     if not v_tab_grant.can_access then return false; end if;
 
-    -- (b) Action-grant tjek (specifik grant til denne action)
-    select * into v_action_grant from core_identity.permission_resolve(v_role_id, 'action', p_action_id);
-    if not v_action_grant.can_access then return false; end if;
+    -- (b) Action-grant tjek — DIREKTE lookup, INGEN fallback (V2 Codex KODE-FUND 2)
+    -- Hvis ingen specifik action-grant findes for (role × action) → false
+    select can_access into v_action_grant from core_identity.role_permission_grants
+      where role_id = v_role_id and action_id = p_action_id limit 1;
+    if not found or not v_action_grant.can_access then return false; end if;
 
     -- (c) Tab-can_write tjek — undtagen hvis bypass_tab_write
     if not v_action.bypass_tab_write then
@@ -478,10 +500,19 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     end if;
     -- Legacy: action_id IS NULL → ingen ekstra tjek (bevarer eksisterende non-action-pendings)
 
-    -- Find undo-periode (uændret hvis action ikke har has_undo)
-    select undo_period_seconds into v_undo_period
-    from core_identity.undo_settings where change_type = v_change.change_type;
-    if v_undo_period is null then v_undo_period := 24 * 3600; end if;
+    -- V2 (Codex KODE-FUND 3): has_undo håndhæves
+    -- Hvis action_id IS NOT NULL AND has_undo=false → undo_deadline=NULL (undo blokeres automatisk)
+    -- Legacy (action_id IS NULL) bevarer eksisterende adfærd (undo_deadline sat ud fra undo_settings)
+    declare v_has_undo boolean := true;  -- default for legacy
+    if v_change.action_id is not null then
+      select has_undo into v_has_undo from core_identity.permission_actions where id = v_change.action_id;
+    end if;
+
+    if v_has_undo then
+      select undo_period_seconds into v_undo_period
+      from core_identity.undo_settings where change_type = v_change.change_type;
+      if v_undo_period is null then v_undo_period := 24 * 3600; end if;
+    end if;
 
     perform set_config('stork.t9_write_authorized', 'true', true);
     perform set_config('stork.source_type', 'manual', true);
@@ -491,7 +522,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     set status = 'approved',
         approved_by = v_approver,
         approved_at = now(),
-        undo_deadline = now() + (v_undo_period || ' seconds')::interval,
+        undo_deadline = case when v_has_undo then now() + (v_undo_period || ' seconds')::interval else null end,
         updated_at = now()
     where id = p_change_id;
   end; $$;
@@ -724,7 +755,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - A4 (`above`-type, superadmin OK): non-admin requester, superadmin approver → succeeds via bypass
   - A5 (`superadmin`-type, superadmin OK): non-admin requester, superadmin approver → succeeds
   - A6 (`superadmin`-type, ancestor afvist): non-admin requester, non-admin ancestor approver → raise `approver_must_be_superadmin`
-  - A7 (`has_undo`): action med `requires_second_approver=true, has_undo=true` → efter approve er `undo_deadline` sat; `pending_change_undo` virker indenfor frist
+  - A7 (`has_undo=true`): action med `requires_second_approver=true, has_undo=true` → efter approve er `undo_deadline` sat; `pending_change_undo` virker indenfor frist
+  - A7b (`has_undo=false`, V2 Codex KODE-FUND 3): action med `requires_second_approver=true, has_undo=false` → efter approve er `undo_deadline=NULL`; `pending_change_undo`-kald afvises (eksisterende `undo_deadline > now()`-tjek blokerer)
   - A8 (superadmin requester): superadmin opretter pending på action med `requires_second_approver=true` → superadmin selv-approver → succeeds (superadmin-undtagelse)
 
 ### Step T4 — Smoke-test for handlings-granularitet
@@ -741,6 +773,9 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - H6 (`bypass_tab_write=true`, mangler can_access): bruger har action-grant men ikke can_access på tab → `has_permission_action`=false
   - H7 (`role_permission_grant_set('action', ...)`): UI-RPC opretter action-grant; verificér row i `role_permission_grants`
   - H8 (invariant CHECK): forsøg på at INSERT action med `has_undo=true, requires_second_approver=false` → CHECK raise
+  - H9 (RPC-flow, V2 Codex KODE-FUND 5): `permission_action_upsert(NULL, tab_id, 'test-action', true, 0)` → ny række i `permission_actions`; verificér via SELECT
+  - H10 (RPC-flow): `permission_action_set_approver_type(action_id, 'superadmin')` på action med `requires_second_approver=true` → opdaterer felt; verificér via SELECT. Negativ kontrol: kald på action med `requires_second_approver=false` → raise `cannot_set_approver_type_when_not_required`.
+  - H11 (RPC-flow): `permission_action_deactivate(action_id)` → `is_active=false`; verificér at `has_permission_action` returnerer false for deaktiveret action selv med eksplicit grant
 
 ---
 
@@ -848,4 +883,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-Pakken implementerer fire forretnings-leverancer fra krav-dok. Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex parallel kode-research V1.**
+V2 adresserer Codex V1's 4 KRITISK + 1 MELLEM-fund (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET med konkrete fixes). G-nummer-kandidat (`pending_change_eligible_approvers`-kontrakt) deferred til UI-pakke.
+
+**Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
+
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V2-review.**
