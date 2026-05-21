@@ -584,3 +584,20 @@ To sammenhængende disciplin-justeringer baseret på trin 10-retrospektiv. Begge
   - Denne entry
 
 - **Konsekvens for fremtidige pakker:** Alle pakker (også Lille) starter med 3-AI forretningsgang-recon (Step 1.0). Lille pakker (0-2 åbne spørgsmål efter recon) skipper stadig krav-dok-skrivningen (Step 1.5) — recon-output går direkte til Code's plan-fase. Mellem/Stor pakker fortsætter til krav-dok-fasen efter recon. Plan-fasen kører parallel Code+Codex fra V1 med fuldstyrke-disciplin. Forventet effekt: færre plan-runder (V1 starter med valideret grundlag + parallel kode-research), færre build-runder (fundament + blind-vinkler kendt tidligt), mindre rapport-fix-iteration.
+
+### 2026-05-21 — Superadmin-bypass på forretnings-invarianter: ramme-niveau-afgørelse + idempotency-model
+
+T10.7b etablerede bypass-mønstret på klient-aktiv-check med reference til "superadmin må alt", men den eksplicitte ramme-entry manglede. Etableres her som ramme-niveau-afgørelse der gælder fremover for forretnings-invarianter, ikke pakke-specifik beslutning. To sammenhængende afgørelser — lukker ÅBENT 1 + ÅBENT 2 fra `docs/coordination/t9-supplement-2-forretningsgang-konsolideret.md`.
+
+**Del 1: Bypass-mandat på forretnings-invarianter er ramme**
+
+- **Beslutning:** Superadmin bypasser forretnings-invarianter (aktiv-checks, allerede-tilstand-checks og tilsvarende vagter) på alle nuværende og fremtidige RPC'er som praksis for nød-operationer. T10.7b's klient-bypass var ikke pakke-specifik — det er rammen for hele systemet. Strukturelle invarianter bypasses aldrig (jf. 2026-05-17 punkt 6).
+- **Afgrænsning:** Skellet mellem forretnings- og strukturelle invarianter defineres pr. invariant af reviewer (Code/Codex) i plan- og review-fasen. Strukturelle invarianter beskriver hvad data overhovedet KAN være (fx `node_type=team`-binding, klient-til-team-only) — bypass ville korrumpere data-model. Forretnings-invarianter beskriver gyldige tilstands-overgange i tid (fx aktiv på `effective_from`) — superadmin kan bypasse.
+- **Begrundelse:** Vision-princip 2 ("superadmin er eneste hardkodede rolle") og 2026-05-17 punkt 10 ("Superadmin = synlighed=Alt på alle elementer") etablerer permission/synligheds-aksen, ikke bypass-aksen. T10.7b-kodens reference til "superadmin må alt" var ikke verificeret kilde — bredere brug (T9-supplement-2) skulle stoppe og kræve eksplicit ramme. Etableres her så Code/Codex har stabil reference for nuværende og fremtidige pakker.
+
+**Del 2: Idempotency-model for "allerede-tilstand"-vagter**
+
+- **Beslutning:** Bypass-formen er idempotency-model: vagten passerer for superadmin → handler kører → effektivt no-op hvis allerede i mål-tilstand. Ikke separat break-glass-rolle med eksplicit sti.
+- **Begrundelse:** Matcher T10.7b's etablerede klient-bypass-mønster. Én ensartet model på tværs af invarianter er enklere at review og vedligeholde end forgrenede sti'er. Almindelig bruger fastholdes af samme vagt; superadmin får lokal `is_admin`-bypass i handler.
+
+**Plan-reference:** Denne entry committes inden `t9-supplement-2-krav-og-data.md`. Krav-dok §2.2 og §3.2 refererer denne afgørelse som kilde for bypass-rammen.
