@@ -1,7 +1,25 @@
-# T9-supplement-2 — Plan V3
+# T9-supplement-2 — Plan V4
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V3 + Code recon)
+
+Codex V3-review leverede 1 KRITISK-SIKKERHEDSHUL. Plus Code's egen udvidede recon afslørede yderligere konsekvens-opdaterings-mangler. Alle ADRESSERET i V4.
+
+- **KODE-FUND V3-1 (KRITISK-SIKKERHEDSHUL — `undo_deadline=NULL` blokerer ikke undo):** Codex flaggede at `pending_change_undo` tjekker `if undo_deadline <= now()` — ved NULL evaluerer det til NULL (ikke true), så undo gennemføres alligevel. Plus: `pending_change_apply` selection-filter (cron) bruger `undo_deadline <= now()` der ekskluderer NULL-rows fra cron-selection (men direkte `pending_change_apply`-kald har `if undo_deadline > now()`-check der ved NULL evaluerer false → apply gennemføres). Inkonsistens på to lag. **ADRESSERET** i M5: erstat `undo_deadline=NULL` for `has_undo=false` med `undo_deadline=now()` (nul-sekund undo-vindue). Dette:
+  - `pending_change_undo`-tjek: `now() <= now()` = true → raiser `undo_deadline_expired` → undo afvises ✓
+  - Cron-selection: `now() <= now()` = true → row inkluderes → cron applier umiddelbart ✓
+  - Direkte `pending_change_apply`: `now() > now()` = false → apply gennemføres ✓
+  - DB CHECK-constraint `applied_at is null or undo_deadline <= applied_at`: opfyldt (applied_at sættes ≥ now()) ✓
+
+- **KODE-FUND V3-2 (Code recon — `role_permissions_read` mangler action-grenen):** `role_permissions_read(uuid)` i `20260520000000_t9_supplement.sql:749-786` returnerer UNION ALL over area/page/tab. Når M3 udvider `role_permission_grants` med `action_id`-felt, mangler RPC'en at returnere action-grants. **ADRESSERET** i M3: tilføj action-gren til `role_permissions_read` med JOIN på `permission_actions`-tabel.
+
+- **KODE-FUND V3-3 (Code recon — `pending_change_self_approve_forbidden` defineret 2 steder):** Blokken findes i original `20260518000000:196` og override `20260518100000:225`. M5's CREATE OR REPLACE skriver kun seneste version (T9-fundament-supplement). Ingen problem — Postgres bruger seneste definition. **NOTERET** for klarhed.
+
+- **KODE-FUND V3-4 (Code recon — regression-tjek for `m1_permission_matrix.sql`):** Smoke-testen `m1_permission_matrix.sql` tjekker grant-modellen for superadmin (UNION over area/page/tab-grants). Når M3 udvider grants med action_id, kan testen fortsætte fungere (eksisterende grants har action_id=NULL, ekskluderes ikke). **NOTERET** — eksisterende test passer uændret; ingen V4-ændring nødvendig, men M3 risiko-rad opdateres med regression-tjek-bekræftelse.
 
 ---
 
@@ -327,11 +345,51 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     can_access := false; can_write := false; visibility := 'self';
     return next;
   end; $$;
+
+  -- V4 (Codex V3-2 Code recon fix): udvid role_permissions_read med action-grenen
+  -- Eksisterende RPC (20260520000000:749-786) returnerer UNION ALL over area/page/tab.
+  -- Tilføj 4. UNION-gren for action-grants så UI kan vise alle grants under rolle.
+  create or replace function core_identity.role_permissions_read(p_role_id uuid)
+  returns table (
+    grant_id uuid,
+    element_type text,
+    element_id uuid,
+    element_name text,
+    can_access boolean,
+    can_write boolean,
+    visibility text
+  )
+  language plpgsql stable security invoker set search_path = '' as $$
+  begin
+    perform core_identity._require_read_permission('permissions', 'manage');
+    return query
+    select g.id, 'area'::text, g.area_id, a.name, g.can_access, g.can_write, g.visibility
+    from core_identity.role_permission_grants g
+    join core_identity.permission_areas a on a.id = g.area_id
+    where g.role_id = p_role_id and g.area_id is not null
+    union all
+    select g.id, 'page'::text, g.page_id, p.name, g.can_access, g.can_write, g.visibility
+    from core_identity.role_permission_grants g
+    join core_identity.permission_pages p on p.id = g.page_id
+    where g.role_id = p_role_id and g.page_id is not null
+    union all
+    select g.id, 'tab'::text, g.tab_id, t.name, g.can_access, g.can_write, g.visibility
+    from core_identity.role_permission_grants g
+    join core_identity.permission_tabs t on t.id = g.tab_id
+    where g.role_id = p_role_id and g.tab_id is not null
+    union all
+    -- V4: ny action-gren
+    select g.id, 'action'::text, g.action_id, act.name, g.can_access, g.can_write, g.visibility
+    from core_identity.role_permission_grants g
+    join core_identity.permission_actions act on act.id = g.action_id
+    where g.role_id = p_role_id and g.action_id is not null;
+  end; $$;
+  -- Existing grants/revoke bevares via CREATE OR REPLACE
   ```
 
 - **Afhængigheder:** ingen direkte (selvstændig DDL). Bygger på eksisterende `permission_tabs` + `role_permission_grants`.
 - **Migration-fil:** `supabase/migrations/20260521100002_t9_supplement_2_permission_actions.sql`
-- **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`.
+- **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`, restore gammel `role_permissions_read` uden action-gren. Regression-tjek: `m1_permission_matrix.sql` smoke-test passer uændret (eksisterende grants har action_id=NULL — ekskluderes ikke fra UNION-grene).
 
 ### Step M4 — Approve-disciplin: `has_permission_action` + helper for ancestor + `pending_changes.action_id`
 
@@ -529,11 +587,16 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     perform set_config('stork.source_type', 'manual', true);
     perform set_config('stork.change_reason', 'pending_change_approve', true);
 
+    -- V4 (Codex V3 KRITISK-SIKKERHEDSHUL fix): undo_deadline = now() for has_undo=false
+    -- (NULL ville hverken blokere undo eller inkludere row i cron-selection)
     update core_identity.pending_changes
     set status = 'approved',
         approved_by = v_approver,
         approved_at = now(),
-        undo_deadline = case when v_has_undo then now() + (v_undo_period || ' seconds')::interval else null end,
+        undo_deadline = case
+          when v_has_undo then now() + (v_undo_period || ' seconds')::interval
+          else now()  -- nul-sekund undo-vindue; blokerer undo + inkluderer i cron-selection
+        end,
         updated_at = now()
     where id = p_change_id;
   end; $$;
@@ -773,7 +836,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - A5 (`superadmin`-type, superadmin OK): non-admin requester, superadmin approver → succeeds
   - A6 (`superadmin`-type, ancestor afvist): non-admin requester, non-admin ancestor approver → raise `approver_must_be_superadmin`
   - A7 (`has_undo=true`): action med `requires_second_approver=true, has_undo=true` → efter approve er `undo_deadline` sat; `pending_change_undo` virker indenfor frist
-  - A7b (`has_undo=false`, V2 Codex KODE-FUND 3): action med `requires_second_approver=true, has_undo=false` → efter approve er `undo_deadline=NULL`; `pending_change_undo`-kald afvises (eksisterende `undo_deadline > now()`-tjek blokerer)
+  - A7b (`has_undo=false`, V4 Codex V3 KRITISK-SIKKERHEDSHUL fix): action med `requires_second_approver=true, has_undo=false` → efter approve er `undo_deadline=now()` (nul-sekund vindue); `pending_change_undo`-kald afvises med `undo_deadline_expired` (now() <= now() = true → raise); `pending_change_apply` kan eksekvere umiddelbart (now() > now() = false); cron-selection inkluderer row (now() <= now() = true)
   - A8 (superadmin requester): superadmin opretter pending på action med `requires_second_approver=true` → superadmin selv-approver → succeeds (superadmin-undtagelse)
 
 ### Step T4 — Smoke-test for handlings-granularitet
@@ -900,8 +963,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V3 adresserer Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK (begge ADRESSERET — `declare`-position fixed, GRANT EXECUTE eksplicit på alle nye write-RPC'er). V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET). G-nummer-kandidat (`pending_change_eligible_approvers`-kontrakt) deferred til UI-pakke.
+V4 adresserer Codex V3's 1 KRITISK-SIKKERHEDSHUL (undo_deadline=NULL ikke blokerende → fixed til undo_deadline=now() for has_undo=false) + Code's egen recon-fund (role_permissions_read mangler action-grenen). V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET). G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V3-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V4-review.**
