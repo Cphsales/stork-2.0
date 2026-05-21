@@ -1,7 +1,17 @@
-# T9-supplement-2 — Plan V12
+# T9-supplement-2 — Plan V13
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V12)
+
+Codex V12-review leverede 1 KRITISK-SIKKERHEDSHUL + 1 TEKNISK-BLOKERING. Begge ADRESSERET i V13.
+
+- **KODE-FUND V12-1 (KRITISK-SIKKERHEDSHUL — `permission_elements_read` mangler read-permission-gate):** Min V12-version droppede `perform _require_read_permission('permissions', 'manage')`-gate fra eksisterende RPC. Konsekvens: alle authenticated brugere kunne læse permission-hierarki/action-katalog. **ADRESSERET** i M6b (V13): genindført gate i ny version. Plus is_active=true-filter konsistent på alle 4 grene.
+
+- **KODE-FUND V12-2 (TEKNISK-BLOKERING — `pending_changes_read()` kontrakt-brud):** Eksisterende RPC har 9 kolonner `(change_id, change_type, target_id, effective_from, status, requested_at, approved_at, undo_deadline, applied_at)`. Min V12 introducerede 14 kolonner med ny rækkefølge — eksisterende callers ville break. Plus unqualified SELECT giver PL/pgSQL ambiguous-column-fejl. **ADRESSERET** i M6b (V13): behold eksisterende 9 kolonner; tilføj `action_id` KUN som 10. kolonne. Brug `pc.`-kvalificering. Behold `set_config('stork.t9_read_at_date',...)` fra original body.
 
 ---
 
@@ -1079,41 +1089,37 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 - **Eksakt indhold (V12 — Codex V11 TEKNISK-BLOKERING fixed):**
 
   ```sql
-  -- pending_changes_read(): return-type ændres → kræver DROP + CREATE
-  -- (CREATE OR REPLACE kan ikke ændre RETURNS TABLE)
+  -- pending_changes_read(): tilføj action_id som 10. kolonne (V13: behold eksisterende 9-kolonne-kontrakt)
+  -- Eksisterende return-table (20260520000000:958-969): (change_id, change_type, target_id,
+  -- effective_from, status, requested_at, approved_at, undo_deadline, applied_at) — 9 kolonner
+  -- V13: tilføj action_id KUN; behold pc.-kvalificering og set_config-prefix
   drop function if exists core_identity.pending_changes_read();
   create function core_identity.pending_changes_read()
   returns table (
-    id uuid,
+    change_id uuid,
     change_type text,
     target_id uuid,
-    payload jsonb,
     effective_from date,
     status text,
-    action_id uuid,  -- V12: ny kolonne
-    requested_by uuid,
     requested_at timestamptz,
-    approved_by uuid,
     approved_at timestamptz,
     undo_deadline timestamptz,
     applied_at timestamptz,
-    undone_at timestamptz
-    -- Original kolonneliste fra T9-supplement bevares; verificér rækkefølge i build mod 20260520000000:958
+    action_id uuid  -- V13: ny som sidste kolonne; bevarer ordering for eksisterende callers indtil action_id
   )
   language plpgsql stable security invoker set search_path = '' as $$
   begin
-    -- Eksisterende body: select fra pending_changes med RLS via select-policy
-    -- Tilføj action_id i SELECT-listen (matchende ny return-table-position)
-    return query select id, change_type, target_id, payload, effective_from, status, action_id,
-      requested_by, requested_at, approved_by, approved_at, undo_deadline, applied_at, undone_at
-      from core_identity.pending_changes;
+    perform set_config('stork.t9_read_at_date', current_date::text, true);
+    return query
+    select pc.id, pc.change_type, pc.target_id, pc.effective_from, pc.status,
+           pc.requested_at, pc.approved_at, pc.undo_deadline, pc.applied_at, pc.action_id
+    from core_identity.pending_changes pc;
   end; $$;
   revoke execute on function core_identity.pending_changes_read() from public, anon;
   grant execute on function core_identity.pending_changes_read() to authenticated;
 
-  -- permission_elements_read(): tilføj action-gren med korrekt kolonneorden
-  -- Eksisterende return-orden: (level text, element_id uuid, parent_id uuid, name text, is_active boolean, sort_order integer)
-  -- Action-grenen skal matche denne orden eksakt
+  -- permission_elements_read(): bevar eksisterende _require_read_permission-gate (V13 Codex V12-1 fix)
+  -- + tilføj action-gren med korrekt kolonneorden + is_active=true-filter
   drop function if exists core_identity.permission_elements_read();
   create function core_identity.permission_elements_read()
   returns table (
@@ -1126,26 +1132,27 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   )
   language plpgsql stable security invoker set search_path = '' as $$
   begin
+    -- V13 (Codex V12-1 KRITISK-SIKKERHEDSHUL fix): behold eksisterende read-permission-gate
+    perform core_identity._require_read_permission('permissions', 'manage');
     return query
-    -- Eksisterende area/page/tab-grene (bevares uændret) — verificér eksakt body i build mod eksisterende migration
     select 'area'::text, a.id, null::uuid, a.name, a.is_active, a.sort_order
-      from core_identity.permission_areas a
+      from core_identity.permission_areas a where a.is_active = true
     union all
     select 'page'::text, p.id, p.area_id, p.name, p.is_active, p.sort_order
-      from core_identity.permission_pages p
+      from core_identity.permission_pages p where p.is_active = true
     union all
     select 'tab'::text, t.id, t.page_id, t.name, t.is_active, t.sort_order
-      from core_identity.permission_tabs t
+      from core_identity.permission_tabs t where t.is_active = true
     union all
-    -- V12: ny action-gren med korrekt kolonneorden (level, element_id, parent_id, name, is_active, sort_order)
+    -- V13: ny action-gren — matchende kolonneorden + is_active-filter
     select 'action'::text, act.id, act.tab_id, act.name, act.is_active, act.sort_order
-      from core_identity.permission_actions act;
+      from core_identity.permission_actions act where act.is_active = true;
   end; $$;
   revoke execute on function core_identity.permission_elements_read() from public, anon;
   grant execute on function core_identity.permission_elements_read() to authenticated;
   ```
 
-- **Bemærk:** DROP FUNCTION inden CREATE er nødvendigt fordi return-type ændres (CREATE OR REPLACE understøtter ikke return-type-ændringer). Permissions går tabt ved DROP → eksplicit revoke + grant nedenfor.
+- **Bemærk:** DROP FUNCTION inden CREATE er nødvendigt fordi return-type ændres (CREATE OR REPLACE understøtter ikke return-type-ændringer). Permissions går tabt ved DROP → eksplicit revoke + grant nedenfor. V13 bevarer eksisterende `_require_read_permission`-gate på permission_elements_read.
 - **Afhængigheder:** M3 (`permission_actions`) + M4 (`pending_changes.action_id`).
 - **Migration-fil:** `supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql`
 - **Risiko:** lav. Rollback: revert RPCs til prior version.
@@ -1320,4 +1327,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V12-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V13-review.**
