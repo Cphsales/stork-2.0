@@ -336,7 +336,7 @@
 - `20260521000013_t10_seed_legacy_permissions.sql` (build-fase workaround for M1-test)
 - `20260521000014_t10_remove_legacy_permissions.sql` (reverse: M1-test refactored til grant-modellen)
 
-**G-numre rejst:** G057 (T9 forretnings-invariants uden superadmin-bypass), G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19), G059 (T9 public wrappers mangler `t9_write_authorized` session-var — Codex build-runde 4 fund).
+**G-numre rejst:** G057 (T9 forretnings-invariants uden superadmin-bypass), G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19), G059 (T9 public wrappers mangler `t9_write_authorized` session-var — Codex plan-runde 8 / Code-observation udledt af T10.7b-fundet).
 
 **Plan-rejse:** 14 Codex plan-runder + 13+ Code walk-through-passes (V5 falsk-positiv APPROVAL → Mathias-terminal-review + Code-validering fandt 6 fund; V14 konsekvent APPROVAL + krav-dok-konform § for §). Build-fase: 5 Codex build-review-runder (KRITISK runde 1+2 → fix; WORKAROUND-INTRODUCERET runde 3 → Mathias-gate → refactor; PLAN-AFVIGELSE runde 4 → cron-context fix; APPROVAL runde 5). Slut-rapport-runde 1: 1 MELLEM (G-håndtering) + 2 LAV (count + tests-tal) → fix.
 
