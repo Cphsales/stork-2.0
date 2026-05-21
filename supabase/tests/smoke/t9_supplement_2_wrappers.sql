@@ -1,16 +1,15 @@
 -- T9-supplement-2 T1: G059 wrapper-flow smoke-tests
 --
--- CI-note: hop ud hvis migrations ikke anvendt.
+-- Verificér explicit grants på G059-wrappers + T10-client-wrappers + pending_change_approve.
 
 begin;
 
 select set_config('stork.source_type', 'manual', true);
 select set_config('stork.change_reason', 'T9-supplement-2 T1 smoke', true);
-select set_config('stork.t9_write_authorized', 'true', true);
 
 do $test$
 begin
-  -- Pre-flight: hop ud hvis M1's grants ikke anvendt
+  -- pending_change_approve grant (M5/V7)
   if not exists (
     select 1 from information_schema.routine_privileges
     where routine_schema = 'core_identity'
@@ -18,13 +17,10 @@ begin
       and grantee = 'authenticated'
       and privilege_type = 'EXECUTE'
   ) then
-    raise notice 'T1 skip: pending_change_approve grant ikke anvendt (pre-merge CI-state)';
-    return;
+    raise exception 'T1 fejl: pending_change_approve mangler grant til authenticated';
   end if;
 
-  raise notice 'T1 OK: pending_change_approve har explicit grant til authenticated';
-
-  -- Verificér G059-wrappers har grant
+  -- G059-wrappers grants (M1)
   if not exists (
     select 1 from information_schema.routine_privileges
     where routine_schema = 'core_identity'
@@ -32,10 +28,8 @@ begin
       and grantee = 'authenticated'
       and privilege_type = 'EXECUTE'
   ) then
-    raise notice 'T1 skip: G059-wrappers grants ikke anvendt';
-    return;
+    raise exception 'T1 fejl: org_node_upsert mangler grant til authenticated';
   end if;
-  raise notice 'T1 OK: org_node_upsert har grant';
 
   if not exists (
     select 1 from information_schema.routine_privileges
@@ -44,12 +38,20 @@ begin
       and grantee = 'authenticated'
       and privilege_type = 'EXECUTE'
   ) then
-    raise notice 'T1 skip: team_close grant ikke anvendt';
-    return;
+    raise exception 'T1 fejl: team_close mangler grant til authenticated';
   end if;
-  raise notice 'T1 OK: team_close har grant';
 
-  -- Verificér client-wrappers har grant
+  if not exists (
+    select 1 from information_schema.routine_privileges
+    where routine_schema = 'core_identity'
+      and routine_name = 'employee_place'
+      and grantee = 'authenticated'
+      and privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'T1 fejl: employee_place mangler grant til authenticated';
+  end if;
+
+  -- T10-client-wrappers grants (M1 udvidelse — Codex V7 systemisk fix)
   if not exists (
     select 1 from information_schema.routine_privileges
     where routine_schema = 'core_identity'
@@ -57,12 +59,10 @@ begin
       and grantee = 'authenticated'
       and privilege_type = 'EXECUTE'
   ) then
-    raise notice 'T1 skip: client_node_place grant ikke anvendt (T10.7b-fix)';
-    return;
+    raise exception 'T1 fejl: client_node_place mangler grant til authenticated';
   end if;
-  raise notice 'T1 OK: client_node_place har grant';
 
-  raise notice 'T1 smoke OK: G059 + T10 grants verificeret';
+  raise notice 'T1 OK: G059 + T10 grants verificeret';
 end;
 $test$;
 

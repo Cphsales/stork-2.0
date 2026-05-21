@@ -1,6 +1,6 @@
 -- T9-supplement-2 T4: Handlings-granularitet smoke-tests
 --
--- CI-note: hop ud hvis migrations endnu ikke anvendt.
+-- Verificér permission_actions-tabel + UI-RPCs + invariant CHECK.
 
 begin;
 
@@ -16,19 +16,9 @@ declare
   v_action_bypass uuid;
   v_caught text;
 begin
-  -- Pre-flight: hop ud hvis migrations ikke er anvendt
-  if not exists (
-    select 1 from information_schema.tables
-    where table_schema = 'core_identity' and table_name = 'permission_actions'
-  ) then
-    raise notice 'T4 skip: permission_actions ikke fundet (pre-merge CI-state)';
-    return;
-  end if;
-
   select id into v_test_tab_id from core_identity.permission_tabs limit 1;
   if v_test_tab_id is null then
-    raise notice 'T4 skip: ingen permission_tabs-rows';
-    return;
+    raise exception 'T4 fejl: ingen permission_tabs-rows';
   end if;
 
   -- H8: invariant CHECK — has_undo=true uden requires_second_approver
@@ -47,14 +37,14 @@ begin
   if v_action_default is null then
     raise exception 'T4 H9 fejl: permission_action_upsert returnerede null';
   end if;
-  raise notice 'T4 H9 OK: permission_action_upsert';
+  raise notice 'T4 H9 OK';
 
   -- H11: permission_action_deactivate
   perform core_identity.permission_action_deactivate(v_action_default);
   if exists (select 1 from core_identity.permission_actions where id = v_action_default and is_active = true) then
     raise exception 'T4 H11 fejl: action stadig aktiv';
   end if;
-  raise notice 'T4 H11 OK: permission_action_deactivate';
+  raise notice 'T4 H11 OK';
 
   -- H10: set_approver_type
   insert into core_identity.permission_actions
@@ -66,7 +56,7 @@ begin
   if (select second_approver_type from core_identity.permission_actions where id = v_action_bypass) <> 'superadmin' then
     raise exception 'T4 H10 fejl: set_approver_type ikke effektueret';
   end if;
-  raise notice 'T4 H10 OK: set_approver_type';
+  raise notice 'T4 H10 OK';
 
   -- H10b: negativ kontrol
   insert into core_identity.permission_actions (id, tab_id, name)
@@ -80,7 +70,7 @@ begin
     if v_caught not like '%cannot_set_approver_type_when_not_required%' then
       raise exception 'T4 H10b fejl: forkert exception: %', v_caught;
     end if;
-    raise notice 'T4 H10b OK: set_approver_type afvist for action uden requires_second_approver';
+    raise notice 'T4 H10b OK';
   end;
 
   raise notice 'T4 smoke OK';
