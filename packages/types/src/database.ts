@@ -1257,6 +1257,45 @@ export type Database = {
   };
   core_identity: {
     Tables: {
+      client_field_definitions: {
+        Row: {
+          created_at: string;
+          display_name: string;
+          display_order: number;
+          field_type: string;
+          id: string;
+          is_active: boolean;
+          key: string;
+          pii_level: string;
+          required: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          display_name: string;
+          display_order?: number;
+          field_type: string;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          pii_level: string;
+          required?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          display_name?: string;
+          display_order?: number;
+          field_type?: string;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          pii_level?: string;
+          required?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       client_node_placements: {
         Row: {
           applied_at: string;
@@ -1293,6 +1332,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: "client_node_placements_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "client_node_placements_created_by_pending_change_id_fkey";
             columns: ["created_by_pending_change_id"];
             isOneToOne: false;
@@ -1307,6 +1353,42 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      clients: {
+        Row: {
+          created_at: string;
+          fields: Json;
+          id: string;
+          is_active: boolean;
+          logo_bytes: string | null;
+          logo_content_type: string | null;
+          logo_filename: string | null;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          fields?: Json;
+          id?: string;
+          is_active?: boolean;
+          logo_bytes?: string | null;
+          logo_content_type?: string | null;
+          logo_filename?: string | null;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          fields?: Json;
+          id?: string;
+          is_active?: boolean;
+          logo_bytes?: string | null;
+          logo_content_type?: string | null;
+          logo_filename?: string | null;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       employee_active_config: {
         Row: {
@@ -2032,6 +2114,96 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      client_field_definition_set_active: {
+        Args: {
+          p_change_reason: string;
+          p_field_id: string;
+          p_is_active: boolean;
+        };
+        Returns: undefined;
+      };
+      client_field_definition_upsert: {
+        Args: {
+          p_change_reason: string;
+          p_display_name: string;
+          p_display_order?: number;
+          p_field_id?: string;
+          p_field_type: string;
+          p_is_active?: boolean;
+          p_key: string;
+          p_pii_level: string;
+          p_required?: boolean;
+        };
+        Returns: string;
+      };
+      client_field_definitions_list: {
+        Args: { p_include_inactive?: boolean };
+        Returns: {
+          created_at: string;
+          display_name: string;
+          display_order: number;
+          field_type: string;
+          id: string;
+          is_active: boolean;
+          key: string;
+          pii_level: string;
+          required: boolean;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "client_field_definitions";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      client_get: {
+        Args: { p_client_id: string };
+        Returns: {
+          created_at: string;
+          fields: Json;
+          has_logo: boolean;
+          id: string;
+          is_active: boolean;
+          logo_content_type: string;
+          logo_filename: string;
+          name: string;
+          updated_at: string;
+        }[];
+      };
+      client_list: {
+        Args: never;
+        Returns: {
+          created_at: string;
+          has_logo: boolean;
+          id: string;
+          is_active: boolean;
+          name: string;
+          updated_at: string;
+        }[];
+      };
+      client_logo_clear: {
+        Args: { p_change_reason: string; p_client_id: string };
+        Returns: undefined;
+      };
+      client_logo_get: {
+        Args: { p_client_id: string };
+        Returns: {
+          logo_bytes: string;
+          logo_content_type: string;
+          logo_filename: string;
+        }[];
+      };
+      client_logo_set: {
+        Args: {
+          p_change_reason: string;
+          p_client_id: string;
+          p_logo_bytes: string;
+          p_logo_content_type: string;
+          p_logo_filename: string;
+        };
+        Returns: undefined;
+      };
       client_node_close: {
         Args: { p_client_id: string; p_effective_from: string };
         Returns: string;
@@ -2061,6 +2233,24 @@ export type Database = {
           node_id: string;
           placement_id: string;
         }[];
+      };
+      client_set_active: {
+        Args: {
+          p_change_reason: string;
+          p_client_id: string;
+          p_is_active: boolean;
+        };
+        Returns: undefined;
+      };
+      client_upsert: {
+        Args: {
+          p_change_reason: string;
+          p_client_id?: string;
+          p_fields: Json;
+          p_is_active?: boolean;
+          p_name: string;
+        };
+        Returns: string;
       };
       current_employee_id: { Args: never; Returns: string };
       employee_active_config_update: {
@@ -2188,6 +2378,10 @@ export type Database = {
         Returns: boolean;
       };
       is_admin: { Args: never; Returns: boolean };
+      is_admin_by_employee_id: {
+        Args: { p_employee_id: string };
+        Returns: boolean;
+      };
       org_node_deactivate: {
         Args: { p_effective_from: string; p_node_id: string };
         Returns: string;
