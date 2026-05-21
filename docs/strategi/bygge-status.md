@@ -344,6 +344,22 @@
 
 ---
 
+## T9-supplement-2: G057 + G059 + approve-disciplin + handlings-granularitet (2026-05-22)
+
+**Status:** Fuldført 2026-05-22 via PR #74. Stor pakke samlet G-løsning + 2 nye rammer.
+
+**Leverancer (9 migrations + 4 smoke-tests + 1 fitness-allowlist):**
+
+- **G059 LØST** — M1: 5 T9 wrapper-RPCs sætter `stork.t9_write_authorized` session-var FØR `pending_change_request`. Plus eksplicit `grant execute to authenticated` på 5 G059-wrappers + 2 T10-client-wrappers.
+- **G057 LØST** — M2: superadmin-bypass på `_apply_client_place` (team-aktiv-check) + `_apply_team_close` (allerede-inaktiv-check) via `is_admin_by_employee_id`-mønster fra T10.7b.
+- **Approve-disciplin pr. handling** (ny ramme) — M3 + M4 + M3b + M5 + M6 + M6b: `permission_actions`-tabel med kode-låste flag (`requires_second_approver`, `has_undo`, `bypass_tab_write`) + UI-konfigurerbart `second_approver_type` ('above' eller 'superadmin'). Invariant CHECK: `has_undo ⇒ requires_second_approver`. `pending_change_approve` refaktoreret med action-baseret evaluering + ancestor-tjek via `acl_higher_level_employees`. `pending_changes_select`-policy spejler approve-eligibility (forhindrer RLS-overread).
+- **Handlings-granularitet** (ny ramme) — M3 + M4: `permission_actions` under tabs. Option Y additive-model — konfigurerede handlinger kræver tab-can_write + action-grant (UNDTAGEN hvis `bypass_tab_write=true`).
+- **M1b konsolideret grants-fix** — 9 T9-fundament-supplement-RPCs fik eksplicit `grant execute to authenticated`.
+
+**Plan-rejse:** 16 Codex plan-runder (mange systemiske fund opdaget undervejs: PL/pgSQL declare-position, undo_deadline=NULL ikke-blokerende, legacy self-approve-hul, RLS-overread, manglende grants på 18 RPCs, klassifikations-inserts, fitness-allowlist). Konvergens i runde 16 + Mathias-godkendelse via qwerg.
+
+**G-numre rejst:** Ingen (G057 + G059 lukket). G-nummer-kandidater registreret som senere arbejde: `pending_change_eligible_approvers`-kontrakt (UI-pakke), `employee_role_assign/remove`-grants (konsistens-fix).
+
 ## Næste op
 
-Trin 10 afsluttet 2026-05-21. Næste pakke afventer Mathias-valg blandt §4's resterende trin (10b, 12+) eller G-løsnings-pakke (G057 + G059 hører sammen som T9-supplement).
+T9-supplement-2 afsluttet 2026-05-22. Næste pakke afventer Mathias-valg blandt §4's resterende trin (10b, 12+) eller anden G-løsnings-pakke.

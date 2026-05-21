@@ -14,14 +14,10 @@
 
 ## Åben gæld
 
-### [G059] MELLEM — T9 public wrappers mangler `stork.t9_write_authorized` session-var
+### [G059] LØST 2026-05-22 — T9 public wrappers mangler `stork.t9_write_authorized` session-var
 
-- **Beskrivelse:** 5 T9 public-wrapper-RPC'er (`org_node_upsert`, `org_node_deactivate`, `team_close`, `employee_place`, `employee_remove_from_node`) INSERT'er i `core_identity.pending_changes` via `pending_change_request`. Tabellen har RLS INSERT-policy (T9-supplement `20260518100000:49-51`) der kræver `current_setting('stork.t9_write_authorized', true) = 'true'`. Wrapperne sætter ikke session-var → INSERT vil fejle for authenticated-bruger med FORCE RLS. Trin 10 fixede de to client-RPC'er (`client_node_place` + `client_node_close`) i T10.7b; de øvrige 5 forblev broken. T9-smoke-tests bruger `_apply_*`-handlers direkte (SECURITY DEFINER) og rammer ikke wrapper-vejen.
-- **Vision-svækkelse:** Princip 2 (rettigheder der virker — authenticated-bruger kan ikke køre pending-skabende org/employee-RPC'er via wrapper-vej).
-- **Introduceret:** T9-supplement (`20260518100000_t9_fundament_supplement.sql:49` policy + 7 wrappers uden session-var-set).
-- **Skal løses:** Næste T9-supplement-pakke (Codex plan-runde 8 / Code-observation 2026-05-21, udledt af T10.7b-fundet). Trin 10 fixede kun de to client-RPC'er.
-- **Risiko hvis glemt:** Mellem. Manifest sig først når frontend kalder T9-wrappers direkte (intet sker så længe kun `_apply_*` kaldes fra cron/tests).
-- **Plan:** Migration der CREATE OR REPLACE 5 wrappers med `perform set_config('stork.t9_write_authorized', 'true', true)` før `pending_change_request`. Smoke-test der kalder hver wrapper som authenticated-bruger og verificerer pending oprettes.
+- **Løsning:** T9-supplement-2 M1 (PR #74). 5 T9 wrapper-RPC'er fik `perform set_config('stork.t9_write_authorized', 'true', true)` FØR `pending_change_request`. Plus eksplicit `grant execute ... to authenticated` på 5 G059-wrappers + 2 T10-client-wrappers (Codex V7 systemisk recon).
+- **Migration:** `supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql`
 
 ### [G058] MELLEM — FK-coverage-fitness-check ikke implementeret per master-plan §3 punkt 19
 
@@ -32,15 +28,10 @@
 - **Risiko hvis glemt:** Mellem. Nye tabeller kan deploy'es uden FK-coverage-verifikation; potentielt urelaterede `_id`-kolonner uden FK forbliver ikke detekteret.
 - **Plan:** Tilføj `fkCoverage()` fitness-check med `FK_COVERAGE_EXEMPTIONS`-allowlist. Eksisterende exemption-kandidater fra master-plan: `external_id`, `client_crm_match_id` (sidstnævnte fjernes når match-mekanik bygges). Trin 10's FK på `client_node_placements.client_id` (T10.7) eliminerer behov for entry der.
 
-### [G057] MELLEM — T9 forretnings-invariants uden superadmin-bypass (inkonsistent med Mathias 2026-05-21)
+### [G057] LØST 2026-05-22 — T9 forretnings-invariants uden superadmin-bypass
 
-- **Beskrivelse:** Mathias-afgørelse 2026-05-21 "superadmin må alt" etablerede bypass-disciplin for forretnings-invariants. Trin 10 (T10.7b) tilføjede bypass på klient-aktiv-check via `is_admin()` (wrapper) + `is_admin_by_employee_id()` (apply). T9 har to lignende forretnings-invariants UDEN bypass: `client_placement_requires_active_team` (`_apply_client_place`, T9-supplement linje 317) + `team_close_already_inactive` (`_apply_team_close`, T9-supplement linje 594). Superadmin kan derfor ikke placere klient på lige-lukket team, eller lukke allerede-inaktivt team — selvom "superadmin må alt".
-- **Vision-svækkelse:** Princip 2 (superadmin = eneste hardkodede rolle, må bypasse forretnings-invariants for nød-operationer).
-- **Strukturelle invariants forbliver uden bypass** (`client_placement_node_not_team`, `team_close_not_team`, `node_not_team_or_inactive`): data-model holder kun ved team-niveau-binding; bypass ville korrumpere.
-- **Introduceret:** T9-supplement (`20260520000000_t9_supplement.sql:284-352, 557-619`)
-- **Skal løses:** Næste T9-supplement-pakke (efter trin 10-build). Trin 10 fixer kun klient-RPC'erne; org_node/team-RPC'er er ude af scope.
-- **Risiko hvis glemt:** Mellem. Superadmin kan blive blokeret i edge-cases. Workaround: deaktiver først, place efter — eller manuel UPDATE som superadmin med break-glass.
-- **Plan:** Migration der CREATE OR REPLACE `_apply_client_place` (team-aktiv-check) + `_apply_team_close` (already-inactive-check) med samme employee-id-baseret bypass-mønster som T10.7b.
+- **Løsning:** T9-supplement-2 M2 (PR #74). `_apply_client_place` (team-aktiv-check linje 159-167) + `_apply_team_close` (allerede-inaktiv-check linje 598-601) fik superadmin-bypass via `is_admin_by_employee_id`-mønster fra T10.7b. Idempotency-model: no-op return for admin på allerede-inaktivt target. Strukturelle vagter bevares uden bypass.
+- **Migration:** `supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql`
 
 ### [G001] HØJ — `audit_filter_values` LENIENT-default ved ukendt schema/table
 
