@@ -601,3 +601,55 @@ T10.7b etablerede bypass-mønstret på klient-aktiv-check med reference til "sup
 - **Begrundelse:** Matcher T10.7b's etablerede klient-bypass-mønster. Én ensartet model på tværs af invarianter er enklere at review og vedligeholde end forgrenede sti'er. Almindelig bruger fastholdes af samme vagt; superadmin får lokal `is_admin`-bypass i handler.
 
 **Plan-reference:** Denne entry committes inden `t9-supplement-2-krav-og-data.md`. Krav-dok §2.2 og §3.2 refererer denne afgørelse som kilde for bypass-rammen.
+
+### 2026-05-21 — Approve-disciplin pr. handling: default selv-approve, kode-styret 2.-godkender + fortrydelse, UI-valgt godkender-type
+
+Den nuværende faste blokering af selv-approve for ikke-admin er forkert som default. Default skal være: bruger med skrive-rettighed udfører handlingen direkte uden ekstra godkendelse. Ekstra disciplin sættes op pr. specifik handling, ikke pr. side/tab.
+
+**Del 1: Granularitet er pr. handling**
+
+- **Beslutning:** Approve-disciplin og fortrydelses-mekanisme sættes op pr. specifik handling i koden (ikke pr. side/tab). En side/tab kan have flere handlinger hvor nogle har ekstra disciplin og andre ikke har.
+- **Begrundelse:** Ekstra approve eller fortrydelse giver kun mening for enkelte handlinger ("godkende fortrydelses-anmodning", "låse periode", "deaktivere klient"). Side/tab-niveau er for grovt — det ville påvirke alle handlinger på siden.
+
+**Del 2: To kode-styrede flag pr. handling med invariant**
+
+- **Beslutning:** Pr. konfigureret handling kan koden tænde to flag — "kræver 2. godkender" og "har fortrydelse". Begge er kode-styret (ikke UI-redigerbare), så sikkerheds-disciplinen ikke kan disables ved UI-fejl.
+- **Invariant (kode-låst):** "har fortrydelse" sat uden "kræver 2. godkender" er ulovligt. Fortrydelses-mekanismen kommer altid med ekstra disciplin på den oprindelige handling.
+- **Begrundelse:** Default skal være friction-fri (skriv direkte). Ekstra disciplin tilføjes kun hvor det giver forretnings-mening, og kan ikke fjernes ved fejl.
+
+**Del 3: UI vælger godkender-type ("Højere medarbejder" eller "Superadmin")**
+
+- **Beslutning:** Når en handling har "kræver 2. godkender" sat, vælger UI hvem godkenderen er — enten en højere placeret medarbejder i organisations-træet (auto-reference, ikke eksplicit valg), eller superadmin. Hvilken type det skal være, er UI-konfigurerbart pr. handling.
+- **Auto-reference-regel ved "Højere medarbejder":** Godkenderen skal være en medarbejder placeret på en strengt højere knude i organisations-træet end requesterens egen placering. Samme niveau tæller ikke. Lavere niveau tæller heller ikke. Organisations-træet kan have N niveauer.
+- **Præcis 1 godkender vinder:** Multiple kvalificerede godkendere må gerne være muligt, men første godkendelse vinder. Ingen kæde-godkendelse.
+- **Hver gren er separat:** Parallelle grene har separate godkender-kæder. Lederen af én team kan ikke godkende handlinger fra en anden team's gren.
+
+**Del 4: Superadmin er altid undtaget begge veje**
+
+- **Som requester:** Superadmin udfører handlinger uden krav om 2. godkender — uanset om handlingen er konfigureret med "kræver 2. godkender". Superadmin er sin egen godkender.
+- **Som godkender:** Superadmin må godkende uanset placering i organisations-træet (kvalificerer som godkender uanset type-valg).
+- **Begrundelse:** Konsistent med 2026-05-21 bypass-rammen ("superadmin må alt").
+
+**Plan-reference:** Denne entry committes inden `t9-supplement-2-krav-og-data.md`. Krav-dok §2.5 refererer denne afgørelse som kilde for approve-disciplinen.
+
+### 2026-05-21 — Handlings-granularitet: specifikke handlinger under tabs med kode-styrede flag
+
+Permission-modellen kan i dag ikke skelne mellem "kan skrive på siden generelt" og "må udføre den specifikke handling". For enkelte privilegerede handlinger (godkende fortrydelse, deaktivere klient, låse periode) er det forretningsmæssigt forkert at give alle med skrive-rettighed adgang automatisk. Vi tilføjer en handlings-niveau-dimension under tabs.
+
+**Del 1: Standard-handlinger vs. konfigurerede handlinger**
+
+- **Beslutning:** En tab kan have 0 eller flere konfigurerede handlinger. Handlinger uden konfiguration (standard) fungerer som i dag — kun skrive-rettighed på tab'en kræves. Konfigurerede handlinger kræver ekstra handlings-tildeling.
+- **Begrundelse:** Bevarer eksisterende model uændret som default. Ekstra granularitet tilføjes kun hvor det giver forretnings-mening, uden at omskrive alt.
+
+**Del 2: Konfigurerede handlinger kræver tab-skrive-rettighed PLUS handlings-tildeling (additivt)**
+
+- **Beslutning:** Bruger skal have BÅDE skrive-rettighed på tab'en OG specifik handlings-tildeling for at udføre en konfigureret handling. Handlings-tildeling alene er ikke nok; skrive-rettighed alene er ikke nok.
+- **Begrundelse:** Når en handling er konfigureret (typisk fordi den har 2.-godkender eller fortrydelse), strammes adgangen automatisk. Det er en bevidst sikkerheds-stramning — handlinger med ekstra disciplin har også ekstra adgangs-gate.
+
+**Del 3: Kode-styret undtagelse — "kun se-rettighed kræves"**
+
+- **Beslutning:** Enkelte handlinger kan markeres med et kode-styret flag ("kun se-rettighed kræves") så de udføres med kun se-rettighed på tab'en + handlings-tildeling. Skrive-rettighed er IKKE påkrævet.
+- **Anvendelse:** Bruges fx for godkendelses-handlinger hvor godkenderen ikke nødvendigvis har skrive-rettighed på den side hvor handlingen sker, men alligevel skal kunne godkende. Flaget er kode-styret (ikke UI-redigerbart).
+- **Begrundelse:** Visse roller skal kunne udføre specifikke handlinger uden generelt at have skrive-adgang på den underliggende side. Uden flaget ville approve-flowet være umuligt for godkendere uden tab-skrive-rettighed.
+
+**Plan-reference:** Denne entry committes inden `t9-supplement-2-krav-og-data.md`. Krav-dok §2.6 refererer denne afgørelse som kilde for handlings-granulariteten.
