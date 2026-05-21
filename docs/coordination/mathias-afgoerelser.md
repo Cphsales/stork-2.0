@@ -536,7 +536,7 @@ To sammenhængende disciplin-justeringer baseret på trin 10-retrospektiv. Begge
 
 - **Stop-betingelse:** Codex APPROVAL + positive marker "INGEN NYE FUND I KODE" → Mathias paster `qwerg`.
 
-- **Hvis Codex finder kritisk fund EFTER qwerg** (under build-fase): håndteres via eksisterende build-runde-mekanisme (build-review-runder leverer normalt KRITISK/MELLEM-fund mod migrations + commits). Ingen ny mekanisme — V3-parallel research er primært plan-fase-disciplin; build-fase bevarer V2-build-review-flow uændret.
+- **Hvis Codex finder kritisk fund EFTER qwerg** (under build-fase): håndteres via build-runde-mekanisme (build-review-runder leverer KRITISK/MELLEM-fund mod migrations + commits). Bemærk: Del 4 nedenfor introducerer per-batch build-review som V3-udvidelse af build-fasen — kritisk fund efter qwerg fanges typisk i per-batch review (tidligere end V2-PR-tids-review).
 
 **Del 3: Plan- og bygge-fase overholder 3 dokumenter (præcisering)**
 
