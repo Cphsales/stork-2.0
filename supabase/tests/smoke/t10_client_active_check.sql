@@ -120,7 +120,7 @@ begin
   end if;
 
   -- ─── T4: client_node_close på inaktiv klient → success (ingen aktiv-check)
-  v_pending_id := core_identity.client_node_close(v_client_id, current_date + 1);
+  v_pending_id := core_identity.client_node_close(v_client_id, current_date);
   perform core_identity.pending_change_approve(v_pending_id);
   perform core_identity.pending_change_apply(v_pending_id);
 
@@ -146,7 +146,7 @@ begin
     'T5 opret', true, null);
   perform core_identity.client_set_active(v_client_b_id, false, 'T5 deaktiver');
   -- Superadmin (current auth) place på inaktiv klient → bypass virker
-  v_pending_id := core_identity.client_node_place(v_client_b_id, v_team_node_id, current_date + 2);
+  v_pending_id := core_identity.client_node_place(v_client_b_id, v_team_node_id, current_date);
   perform core_identity.pending_change_approve(v_pending_id);
   -- Aktiv-check i apply bypasses fordi requester (superadmin) er admin via is_admin_by_employee_id
   perform core_identity.pending_change_apply(v_pending_id);
