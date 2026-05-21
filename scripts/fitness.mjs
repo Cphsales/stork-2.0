@@ -151,6 +151,10 @@ const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
   "core_identity._apply_client_place",
   "core_identity.client_node_place",
   "core_identity.permission_elements_read",
+  // T10.16 (V6+V8 Code-validering): client_field_definitions har kun is_active,
+  // ingen status-kolonne. R7d-pattern (dual-column employees) gælder ikke.
+  "core_identity.client_field_definitions_list",
+  "core_identity.clients_validate_fields",
 ]);
 
 // D3 (master-plan princip 15): Bootstrap-INSERTs i klassifikations- og
