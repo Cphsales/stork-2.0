@@ -1,7 +1,15 @@
-# T9-supplement-2 — Plan V13
+# T9-supplement-2 — Plan V14
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V13)
+
+Codex V13-review leverede 1 KRITISK-SIKKERHEDSHUL. ADRESSERET i V14.
+
+- **KODE-FUND V13-1 (KRITISK-SIKKERHEDSHUL — M5 action-gren mangler `has_permission_action`-gate):** SELECT-policy er ikke nok som write-gate fordi requester får SELECT via `requested_by = current_employee_id()`-grenen. Konsekvens: requester med konfigureret action (`requires_second_approver=false`) kan approve EGEN pending selv hvis de mangler action-grant/tab-access/tab-write — write-vejs authorization bypasses. **ADRESSERET** i M5 (V14): tilføj `has_permission_action`-gate i action-grenen FØR `requires_second_approver`-logikken. Superadmin-bypass bevares. Plus negativ smoke A9 i T3: requester=`requested_by` men mangler action-grant → raise `42501`.
 
 ---
 
@@ -800,6 +808,14 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
           using errcode = '42501', hint = 'requester må ikke selv approve (medmindre admin); action-baseret konfig kommer i senere pakke';
       end if;
     else
+      -- V14 (Codex V13 KRITISK-SIKKERHEDSHUL fix): explicit action-permission-gate
+      -- M3b's SELECT-policy er ikke nok som write-gate (requester får SELECT via requested_by-grenen)
+      -- Kræv has_permission_action eller is_admin før approve gennemføres
+      if not core_identity.is_admin() and not core_identity.has_permission_action(v_change.action_id) then
+        raise exception 'permission_denied: approve af action % kræver action-grant + tab-rettighed (eller superadmin)', v_change.action_id
+          using errcode = '42501';
+      end if;
+
       -- Action-baseret evaluering per krav-dok §2.5
       select requires_second_approver, second_approver_type into v_action
         from core_identity.permission_actions where id = v_change.action_id;
@@ -1198,6 +1214,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   - A7 (`has_undo=true`): action med `requires_second_approver=true, has_undo=true` → efter approve er `undo_deadline` sat; `pending_change_undo` virker indenfor frist
   - A7b (`has_undo=false`, V4 Codex V3 KRITISK-SIKKERHEDSHUL fix): action med `requires_second_approver=true, has_undo=false` → efter approve er `undo_deadline=now()` (nul-sekund vindue); `pending_change_undo`-kald afvises med `undo_deadline_expired` (now() <= now() = true → raise); `pending_change_apply` kan eksekvere umiddelbart (now() > now() = false); cron-selection inkluderer row (now() <= now() = true)
   - A8 (superadmin requester): superadmin opretter pending på action med `requires_second_approver=true` → superadmin selv-approver → succeeds (superadmin-undtagelse)
+  - A9 (V14 Codex V13 KRITISK-SIKKERHEDSHUL-test): requester opretter pending på action med `requires_second_approver=false` MEN requester mangler action-grant — direkte `pending_change_approve`-kald af requester → raise `42501 permission_denied`. Verificerer at requester ikke kan bypasse via egen SELECT-adgang.
 
 ### Step T4 — Smoke-test for handlings-granularitet
 
@@ -1327,4 +1344,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V13-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V14-review.**
