@@ -1212,7 +1212,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 - **Hvad:** End-to-end test af 5 G059-wrappers + 2 client-wrappers gennem `pending_change_apply` med tabel-effekt-assertion. Bruger 2-non-admin-rolle-swap-mønster fra T10.7b.
 - **Test-fil:** `supabase/tests/smoke/t9_supplement_2_wrappers.sql`
 - **Test-cases:**
-  - W1: `org_node_upsert` → ny pending → approve via 2. non-admin (action ikke konfigureret → selv-approve OK; brug 2-user for konsistens) → apply via service_role → ny række i `org_node_versions`
+  - W1: `org_node_upsert` → ny pending → approve via 2. non-admin (action ikke konfigureret → selv-approve OK; brug 2-user for konsistens) → apply via postgres-superuser-context (DO-block i smoke-test) → ny række i `org_node_versions`
   - W2: `org_node_deactivate(team_id, today)` → versioning mutation
   - W3: `team_close(team_id, today)` → versioning + cascade på `employee_node_placements`
   - W4: `employee_place(emp_id, team_id, today)` → ny række i `employee_node_placements`
@@ -1300,7 +1300,7 @@ Alle 4 smoke-test-filer er nye:
 ## Build-fase halt-håndtering
 
 - **Forventede WORKAROUND-kandidater:** ingen. Alle mønstre genbruger eksisterende infrastruktur (session-var, is_admin_by_employee_id, role_permission_grants-struktur).
-- **Forventede PLAN-AFVIGELSE-scenarier:** ingen. 6 migrations + 4 smoke-tests er konkret afgrænset.
+- **Forventede PLAN-AFVIGELSE-scenarier:** ingen. 9 migrations (M1, M1b, M2, M3, M4, M3b, M5, M6, M6b — filnumre 100000-100008) + 4 smoke-tests er konkret afgrænset.
 - **Kritiske invarianter der ikke må brydes:**
   - FORCE RLS på `pending_changes` bevares (M1 session-var; M4 tilføjer action_id-kolonne uden policy-ændring)
   - Strukturelle vagter bevares uden bypass (`team_close_not_team`, `team_close_no_active_version_at`, `client_placement_node_not_team`)
@@ -1323,7 +1323,7 @@ Alle 4 smoke-test-filer er nye:
 | M6 (UI-RPCs + grant_set udvidelse)           | `role_permission_grant_set`-signatur uændret men action-element-type tilføjet. **Mitigation:** CHECK håndhæver præcis 1 element-niveau; eksisterende callers virker uændret.                                                                         | lav           | revert + drop nye RPCs                                                 |
 | T1-T4 (smoke-tests)                          | Rolle-swap + buffer-admin-floor-mønster valideret i T10.7b. Risiko for org-træ-test-fixture-fejl (lave et fungerende træ med assistent/leder). **Mitigation:** brug minimal træ-fixture (2-niveau: leder → team) for de fleste cases.                | lav           | drop testene (pakke-leverance er migrations)                           |
 
-**Kompensation hvis hele pakken fejler under build:** revert M1-M6 migrations. G057 + G059 forbliver åbne. Cutover er ikke berørt (G057 + G059 er ikke cutover-blockers).
+**Kompensation hvis hele pakken fejler under build:** revert alle 9 migrations (M1-M6b, filnumre 100000-100008). G057 + G059 forbliver åbne. Cutover er ikke berørt (G057 + G059 er ikke cutover-blockers).
 
 ---
 
@@ -1379,4 +1379,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V16-review.**
+Migration-rækkefølgen (M1→M1b→M2→M3→M4→M3b→M5→M6→M6b; filnumre 100000-100008) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Codex APPROVAL runde 16 — venter på Mathias qwerg.**
