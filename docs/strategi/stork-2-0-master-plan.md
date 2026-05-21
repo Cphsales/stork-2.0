@@ -449,7 +449,7 @@ Reflekterer T9-omstart-rammen fra 2026-05-17 (mathias-afgoerelser, 15 punkter). 
 **Klient-knude-tilknytning:**
 
 - Samme versionerings-mønster i `core_identity.client_node_placements`
-- `client_id` har INGEN FK (Plan V6 Valg 4: tabel etableres før klient-skabelon i trin 10)
+- `client_id` har FK til `core_identity.clients(id)` ON DELETE RESTRICT (etableret i trin 10's T10.7, migration `20260521000007_t10_client_node_placements_fk.sql`; tabellen blev initialt etableret uden FK i T9 fordi clients-tabellen først eksisterede fra trin 10)
 - Team-only validering via BEFORE INSERT/UPDATE-trigger (krav-dok 3.6.2)
 - Partial unique på `(client_id) WHERE effective_to IS NULL`
 
