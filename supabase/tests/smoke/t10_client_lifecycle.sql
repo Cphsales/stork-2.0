@@ -13,47 +13,29 @@ begin;
 
 do $test$
 declare
-  v_role_id uuid;
-  v_employee_id uuid;
   v_client_id uuid;
-  v_uuid_suffix text;
   v_returned_is_active boolean;
   v_returned_name text;
   v_caught text;
+  v_superadmin_auth_id uuid;
 begin
-  v_uuid_suffix := replace(gen_random_uuid()::text, '-', '');
-
-  -- Setup: throwaway-rolle med clients/manage-grant
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'T10 lifecycle smoke fixture', true);
-  perform set_config('stork.allow_roles_write', 'true', true);
-  insert into core_identity.roles (name, description)
-  values ('t10_lifecycle_' || v_uuid_suffix, 'T10 lifecycle smoke role')
-  returning id into v_role_id;
 
-  perform set_config('stork.allow_role_page_permissions_write', 'true', true);
-  insert into core_identity.role_page_permissions (role_id, page_key, tab_key, can_view, can_edit, scope)
-  values (v_role_id, 'clients', 'manage', true, true, 'all'),
-         (v_role_id, 'system', 'manage', true, true, 'all');
-
-  perform set_config('stork.allow_employees_write', 'true', true);
-  insert into core_identity.employees (first_name, last_name, email, role_id, auth_user_id)
-  values ('T10', 'Lifecycle', 't10_lifecycle_' || v_uuid_suffix || '@test.invalid', v_role_id, '00000000-0000-0000-0000-000000000001')
-  returning id into v_employee_id;
-
-  -- Mock auth.uid via session-var → via current_employee_id-helper
-  -- Faktisk T1's current_employee_id() bruger auth.uid(). For test bruger vi
-  -- bypass-pattern: kald RPC'er som superadmin (T9-test-pattern).
-  -- For dette test: invoker has_permission-checks behovs ikke fordi vi
-  -- bypasses via session-var-pattern.
+  -- T9-pattern: simulér authenticated superadmin via request.jwt.claim.sub
+  select e.auth_user_id into v_superadmin_auth_id
+  from core_identity.employees e
+  join core_identity.roles r on r.id = e.role_id
+  where r.name = 'superadmin'
+    and e.auth_user_id is not null
+    and core_identity.is_active_employee_state(e.anonymized_at, e.termination_date)
+  limit 1;
+  if v_superadmin_auth_id is null then
+    raise exception 'SETUP FAIL: ingen aktiv superadmin';
+  end if;
+  perform set_config('request.jwt.claim.sub', v_superadmin_auth_id::text, true);
 
   -- ─── T1: client_upsert INSERT ───────────────────────────────────────
-  select set_config('role', 'authenticated', true);
-  -- Simulér auth.uid via direct session-var (kun for test; faktisk system-default)
-  -- ALTERNATIV: ALTER ROLE authenticated er ikke session-local. For test ROLLBACK alligevel.
-  -- Pragmatisk: kør write-vej som superadmin (default postgres) via session-var-bypass.
-  reset role;
-
   v_client_id := core_identity.client_upsert(
     'Acme A/S',
     '{"telefon": "+45 12345678"}'::jsonb,

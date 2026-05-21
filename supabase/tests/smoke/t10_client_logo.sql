@@ -21,11 +21,24 @@ declare
   v_returned_bytes bytea;
   v_returned_ct text;
   v_returned_fn text;
-  v_test_logo bytea := decode('89504e470d0a1a0a', 'hex'); -- PNG-header
+  v_test_logo bytea := decode('89504e470d0a1a0a', 'hex');
   v_test_logo_2 bytea := decode('89504e470d0a1a0a0000000d49484452', 'hex');
+  v_superadmin_auth_id uuid;
 begin
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'T10 logo smoke', true);
+
+  select e.auth_user_id into v_superadmin_auth_id
+  from core_identity.employees e
+  join core_identity.roles r on r.id = e.role_id
+  where r.name = 'superadmin'
+    and e.auth_user_id is not null
+    and core_identity.is_active_employee_state(e.anonymized_at, e.termination_date)
+  limit 1;
+  if v_superadmin_auth_id is null then
+    raise exception 'SETUP FAIL: ingen aktiv superadmin';
+  end if;
+  perform set_config('request.jwt.claim.sub', v_superadmin_auth_id::text, true);
 
   -- Setup: opret klient
   v_client_id := core_identity.client_upsert(

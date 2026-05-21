@@ -13,9 +13,23 @@ declare
   v_field_id uuid;
   v_caught text;
   v_count integer;
+  v_superadmin_auth_id uuid;
 begin
   perform set_config('stork.source_type', 'manual', true);
   perform set_config('stork.change_reason', 'T10 cfd smoke', true);
+
+  -- T9-pattern: simulér authenticated superadmin via request.jwt.claim.sub
+  select e.auth_user_id into v_superadmin_auth_id
+  from core_identity.employees e
+  join core_identity.roles r on r.id = e.role_id
+  where r.name = 'superadmin'
+    and e.auth_user_id is not null
+    and core_identity.is_active_employee_state(e.anonymized_at, e.termination_date)
+  limit 1;
+  if v_superadmin_auth_id is null then
+    raise exception 'SETUP FAIL: ingen aktiv superadmin med auth_user_id';
+  end if;
+  perform set_config('request.jwt.claim.sub', v_superadmin_auth_id::text, true);
 
   -- ─── T1: INSERT felt-definition ─────────────────────────────────────
   v_field_id := core_identity.client_field_definition_upsert(
