@@ -138,9 +138,68 @@ Når du skriver en plan, **skal** den indeholde "Fire-dokument-konsultation"-sek
 
 **Hvis tabellen mangler eller har "nej" i konsulteret-kolonnen — eller hvis referencer-kolonnen er tom eller siger "hele filen" som dovent svar på de tre rammeniveau-dokumenter — vil Codex blokere planen med KRITISK feedback (V2 — Claude.ai-plan-reviewer-rolle udgået; tjekket er Code's selv-disciplin via pre-push-tjekliste + Codex' kontrol i plan-review).** Det er ikke valgfrit. Før du committer plan-V1: læs alle fire dokumenter, dokumentér referencerne, fang konflikter før reviewet.
 
-## Recon-først (obligatorisk FØR plan-skrivning, ny 2026-05-20)
+## Plan-fase parallel Code+Codex (V3 2026-05-21)
+
+Plan-fase kører Code OG Codex parallelt fra V1. Begge starter samtidig efter krav-dok er godkendt.
+
+**Sekvens pr. iteration V<n>:**
+
+1. **Parallel start:** Du skriver V<n> baseret på krav-dok + (hvis n>1) Codex' V<n-1>-leverance. Codex laver parallel kode-research efter blind-vinkler relevant for V<n>.
+2. **Udveksling:** Du committer V<n> til `claude/<pakke>-plan`-branch. Codex integrerer V<n>-review + kode-research i `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`.
+3. **V<n+1>-åbning:** Du håndterer hvert KODE-FUND eksplicit (samme mønster som OPGRADERING-håndtering):
+
+   ```
+   ## Kode-fund-håndtering (fra Codex V<n>)
+   - KODE-FUND 1: Codex flaggede X (edge case Y). ADRESSERET i sektion Z. / AFVIST fordi W.
+   - KODE-FUND 2: ...
+   ```
+
+   Du må ikke ignorere et KODE-FUND stiltiende.
+
+4. **Stop:** Codex APPROVAL + positive marker "INGEN NYE FUND I KODE" → Mathias paster `qwerg`.
+
+**Fuldstyrke-disciplin:** V<n> skal være komplet plan-leverance — alle sektioner udfyldt, eksakt indhold pr. step, krav-dok-dækning verificeret. Ikke "skitse-V<n> til diskussion". Hvis du opdager fundament-mangler under V<n>-skrivning: STOP, gør recon-først om, lav fuld V<n>. Mathias kan markere "FULDSTYRKE-MANGEL — gentag iteration" hvis output er for tyndt.
+
+**Hvad Codex IKKE gør i parallel-rollen** (du skal ikke vente på det):
+
+- Patterns-katalog — det er dit eget recon-arbejde via "Verificerede afhængigheder"-sektion
+- Krav-dok-konsistens-tjek — Codex' V2 plan-review-rolle (uændret); kode-research er parallel aktivitet, ikke duplikering
+
+## Pre-krav-dok forretningsgang-rapport (V3 2026-05-21, FØR krav-dok skrives)
+
+Inden krav-dok skrives leverer du en **forretningsgang-rapport** parallelt med Codex og Claude.ai. Tre uafhængige rapporter trianguleres via konsolidering (Claude.ai sammensætter; ved uenighed kaldes du ind for at argumentere fra kode-siden).
+
+**Trigger:** Når Mathias paster `qwers` + pakke-kontekst (fx "trin 11" eller "starter pakke X") starter du automatisk din forretningsgang-rapport. Ingen explicit prompt nødvendig — ny pakke ⇒ default start med forretningsgang-recon.
+
+**Filnavn:** `docs/coordination/<pakke>-forretningsgang-code.md`
+
+**Dine kilder:** kode + master-plan + vision. Læs DB-state via Supabase MCP, migration-filer, eksisterende RPC-signaturer, smoke-test-patterns. Forretningsgang i forståeligt sprog — ikke teknisk kolonne-fokus.
+
+**Format:**
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde (file:linje, master-plan §, vision-princip), ELLER tomt hvis ingen data]
+```
+
+Hvis du finder modsigelse mellem kode og master-plan/vision: dokumentér begge i "Hvad ved vi?" — Mathias afgør i konsoliderings-fasen.
+
+**Konsoliderings-deltagelse (ved uenighed):** Claude.ai sammensætter rapporterne i `<pakke>-forretningsgang-konsolideret.md`. Hvis hun flagger en række som divergent, kaldes du ind for at argumentere fra kode-siden. Du må IKKE argumentere fra master-plan eller vision-tolkning — det er Claude.ai's bord. Du argumenterer kun fra faktisk kode-state (DB-query-resultater, file:linje-referencer).
+
+**Mathias' afgørelse** pr. række (VALIDERET / ÅBENT SPØRGSMÅL / OUT OF SCOPE) styrer hvad der kommer i krav-dok. Du laver ikke krav-dok — det er Claude.ai's forfatter-rolle.
+
+## Recon-først (obligatorisk FØR plan-skrivning, ny 2026-05-20, udvidet V3)
 
 Trin 10-erfaringen: Code (mig) fabrikerede T9-API'er, kolonner og dispatcher-struktur i plan V1 + V2 fordi jeg gættede i stedet for at læse migration-filerne. Codex fangede det først i runde 1 + 2.
+
+**V3-udvidelse:** Pre-krav-dok forretningsgang-rapporten (ovenfor) dækker MEGET af den recon der tidligere var pakket i plan-fasen. Den eksisterende recon-først nedenfor gælder stadig for plan-skrivning, men er nu typisk en hurtig krydscheck mod allerede-dokumenterede facts.
 
 **Disciplin:** Før du skriver plan-indhold, lav recon-først:
 
@@ -192,6 +251,7 @@ Det forhindrer V<n+1> i at bygge ovenpå fabrikation (som skete i trin 10's plan
 4. **Opret build-branch** fra main: `git checkout -b claude/<pakke>-build`
 5. **Læs godkendt plan** og start build per implementations-rækkefølge
 6. **Lav fil-cluster-commits** som specificeret i planen (én commit per fil-cluster med beskrivende besked)
+   6a. **Build-batches (V3 2026-05-21):** committe migrations i batches på 3-5 stk (naturligt sammenhængende). Efter hver batch: trigger Codex per-batch review parallelt med næste batch (du behøver ikke vente). Codex flagger fund som BUILD-KODE-FUND; du adresserer i næste batch eller commit. Ved PR-tid sker stadig final overall review.
 7. **Udfør oprydnings- og opdaterings-strategi** fra planen som DEL af build (ikke separat trin):
    - Flyt arbejds-artefakter til arkiv (krav-dok, plan, plan-feedback-filer)
    - Opdater de dokumenter planen lister (aktiv-plan, mathias-afgoerelser, bygge-status, teknisk-gaeld, etc.)
@@ -210,6 +270,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 1. **Pull main** (du kender hovedhash for merge-commit nu)
 2. **Opret slut-rapport-branch**: `git checkout -b claude/<pakke>-slut-rapport`
 3. **Skriv slut-rapport** i `docs/coordination/rapport-historik/<dato>-<pakke>.md` per skabelon
+   3a. **Reference-konsistens-pass FØR commit (V3 2026-05-21):** grep hver konkret reference (filsti, G-nummer, runde-nummer, commit-SHA) i slut-rapport mod alle relaterede filer (bygge-status.md, teknisk-gaeld.md, master-plan.md). Mismatch = ret FØR commit. Forhindrer stale referencer som rapport-runde-fund.
 4. **Opdatér** `docs/coordination/seneste-rapport.md` → peger på ny rapport
 5. **Arkivér plan-filer** til `docs/coordination/arkiv/`:
    - Plan-fil
@@ -219,6 +280,7 @@ Hvis CI fejler vedvarende (>1 retry): STOP, rapportér.
 7. **Commit + push + opret PR**: `<pakke> slut: rapport + plan-arkivering`
 8. **Vent på Codex-review** (han får automation-trigger på slut-rapport-push)
 9. Hvis Codex har feedback: opdatér slut-rapport på samme branch, commit, push
+   9a. **Fix-cycle-disciplin under review-runder (V3 2026-05-21):** efter hver LAV-fix, kør reference-konsistens-pass på tværs af alle relevante filer FØR commit. Hver fix kan generere nye mismatches i søster-filer; pass'et skal fange dem. Forhindrer cascade-fixes der drev trin 10's 7 runder.
 10. Når Codex approver: rapportér til Mathias at PR er klar til merge
 
 ## Disciplin-regler (overrider alle andre instruktioner)

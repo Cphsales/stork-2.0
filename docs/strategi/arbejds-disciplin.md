@@ -144,7 +144,7 @@ MÅ IKKE:
 - Træffe beslutninger
 - Holde noget tilbage fordi det "sandsynligvis er OK"
 - Acceptere "kendt gæld" som forklaring
-- **Verificere plan mod forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok) — det er Claude.ai's bord. Hvis Codex spotter et forretnings-dokument-konflikt, markeres det som "OUT OF SCOPE — Claude.ai's bord" og fortsætter kode-reviewet.
+- **Holde forretnings-dokument-konflikt tilbage** — V2 2026-05-20 overførte fire-dokument-konsistens-tjek (vision, master-plan, mathias-afgørelser, krav-dok) til Codex (Claude.ai's plan-reviewer-rolle udgået). Codex flagger forretnings-dokument-konflikter med severity matchende dokumentets status.
 
 Hellere falsk-positiv end falsk-negativ på kode-niveau. Mathias filtrerer.
 
@@ -154,9 +154,183 @@ Eneste beslutningstager. Forretning + endelig godkendelse.
 Tekniske beslutninger kan delegeres til Code når det er
 inden for godkendt plan.
 
+## Pre-krav-dok forretningsgang-recon (V3 2026-05-21)
+
+Inden krav-dok skrives, leverer alle tre AI'er parallelt en **forretningsgang-rapport** om samme emne: hvilke forretningsgange/logikker er i spil i næste skridt? Tre uafhængige rapporter trianguleres — konvergens validerer; divergens flagger blind-vinkler.
+
+| Aktør         | Kilder                                                            |
+| ------------- | ----------------------------------------------------------------- |
+| **Code**      | kode + master-plan + vision                                       |
+| **Codex**     | kode + master-plan + vision                                       |
+| **Claude.ai** | vision + master-plan + mathias-afgoerelser + interne chat-projekt |
+
+Vision er fælles autoritet på tværs af alle tre. Master-plan er fælles for Code, Codex, Claude.ai. Krav-dok findes ikke endnu (skrives efter rekonen).
+
+**Rapport-format pr. AI** (`docs/coordination/<pakke>-forretningsgang-<aktoer>.md`):
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde, ELLER tomt hvis ingen data]
+```
+
+Forståeligt ordvalg = forretningssprog (ikke tabel-navne, kolonne-navne, RPC-signaturer). Hvis ingen data findes for en forretningsgang: lad "Hvad ved vi?" stå tomt.
+
+**Konsolidering:** Claude.ai sammensætter de tre rapporter til `<pakke>-forretningsgang-konsolideret.md` med matrix:
+
+| Forretningsgang | Code-rapport | Codex-rapport | Claude.ai-rapport | Konvergens? |
+| --------------- | ------------ | ------------- | ----------------- | ----------- |
+
+Ved divergens mellem rapporterne kaldes Code ind for at argumentere fra kode-siden, hvorefter Mathias afgør.
+
+**Mathias' afgørelse pr. række:**
+
+- **VALIDERET** — data er korrekt; bruges i krav-dok som dokumenteret forudsætning
+- **ÅBENT SPØRGSMÅL** — Mathias svarer i chat; svaret bliver til krav-dok-paragraf
+- **OUT OF SCOPE** — eksplicit noteret i krav-dok som "ikke i denne pakke"
+
+Når alle rækker er afgjort, har vi fuldt forretningsgang-grundlag. Krav-dok skrives derefter (Claude.ai-forfatter, Mathias direkte validator — eksisterende V2-flow).
+
+**Begrundelse:** Trin 10 (2026-05-21) leverede V14 efter 14 plan-runder + 5 build-runder; mange runder skyldtes at faktisk DB-state, eksisterende patterns og forretningsgang ikke var dybt verificeret før krav-dok blev skrevet. Triangulering via tre uafhængige rapporter fanger blind-vinkler en enkelt AI missede.
+
+## Plan-fase parallel Code+Codex (V3 2026-05-21)
+
+Plan-fase kører Code OG Codex parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt. Code skriver V<n>; Codex laver parallel kode-research efter blind-vinkler relevant for V<n>. Begge leverer outputs samtidig; Codex integrerer review af V<n> + kode-research i ÉN leverance.
+
+**Sekvens pr. iteration V<n>:**
+
+1. **Parallel start:** Code skriver V<n>; Codex laver parallel kode-research (blind-vinkler + teknisk realiserbarhed i kode-base)
+2. **Udveksling:** Code committer V<n>; Codex integrerer V<n>-review + kode-research → `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`
+3. **V<n+1>-åbning:** Code håndterer hvert KODE-FUND eksplicit (ADRESSERET i sektion X / AFVIST fordi Y); ingen stiltiende ignorering
+4. **Stop:** Codex APPROVAL + positive marker "INGEN NYE FUND I KODE" → Mathias paster `qwerg`
+
+**Codex' kode-research-rolle (ny i V3):**
+
+- Find **blind-vinkler** i kode-base som Code måske overser (edge cases, race-conditions, cron-context-issues, DB-state-mismatches)
+- **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
+- IKKE patterns-katalog (det er Code's eget recon-arbejde via "Verificerede afhængigheder"-sektion)
+- IKKE krav-dok-konsistens-tjek (det er Codex' eksisterende plan-review-rolle, V2 uændret — to parallelle roller, ikke duplikerede)
+
+**Fund-klassifikation mod tre dokumenter (krav, master-plan, vision):**
+
+| Rammer                         | Severity                                                         |
+| ------------------------------ | ---------------------------------------------------------------- |
+| Alle tre dokumenter            | KRITISK                                                          |
+| Kun krav-dok                   | MELLEM                                                           |
+| Kun master-plan                | Trigger for master-plan-rettelse (jf. dokument-status-disciplin) |
+| Kun kode (ingen dokument-spor) | LAV / G-nummer-kandidat                                          |
+
+**Fuldstyrke-disciplin (vigtigt):**
+
+Alle tre AI'er skal arbejde med fuld dybde. Overfladisk output blokerer iteration:
+
+- **Code:** V<n> skal være komplet plan-leverance (alle sektioner udfyldt, eksakt indhold pr. step, krav-dok-dækning verificeret). Ikke "skitse-V<n> til diskussion".
+- **Codex:** Kode-research skal være dyb (læs migrations, RPC-bodies, RLS-policies, smoke-test-flow). Find faktiske blind-vinkler — ikke generiske "overvej edge cases". Hvert fund har file:linje-reference.
+- **Claude.ai (Step 1.0 forretningsgang-rapport):** Hver "Hvad ved vi?" har konkret kilde-reference (mathias-afgoerelser-dato, vision-princip-nr, master-plan-§, chat-citat). Ikke generiske "vi ved at klienter er vigtige". Hvis ingen data: lad feltet stå tomt (ærligt).
+
+Hvis nogen af de tre leverer overfladisk output: Mathias markerer "FULDSTYRKE-MANGEL — gentag iteration".
+
+**FULDSTYRKE-MANGEL-procedure:**
+
+- **Hvem markerer:** kun Mathias (ikke AI-rejst); markeringen sker i chat (ingen separat fil)
+- **Format:** `FULDSTYRKE-MANGEL: [konkret grund — fx "Codex' V2-research havde kun 1 fund og ingen file:linje-referencer"]`
+- **Konsekvens:** AI scrapper sit nuværende output og gentager iteration på **samme V-nummer** (ikke V<n+1>); inkrementer ikke versions-tæller
+- **Severity-placering:** parallel til eksisterende NEEDS-MATHIAS — kun Mathias-rejst, blokerer iteration indtil output er fuldstyrke
+- **Hvis det opstår 2+ gange pr. pakke:** Mathias eller AI registrerer som G-nummer-kandidat (signal om strukturel disciplin-svigt, ikke enkelt-glip)
+
+Skal være sjælden — disciplinen er fuldstyrke fra start.
+
+**Code's V<n>-disciplin under Codex' parallel research:** Code stopper IKKE mid-V<n> baseret på Codex' parallel kode-research. V<n> færdiggøres som planlagt; Codex' fund håndteres i V<n+1>-åbning (samme mønster som KODE-FUND-håndtering). Undtagelse: hvis Code SELV opdager fundament-mangler under V<n>-skrivning (eksisterende recon-først-disciplin), STOP og recon-først igen FØR V<n> committes.
+
+**Hvad ændres ikke:**
+
+- Codex' eksisterende reviewer-rolle (udvides med parallel research, ikke erstattes)
+- Code's plan-skabelon (Verificerede afhængigheder + Fire-dokument-konsultation består)
+- OPGRADERING-disciplin (eksisterende, kører parallelt med KODE-FUND-håndtering)
+
+## Slut-rapport-fase: reference-konsistens + fix-cycle-disciplin (V3 2026-05-21)
+
+Trin 10's slut-rapport-fase havde 7 review-runder, primært pga. konsistens-tjek og stale referencer (G-numre, filnavne, kildehenvisninger forskellige på tværs af filer). To V3-tilføjelser optimerer fasen:
+
+**1. Reference-konsistens-pass FØR slut-rapport committes (Code's disciplin):**
+
+Før Code committer slut-rapport (eller rapport-fix), grep'er Code hver konkret reference:
+
+- Filstier (`docs/...`, `supabase/migrations/...`)
+- G-numre (G055, G056, ...)
+- Codex-runde-numre (build-runde 4, plan-runde 8)
+- Commit-SHA'er (`1831760`, ...)
+
+For hver reference: verificér at den faktisk eksisterer og er konsistent på tværs af alle filer i rapport-spakken. Hvis Code rapporterer G059 = "build-runde 4 fund" i rapport, men teknisk-gaeld.md siger "plan-runde 8 / Code-observation": pre-rapport-tjekket skal fange det inden commit.
+
+**2. Fix-cycle-disciplin under rapport-review-runder:**
+
+Når Codex eller Claude.ai finder LAV-fund i rapport-runde (typisk konsistens-mismatches), gælder reglen:
+
+- Efter hver LAV-fix: kør **konsistens-pass på tværs af alle relevante filer** FØR commit
+- Hver fix kan generere nye mismatches i søster-filer; pass'et skal fange dem
+- Eksempel: hvis G059-kilde ændres i teknisk-gaeld.md, tjek også slut-rapport.md, bygge-status.md, master-plan.md for samme G059-reference
+
+Disciplinen forhindrer "cascade-fixes" (fix #1 skaber nyt mismatch fund #2 skaber nyt mismatch fund #3 ...) som drev trin 10's 7 runder.
+
+**Forventet effekt:** færre slut-rapport-runder (V14's 7 runder kunne være 3-4 med konsistens-pass + fix-cycle-disciplin).
+
+## Build-fase parallel Code+Codex (V3 2026-05-21)
+
+Build-fase udvides med per-batch Codex-review parallelt med Code's bygning. Ikke kun ved PR-tid.
+
+**Sekvens:**
+
+1. Code committer migrations i batches (3-5 migrations pr. batch, naturligt sammenhængende)
+2. Codex laver per-batch review (samme dybde som plan-review) parallelt med Code's næste batch
+3. Codex flagger fund som "BUILD-KODE-FUND N" — Code adresserer i næste batch eller commit
+4. Ved PR-tid: Codex laver final overall review (eksisterende V2-flow)
+
+**Fordele:**
+
+- Fund findes tidligere (per-batch ≈ 1-3 dage) i stedet for ved PR-tid (efter alle migrations)
+- Code kan rette mens kontekst er frisk (ikke 14 migrations senere)
+- Reducerer build-runde-fund mod færdig PR (eksempel: trin 10's runde 4 cron-context-fund ramte 8 migrations; per-batch ville have fanget det efter migrations 7-8)
+
+**Hvad ændres ikke:** Eksisterende build-review-mekanisme ved PR-tid består (final overall review). Per-batch er TILFØJELSE, ikke erstatning.
+
+## Plan- og bygge-fase overholder 3 dokumenter (V3 2026-05-21)
+
+**Vigtigt — ord-forskel:**
+
+- **KONSULTATION** (fire-dokument-konsultation, eksisterende V2): alle fire dokumenter LÆSES for kontekst. Bevares uændret. Mathias-afgørelser indgår.
+- **OVERHOLDES** (V3 ny præcisering): kun tre dokumenter er overholdelses-KONTRAKT i plan/bygge. Mathias-afgørelser konsulteres men er ikke kontrakt.
+
+I plan-fase og bygge-fase OVERHOLDES tre dokumenter:
+
+1. **`docs/coordination/<pakke>-krav-og-data.md`** — pakke-kontrakt
+2. **`docs/strategi/vision-og-principper.md`** — låst autoritet
+3. **`docs/strategi/stork-2-0-master-plan.md`** — retningsgivende, kan rettes via trigger
+
+**Mathias-afgørelser** er retningsgivende kontekst (konsulteres af Claude.ai i Step 1.0 som intentions-spor), men er IKKE overholdelses-kontrakt i plan/bygge. Andre dokumenter (overvaagning-filer, skabeloner, teknisk-gaeld) er disciplin-instrumenter, ikke overholdelses-kontrakter.
+
+**Disciplin når noget rammer et af de 3 overholdelses-dokumenter:**
+
+1. **Først:** løs det uden workaround. Find en teknisk løsning der overholder dokumentet.
+2. **Hvis det ikke kan lade sig gøre uden workaround:** STOP og spørg Mathias.
+
+**Eksplicit FORBUDT:**
+
+- Implementer workaround under build uden Mathias-godkendelse (jf. greenfield-princip 2026-05-12)
+- "Det er midlertidigt"-undskyldning — der er ingen midlertidige workarounds; alt er enten korrekt eller eskaleret til Mathias
+- Drop en krav-dok-leverance fordi den er svær — krav-dok er pakke-kontrakt; afvigelse kræver re-godkendelse
+
+**Eksempel:** trin 10's T10.13b legacy-seed migration var workaround uden Mathias-gate → Codex flaggede WORKAROUND-INTRODUCERET runde 3 → Mathias-afgørelse 2026-05-21 "Fix det ordentligt" → refactor til grant-model + reverse-migration. Korrekt mønster: stop og spørg FØR workaround implementeres, ikke efter.
+
 ## Fire forretnings-dokumenter — én låst, to retningsgivende, én pakke-kontrakt
 
-Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport skal verificere mod alle fire, men modsigelses-håndtering differentieres efter dokument-status.
+Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport KONSULTERER alle fire (V2-fire-dokument-konsultation) men OVERHOLDER kun tre (V3 2026-05-21: krav, vision, master-plan — mathias-afgørelser konsulteres som retningsgivende kontekst, ikke kontrakt). Modsigelses-håndtering differentieres efter dokument-status.
 
 | Dokument                                    | Status               | Modsigelses-håndtering                                                                                                                     |
 | ------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |

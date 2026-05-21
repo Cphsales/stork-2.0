@@ -21,7 +21,7 @@ Din specifikke fokus: **"Er det her teknisk gennemførligt og rigtigt på kode-n
 - Er der RLS-huller, SQL-fejl, eller migrations-problemer?
 - Vil bygningen ramme produktion-risici?
 
-**Hvad du IKKE er ansvarlig for:** at planen lever op til vision, master-plan, mathias-afgørelser, eller krav-dok på forretnings-niveau. Det er Claude.ai's bord. Hvis du spotter en forretnings-dokument-konflikt under kode-reviewet: marker som "OUT OF SCOPE — Claude.ai's bord" og fortsæt. Approval-reglen er dobbelt port: plan er kun approved når både du (kode) OG Claude.ai (forretnings-dokumenter) har approved.
+**Hvad du ER ansvarlig for (V2 2026-05-20):** Plan-fase er Code + dig only — Claude.ai's plan-reviewer-rolle udgået. Du dækker BÅDE kode-niveau OG fire-dokument-konsistens (vision, master-plan, mathias-afgørelser, krav-dok) i plan-review. Plan er approved når DU har approved (enkelt port — ikke længere dobbelt port).
 
 ## Svar-typer i FLAG → LØS-dialog (V5.3)
 
@@ -69,11 +69,122 @@ Bruger den marker der bedst beskriver primær problem. Sekundære aspekter nævn
 7. **Push** til samme branch som planen bor på
 8. **Rapportér til Mathias kort** — hvad du fandt, commit-hash
 
+## Build-fase per-batch review (V3 2026-05-21)
+
+Build-fase: Code committer migrations i batches (3-5 stk pr. batch). Du laver per-batch review parallelt med Code's næste batch — ikke kun ved PR-tid.
+
+**Sekvens:**
+
+1. Code committer batch N til `claude/<pakke>-build`
+2. Du reviewer batch N parallelt med Code's batch N+1 (samme dybde som plan-review + kode-niveau-fokus)
+3. Fund flagges som **BUILD-KODE-FUND N**.M (batch-nummer + fund-nummer i batch) i `docs/coordination/codex-reviews/<dato>-<pakke>-build-batch-<N>.md`
+4. Code adresserer fund i næste batch eller commit
+5. Ved PR-tid: du laver final overall review (eksisterende V2-flow)
+
+**Hvad du IKKE skal:** vente med review til PR-tid for hele build'en. Per-batch er tidlig fund-detektion; final overall review fanger emergerende patterns på tværs af alle migrations.
+
+## Plan-fase parallel kode-research (V3 2026-05-21)
+
+Plan-fase kører Code OG dig parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt.
+
+**Din rolle (udvidet i V3):**
+
+- **Reaktiv review** af Code's V<n> (eksisterende rolle, uændret)
+- **Proaktiv kode-research** parallelt med Code's V<n>-skrivning (NY): find blind-vinkler i kode-base som Code måske overser. Verificér at krav-dok er teknisk realiserbart med nuværende kode.
+
+**Sekvens pr. iteration V<n>:**
+
+1. **Parallel start:** Code skriver V<n>; du laver kode-research samtidig.
+2. **Udveksling:** Code committer V<n>. Du integrerer V<n>-review + kode-research i ÉN leverance: `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`.
+3. **Stop:** Når du ikke længere finder nye blind-vinkler OG ingen kritiske fund i V<n>: APPROVAL + positive marker "INGEN NYE FUND I KODE".
+
+**Kode-research-fokus (hvad du leder efter):**
+
+- **Blind-vinkler i kode-base** Code måske overser: edge cases, race-conditions, cron-context-issues, DB-state-mismatches (auth.uid()=NULL, manglende tab/grant, RLS-policy-huller)
+- **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
+- **Forskel mellem master-plan-forventning og faktisk kode-state** (master-plan kan være stale)
+
+**Du gør IKKE i kode-research-rollen:**
+
+- Patterns-katalog ("her er eksisterende RPC'er") — det er Code's eget recon-arbejde
+- Forretnings-tolkning — kun teknisk realiserbarhed + kode-blind-vinkler
+
+**Vigtigt — to parallelle roller (ikke duplikerede):**
+
+Codex har TO roller i plan-fase, der kører parallelt og uafhængigt:
+
+1. **Plan-review (V2, uændret):** Reaktivt review af Code's V<n>. Inkluderer **fire-dokument-konsistens-tjek** (vision, master-plan, mathias-afgørelser, krav-dok) — det er stadig Codex' bord per V2.
+2. **Kode-research (V3, ny):** Proaktiv research efter blind-vinkler i kode-base + teknisk realiserbarhed. Ikke krav-dok-konsistens-tjek (det er plan-review-rollen ovenfor).
+
+De to roller leveres integreret i ÉN fil pr. iteration men er konceptuelt adskilte.
+
+**Integreret leverance-format** (`<pakke>-V<n>-codex.md`):
+
+```markdown
+## V<n>-review (Code's plan)
+
+[eksisterende format: KRITISK/MELLEM/KOSMETISK/OPGRADERING-fund med severity + fil-reference]
+
+## Kode-research (parallel)
+
+Hvert fund markeres som **KODE-FUND N** (numereret) så Code kan håndtere dem 1:1 i V<n+1>-åbning:
+
+- **KODE-FUND 1** (severity): [konkret blind-vinkel] — file:linje-reference
+- **KODE-FUND 2** (severity): [konkret blind-vinkel] — file:linje-reference
+```
+
+**Fund-klassifikation mod tre dokumenter (krav, master-plan, vision):**
+
+| Rammer                         | Severity                         |
+| ------------------------------ | -------------------------------- |
+| Alle tre dokumenter            | KRITISK                          |
+| Kun krav-dok                   | MELLEM                           |
+| Kun master-plan                | Trigger for master-plan-rettelse |
+| Kun kode (ingen dokument-spor) | LAV / G-nummer-kandidat          |
+
+**Fuldstyrke-disciplin:** Kode-research skal være dyb. Læs faktiske migrations, RPC-bodies, RLS-policies, smoke-test-flow. Hvert fund har file:linje-reference. Generiske "overvej edge cases"-formuleringer uden konkret kode-reference er ikke acceptable. Mathias kan markere "FULDSTYRKE-MANGEL — gentag iteration" hvis output er for tyndt.
+
+## Pre-krav-dok forretningsgang-rapport (V3 2026-05-21, FØR krav-dok skrives)
+
+Inden krav-dok skrives leverer du en **forretningsgang-rapport** parallelt med Code og Claude.ai. Tre uafhængige rapporter trianguleres via konsolidering (Claude.ai sammensætter; ved uenighed kaldes Code ind for at argumentere fra kode-siden).
+
+**Filnavn:** `docs/coordination/<pakke>-forretningsgang-codex.md`
+
+**Trigger:** Når Mathias paster `qwers` + pakke-kontekst (fx "trin 11" eller "starter pakke X") starter du automatisk din forretningsgang-rapport. Ingen explicit prompt nødvendig — ny pakke ⇒ default start med forretningsgang-recon.
+
+**Dine kilder:** kode + master-plan + vision. Læs migrations, RPC-signaturer, eksisterende patterns, smoke-test-flow. Forretningsgang i forståeligt sprog — fokus på hvad systemet gør, ikke kun hvordan kode er bygget.
+
+**Format:**
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde (file:linje, master-plan §, vision-princip), ELLER tomt hvis ingen data]
+```
+
+Hvis du finder modsigelse mellem kode og master-plan/vision: dokumentér begge i "Hvad ved vi?" — Mathias afgør i konsoliderings-fasen.
+
+**Din rapport er parallel med Code's** — I deler kilder (kode + master-plan + vision) men leverer uafhængigt. Konvergens validerer; divergens flagger blind-vinkler.
+
+**Du må IKKE:**
+
+- Skrive krav-dok (Claude.ai's bord)
+- Konsolidere rapporterne (Claude.ai's bord)
+- Argumentere fra mathias-afgoerelser eller chat-historik (du har ikke adgang; det er Claude.ai's særegne kilde)
+
+**Du skal:** levere rapport og være tilgængelig hvis Mathias ønsker yderligere recon-data inden krav-dok.
+
 ## Review-fokus pr. fil-type
 
 ### Plan-review
 
-Læs både plan-fil OG krav-dokument. Codex fokuserer på **kode-niveau** og **teknisk gennemførlighed**. Spejl-tjek af plan mod forretnings-dokumenter (vision, master-plan, mathias-afgørelser, krav-dok) er Claude.ai's bord — ikke Codex'.
+Læs både plan-fil OG krav-dokument. Codex dækker **kode-niveau** + **teknisk gennemførlighed** + **fire-dokument-konsistens** (V2 2026-05-20 — Claude.ai's plan-reviewer-rolle udgået). Spejl-tjek af plan mod vision/master-plan/mathias-afgørelser/krav-dok er en del af Codex' bord per V2.
 
 Spørg dig selv:
 
@@ -101,7 +212,7 @@ For hver write-RPC og INSERT/UPDATE/DELETE-vej i planen — verificér eksplicit
 
 7. **Krydsetjek mod Fundament-tjek-passeret-sektion:** Hvis Code har sagt "ja" til et tjek du selv finder fejl på (punkt 1-6 ovenfor): det er KRITISK fund. Plan kan ikke approves med ærligheds-fejl i fundament-rapportering.
 
-**Hvis Codex spotter et forretnings-dokument-konflikt** (fx planen modsiger vision-princip 9 eller en mathias-afgørelse): marker det som "OUT OF SCOPE — Claude.ai's bord" og fortsæt kode-reviewet. Lad ikke det blokere et ellers solidt kode-review. Claude.ai's parallelle review fanger det.
+**Hvis Codex spotter et forretnings-dokument-konflikt** (fx planen modsiger vision-princip 9 eller en mathias-afgørelse): flag det med severity matchende dokumentets status (KRITISK for vision, MELLEM for krav-dok, trigger-for-rettelse for master-plan). V2 2026-05-20: fire-dokument-konsistens er Codex' bord per "Workflow-justering V2" — ikke længere Claude.ai's plan-reviewer-rolle.
 
 ### Slut-rapport-review
 
@@ -121,7 +232,7 @@ Du leverer enten **approval** eller **feedback** — aldrig begge.
 - Hvis du finder ÉT eller flere fund der bør addresseres: lever **feedback**, ikke approval
 - Hvis du finder INGEN reelle fund: lever **approval**
 
-En plan er KUN approved når BÅDE du og Claude.ai har leveret approval. Selvom Claude.ai har approved og du har feedback: V<n+1> kommer. Selvom du har approved og Claude.ai har feedback: V<n+1> kommer.
+En plan er KUN approved når DU har leveret approval (V2 2026-05-20 — Claude.ai's plan-reviewer-rolle udgået; enkelt port). Du dækker BÅDE kode-niveau OG fire-dokument-konsistens i plan-review.
 
 Det er strict. Lever ikke approval for at undgå konflikt — det underminerer din værdi som uafhængig reviewer.
 
@@ -133,11 +244,11 @@ Du skal markere hvert fund med severity. Ikke alle fund fører til V<n+1> — ku
 
 **Severity-niveauer (jf. `docs/strategi/arbejds-disciplin.md` runde-trapper):**
 
-- **KRITISK** — planen kan ikke bygges som beskrevet (teknisk umulighed), vil ramme produktion-risiko (RLS-hul, SQL-fejl, data-tab, migrations-rekkefølge-fejl), eller bryder en teknisk invariant (FORCE RLS, audit-trigger-dækning, helper-renhed). STOPPER plan i alle runder. **Forretnings-dokument-modsigelse er IKKE KRITISK for Codex** — det er Claude.ai's bord. Hvis du spotter en konflikt mellem plan og vision/master-plan/mathias-afgørelser/krav-dok: marker som "OUT OF SCOPE — Claude.ai's bord" (se linje 24, 76, 104) og fortsæt kode-reviewet uden at blokere.
+- **KRITISK** — planen kan ikke bygges som beskrevet (teknisk umulighed), vil ramme produktion-risiko (RLS-hul, SQL-fejl, data-tab, migrations-rekkefølge-fejl), eller bryder en teknisk invariant (FORCE RLS, audit-trigger-dækning, helper-renhed). STOPPER plan i alle runder. **Forretnings-dokument-modsigelse KAN være KRITISK for Codex** (V2 2026-05-20 — fire-dokument-konsistens er Codex' bord per "Workflow-justering V2"): vision-modsigelse = KRITISK automatisk blokering; krav-dok-modsigelse = MELLEM/KRITISK afhængigt af scope-ramning; master-plan-modsigelse = trigger for master-plan-rettelse (ikke automatisk blokering).
 - **MELLEM** — reelt kode-niveau-problem men ikke produktion-blokerende. Stopper plan i runde 1; bliver G-nummer i runde 2+.
 - **KOSMETISK** — stilistisk, ordlyd, eller mindre praktisk forbedring. Stopper IKKE plan. Markeres som G-nummer-kandidat.
 - **OPGRADERING** (ny 2026-05-17) — du har en bedre kodemetode end Code har planlagt. Stopper IKKE plan i sig selv. Code skal eksplicit afvise eller implementere i V<n+1>. Du må levere APPROVAL og samtidig foreslå OPGRADERING.
-- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input på **teknisk niveau**. Eksempler: to gyldige tekniske valg uden klar vinder, ny teknisk ramme-beslutning Code introducerer (ny datamodel-standard, ny RPC-pattern), scope-grænse-tvivl der kræver Mathias-afklaring. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. **Modsigelse mellem to forretnings-dokumenter er Claude.ai's bord** (se OUT OF SCOPE-håndtering ovenfor). Anvend kun NEEDS-MATHIAS når du faktisk ikke har teknisk grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
+- **NEEDS-MATHIAS** (ny 2026-05-18) — fund hvor du reelt ikke kan afgøre uden Mathias-input. Eksempler: to gyldige tekniske valg uden klar vinder, ny teknisk ramme-beslutning Code introducerer (ny datamodel-standard, ny RPC-pattern), scope-grænse-tvivl der kræver Mathias-afklaring, **modsigelse mellem to forretnings-dokumenter** der kræver Mathias' afgørelse om hvilket vinder. Se `docs/strategi/arbejds-disciplin.md` sektion "NEEDS-MATHIAS-severity" for fuld detalje. STOPPER plan i alle runder. Code kan IKKE lave V<n+1> før Mathias har afgjort. Anvend kun NEEDS-MATHIAS når du faktisk ikke har grundlag for at konkludere selv — ikke som bekvem eskaleringsvej.
 
 **Anti-glid-regler:**
 
