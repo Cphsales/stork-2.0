@@ -1,7 +1,17 @@
-# T9-supplement-2 — Plan V11
+# T9-supplement-2 — Plan V12
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V11)
+
+Codex V11-review leverede 2 TEKNISK-BLOKERING. Begge ADRESSERET i V12.
+
+- **KODE-FUND V11-1 (TEKNISK-BLOKERING — M3b refererer M4-objekter):** M3b (`100004`) refererer `pending_changes.action_id` og `has_permission_action` der oprettes i M4 (`100005`). Migration `100004` fejler. **ADRESSERET** i V12: byttet filnummerering — M4 bliver `100004`, M3b bliver `100005`. Plan-tekst-rækkefølge (M3 → M3b → M4) bevares for læselighed; eksplicit note om at filnumre styrer Postgres execution-rækkefølge.
+
+- **KODE-FUND V11-2 (TEKNISK-BLOKERING — M6b CREATE OR REPLACE med ændret return-type + kolonneorden-fejl):** `pending_changes_read()` kan ikke udvides via CREATE OR REPLACE (return-type ændres). `permission_elements_read()`-action-grenen havde forkert kolonneorden. **ADRESSERET** i M6b (V12): DROP FUNCTION + CREATE FUNCTION-pattern + eksplicit revoke/grant. Action-grenen rettet til match eksisterende return-orden `(level, element_id, parent_id, name, is_active, sort_order)`.
 
 ---
 
@@ -553,7 +563,9 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 - **Migration-fil:** `supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql` (V9: skubbet fra "100002")
 - **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`, restore gammel `role_permissions_read` uden action-gren. Regression-tjek: `m1_permission_matrix.sql` smoke-test passer uændret (eksisterende grants har action_id=NULL — ekskluderes ikke fra UNION-grene).
 
-### Step M3b — RLS-policy-refactor: `pending_changes_select` action-aware (V11 ny)
+### Step M3b — RLS-policy-refactor: `pending_changes_select` action-aware (V11 ny, V12 renummeret)
+
+**Migration-fil-rækkefølge (V12 fix):** M3b (`100005`) eksekveres EFTER M4 (`100004`) selv om Step-nummer er "M3b" i plan-tekst. Plan-tekst-rækkefølge er logisk (RLS-policy hører til efter tabel-niveau-objekter); migration-fil-nummer styrer Postgres execution-rækkefølge.
 
 - **Type:** migration (DROP POLICY + CREATE POLICY)
 - **Hvad:** Eksisterende `pending_changes_select`-policy (`20260518100000:66-83`) tillader SELECT for requester, admin, eller `has_permission(area, null, can_edit=true)`. Når action har `bypass_tab_write=true`, kan legitim approver med kun se-rettighed + action-grant ikke SELECTe pending'en → kan ikke godkende. **Mathias-fund B2 fix:** udvid SELECT-policy med action-baseret tjek.
@@ -593,7 +605,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 (`permission_actions`) + M4 (`has_permission_action`).
-- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_pending_changes_select_policy.sql` (V11: M3b indsat før M4; M4-M6 skubbes til 100005-100007 for fitness-regel-compliance)
+- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_pending_changes_select_policy.sql` (V12: byttet rækkefølge så M4 (100004) er FØR M3b (100005) — M3b refererer has_permission_action og pending_changes.action_id der oprettes i M4)
 - **Risiko:** mellem. Rollback: restore original policy. Regression-tjek: eksisterende callers af pending_changes_select via T9-smoke-tests og T10.7b-smoke skal fortsætte passere (legacy-grenene er bevaret uændret når action_id=NULL).
 
 ### Step M4 — Approve-disciplin: `has_permission_action` + helper for ancestor + `pending_changes.action_id`
@@ -694,7 +706,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 (permission_actions + role_permission_grants-udvidelse).
-- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_approve_helpers.sql` (V11: skubbet fra "100004" pga. M3b)
+- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql` (V12: byttet rækkefølge — M4 før M3b)
 - **V11 (Mathias-fund B3 fix) — separat allowlist-opdatering:** Ud over migrationen tilføjes `'core_identity.has_permission_action'` til `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`-set i `scripts/fitness.mjs:149` (samme allowlist som `client_node_place`, `permission_elements_read`, m.fl.). Det er en separat code-ændring (ikke migration), commited som del af denne pakkens build-PR. Begrundelse: `permission_actions` har kun `is_active`-kolonne (matcher T9-pattern, ikke employees-dual-column-pattern).
 - **Risiko:** mellem. Rollback: drop column `pending_changes.action_id`, drop functions.
 
@@ -1064,9 +1076,76 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 
 - **Type:** migration (CREATE OR REPLACE 2 RPCs)
 - **Hvad:** Udvid `pending_changes_read()` til at returnere `action_id`; udvid `permission_elements_read()` til at returnere actions under tabs. Backend-rammen for UI.
-- **Eksakt indhold:** (kort skitse — fuld pseudo-SQL i build-fase)
-  - `pending_changes_read()`: tilføj `action_id uuid` til return-table; tilføj kolonnen i SELECT.
-  - `permission_elements_read()`: tilføj UNION ALL-gren for actions: `select id, 'action'::text, tab_id as parent_id, name, is_active, sort_order from permission_actions`.
+- **Eksakt indhold (V12 — Codex V11 TEKNISK-BLOKERING fixed):**
+
+  ```sql
+  -- pending_changes_read(): return-type ændres → kræver DROP + CREATE
+  -- (CREATE OR REPLACE kan ikke ændre RETURNS TABLE)
+  drop function if exists core_identity.pending_changes_read();
+  create function core_identity.pending_changes_read()
+  returns table (
+    id uuid,
+    change_type text,
+    target_id uuid,
+    payload jsonb,
+    effective_from date,
+    status text,
+    action_id uuid,  -- V12: ny kolonne
+    requested_by uuid,
+    requested_at timestamptz,
+    approved_by uuid,
+    approved_at timestamptz,
+    undo_deadline timestamptz,
+    applied_at timestamptz,
+    undone_at timestamptz
+    -- Original kolonneliste fra T9-supplement bevares; verificér rækkefølge i build mod 20260520000000:958
+  )
+  language plpgsql stable security invoker set search_path = '' as $$
+  begin
+    -- Eksisterende body: select fra pending_changes med RLS via select-policy
+    -- Tilføj action_id i SELECT-listen (matchende ny return-table-position)
+    return query select id, change_type, target_id, payload, effective_from, status, action_id,
+      requested_by, requested_at, approved_by, approved_at, undo_deadline, applied_at, undone_at
+      from core_identity.pending_changes;
+  end; $$;
+  revoke execute on function core_identity.pending_changes_read() from public, anon;
+  grant execute on function core_identity.pending_changes_read() to authenticated;
+
+  -- permission_elements_read(): tilføj action-gren med korrekt kolonneorden
+  -- Eksisterende return-orden: (level text, element_id uuid, parent_id uuid, name text, is_active boolean, sort_order integer)
+  -- Action-grenen skal matche denne orden eksakt
+  drop function if exists core_identity.permission_elements_read();
+  create function core_identity.permission_elements_read()
+  returns table (
+    level text,
+    element_id uuid,
+    parent_id uuid,
+    name text,
+    is_active boolean,
+    sort_order integer
+  )
+  language plpgsql stable security invoker set search_path = '' as $$
+  begin
+    return query
+    -- Eksisterende area/page/tab-grene (bevares uændret) — verificér eksakt body i build mod eksisterende migration
+    select 'area'::text, a.id, null::uuid, a.name, a.is_active, a.sort_order
+      from core_identity.permission_areas a
+    union all
+    select 'page'::text, p.id, p.area_id, p.name, p.is_active, p.sort_order
+      from core_identity.permission_pages p
+    union all
+    select 'tab'::text, t.id, t.page_id, t.name, t.is_active, t.sort_order
+      from core_identity.permission_tabs t
+    union all
+    -- V12: ny action-gren med korrekt kolonneorden (level, element_id, parent_id, name, is_active, sort_order)
+    select 'action'::text, act.id, act.tab_id, act.name, act.is_active, act.sort_order
+      from core_identity.permission_actions act;
+  end; $$;
+  revoke execute on function core_identity.permission_elements_read() from public, anon;
+  grant execute on function core_identity.permission_elements_read() to authenticated;
+  ```
+
+- **Bemærk:** DROP FUNCTION inden CREATE er nødvendigt fordi return-type ændres (CREATE OR REPLACE understøtter ikke return-type-ændringer). Permissions går tabt ved DROP → eksplicit revoke + grant nedenfor.
 - **Afhængigheder:** M3 (`permission_actions`) + M4 (`pending_changes.action_id`).
 - **Migration-fil:** `supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql`
 - **Risiko:** lav. Rollback: revert RPCs til prior version.
@@ -1241,4 +1320,4 @@ V11 adresserer Mathias-review post-V10 (3 blokerende: can_edit-pre-check, SELECT
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V11-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V12-review.**
