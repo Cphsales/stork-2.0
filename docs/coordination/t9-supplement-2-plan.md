@@ -1,7 +1,17 @@
-# T9-supplement-2 — Plan V8
+# T9-supplement-2 — Plan V9
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V8)
+
+Codex V8-review leverede 2 TEKNISK-BLOKERING. Begge ADRESSERET i V9.
+
+- **KODE-FUND V8-1 (TEKNISK-BLOKERING — M1b filnavn bryder fitness-regel):** `20260521100000a_...` matcher ikke `^\d{14}_...$`. CI-blocker under `pnpm fitness`. **ADRESSERET** i V9: M1b renummeret til `20260521100001_...`; M2-M6 skubbet én op (`100002` til `100006`).
+
+- **KODE-FUND V8-2 (TEKNISK-BLOKERING — nye kolonner mangler klassifikation):** M3/M4 opretter 13 nye kolonner (`permission_actions` 11 stk + `role_permission_grants.action_id` + `pending_changes.action_id`) uden `data_field_definitions`-inserts. CI-blocker under `MIGRATION_GATE_STRICT=true pnpm migration:check`. **ADRESSERET** i V9: M3 og M4 udvidet med klassifikations-INSERT-blokke (kategori='konfiguration' for permission_actions; 'audit' for action_id-foreign keys; pii_level='none'; retention_type='time_based' med 7 år; matcher T9 step 13-mønster fra `20260518000011_t9_classify.sql`).
 
 ---
 
@@ -232,7 +242,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** ingen (selvstændig grants-only migration). Kan køre i hvilken som helst rækkefølge relativt til M1.
-- **Migration-fil:** `supabase/migrations/20260521100000a_t9_supplement_2_grants_fix.sql` (samme dato som M1, "a" suffix for at sikre execution-rækkefølge)
+- **Migration-fil:** `supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql` (V9: renummerét fra "100000a" til at matche fitness-regel `^\d{14}_...$`; M2-M6 skubbet én op)
 - **Risiko:** lav. Rollback: revoke grants (men re-introducerer grant-issue).
 - **G-nummer-kandidat:** verificér resten af T9-RPCs (T9-pending-changes, T9-grants-and-helpers, T9-public-wrappers ud over G059) for samme issue. Hvis fundet: ny pakke eller G-nummer.
 
@@ -291,7 +301,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M1 (rækkefølge-disciplin). Bruger `is_admin_by_employee_id` fra T10.7b.
-- **Migration-fil:** `supabase/migrations/20260521100001_t9_supplement_2_superadmin_bypass.sql`
+- **Migration-fil:** `supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql` (V9: skubbet fra "100001")
 - **Risiko:** mellem. Rollback: revert begge RPCs til prior version.
 
 ### Step M3 — Handlings-granularitet: `permission_actions`-tabel + grants-udvidelse
@@ -472,10 +482,35 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     where g.role_id = p_role_id and g.action_id is not null;
   end; $$;
   -- Existing grants/revoke bevares via CREATE OR REPLACE
+
+  -- V9 (Codex V8-2 fix): klassifikations-inserts for nye kolonner
+  -- Matcher T9 step 13-mønster fra 20260518000011_t9_classify.sql
+  select set_config('stork.allow_data_field_definitions_write', 'true', false);
+  select set_config('stork.source_type', 'migration', false);
+  select set_config('stork.change_reason', 'T9-supplement-2 M3: classify permission_actions + role_permission_grants.action_id', false);
+
+  insert into core_compliance.data_field_definitions
+    (table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose) values
+
+    -- core_identity.permission_actions (konfiguration) — 11 kolonner
+    ('core_identity', 'permission_actions', 'id', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'permission-action PK'),
+    ('core_identity', 'permission_actions', 'tab_id', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_tabs'),
+    ('core_identity', 'permission_actions', 'name', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'navn på action'),
+    ('core_identity', 'permission_actions', 'is_active', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'om action er aktiv'),
+    ('core_identity', 'permission_actions', 'sort_order', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'visnings-rækkefølge i UI'),
+    ('core_identity', 'permission_actions', 'requires_second_approver', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'kode-låst: kræver action 2. godkender'),
+    ('core_identity', 'permission_actions', 'has_undo', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'kode-låst: har action fortrydelses-periode'),
+    ('core_identity', 'permission_actions', 'second_approver_type', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'UI-konfig: above eller superadmin'),
+    ('core_identity', 'permission_actions', 'bypass_tab_write', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'kode-låst: tillader kun se-rettighed'),
+    ('core_identity', 'permission_actions', 'created_at', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'created timestamp'),
+    ('core_identity', 'permission_actions', 'updated_at', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'updated timestamp'),
+
+    -- core_identity.role_permission_grants.action_id (konfiguration) — 1 ny kolonne
+    ('core_identity', 'role_permission_grants', 'action_id', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; action-niveau-grant');
   ```
 
 - **Afhængigheder:** ingen direkte (selvstændig DDL). Bygger på eksisterende `permission_tabs` + `role_permission_grants`.
-- **Migration-fil:** `supabase/migrations/20260521100002_t9_supplement_2_permission_actions.sql`
+- **Migration-fil:** `supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql` (V9: skubbet fra "100002")
 - **Risiko:** mellem. Rollback: drop tabel `permission_actions`, drop column `action_id`, restore gammel CHECK + UNIQUE-index, restore gammel `permission_resolve`, restore gammel `role_permissions_read` uden action-gren. Regression-tjek: `m1_permission_matrix.sql` smoke-test passer uændret (eksisterende grants har action_id=NULL — ekskluderes ikke fra UNION-grene).
 
 ### Step M4 — Approve-disciplin: `has_permission_action` + helper for ancestor + `pending_changes.action_id`
@@ -488,6 +523,15 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   -- Tilføj pending_changes.action_id (nullable for legacy pendings før denne pakke)
   alter table core_identity.pending_changes
     add column action_id uuid references core_identity.permission_actions(id) on delete restrict;
+
+  -- V9 (Codex V8-2 fix): klassifikation af ny pending_changes.action_id-kolonne
+  select set_config('stork.allow_data_field_definitions_write', 'true', false);
+  select set_config('stork.source_type', 'migration', false);
+  select set_config('stork.change_reason', 'T9-supplement-2 M4: classify pending_changes.action_id', false);
+
+  insert into core_compliance.data_field_definitions
+    (table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose) values
+    ('core_identity', 'pending_changes', 'action_id', 'audit', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; bruges af pending_change_approve til at evaluere approve-disciplin pr. handling');
 
   -- Helper: medarbejdere placeret på strengt højere knude (ancestor) end requester
   create or replace function core_identity.acl_higher_level_employees(p_requester_employee_id uuid)
@@ -566,7 +610,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 (permission_actions + role_permission_grants-udvidelse).
-- **Migration-fil:** `supabase/migrations/20260521100003_t9_supplement_2_approve_helpers.sql`
+- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql` (V9: skubbet fra "100003")
 - **Risiko:** mellem. Rollback: drop column `pending_changes.action_id`, drop functions.
 
 ### Step M5 — Refactor `pending_change_approve` + drop self-approve-blok
@@ -706,7 +750,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   **Vigtigt (V5):** Self-approve-blok BEVARES for legacy-flow (`action_id IS NULL`) som regression-beskyttelse indtil senere pakke seeder actions. Default selv-approve tillades KUN for konfigurerede actions med `requires_second_approver=false`. Krav-dok §2.5's "fjernes"-formulering gælder under action-baseret konfig, ikke for legacy real-wrapper-flow.
 
 - **Afhængigheder:** M3 + M4 (`permission_actions`, `acl_higher_level_employees`).
-- **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_pending_change_approve.sql`
+- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_pending_change_approve.sql` (V9: skubbet fra "100004")
 - **Risiko:** mellem. Rollback: revert til T9-fundament-supplement-version med self-approve-blok.
 
 ### Step M6 — UI-RPCs + udvid `role_permission_grant_set` til action
@@ -895,7 +939,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   ```
 
 - **Afhængigheder:** M3 + M4.
-- **Migration-fil:** `supabase/migrations/20260521100005_t9_supplement_2_ui_rpcs.sql`
+- **Migration-fil:** `supabase/migrations/20260521100006_t9_supplement_2_ui_rpcs.sql` (V9: skubbet fra "100005")
 - **Risiko:** lav. Rollback: revert `role_permission_grant_set` til prior version, drop nye RPCs.
 
 ### Step T1 — Smoke-test for G059 wrapper-flow
@@ -1063,8 +1107,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V8 adresserer Codex V7's 1 KRITISK (manglende grants på G059-wrappers) + G-nummer-kandidat (T10-client-wrappers) + Code systemisk recon (11 T9-fundament-supplement-RPCs med samme issue). Mathias-afgørelse 2026-05-22: fix alle 18 berørte RPCs som del af denne pakke. Ny M1b grants-fix-migration. V7 adresserede Codex V6's 1 KRITISK (pending_change_approve grant). V6 adresserede Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
+V9 adresserer Codex V8's 2 TEKNISK-BLOKERING (M1b filnavn bryder fitness-regel → renummeret; nye kolonner mangler klassifikation → klassifikations-inserts tilføjet i M3+M4). V8 adresserede Codex V7's 1 KRITISK (manglende grants på G059-wrappers) + G-nummer-kandidat (T10-client-wrappers) + Code systemisk recon (11 T9-fundament-supplement-RPCs med samme issue). Mathias-afgørelse 2026-05-22: fix alle 18 berørte RPCs som del af denne pakke. Ny M1b grants-fix-migration. V7 adresserede Codex V6's 1 KRITISK (pending_change_approve grant). V6 adresserede Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V8-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V9-review.**
