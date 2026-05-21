@@ -4,7 +4,7 @@
 
 **Scope:** Kun §4 byggetrin. H-pakker (H010, H016, H020, H020.1, H021, H022, H022.1, dokument-roller-pakken, master-plan sandheds-audit m.fl.) er disciplin/dokument-pakker uden for §4 og spores via commit-history + slut-rapporter i `docs/coordination/rapport-historik/`. Tekniske G-numre (gæld) spores i `docs/teknisk/teknisk-gaeld.md`.
 
-**Sidste opdatering:** 18. maj 2026 (T9 — Identitet del 2 — komplet leveret: build + fundament-supplement + classify-format-fix)
+**Sidste opdatering:** 21. maj 2026 (Trin 10 — Klient-skabelon — komplet leveret: 14 migrations + 6 smoke-tests + 5 Codex build-review-runder)
 
 ---
 
@@ -23,7 +23,7 @@
 | 7c      | break_glass_requests + RPC-skabelon                            | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
 | 8       | Migration-gate Phase 2 strict                                  | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
 | 9       | Identitet del 2 (org-træ + permission-fundament + fortrydelse) | ✓ Godkendt           | Trin 5     | d73d929 | 18. maj |
-| 10      | Klient-skabelon + felt-definitions                             | ⌛ Udestående        | —          | —       | —       |
+| 10      | Klient-skabelon + felt-definitions                             | ✓ Godkendt           | Trin 6     | 1831760 | 21. maj |
 | 10b     | Lokations-skabelon                                             | ⌛ Udestående        | —          | —       | —       |
 | 11      | UDGÅR (schema-grænser fra trin 1)                              | —                    | —          | —       | —       |
 | 12      | @stork/core skeleton                                           | ⌛ Udestående        | —          | —       | —       |
@@ -319,7 +319,7 @@
 - Fitness-script R7d-allowlist udvidet (client_field_definitions_list + clients_validate_fields).
 - 6 smoke-tests dækker lifecycle + felt-def + logo + FK + validate_fields + active_check.
 
-**Migrations (12):**
+**Migrations (14, inkl. T10.13b workaround + T10.13c reverse):**
 
 - `20260521000001_t10_tables.sql`
 - `20260521000002_t10_is_permanent_allowed_extend.sql`
@@ -333,13 +333,17 @@
 - `20260521000010_t10_client_field_definition_rpcs.sql`
 - `20260521000011_t10_client_logo_rpcs.sql`
 - `20260521000012_t10_client_read_rpcs.sql`
+- `20260521000013_t10_seed_legacy_permissions.sql` (build-fase workaround for M1-test)
+- `20260521000014_t10_remove_legacy_permissions.sql` (reverse: M1-test refactored til grant-modellen)
 
-**G-numre rejst:** G057 (T9 forretnings-invariants uden superadmin-bypass), G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19).
+**G-numre rejst:** G057 (T9 forretnings-invariants uden superadmin-bypass), G058 (FK-coverage-fitness-check ikke implementeret per master-plan §3.19), G059 (T9 public wrappers mangler `t9_write_authorized` session-var — Codex build-runde 4 fund).
 
-**Plan-rejse:** 14 Codex-runder + 13+ Code walk-through-passes. Codex V5 gav falsk-positiv APPROVAL (Mathias-terminal-review + Code-validering fandt 6 fund). V14 verificeret med konsekvent Codex APPROVAL + Code walk-through konfirmeret krav-dok-konform § for §.
+**Plan-rejse:** 14 Codex plan-runder + 13+ Code walk-through-passes (V5 falsk-positiv APPROVAL → Mathias-terminal-review + Code-validering fandt 6 fund; V14 konsekvent APPROVAL + krav-dok-konform § for §). Build-fase: 5 Codex build-review-runder (KRITISK runde 1+2 → fix; WORKAROUND-INTRODUCERET runde 3 → Mathias-gate → refactor; PLAN-AFVIGELSE runde 4 → cron-context fix; APPROVAL runde 5). Slut-rapport-runde 1: 1 MELLEM (G-håndtering) + 2 LAV (count + tests-tal) → fix.
+
+**Slut-rapport:** `docs/coordination/rapport-historik/2026-05-21-trin-10.md` (PR #65).
 
 ---
 
 ## Næste op
 
-Trin 10 afsluttet. Næste pakke afventer Mathias-valg.
+Trin 10 afsluttet 2026-05-21. Næste pakke afventer Mathias-valg blandt §4's resterende trin (10b, 12+) eller G-løsnings-pakke (G057 + G059 hører sammen som T9-supplement).
