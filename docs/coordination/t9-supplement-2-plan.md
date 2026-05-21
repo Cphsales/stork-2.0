@@ -1,7 +1,15 @@
-# T9-supplement-2 — Plan V5
+# T9-supplement-2 — Plan V6
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V5)
+
+Codex V5-review leverede 1 KRITISK-SIKKERHEDSHUL (stale-tekst-modsigelse). ADRESSERET i V6.
+
+- **KODE-FUND V5-1 (KRITISK-SIKKERHEDSHUL — M5 stale-tekst modsiger V5-koden):** Codex flaggede at SQL-blokken i M5 var korrekt fixed i V5, men beskrivelses-teksten "Drop self-approve-blok", "action_id IS NULL → tillad alle med can_edit", og "Self-approve-blok er FJERNET" var ikke opdateret. Risiko: build-fasen kan følge stale tekst og genintroducere V4-hullet. **ADRESSERET** i V6: opdateret M5-beskrivelse, kode-kommentar-blok og Vigtigt-noten så de matcher V5-SQL-koden.
 
 ---
 
@@ -499,18 +507,20 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 - **Eksakt indhold:**
 
   ```sql
-  -- Refactor pending_change_approve
-  -- Drop self-approve-blok (linje 222-227 i T9-fundament-supplement)
-  -- Tilføj action-baseret evaluering:
-  --   1. Hvis pending har action_id → hent action-config
-  --   2. Hvis requires_second_approver=false ELLER action_id IS NULL (legacy) → tillad alle med can_edit
-  --   3. Hvis requires_second_approver=true AND second_approver_type='above':
-  --      - Tillad hvis approver er i acl_higher_level_employees(requested_by)
-  --      - Tillad hvis approver er superadmin (bypass)
-  --      - Ellers raise
-  --   4. Hvis requires_second_approver=true AND second_approver_type='superadmin':
-  --      - Tillad KUN hvis approver er superadmin
-  --      - Ellers raise
+  -- V5 Refactor pending_change_approve
+  -- Branching på action_id:
+  --   1. action_id IS NULL (legacy real-wrapper-flow): BEVAR eksisterende
+  --      self-approve-blok (requester ≠ approver medmindre admin). Regression-
+  --      beskyttelse indtil senere pakke seeder actions + udvider wrappers.
+  --   2. action_id IS NOT NULL (konfigureret action):
+  --      a. requires_second_approver=false → default selv-approve tilladt (§2.5)
+  --      b. requires_second_approver=true AND second_approver_type='above':
+  --         - Tillad hvis approver er i acl_higher_level_employees(requested_by)
+  --         - Tillad hvis approver er superadmin (bypass)
+  --         - Ellers raise approver_not_higher_level
+  --      c. requires_second_approver=true AND second_approver_type='superadmin':
+  --         - Tillad KUN hvis approver er superadmin (is_admin())
+  --         - Ellers raise approver_must_be_superadmin
   create or replace function core_identity.pending_change_approve(
     p_change_id uuid
   ) returns void
@@ -621,7 +631,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
   revoke execute on function core_identity.pending_change_approve(uuid) from public, anon;
   ```
 
-  **Vigtigt:** Self-approve-blok (linje 222-227) er FJERNET. Default er nu selv-approve OK når action ikke kræver 2. godkender.
+  **Vigtigt (V5):** Self-approve-blok BEVARES for legacy-flow (`action_id IS NULL`) som regression-beskyttelse indtil senere pakke seeder actions. Default selv-approve tillades KUN for konfigurerede actions med `requires_second_approver=false`. Krav-dok §2.5's "fjernes"-formulering gælder under action-baseret konfig, ikke for legacy real-wrapper-flow.
 
 - **Afhængigheder:** M3 + M4 (`permission_actions`, `acl_higher_level_employees`).
 - **Migration-fil:** `supabase/migrations/20260521100004_t9_supplement_2_pending_change_approve.sql`
@@ -981,8 +991,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V5 adresserer Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
+V6 adresserer Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V5-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V6-review.**
