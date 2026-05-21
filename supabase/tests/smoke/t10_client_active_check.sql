@@ -80,10 +80,11 @@ begin
   values (v_team_node_id, 't10-active team', v_root_id, 'team', true, current_date - 5);
 
   -- ─── T1: opret aktiv klient → wrapper → pending → approve+apply → placement findes
+  -- Brug current_date - 1 for placement så T4's close med current_date kan UPDATE (ikke DELETE)
   v_client_id := core_identity.client_upsert('t10-active klient', '{}'::jsonb,
     'T1: opret aktiv klient', true, null);
 
-  v_pending_id := core_identity.client_node_place(v_client_id, v_team_node_id, current_date);
+  v_pending_id := core_identity.client_node_place(v_client_id, v_team_node_id, current_date - 1);
   perform core_identity.pending_change_approve(v_pending_id);
   perform core_identity.pending_change_apply(v_pending_id);
 
