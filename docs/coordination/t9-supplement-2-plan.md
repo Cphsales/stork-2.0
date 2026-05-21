@@ -1,7 +1,19 @@
-# T9-supplement-2 — Plan V7
+# T9-supplement-2 — Plan V8
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V7)
+
+Codex V7-review leverede 1 KRITISK + 1 G-nummer-kandidat. Begge afslørede et SYSTEMISK arkitektur-issue. Mathias-afgørelse 2026-05-22: udvid pakke-scope til at fixe alle berørte RPCs.
+
+- **KODE-FUND V7-1 (KRITISK — manglende grant til authenticated på 5 G059-wrappers):** Codex flaggede at `org_node_upsert`, `org_node_deactivate`, `team_close`, `employee_place`, `employee_remove_from_node` har `revoke execute ... from public, anon` uden `grant execute ... to authenticated` (linje 44, 63, 91, 115, 137 i `20260518000007`). Authenticated brugere kan ikke kalde wrappers via REST API trods session-var-fix. **ADRESSERET** i M1 (udvidet V8): tilføj grants til alle 5 wrappers.
+
+- **KODE-FUND V7-2 (G-nummer-kandidat — samme issue på T10-client-wrappers):** `client_node_place` + `client_node_close` (linje 97, 131 i `20260521000008`) har samme mønster. **ADRESSERET** i M1 (udvidet V8): tilføj grants til de 2 T10-client-wrappers (konsistens-fix).
+
+- **Systemisk recon-fund (Code):** T9-fundament-supplement har 11 RPCs med samme issue: `pending_change_approve` (V6-fundet), `pending_change_undo`, `undo_setting_update`, `permission_area_upsert`, `permission_area_deactivate`, `permission_page_upsert`, `permission_page_deactivate`, `permission_tab_upsert`, `permission_tab_deactivate`, `role_permission_grant_set`, `role_permission_grant_remove`. Mathias-afgørelse 2026-05-22: fix alle som del af denne pakke. **ADRESSERET** i ny Step M1b (konsolideret grants-fix-migration).
 
 ---
 
@@ -161,19 +173,68 @@ To strukturelle beslutninger som binder fremtidige pakker:
 
 Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem migrations.
 
-### Step M1 — G059: session-var-fix på 5 wrappers
+### Step M1 — G059: session-var-fix + grants på 5 wrappers + 2 T10-client-wrappers (V8 udvidet)
 
-- **Type:** migration (CREATE OR REPLACE 5 RPCs)
-- **Hvad:** Tilføj `perform set_config('stork.t9_write_authorized', 'true', true)` EFTER `has_permission`-check og FØR `pending_change_request`-kald.
-- **Eksakt indhold:** Pr. RPC indsættes ét stmt umiddelbart efter `if not has_permission(...)`-blok. Signaturer bevares. `revoke execute ... from public, anon` bevares.
-  - `org_node_upsert(uuid, text, uuid, text, boolean, date)` — insert FØR linje 29
-  - `org_node_deactivate(uuid, date)` — insert FØR linje 56
-  - `team_close(uuid, date)` — insert FØR linje 84
-  - `employee_place(uuid, uuid, date)` — insert FØR linje 104
-  - `employee_remove_from_node(uuid, date)` — insert FØR linje 127
-- **Afhængigheder:** ingen (frittstående CREATE OR REPLACE)
+- **Type:** migration (CREATE OR REPLACE 5 RPCs + grants)
+- **Hvad:** Tilføj `perform set_config('stork.t9_write_authorized', 'true', true)` EFTER `has_permission`-check og FØR `pending_change_request`-kald. **V8 (Codex V7-1 fix):** plus tilføj eksplicit `grant execute ... to authenticated` på de 5 G059-wrappers + 2 T10-client-wrappers (`client_node_place`, `client_node_close`) der har samme systemiske grant-issue.
+- **Eksakt indhold:**
+
+  ```sql
+  -- CREATE OR REPLACE de 5 G059-wrappers med session-var (eksempel for org_node_upsert)
+  -- Pr. RPC indsættes `perform set_config('stork.t9_write_authorized', 'true', true);`
+  -- umiddelbart efter has_permission-blok og før pending_change_request-kald.
+
+  -- G059 wrappers (signatur + insert-position):
+  --   org_node_upsert(uuid, text, uuid, text, boolean, date) — insert FØR linje 29
+  --   org_node_deactivate(uuid, date) — insert FØR linje 56
+  --   team_close(uuid, date) — insert FØR linje 84
+  --   employee_place(uuid, uuid, date) — insert FØR linje 104
+  --   employee_remove_from_node(uuid, date) — insert FØR linje 127
+
+  -- V8: Explicit grants for G059-wrappers (5 stk)
+  grant execute on function core_identity.org_node_upsert(uuid, text, uuid, text, boolean, date) to authenticated;
+  grant execute on function core_identity.org_node_deactivate(uuid, date) to authenticated;
+  grant execute on function core_identity.team_close(uuid, date) to authenticated;
+  grant execute on function core_identity.employee_place(uuid, uuid, date) to authenticated;
+  grant execute on function core_identity.employee_remove_from_node(uuid, date) to authenticated;
+
+  -- V8: Explicit grants for T10-client-wrappers (2 stk — samme systemiske issue, konsistens-fix)
+  grant execute on function core_identity.client_node_place(uuid, uuid, date) to authenticated;
+  grant execute on function core_identity.client_node_close(uuid, date) to authenticated;
+  ```
+
+- **Afhængigheder:** ingen (frittstående CREATE OR REPLACE + grants)
 - **Migration-fil:** `supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql`
-- **Risiko:** lav. Rollback: revert til T9-supplement-version uden session-var.
+- **Risiko:** lav. Rollback: revert til T9-supplement-version uden session-var; revoke grants (men det re-introducerer grant-issue).
+
+### Step M1b — Konsolideret grants-fix for T9-fundament-supplement (V8 ny)
+
+- **Type:** migration (grants only)
+- **Hvad:** Tilføj eksplicit `grant execute ... to authenticated` på 11 RPCs i T9-fundament-supplement der har samme systemiske grant-issue (revoke uden grant). Mathias-afgørelse 2026-05-22: fix alle berørte RPCs som del af denne pakke.
+- **Eksakt indhold:**
+
+  ```sql
+  -- V8 (Codex V7 systemisk recon): explicit grants på 11 T9-fundament-supplement-RPCs
+  -- der har "revoke ... from public, anon" uden matchende "grant ... to authenticated".
+
+  -- pending_change_approve er allerede grantet i M5 (V7) — ikke duplikeret her.
+
+  grant execute on function core_identity.pending_change_undo(uuid) to authenticated;
+  grant execute on function core_identity.undo_setting_update(text, integer) to authenticated;
+  grant execute on function core_identity.permission_area_upsert(uuid, text, boolean, integer) to authenticated;
+  grant execute on function core_identity.permission_area_deactivate(uuid) to authenticated;
+  grant execute on function core_identity.permission_page_upsert(uuid, uuid, text, boolean, integer) to authenticated;
+  grant execute on function core_identity.permission_page_deactivate(uuid) to authenticated;
+  grant execute on function core_identity.permission_tab_upsert(uuid, uuid, text, boolean, integer) to authenticated;
+  grant execute on function core_identity.permission_tab_deactivate(uuid) to authenticated;
+  -- role_permission_grant_set grantes også eksplicit i M6 (V3 fix) — ikke duplikeret her.
+  grant execute on function core_identity.role_permission_grant_remove(uuid, text, uuid) to authenticated;
+  ```
+
+- **Afhængigheder:** ingen (selvstændig grants-only migration). Kan køre i hvilken som helst rækkefølge relativt til M1.
+- **Migration-fil:** `supabase/migrations/20260521100000a_t9_supplement_2_grants_fix.sql` (samme dato som M1, "a" suffix for at sikre execution-rækkefølge)
+- **Risiko:** lav. Rollback: revoke grants (men re-introducerer grant-issue).
+- **G-nummer-kandidat:** verificér resten af T9-RPCs (T9-pending-changes, T9-grants-and-helpers, T9-public-wrappers ud over G059) for samme issue. Hvis fundet: ny pakke eller G-nummer.
 
 ### Step M2 — G057: superadmin-bypass på 2 apply-handlers
 
@@ -1002,8 +1063,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V6 adresserer Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
+V8 adresserer Codex V7's 1 KRITISK (manglende grants på G059-wrappers) + G-nummer-kandidat (T10-client-wrappers) + Code systemisk recon (11 T9-fundament-supplement-RPCs med samme issue). Mathias-afgørelse 2026-05-22: fix alle 18 berørte RPCs som del af denne pakke. Ny M1b grants-fix-migration. V7 adresserede Codex V6's 1 KRITISK (pending_change_approve grant). V6 adresserede Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse modsagde V5-koden → opdateret kommentarer, beskrivelse og Vigtigt-note). V5 adresserede Codex V4's 1 KRITISK-SIKKERHEDSHUL (legacy action_id NULL åbnede non-admin self-approve → fixed: bevar self-approve-blok for legacy, tillad default selv-approve KUN for konfigurerede actions). V4 adresserede Codex V3's 1 KRITISK-SIKKERHEDSHUL + Code recon. V3 adresserede Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK. V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM. G-nummer-kandidat deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V7-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V8-review.**
