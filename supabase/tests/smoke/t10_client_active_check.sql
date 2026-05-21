@@ -149,13 +149,14 @@ begin
 
     perform set_config('stork.t9_write_authorized', 'true', true);
     insert into core_identity.pending_changes
-      (id, change_type, target_id, payload, effective_from, requested_by, status)
+      (id, change_type, target_id, payload, effective_from, requested_by,
+       approved_by, approved_at, undo_deadline, status)
     values
       (v_pending_admin_id, 'client_place', v_client_b_id,
        jsonb_build_object('client_id', v_client_b_id::text,
                           'node_id', v_team_node_id::text,
                           'effective_from', current_date::text),
-       current_date, v_admin_emp_id, 'approved');
+       current_date, v_admin_emp_id, v_admin_emp_id, now(), now(), 'approved');
 
     -- Deaktiver klient
     update core_identity.clients set is_active = false where id = v_client_b_id;
@@ -183,13 +184,14 @@ begin
 
     perform set_config('stork.t9_write_authorized', 'true', true);
     insert into core_identity.pending_changes
-      (id, change_type, target_id, payload, effective_from, requested_by, approved_by, status)
+      (id, change_type, target_id, payload, effective_from, requested_by,
+       approved_by, approved_at, undo_deadline, status)
     values
       (v_pending_normal_id, 'client_place', v_client_c_id,
        jsonb_build_object('client_id', v_client_c_id::text,
                           'node_id', v_team_node_id::text,
                           'effective_from', current_date::text),
-       current_date, v_normal_emp_id, v_normal_emp_id, 'approved');
+       current_date, v_normal_emp_id, v_normal_emp_id, now(), now(), 'approved');
 
     update core_identity.clients set is_active = false where id = v_client_c_id;
 
