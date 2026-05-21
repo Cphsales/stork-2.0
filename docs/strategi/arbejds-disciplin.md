@@ -154,6 +154,126 @@ Eneste beslutningstager. Forretning + endelig godkendelse.
 Tekniske beslutninger kan delegeres til Code når det er
 inden for godkendt plan.
 
+## Pre-krav-dok forretningsgang-recon (V3 2026-05-21)
+
+Inden krav-dok skrives, leverer alle tre AI'er parallelt en **forretningsgang-rapport** om samme emne: hvilke forretningsgange/logikker er i spil i næste skridt? Tre uafhængige rapporter trianguleres — konvergens validerer; divergens flagger blind-vinkler.
+
+| Aktør         | Kilder                                                            |
+| ------------- | ----------------------------------------------------------------- |
+| **Code**      | kode + master-plan + vision                                       |
+| **Codex**     | kode + master-plan + vision                                       |
+| **Claude.ai** | vision + master-plan + mathias-afgoerelser + interne chat-projekt |
+
+Vision er fælles autoritet på tværs af alle tre. Master-plan er fælles for Code, Codex, Claude.ai. Krav-dok findes ikke endnu (skrives efter rekonen).
+
+**Rapport-format pr. AI** (`docs/coordination/<pakke>-forretningsgang-<aktoer>.md`):
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde, ELLER tomt hvis ingen data]
+```
+
+Forståeligt ordvalg = forretningssprog (ikke tabel-navne, kolonne-navne, RPC-signaturer). Hvis ingen data findes for en forretningsgang: lad "Hvad ved vi?" stå tomt.
+
+**Konsolidering:** Claude.ai sammensætter de tre rapporter til `<pakke>-forretningsgang-konsolideret.md` med matrix:
+
+| Forretningsgang | Code-rapport | Codex-rapport | Claude.ai-rapport | Konvergens? |
+| --------------- | ------------ | ------------- | ----------------- | ----------- |
+
+Ved divergens mellem rapporterne kaldes Code ind for at argumentere fra kode-siden, hvorefter Mathias afgør.
+
+**Mathias' afgørelse pr. række:**
+
+- **VALIDERET** — data er korrekt; bruges i krav-dok som dokumenteret forudsætning
+- **ÅBENT SPØRGSMÅL** — Mathias svarer i chat; svaret bliver til krav-dok-paragraf
+- **OUT OF SCOPE** — eksplicit noteret i krav-dok som "ikke i denne pakke"
+
+Når alle rækker er afgjort, har vi fuldt forretningsgang-grundlag. Krav-dok skrives derefter (Claude.ai-forfatter, Mathias direkte validator — eksisterende V2-flow).
+
+**Begrundelse:** Trin 10 (2026-05-21) leverede V14 efter 14 plan-runder + 5 build-runder; mange runder skyldtes at faktisk DB-state, eksisterende patterns og forretningsgang ikke var dybt verificeret før krav-dok blev skrevet. Triangulering via tre uafhængige rapporter fanger blind-vinkler en enkelt AI missede.
+
+## Plan-fase parallel Code+Codex (V3 2026-05-21)
+
+Plan-fase kører Code OG Codex parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt. Code skriver V<n>; Codex laver parallel kode-research efter blind-vinkler relevant for V<n>. Begge leverer outputs samtidig; Codex integrerer review af V<n> + kode-research i ÉN leverance.
+
+**Sekvens pr. iteration V<n>:**
+
+1. **Parallel start:** Code skriver V<n>; Codex laver parallel kode-research (blind-vinkler + teknisk realiserbarhed i kode-base)
+2. **Udveksling:** Code committer V<n>; Codex integrerer V<n>-review + kode-research → `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`
+3. **V<n+1>-åbning:** Code håndterer hvert KODE-FUND eksplicit (ADRESSERET i sektion X / AFVIST fordi Y); ingen stiltiende ignorering
+4. **Stop:** Codex APPROVAL + positive marker "INGEN NYE FUND I KODE" → Mathias paster `qwerg`
+
+**Codex' kode-research-rolle (ny i V3):**
+
+- Find **blind-vinkler** i kode-base som Code måske overser (edge cases, race-conditions, cron-context-issues, DB-state-mismatches)
+- **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
+- IKKE patterns-katalog (det er Code's eget recon-arbejde via "Verificerede afhængigheder"-sektion)
+- IKKE krav-dok-konsistens-tjek (Claude.ai's bord)
+
+**Fund-klassifikation mod tre dokumenter (krav, master-plan, vision):**
+
+| Rammer                         | Severity                                                         |
+| ------------------------------ | ---------------------------------------------------------------- |
+| Alle tre dokumenter            | KRITISK                                                          |
+| Kun krav-dok                   | MELLEM                                                           |
+| Kun master-plan                | Trigger for master-plan-rettelse (jf. dokument-status-disciplin) |
+| Kun kode (ingen dokument-spor) | LAV / G-nummer-kandidat                                          |
+
+**Fuldstyrke-disciplin (vigtigt):**
+
+Begge AI'er skal arbejde med fuld dybde. Overfladisk output blokerer iteration:
+
+- **Code:** V<n> skal være komplet plan-leverance (alle sektioner udfyldt, eksakt indhold pr. step, krav-dok-dækning verificeret). Ikke "skitse-V<n> til diskussion".
+- **Codex:** Kode-research skal være dyb (læs migrations, RPC-bodies, RLS-policies, smoke-test-flow). Find faktiske blind-vinkler — ikke generiske "overvej edge cases". Hvert fund har file:linje-reference.
+
+Hvis enten Code eller Codex leverer overfladisk output: Mathias markerer "FULDSTYRKE-MANGEL — gentag iteration".
+
+**FULDSTYRKE-MANGEL-procedure:**
+
+- **Hvem markerer:** kun Mathias (ikke AI-rejst); markeringen sker i chat (ingen separat fil)
+- **Format:** `FULDSTYRKE-MANGEL: [konkret grund — fx "Codex' V2-research havde kun 1 fund og ingen file:linje-referencer"]`
+- **Konsekvens:** AI scrapper sit nuværende output og gentager iteration på **samme V-nummer** (ikke V<n+1>); inkrementer ikke versions-tæller
+- **Severity-placering:** parallel til eksisterende NEEDS-MATHIAS — kun Mathias-rejst, blokerer iteration indtil output er fuldstyrke
+- **Hvis det opstår 2+ gange pr. pakke:** Mathias eller AI registrerer som G-nummer-kandidat (signal om strukturel disciplin-svigt, ikke enkelt-glip)
+
+Skal være sjælden — disciplinen er fuldstyrke fra start.
+
+**Hvad ændres ikke:**
+
+- Codex' eksisterende reviewer-rolle (udvides med parallel research, ikke erstattes)
+- Code's plan-skabelon (Verificerede afhængigheder + Fire-dokument-konsultation består)
+- OPGRADERING-disciplin (eksisterende, kører parallelt med KODE-FUND-håndtering)
+
+## Plan- og bygge-fase overholder 3 dokumenter (V3 2026-05-21)
+
+I plan-fase og bygge-fase OVERHOLDES tre dokumenter:
+
+1. **`docs/coordination/<pakke>-krav-og-data.md`** — pakke-kontrakt
+2. **`docs/strategi/vision-og-principper.md`** — låst autoritet
+3. **`docs/strategi/stork-2-0-master-plan.md`** — retningsgivende, kan rettes via trigger
+
+**Mathias-afgørelser** er retningsgivende kontekst (konsulteres af Claude.ai i Step 1.0 som intentions-spor), men er IKKE overholdelses-kontrakt i plan/bygge. Andre dokumenter (overvaagning-filer, skabeloner, teknisk-gaeld) er disciplin-instrumenter, ikke overholdelses-kontrakter.
+
+**Disciplin når noget rammer et af de 3 overholdelses-dokumenter:**
+
+1. **Først:** løs det uden workaround. Find en teknisk løsning der overholder dokumentet.
+2. **Hvis det ikke kan lade sig gøre uden workaround:** STOP og spørg Mathias.
+
+**Eksplicit FORBUDT:**
+
+- Implementer workaround under build uden Mathias-godkendelse (jf. greenfield-princip 2026-05-12)
+- "Det er midlertidigt"-undskyldning — der er ingen midlertidige workarounds; alt er enten korrekt eller eskaleret til Mathias
+- Drop en krav-dok-leverance fordi den er svær — krav-dok er pakke-kontrakt; afvigelse kræver re-godkendelse
+
+**Eksempel:** trin 10's T10.13b legacy-seed migration var workaround uden Mathias-gate → Codex flaggede WORKAROUND-INTRODUCERET runde 3 → Mathias-afgørelse 2026-05-21 "Fix det ordentligt" → refactor til grant-model + reverse-migration. Korrekt mønster: stop og spørg FØR workaround implementeres, ikke efter.
+
 ## Fire forretnings-dokumenter — én låst, to retningsgivende, én pakke-kontrakt
 
 Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport skal verificere mod alle fire, men modsigelses-håndtering differentieres efter dokument-status.

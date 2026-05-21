@@ -69,6 +69,95 @@ Bruger den marker der bedst beskriver primær problem. Sekundære aspekter nævn
 7. **Push** til samme branch som planen bor på
 8. **Rapportér til Mathias kort** — hvad du fandt, commit-hash
 
+## Plan-fase parallel kode-research (V3 2026-05-21)
+
+Plan-fase kører Code OG dig parallelt fra V1 — ikke ping-pong-sekvens. Begge starter samtidig efter krav-dok er godkendt.
+
+**Din rolle (udvidet i V3):**
+
+- **Reaktiv review** af Code's V<n> (eksisterende rolle, uændret)
+- **Proaktiv kode-research** parallelt med Code's V<n>-skrivning (NY): find blind-vinkler i kode-base som Code måske overser. Verificér at krav-dok er teknisk realiserbart med nuværende kode.
+
+**Sekvens pr. iteration V<n>:**
+
+1. **Parallel start:** Code skriver V<n>; du laver kode-research samtidig.
+2. **Udveksling:** Code committer V<n>. Du integrerer V<n>-review + kode-research i ÉN leverance: `docs/coordination/plan-feedback/<pakke>-V<n>-codex.md`.
+3. **Stop:** Når du ikke længere finder nye blind-vinkler OG ingen kritiske fund i V<n>: APPROVAL + positive marker "INGEN NYE FUND I KODE".
+
+**Kode-research-fokus (hvad du leder efter):**
+
+- **Blind-vinkler i kode-base** Code måske overser: edge cases, race-conditions, cron-context-issues, DB-state-mismatches (auth.uid()=NULL, manglende tab/grant, RLS-policy-huller)
+- **Sanity-check** at krav-dok er teknisk realiserbart i nuværende kode-base
+- **Forskel mellem master-plan-forventning og faktisk kode-state** (master-plan kan være stale)
+
+**Du gør IKKE:**
+
+- Patterns-katalog ("her er eksisterende RPC'er") — det er Code's eget recon-arbejde
+- Krav-dok-konsistens-tjek mod vision/master-plan — Claude.ai's bord
+- Forretnings-tolkning — kun teknisk realiserbarhed + kode-blind-vinkler
+
+**Integreret leverance-format** (`<pakke>-V<n>-codex.md`):
+
+```markdown
+## V<n>-review (Code's plan)
+
+[eksisterende format: KRITISK/MELLEM/KOSMETISK/OPGRADERING-fund med severity + fil-reference]
+
+## Kode-research (parallel)
+
+Hvert fund markeres som **KODE-FUND N** (numereret) så Code kan håndtere dem 1:1 i V<n+1>-åbning:
+
+- **KODE-FUND 1** (severity): [konkret blind-vinkel] — file:linje-reference
+- **KODE-FUND 2** (severity): [konkret blind-vinkel] — file:linje-reference
+```
+
+**Fund-klassifikation mod tre dokumenter (krav, master-plan, vision):**
+
+| Rammer                         | Severity                         |
+| ------------------------------ | -------------------------------- |
+| Alle tre dokumenter            | KRITISK                          |
+| Kun krav-dok                   | MELLEM                           |
+| Kun master-plan                | Trigger for master-plan-rettelse |
+| Kun kode (ingen dokument-spor) | LAV / G-nummer-kandidat          |
+
+**Fuldstyrke-disciplin:** Kode-research skal være dyb. Læs faktiske migrations, RPC-bodies, RLS-policies, smoke-test-flow. Hvert fund har file:linje-reference. Generiske "overvej edge cases"-formuleringer uden konkret kode-reference er ikke acceptable. Mathias kan markere "FULDSTYRKE-MANGEL — gentag iteration" hvis output er for tyndt.
+
+## Pre-krav-dok forretningsgang-rapport (V3 2026-05-21, FØR krav-dok skrives)
+
+Inden krav-dok skrives leverer du en **forretningsgang-rapport** parallelt med Code og Claude.ai. Tre uafhængige rapporter trianguleres via konsolidering (Claude.ai sammensætter; ved uenighed kaldes Code ind for at argumentere fra kode-siden).
+
+**Filnavn:** `docs/coordination/<pakke>-forretningsgang-codex.md`
+
+**Trigger:** Når Mathias paster `qwers` + pakke-kontekst (fx "trin 11" eller "starter pakke X") starter du automatisk din forretningsgang-rapport. Ingen explicit prompt nødvendig — ny pakke ⇒ default start med forretningsgang-recon.
+
+**Dine kilder:** kode + master-plan + vision. Læs migrations, RPC-signaturer, eksisterende patterns, smoke-test-flow. Forretningsgang i forståeligt sprog — fokus på hvad systemet gør, ikke kun hvordan kode er bygget.
+
+**Format:**
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde (file:linje, master-plan §, vision-princip), ELLER tomt hvis ingen data]
+```
+
+Hvis du finder modsigelse mellem kode og master-plan/vision: dokumentér begge i "Hvad ved vi?" — Mathias afgør i konsoliderings-fasen.
+
+**Din rapport er parallel med Code's** — I deler kilder (kode + master-plan + vision) men leverer uafhængigt. Konvergens validerer; divergens flagger blind-vinkler.
+
+**Du må IKKE:**
+
+- Skrive krav-dok (Claude.ai's bord)
+- Konsolidere rapporterne (Claude.ai's bord)
+- Argumentere fra mathias-afgoerelser eller chat-historik (du har ikke adgang; det er Claude.ai's særegne kilde)
+
+**Du skal:** levere rapport og være tilgængelig hvis Mathias ønsker yderligere recon-data inden krav-dok.
+
 ## Review-fokus pr. fil-type
 
 ### Plan-review

@@ -6,35 +6,47 @@ Strategi-grundlaget (hvorfor flowet ser sådan ud) står i [`docs/strategi/arbej
 
 ---
 
-## 5-step flow (V2 2026-05-20)
+## 5-step flow (V3 2026-05-21)
 
-V2 simplificerer flowet baseret på trin 10-erfaring (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2"). Tre Claude.ai-roller er reduceret til to (forfatter + slut-rapport-reviewer); Mathias er direkte validator i krav-dok-fasen — ingen separat reviewer-chat. Pakke-skala afgør om krav-dok-fasen kører.
+V3 udvider V2 baseret på trin 10-erfaring (`mathias-afgoerelser.md` 2026-05-21 "Workflow-justering V3"). To tilføjelser inden for eksisterende 5-step-struktur: (1) Step 1.0 — pre-krav-dok forretningsgang-recon med 3 AI'er parallelt; (2) Step 2 — Code + Codex arbejder parallelt fra V1 (ikke ping-pong-sekvens), Codex udvidet med proaktiv kode-research.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ 0. PAKKE-SKALA-VURDERING                                     │
 │    Mathias afgør pakke-skala: Lille / Mellem / Stor          │
-│    Lille (0-2 åbne spm) → skip krav-dok                      │
+│    (foreløbig — Step 1.0 kan justere skalaen)                │
+│    Lille (0-2 åbne spm) → skip krav-dok-skrivning            │
 │    Mellem (3-5) → simplificeret krav-dok-fase                │
 │    Stor (6+) → fuld flow + ekstra validering                 │
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ 1. KRAV-DOK-FASE                                             │
-│    Claude.ai-forfatter ↔ Mathias direkte i chat              │
-│    (Mathias er direkte validator; ingen separat reviewer)    │
-│    Spørgsmål-runde sker i chatten — ingen mellem-artefakter  │
-│    Output: <pakke>-krav-og-data.md                           │
-│    (skippes for Lille-pakker)                                │
+│ 1.0 FORRETNINGSGANG-RECON (V3, ALLE PAKKER)                  │
+│    Trigger: `qwers` + pakke-kontekst → automatisk start      │
+│    3 AI'er parallel:                                         │
+│      Code      → <pakke>-forretningsgang-code.md             │
+│      Codex     → <pakke>-forretningsgang-codex.md            │
+│      Claude.ai → <pakke>-forretningsgang-claude-ai.md        │
+│    Claude.ai konsoliderer → <pakke>-forretningsgang-konsolideret.md │
+│    Mathias afgør pr. række: VALIDERET / ÅBENT SPM / OOS      │
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ 2. PLAN-FASE                                                 │
-│    Code + Codex iterativt                                    │
-│    Recon-først OBLIGATORISK: Code SKAL læse hver migration-  │
-│    fil planen refererer FØR plan-indhold skrives             │
-│    Codex KRITISK-fund om fabrikation = STOP (ikke "fix og    │
-│    fortsæt"); recon-først gentages før V<n+1>                │
+│ 1. KRAV-DOK-FASE (1.1-1.5)                                   │
+│    Claude.ai-forfatter ↔ Mathias direkte i chat              │
+│    (informeret af Step 1.0's validerede grundlag)            │
+│    Output: <pakke>-krav-og-data.md                           │
+│    (skippes for Lille-pakker; Step 1.0 sker stadig)          │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ 2. PLAN-FASE (V3 parallel Code+Codex)                        │
+│    Code + Codex PARALLELT fra V1 (ikke ping-pong)            │
+│    Code: skriver V<n> (komplet plan-leverance, fuldstyrke)   │
+│    Codex: parallel kode-research efter blind-vinkler         │
+│           + V<n>-review (integreret leverance)               │
+│    Code's V<n+1>-åbning håndterer hvert KODE-FUND eksplicit  │
+│    Stop: Codex APPROVAL + "INGEN NYE FUND I KODE"            │
 │    Output: <pakke>-plan.md                                   │
 └────────────────────────────┬─────────────────────────────────┘
                              ▼
@@ -63,14 +75,15 @@ V2 simplificerer flowet baseret på trin 10-erfaring (`mathias-afgoerelser.md` 2
 
 ## Aktører + ansvar pr. step
 
-| Step | Aktør(er)                                                   | Output                                                                                 | Skabelon                                           |
-| ---- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| 0    | Mathias                                                     | Pakke-skala-vurdering (Lille / Mellem / Stor) — afgør om step 1 kører                  | —                                                  |
-| 1    | Claude.ai-forfatter + Mathias (direkte validator i chat)    | `<pakke>-krav-og-data.md` (skippes for Lille-pakker; ingen separat reviewer-chat i V2) | —                                                  |
-| 2    | Code + Codex (iterativt, recon-først obligatorisk)          | `<pakke>-plan.md`                                                                      | [`plan-skabelon.md`](plan-skabelon.md)             |
-| 3    | Mathias                                                     | Godkendelse via `qwerg`                                                                | —                                                  |
-| 4    | Code bygger, Codex validerer                                | PR + commits + codex-review-filer                                                      | [`codex-review-prompt.md`](codex-review-prompt.md) |
-| 5    | Code skriver, Claude.ai-reviewer (separat chat) verificerer | `rapport-historik/<dato>-<pakke>.md`                                                   | [`rapport-skabelon.md`](rapport-skabelon.md)       |
+| Step | Aktør(er)                                                                   | Output                                                                                           | Skabelon                                           |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| 0    | Mathias                                                                     | Pakke-skala-vurdering (foreløbig — Step 1.0 kan justere)                                         | —                                                  |
+| 1.0  | Code + Codex + Claude.ai (parallel, alle pakker)                            | 3 forretningsgang-rapporter + `<pakke>-forretningsgang-konsolideret.md` (Claude.ai sammensætter) | —                                                  |
+| 1    | Claude.ai-forfatter + Mathias (direkte validator i chat)                    | `<pakke>-krav-og-data.md` (skippes for Lille-pakker; Step 1.0 sker stadig)                       | —                                                  |
+| 2    | Code + Codex (parallel fra V1; Codex laver kode-research + review samtidig) | `<pakke>-plan.md`                                                                                | [`plan-skabelon.md`](plan-skabelon.md)             |
+| 3    | Mathias                                                                     | Godkendelse via `qwerg`                                                                          | —                                                  |
+| 4    | Code bygger, Codex validerer                                                | PR + commits + codex-review-filer                                                                | [`codex-review-prompt.md`](codex-review-prompt.md) |
+| 5    | Code skriver, Claude.ai-reviewer (separat chat) verificerer                 | `rapport-historik/<dato>-<pakke>.md`                                                             | [`rapport-skabelon.md`](rapport-skabelon.md)       |
 
 ---
 

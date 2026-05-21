@@ -34,15 +34,67 @@ Forventet antal Claude.ai-runder pr. pakke: 1 forfatter-session + 1 reviewer-ses
 
 Erfaring fra trin 10: tre Claude.ai-roller (forfatter / krav-dok-reviewer / plan-reviewer) + separat forretningsspørgsmål-fil + separat krav-dok-feedback-mappe skabte unødigt bureaukrati. Workflow simplificeret til ét sammenhængende flow med Mathias som direkte validator.
 
+### Step 1.0 — Pre-krav-dok forretningsgang-recon (V3 2026-05-21)
+
+**Tre AI'er leverer hver deres forretningsgang-rapport parallelt** om samme emne: hvilke forretningsgange/logikker er i spil i næste skridt? Trianguleres derefter via konsolidering. Sker INDEN krav-dok skrives.
+
+**Trigger:** Når Mathias paster `qwers` + pakke-kontekst (fx "trin 11" eller "starter pakke X") starter du automatisk din forretningsgang-rapport. Ingen explicit Step 1.0-prompt nødvendig — ny pakke ⇒ default start med Step 1.0.
+
+**Gælder ALLE pakker:** Step 1.0 sker uanset pakke-skala. Lille pakke (0-2 åbne spørgsmål) skipper stadig Step 1.5 (krav-dok-skrivning), men Step 1.0's 3-rapport-recon er fundament i alle pakker. Step 1.0's output kan i sig selv ændre pakke-skala-vurderingen (hvis recon afslører flere åbne spørgsmål end forventet).
+
+| Aktør         | Filnavn                                              | Kilder                                                            |
+| ------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| **Code**      | `<pakke>-forretningsgang-code.md`                    | kode + master-plan + vision                                       |
+| **Codex**     | `<pakke>-forretningsgang-codex.md`                   | kode + master-plan + vision                                       |
+| **Claude.ai** | `<pakke>-forretningsgang-claude-ai.md` (din rapport) | vision + master-plan + mathias-afgoerelser + interne chat-projekt |
+
+Vision er fælles autoritet. Master-plan er fælles for alle tre. Mathias-afgoerelser + chat-historik er DIN særegne kilde (intentions-spor + samtale-spor).
+
+**Format pr. rapport** (samme for alle tre — du skriver kun din egen):
+
+```markdown
+## Resume
+
+[1-2 paragraffer om hvad næste skridt går ud på]
+
+## Forretningsgange/logikker
+
+### [Forretningsgang i forståeligt ordvalg]
+
+**Hvad ved vi?** [konkret faktum + kilde, ELLER tomt hvis ingen data]
+```
+
+**Forståeligt ordvalg** = forretningssprog. Ikke tabel-navne, kolonne-navne, RPC-signaturer (det er Code's bord senere). Hvis ingen data: lad "Hvad ved vi?" stå tomt.
+
+**Konsoliderings-rolle (din):** Efter alle tre rapporter er færdige, sammensætter du `<pakke>-forretningsgang-konsolideret.md` med matrix:
+
+```markdown
+| Forretningsgang | Code-rapport | Codex-rapport | Claude.ai-rapport | Konvergens? |
+| --------------- | ------------ | ------------- | ----------------- | ----------- |
+```
+
+- **Konvergens = ja:** alle tre rapporter peger på samme faktum/kilde → ren række
+- **Konvergens = nej:** rapporterne uenige → flag til Mathias; Code kaldes ind for at argumentere fra kode-siden
+
+**Mathias' afgørelse pr. række:**
+
+| Status              | Konsekvens for krav-dok                               |
+| ------------------- | ----------------------------------------------------- |
+| **VALIDERET**       | Bruges i krav-dok som dokumenteret forudsætning       |
+| **ÅBENT SPØRGSMÅL** | Mathias svarer i chat → svaret bliver til krav-dok    |
+| **OUT OF SCOPE**    | Eksplicit noteret i krav-dok som "ikke i denne pakke" |
+
+Åbne spørgsmål afklares i chat med Mathias INDEN du går videre til Step 1.1.
+
 ### Step 1.1 — Forstå steppet
 
-Læs master-plan §4 trin X + relateret §1.X. Identificér hvad pakken leverer. Stork 1.0-baggrund kan være i Project-files (extern fra repo); verificér eksistens via Filesystem-MCP før reference.
+Læs master-plan §4 trin X + relateret §1.X. Identificér hvad pakken leverer. Stork 1.0-baggrund kan være i Project-files (extern fra repo); verificér eksistens via Filesystem-MCP før reference. Det meste af Step 1.1 er allerede dækket af Step 1.0-rapporterne — verificér og udfyld huller.
 
 ### Step 1.2 — Identificér forretnings-punkter at afklare
 
-Liste af åbne forretnings-spørgsmål (ikke kode-detalje). Pakke-skala-vurdering baseret på antal:
+Punkter er typisk allerede fundet via Step 1.0's åbne spørgsmål. Pakke-skala-vurdering baseret på antal (kan revidere Step 0's foreløbige vurdering):
 
-- 0-2 åbne → "Lille" pakke. Skip krav-dok helt. Master-plan + mathias-afgørelser er rammen, Code laver plan direkte.
+- 0-2 åbne efter Step 1.0 → "Lille" pakke. Skip Step 1.5 (krav-dok-skrivning). Step 1.0-recon-output + master-plan + mathias-afgørelser er rammen; Code laver plan direkte.
 - 3-5 åbne → "Mellem" pakke. Kør krav-dok-fasen via step 1.3-1.5 nedenfor.
 - 6+ åbne → "Stor" pakke. Krav-dok-fasen kan kræve flere validerings-runder.
 
