@@ -155,12 +155,24 @@ begin
     'T10 setup: T7 klient (aktiv → deaktiveres)', true, null);
 
   -- ══════════════════════════════════════════════════════════════════════
-  -- T1: superadmin → wrapper place aktiv klient → success
+  -- T1: superadmin → wrapper place aktiv klient → approve → cron-apply → placement
   -- ══════════════════════════════════════════════════════════════════════
   v_pending_id := core_identity.client_node_place(
     v_client_active_id, v_team_node_id, current_date);
   if v_pending_id is null then
     raise exception 'T1 FAIL: client_node_place returnerede NULL';
+  end if;
+  -- Approve som anden admin (self-approve OK for admin alligevel, men bedre praksis)
+  perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
+  perform core_identity.pending_change_approve(v_pending_id);
+  -- Cron-apply: rens jwt så auth.uid() = NULL (V10 fix-validerings-path)
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform core_identity.pending_change_apply(v_pending_id);
+  if not exists (
+    select 1 from core_identity.client_node_placements
+    where client_id = v_client_active_id and node_id = v_team_node_id
+  ) then
+    raise exception 'T1 FAIL: end-to-end apply skal placere klient';
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
@@ -204,13 +216,17 @@ begin
   perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   perform core_identity.pending_change_approve(v_pending_id);
 
-  -- Step 5: apply → forventer P0001 (ingen admin involveret + klient inaktiv)
+  -- Step 5: cron-apply (rens jwt → auth.uid() = NULL).
+  -- Forventer P0001: is_admin_by_employee_id(requester) = false (Kasper-swap)
+  -- og is_admin_by_employee_id(approver) = false (Mathias-swap) → v_admin_involved = false
+  -- og klient inaktiv → raise P0001.
+  perform set_config('request.jwt.claim.sub', '', true);
   begin
     v_caught := null;
     perform core_identity.pending_change_apply(v_pending_id);
   exception when sqlstate 'P0001' then v_caught := 'ok'; end;
   if v_caught is null then
-    raise exception 'T3 FAIL: apply på inaktiv klient uden admin-involvering skal raise P0001';
+    raise exception 'T3 FAIL: cron-apply uden admin-involvering skal raise P0001';
   end if;
 
   -- Step 6: restore Mathias til superadmin
@@ -218,12 +234,27 @@ begin
   update core_identity.employees set role_id = v_admin_b_orig_role where id = v_admin_b_id;
 
   -- ══════════════════════════════════════════════════════════════════════
-  -- T4: superadmin → wrapper close inaktiv klient → success
+  -- T4: superadmin → wrapper close inaktiv klient → approve → cron-apply → close
   -- ══════════════════════════════════════════════════════════════════════
   perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   v_pending_id := core_identity.client_node_close(v_client_inactive_id, current_date);
   if v_pending_id is null then
     raise exception 'T4 FAIL: client_node_close på inaktiv klient skal lykkes (ingen aktiv-check)';
+  end if;
+  -- Approve som A (efter T3-step 6 er Mathias=admin igen; men A er stadig non-admin)
+  -- Self-approve for Mathias som admin er OK.
+  perform core_identity.pending_change_approve(v_pending_id);
+  -- Cron-apply
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform core_identity.pending_change_apply(v_pending_id);
+  -- Verificer: ingen aktiv placement på v_client_inactive_id efter close
+  -- (close-apply lukker eksisterende placements; her er der ingen at lukke,
+  -- så vi nøjes med at verificere pending-status er 'applied')
+  if not exists (
+    select 1 from core_identity.pending_changes
+    where id = v_pending_id and status = 'applied'
+  ) then
+    raise exception 'T4 FAIL: cron-apply af close skal sætte status=applied';
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
@@ -238,11 +269,24 @@ begin
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
-  -- T5: superadmin → wrapper place på inaktiv klient → success (admin-bypass)
+  -- T5: superadmin → wrapper place på inaktiv → approve → cron-apply → placement
+  --     (admin-requester gør cron-apply OK selv på inaktiv klient)
   -- ══════════════════════════════════════════════════════════════════════
+  perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   v_pending_id := core_identity.client_node_place(v_client_inactive_id, v_team_node_id, current_date);
   if v_pending_id is null then
-    raise exception 'T5 FAIL: superadmin på inaktiv klient skal lykkes (is_admin-bypass)';
+    raise exception 'T5 FAIL: superadmin wrapper på inaktiv klient skal lykkes (is_admin-bypass)';
+  end if;
+  perform core_identity.pending_change_approve(v_pending_id);
+  -- Cron-apply: rens jwt → auth.uid() = NULL. is_admin_by_employee_id(requester=Mathias)
+  -- = true → v_admin_involved = true → apply OK selv på inaktiv klient.
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform core_identity.pending_change_apply(v_pending_id);
+  if not exists (
+    select 1 from core_identity.client_node_placements
+    where client_id = v_client_inactive_id and node_id = v_team_node_id
+  ) then
+    raise exception 'T5 FAIL: cron-apply skal placere klient (admin-requester bypass)';
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
@@ -259,19 +303,19 @@ begin
   update core_identity.clients set is_active = false, updated_at = now() where id = v_client_t6;
   perform set_config('stork.source_type', 'manual', true);
 
-  -- Step 3: Kasper-swap (stadig non-admin) kan ikke approve fordi ingen admin
-  -- → vi bruger Mathias (admin) som approver. Men admin approver = requester
-  -- → self-approve-bypass for admin. OK.
+  -- Step 3: Mathias (admin) godkender egen pending (self-approve OK for admin).
   perform core_identity.pending_change_approve(v_pending_id);
 
-  -- Step 4: apply → forventer success (admin-requester bypass)
+  -- Step 4: cron-apply (rens jwt → auth.uid() = NULL). V10-fix: is_admin_by_employee_id
+  -- bruger employee-id (ikke auth.uid()) så requester-bypass virker i cron-context.
+  perform set_config('request.jwt.claim.sub', '', true);
   perform core_identity.pending_change_apply(v_pending_id);
 
   if not exists (
     select 1 from core_identity.client_node_placements
     where client_id = v_client_t6 and node_id = v_team_node_id
   ) then
-    raise exception 'T6 FAIL: admin-requester apply skal placere klient selv om inaktiv';
+    raise exception 'T6 FAIL: admin-requester cron-apply skal placere klient selv om inaktiv';
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
@@ -288,18 +332,21 @@ begin
   update core_identity.clients set is_active = false, updated_at = now() where id = v_client_t7;
   perform set_config('stork.source_type', 'manual', true);
 
-  -- Step 3: Mathias (admin) godkender
+  -- Step 3: Mathias (admin) godkender Kasper-non-admin's pending
   perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
   perform core_identity.pending_change_approve(v_pending_id);
 
-  -- Step 4: apply → success (admin-approver bypass)
+  -- Step 4: cron-apply (rens jwt → auth.uid() = NULL). V10-fix: approver-bypass
+  -- via is_admin_by_employee_id(approved_by) virker i cron-context selv om
+  -- auth.uid() ikke kan resolve nuværende role.
+  perform set_config('request.jwt.claim.sub', '', true);
   perform core_identity.pending_change_apply(v_pending_id);
 
   if not exists (
     select 1 from core_identity.client_node_placements
     where client_id = v_client_t7 and node_id = v_team_node_id
   ) then
-    raise exception 'T7 FAIL: admin-approver bypass skal placere klient selv om inaktiv';
+    raise exception 'T7 FAIL: admin-approver cron-apply skal placere klient selv om inaktiv';
   end if;
 
   -- ══════════════════════════════════════════════════════════════════════
