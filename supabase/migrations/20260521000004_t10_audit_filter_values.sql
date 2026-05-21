@@ -58,14 +58,19 @@ begin
   loop
     if p_values ? v_def.column_name then
       if v_def.pii_level = 'direct' then
-        v_result := jsonb_set(
-          v_result,
-          array[v_def.column_name],
-          to_jsonb(
-            'sha256:' ||
-            encode(extensions.digest((p_values->>v_def.column_name)::text, 'sha256'), 'hex')
-          )
-        );
+        -- BUG-FIX (V12 post-build): skip NULL-værdier. jsonb_set med NULL-value
+        -- returnerer hele jsonb som NULL → silent audit-data-tab. Matcher pattern
+        -- fra clients-special-case nedenfor (jsonb_typeof distinct from 'null').
+        if jsonb_typeof(p_values -> v_def.column_name) is distinct from 'null' then
+          v_result := jsonb_set(
+            v_result,
+            array[v_def.column_name],
+            to_jsonb(
+              'sha256:' ||
+              encode(extensions.digest((p_values->>v_def.column_name)::text, 'sha256'), 'hex')
+            )
+          );
+        end if;
       end if;
     end if;
   end loop;

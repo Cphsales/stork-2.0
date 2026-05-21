@@ -88,13 +88,47 @@ begin
   end if;
   perform set_config('stork.clients_fields_strict', 'false', true);
 
-  -- T4 (V2 KRITISK-SIKKERHEDSHUL audit-PII-hashing efter is_active=false):
-  -- Konceptuelt verificeret via T10.5 audit_filter_values-implementation (ingen
-  -- is_active-filter). Smoke-test-assertion blev DROPPET pga. timing/audit_log
-  -- introspection-kompleksitet — direct-PII-hashing-test bør laves som dedikeret
-  -- E2E-test der querier audit_log efter commit (G-nummer-kandidat for senere).
+  -- ─── T4 (V2 KRITISK-SIKKERHEDSHUL): audit-PII-hashing efter is_active=false
+  -- Bekræft at direct-PII keys i clients.fields hashes selv efter felt-def deaktivering.
+  -- Forhindrer datalæk: når et felt deaktiveres mens eksisterende værdier ligger i jsonb,
+  -- skal audit-rowen stadig hashes (audit_filter_values' clients-special-case bruger
+  -- ingen is_active-filter på cfd-loop).
+  declare v_client_pii_id uuid; v_audit_value text; begin
+    v_client_pii_id := core_identity.client_upsert(
+      'PII-test klient',
+      jsonb_build_object('kontakt_email', 'user@example.com'),
+      'T10-validate T4: opret med direct-PII', true, null
+    );
 
-  raise notice 'T10 validate_fields smoke: TESTS PASSED (T1-T3); T4 audit-hash dropped → G-nummer';
+    -- Deaktiver felt-def. Audit skal stadig hash kontakt_email.
+    perform core_identity.client_field_definition_set_active(v_field_id, false, 'T10-validate T4: deaktiver felt-def');
+
+    -- UPDATE klient (genererer audit-row med NY direct-PII-værdi)
+    perform core_identity.client_upsert(
+      'PII-test klient (opdateret)',
+      jsonb_build_object('kontakt_email', 'user-new@example.com'),
+      'T10-validate T4: UPDATE efter felt-def deaktivering',
+      true, v_client_pii_id
+    );
+
+    -- Verificér audit-row har hashed værdi (V2 fix: ingen is_active-filter)
+    select new_values -> 'fields' ->> 'kontakt_email' into v_audit_value
+    from core_compliance.audit_log
+    where table_schema = 'core_identity'
+      and table_name = 'clients'
+      and record_id = v_client_pii_id
+      and operation = 'UPDATE'
+    order by occurred_at desc limit 1;
+
+    if v_audit_value is null then
+      raise exception 'T4 FAIL: audit-row mangler eller kontakt_email ikke i fields';
+    end if;
+    if v_audit_value not like 'sha256:%' then
+      raise exception 'T4 FAIL (V2 KRITISK-SIKKERHEDSHUL): kontakt_email skal hashes selv efter felt-def is_active=false. Fik: %', v_audit_value;
+    end if;
+  end;
+
+  raise notice 'T10 validate_fields smoke: ALL TESTS PASSED (T1-T4)';
 end;
 $test$;
 
