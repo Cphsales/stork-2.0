@@ -1,7 +1,15 @@
-# T9-supplement-2 — Plan V6
+# T9-supplement-2 — Plan V7
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V6)
+
+Codex V6-review leverede 1 KRITISK. ADRESSERET i V7.
+
+- **KODE-FUND V6-1 (KRITISK — `pending_change_approve` mangler explicit grant):** Codex flaggede at eksisterende migration kun har `revoke execute ... from public, anon` uden eksplicit `grant execute ... to authenticated`. Min V3-V6-tekst hævdede "existing grant verificeret" hvilket var FORKERT — ingen explicit grant fandtes. Konsekvens: authenticated approvere kan ikke kalde RPC'en via normal API. **ADRESSERET** i M5: tilføjet `grant execute on function core_identity.pending_change_approve(uuid) to authenticated;`. KODE-FUND V2-2-tekst korrigeret.
 
 ---
 
@@ -47,7 +55,7 @@ Codex V2-review leverede 1 TEKNISK-BLOKERING + 1 KRITISK. Begge ADRESSERET i V3.
 
 - **KODE-FUND V2-1 (TEKNISK-BLOKERING — PL/pgSQL `declare` midt i body i M5):** Codex flaggede at `declare v_has_undo boolean := true;` placeret efter `begin` i `pending_change_approve` ikke er valid PL/pgSQL (kræver top-level declare eller nested block). **ADRESSERET** i M5: `v_has_undo boolean` flyttet til top-level `declare`-sektion sammen med `v_change`, `v_approver`, m.fl. Initialization (default true for legacy) sker i body via `v_has_undo := true;` før evaluering. Se opdateret M5 nedenfor.
 
-- **KODE-FUND V2-2 (KRITISK — manglende `grant execute to authenticated` på 3 nye write-RPC'er):** Codex flaggede at `permission_action_upsert`, `permission_action_deactivate`, `permission_action_set_approver_type` kun har `revoke ... from public, anon` uden eksplicit grant til authenticated. **ADRESSERET** i M6: tilføjet `grant execute on function ... to authenticated` for alle 3 RPC'er. `role_permission_grant_set` får også eksplicit grant tilføjet (CREATE OR REPLACE bevarer existing ACL, men gør grant eksplicit for klarhed). `pending_change_approve` (M5) har existing grant fra T9-fundament-supplement bevaret via CREATE OR REPLACE — verificeret eksplicit.
+- **KODE-FUND V2-2 (KRITISK — manglende `grant execute to authenticated` på 3 nye write-RPC'er):** Codex flaggede at `permission_action_upsert`, `permission_action_deactivate`, `permission_action_set_approver_type` kun har `revoke ... from public, anon` uden eksplicit grant til authenticated. **ADRESSERET** i M6: tilføjet `grant execute on function ... to authenticated` for alle 3 RPC'er. `role_permission_grant_set` får også eksplicit grant tilføjet. `pending_change_approve` (M5) blev oprindeligt antaget at have existing grant — V7 (Codex V6 fund) korrigerer dette: eksisterende migration havde KUN revoke uden grant; V7 tilføjer eksplicit grant.
 
 ---
 
@@ -629,6 +637,9 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     where id = p_change_id;
   end; $$;
   revoke execute on function core_identity.pending_change_approve(uuid) from public, anon;
+  -- V7 (Codex V6 KRITISK fix): explicit grant. Eksisterende migration har kun revoke;
+  -- authenticated kunne ikke kalde RPC'en via normal API. Tilføjet eksplicit.
+  grant execute on function core_identity.pending_change_approve(uuid) to authenticated;
   ```
 
   **Vigtigt (V5):** Self-approve-blok BEVARES for legacy-flow (`action_id IS NULL`) som regression-beskyttelse indtil senere pakke seeder actions. Default selv-approve tillades KUN for konfigurerede actions med `requires_second_approver=false`. Krav-dok §2.5's "fjernes"-formulering gælder under action-baseret konfig, ikke for legacy real-wrapper-flow.
@@ -995,4 +1006,4 @@ V6 adresserer Codex V5's 1 KRITISK-SIKKERHEDSHUL (stale tekst i M5-beskrivelse m
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V6-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V7-review.**
