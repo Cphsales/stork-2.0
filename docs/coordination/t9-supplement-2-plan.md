@@ -1,7 +1,16 @@
-# T9-supplement-2 — Plan V9
+# T9-supplement-2 — Plan V10
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V9)
+
+Codex V9-review leverede 2 TEKNISK-BLOKERING. Begge ADRESSERET i V10.
+
+- **KODE-FUND V9-1 (TEKNISK-BLOKERING — `permission_actions` mangler no-dedup-key-kommentar):** `scripts/fitness.mjs` kræver `dedup_key` ELLER `-- no-dedup-key: <reason>`-kommentar på nye CREATE TABLEs. **ADRESSERET** i M3: tilføjet `-- no-dedup-key: konfig-tabel; natural key er (tab_id, name) sikret via unique index nedenfor` før CREATE TABLE.
+- **KODE-FUND V9-2 (TEKNISK-BLOKERING — klassifikations-INSERTs mangler ON CONFLICT):** `data_field_definitions` er bootstrap-config; replay/idempotence-check blokerer uden ON CONFLICT. **ADRESSERET** i M3 + M4: tilføjet `on conflict (table_schema, table_name, column_name) do nothing` på begge INSERT-statements.
 
 ---
 
@@ -312,6 +321,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 
   ```sql
   -- Ny tabel: permission_actions
+  -- no-dedup-key: konfig-tabel; natural key er (tab_id, name) sikret via unique index nedenfor
   create table core_identity.permission_actions (
     id uuid primary key default gen_random_uuid(),
     tab_id uuid not null references core_identity.permission_tabs(id) on delete cascade,
@@ -506,7 +516,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     ('core_identity', 'permission_actions', 'updated_at', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'updated timestamp'),
 
     -- core_identity.role_permission_grants.action_id (konfiguration) — 1 ny kolonne
-    ('core_identity', 'role_permission_grants', 'action_id', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; action-niveau-grant');
+    ('core_identity', 'role_permission_grants', 'action_id', 'konfiguration', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; action-niveau-grant')
+  on conflict (table_schema, table_name, column_name) do nothing;
   ```
 
 - **Afhængigheder:** ingen direkte (selvstændig DDL). Bygger på eksisterende `permission_tabs` + `role_permission_grants`.
@@ -531,7 +542,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 
   insert into core_compliance.data_field_definitions
     (table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose) values
-    ('core_identity', 'pending_changes', 'action_id', 'audit', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; bruges af pending_change_approve til at evaluere approve-disciplin pr. handling');
+    ('core_identity', 'pending_changes', 'action_id', 'audit', 'none', 'time_based', '{"max_days":2555}'::jsonb, null, 'FK til permission_actions; bruges af pending_change_approve til at evaluere approve-disciplin pr. handling')
+  on conflict (table_schema, table_name, column_name) do nothing;
 
   -- Helper: medarbejdere placeret på strengt højere knude (ancestor) end requester
   create or replace function core_identity.acl_higher_level_employees(p_requester_employee_id uuid)
@@ -1111,4 +1123,4 @@ V9 adresserer Codex V8's 2 TEKNISK-BLOKERING (M1b filnavn bryder fitness-regel �
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V9-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten + M1b). **Klar til Codex V10-review.**
