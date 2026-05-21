@@ -119,7 +119,7 @@ Step 0 er obligatorisk. Mathias afgør **foreløbig** pakke-skala ud fra antal �
 | Mellem | 3-5      | Sker                 | Simplificeret (få spm i chat, derefter krav-dok) | Fuld plan-fase     |
 | Stor   | 6+       | Sker                 | Fuld krav-dok-fase + ekstra validering           | Fuld plan-fase     |
 
-**Mikro/hot-fix:** PR direkte uden plan-runde (typo-fix, doc-rettelse, oprydning under 100 linjer, hot-fix med klar rod-årsag) hører under Lille — Step 1.0 kan også skippes hvis ændring er trivielt teknisk uden forretnings-implikation.
+**Mikro/hot-fix** (sub-kategori under Lille): PR direkte uden plan-runde (typo-fix, doc-rettelse, oprydning under 100 linjer, hot-fix med klar rod-årsag). For mikro/hot-fix kan Step 1.0 også skippes hvis ændringen er trivielt teknisk uden forretnings-implikation. Almindelige Lille-pakker (med forretnings-implikation, blot få åbne spørgsmål) kører fortsat Step 1.0.
 
 Skala-vurdering noteres af Mathias i åbnings-signal eller af Claude.ai-forfatter øverst i krav-dok når den skrives.
 

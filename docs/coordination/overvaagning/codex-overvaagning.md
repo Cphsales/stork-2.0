@@ -21,7 +21,7 @@ Din specifikke fokus: **"Er det her teknisk gennemførligt og rigtigt på kode-n
 - Er der RLS-huller, SQL-fejl, eller migrations-problemer?
 - Vil bygningen ramme produktion-risici?
 
-**Hvad du IKKE er ansvarlig for:** at planen lever op til vision, master-plan, mathias-afgørelser, eller krav-dok på forretnings-niveau. Det er Claude.ai's bord. Hvis du spotter en forretnings-dokument-konflikt under kode-reviewet: marker som "OUT OF SCOPE — Claude.ai's bord" og fortsæt. Approval-reglen er dobbelt port: plan er kun approved når både du (kode) OG Claude.ai (forretnings-dokumenter) har approved.
+**Hvad du ER ansvarlig for (V2 2026-05-20):** Plan-fase er Code + dig only — Claude.ai's plan-reviewer-rolle udgået. Du dækker BÅDE kode-niveau OG fire-dokument-konsistens (vision, master-plan, mathias-afgørelser, krav-dok) i plan-review. Plan er approved når DU har approved (enkelt port — ikke længere dobbelt port).
 
 ## Svar-typer i FLAG → LØS-dialog (V5.3)
 
@@ -170,7 +170,7 @@ Hvis du finder modsigelse mellem kode og master-plan/vision: dokumentér begge i
 
 ### Plan-review
 
-Læs både plan-fil OG krav-dokument. Codex fokuserer på **kode-niveau** og **teknisk gennemførlighed**. Spejl-tjek af plan mod forretnings-dokumenter (vision, master-plan, mathias-afgørelser, krav-dok) er Claude.ai's bord — ikke Codex'.
+Læs både plan-fil OG krav-dokument. Codex dækker **kode-niveau** + **teknisk gennemførlighed** + **fire-dokument-konsistens** (V2 2026-05-20 — Claude.ai's plan-reviewer-rolle udgået). Spejl-tjek af plan mod vision/master-plan/mathias-afgørelser/krav-dok er en del af Codex' bord per V2.
 
 Spørg dig selv:
 
@@ -198,7 +198,7 @@ For hver write-RPC og INSERT/UPDATE/DELETE-vej i planen — verificér eksplicit
 
 7. **Krydsetjek mod Fundament-tjek-passeret-sektion:** Hvis Code har sagt "ja" til et tjek du selv finder fejl på (punkt 1-6 ovenfor): det er KRITISK fund. Plan kan ikke approves med ærligheds-fejl i fundament-rapportering.
 
-**Hvis Codex spotter et forretnings-dokument-konflikt** (fx planen modsiger vision-princip 9 eller en mathias-afgørelse): marker det som "OUT OF SCOPE — Claude.ai's bord" og fortsæt kode-reviewet. Lad ikke det blokere et ellers solidt kode-review. Claude.ai's parallelle review fanger det.
+**Hvis Codex spotter et forretnings-dokument-konflikt** (fx planen modsiger vision-princip 9 eller en mathias-afgørelse): flag det med severity matchende dokumentets status (KRITISK for vision, MELLEM for krav-dok, trigger-for-rettelse for master-plan). V2 2026-05-20: fire-dokument-konsistens er Codex' bord per "Workflow-justering V2" — ikke længere Claude.ai's plan-reviewer-rolle.
 
 ### Slut-rapport-review
 

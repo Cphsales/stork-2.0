@@ -144,7 +144,7 @@ MÅ IKKE:
 - Træffe beslutninger
 - Holde noget tilbage fordi det "sandsynligvis er OK"
 - Acceptere "kendt gæld" som forklaring
-- **Verificere plan mod forretnings-dokumenter** (vision, master-plan, mathias-afgørelser, krav-dok) — det er Claude.ai's bord. Hvis Codex spotter et forretnings-dokument-konflikt, markeres det som "OUT OF SCOPE — Claude.ai's bord" og fortsætter kode-reviewet.
+- **Holde forretnings-dokument-konflikt tilbage** — V2 2026-05-20 overførte fire-dokument-konsistens-tjek (vision, master-plan, mathias-afgørelser, krav-dok) til Codex (Claude.ai's plan-reviewer-rolle udgået). Codex flagger forretnings-dokument-konflikter med severity matchende dokumentets status.
 
 Hellere falsk-positiv end falsk-negativ på kode-niveau. Mathias filtrerer.
 
@@ -281,7 +281,7 @@ I plan-fase og bygge-fase OVERHOLDES tre dokumenter:
 
 ## Fire forretnings-dokumenter — én låst, to retningsgivende, én pakke-kontrakt
 
-Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport skal verificere mod alle fire, men modsigelses-håndtering differentieres efter dokument-status.
+Mathias-afgørelse 2026-05-20: kun vision-dokumentet er LÅST-autoritativ. Master-plan og mathias-afgørelser er **retningsgivende** og kan rettes løbende. Krav-dok og plan er **pakke-kontrakt** efter approval (låst inden for pakken). Plan og slut-rapport KONSULTERER alle fire (V2-fire-dokument-konsultation) men OVERHOLDER kun tre (V3 2026-05-21: krav, vision, master-plan — mathias-afgørelser konsulteres som retningsgivende kontekst, ikke kontrakt). Modsigelses-håndtering differentieres efter dokument-status.
 
 | Dokument                                    | Status               | Modsigelses-håndtering                                                                                                                     |
 | ------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
