@@ -1,7 +1,17 @@
-# T9-supplement-2 — Plan V2
+# T9-supplement-2 — Plan V3
 
 **Pakke-type:** Stor opfølgnings-pakke. Implementerer krav-dok `docs/coordination/t9-supplement-2-krav-og-data.md` med fire forretnings-leverancer (G059 + G057 + approve-disciplin pr. handling + handlings-granularitet).
 **Forudsætning:** T9-fundament + T9-supplement + trin 10 merget. Mathias-afgoerelser 2026-05-21 ramme-entries (PR #67 + PR #71) på main.
+
+---
+
+## Kode-fund-håndtering (fra Codex V2)
+
+Codex V2-review leverede 1 TEKNISK-BLOKERING + 1 KRITISK. Begge ADRESSERET i V3.
+
+- **KODE-FUND V2-1 (TEKNISK-BLOKERING — PL/pgSQL `declare` midt i body i M5):** Codex flaggede at `declare v_has_undo boolean := true;` placeret efter `begin` i `pending_change_approve` ikke er valid PL/pgSQL (kræver top-level declare eller nested block). **ADRESSERET** i M5: `v_has_undo boolean` flyttet til top-level `declare`-sektion sammen med `v_change`, `v_approver`, m.fl. Initialization (default true for legacy) sker i body via `v_has_undo := true;` før evaluering. Se opdateret M5 nedenfor.
+
+- **KODE-FUND V2-2 (KRITISK — manglende `grant execute to authenticated` på 3 nye write-RPC'er):** Codex flaggede at `permission_action_upsert`, `permission_action_deactivate`, `permission_action_set_approver_type` kun har `revoke ... from public, anon` uden eksplicit grant til authenticated. **ADRESSERET** i M6: tilføjet `grant execute on function ... to authenticated` for alle 3 RPC'er. `role_permission_grant_set` får også eksplicit grant tilføjet (CREATE OR REPLACE bevarer existing ACL, men gør grant eksplicit for klarhed). `pending_change_approve` (M5) har existing grant fra T9-fundament-supplement bevaret via CREATE OR REPLACE — verificeret eksplicit.
 
 ---
 
@@ -444,6 +454,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     v_page_key text;
     v_action record;
     v_higher_level_employees uuid[];
+    v_has_undo boolean;  -- V3 (Codex V2 TEKNISK-BLOKERING fix): flyttet til top-level
   begin
     v_approver := core_identity.current_employee_id();
     if v_approver is null then
@@ -500,10 +511,10 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     end if;
     -- Legacy: action_id IS NULL → ingen ekstra tjek (bevarer eksisterende non-action-pendings)
 
-    -- V2 (Codex KODE-FUND 3): has_undo håndhæves
+    -- V2/V3 (Codex KODE-FUND 3 + V2-1): has_undo håndhæves
     -- Hvis action_id IS NOT NULL AND has_undo=false → undo_deadline=NULL (undo blokeres automatisk)
     -- Legacy (action_id IS NULL) bevarer eksisterende adfærd (undo_deadline sat ud fra undo_settings)
-    declare v_has_undo boolean := true;  -- default for legacy
+    v_has_undo := true;  -- default for legacy
     if v_change.action_id is not null then
       select has_undo into v_has_undo from core_identity.permission_actions where id = v_change.action_id;
     end if;
@@ -543,6 +554,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 
   ```sql
   -- Udvid role_permission_grant_set til at acceptere 'action'-element-type
+  -- V3 (Codex V2 KRITISK fix): tilføj eksplicit grant til authenticated (CREATE OR REPLACE bevarer existing ACL, men gør grant eksplicit)
   create or replace function core_identity.role_permission_grant_set(
     p_role_id uuid,
     p_element_type text,
@@ -587,6 +599,8 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
 
     return v_id;
   end; $$;
+  -- V3 (Codex V2 KRITISK fix): eksplicit grant for klarhed (existing ACL bevares via CREATE OR REPLACE)
+  grant execute on function core_identity.role_permission_grant_set(uuid, text, uuid, boolean, boolean, text) to authenticated;
 
   -- permission_action_upsert (UI-RPC) — kun navn, sort_order, is_active. requires_second_approver/has_undo/bypass_tab_write sættes IKKE her (kode-låst via separate migration-seed).
   create or replace function core_identity.permission_action_upsert(
@@ -620,6 +634,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
     return v_id;
   end; $$;
   revoke execute on function core_identity.permission_action_upsert(uuid, uuid, text, boolean, integer) from public, anon;
+  grant execute on function core_identity.permission_action_upsert(uuid, uuid, text, boolean, integer) to authenticated;
 
   -- permission_action_deactivate (UI-RPC)
   create or replace function core_identity.permission_action_deactivate(p_action_id uuid)
@@ -635,6 +650,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
       where id = p_action_id;
   end; $$;
   revoke execute on function core_identity.permission_action_deactivate(uuid) from public, anon;
+  grant execute on function core_identity.permission_action_deactivate(uuid) to authenticated;
 
   -- permission_action_set_approver_type (UI-RPC) — kun UI-redigerbart felt
   create or replace function core_identity.permission_action_set_approver_type(
@@ -667,6 +683,7 @@ Migrations i 6 filer + smoke-tests. Rækkefølge minimerer afhængigheder mellem
       where id = p_action_id;
   end; $$;
   revoke execute on function core_identity.permission_action_set_approver_type(uuid, text) from public, anon;
+  grant execute on function core_identity.permission_action_set_approver_type(uuid, text) to authenticated;
 
   -- pending_change_eligible_approvers: hvem må approve denne pending
   -- Returnerer: alle medarbejdere der må approve (baseret på action-config + requester-placering + superadmin)
@@ -883,8 +900,8 @@ Alle 4 smoke-test-filer er nye:
 
 ## Konklusion
 
-V2 adresserer Codex V1's 4 KRITISK + 1 MELLEM-fund (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET med konkrete fixes). G-nummer-kandidat (`pending_change_eligible_approvers`-kontrakt) deferred til UI-pakke.
+V3 adresserer Codex V2's 1 TEKNISK-BLOKERING + 1 KRITISK (begge ADRESSERET — `declare`-position fixed, GRANT EXECUTE eksplicit på alle nye write-RPC'er). V2 adresserede Codex V1's 4 KRITISK + 1 MELLEM (KRITISK 1 + 4 AFVIST som ved design jf. krav-dok §4; KRITISK 2 + 3 + MELLEM ADRESSERET). G-nummer-kandidat (`pending_change_eligible_approvers`-kontrakt) deferred til UI-pakke.
 
 **Vigtigt om scope:** Pakken bygger approve-disciplinens INFRASTRUKTUR (per-action flag, godkender-type-validering, ancestor-helper, additivt action-grant-mønster). Den AKTIVERER ikke disciplin på real-T9-wrappers — det kræver action-seed + wrapper-udvidelse i en senere pakke, jf. krav-dok §4 ("pakken bygger rammen; UI eller separat pakke fylder konkrete handlinger ind"). Smoke-tests T3 validerer disciplinen via fixture-actions; legacy-flow (action_id IS NULL) bevares uændret.
 
-Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V2-review.**
+Migration-rækkefølgen (M1→M2→M3→M4→M5→M6) minimerer indbyrdes afhængigheder. Smoke-tests (T1-T4) dækker alle leverancer end-to-end med både positive og negative kontroller. Acceptabel risiko (mellem på M3+M5, lav på resten). **Klar til Codex V3-review.**
