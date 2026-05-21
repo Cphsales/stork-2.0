@@ -228,12 +228,13 @@ Plan-fase kører Code OG Codex parallelt fra V1 — ikke ping-pong-sekvens. Begg
 
 **Fuldstyrke-disciplin (vigtigt):**
 
-Begge AI'er skal arbejde med fuld dybde. Overfladisk output blokerer iteration:
+Alle tre AI'er skal arbejde med fuld dybde. Overfladisk output blokerer iteration:
 
 - **Code:** V<n> skal være komplet plan-leverance (alle sektioner udfyldt, eksakt indhold pr. step, krav-dok-dækning verificeret). Ikke "skitse-V<n> til diskussion".
 - **Codex:** Kode-research skal være dyb (læs migrations, RPC-bodies, RLS-policies, smoke-test-flow). Find faktiske blind-vinkler — ikke generiske "overvej edge cases". Hvert fund har file:linje-reference.
+- **Claude.ai (Step 1.0 forretningsgang-rapport):** Hver "Hvad ved vi?" har konkret kilde-reference (mathias-afgoerelser-dato, vision-princip-nr, master-plan-§, chat-citat). Ikke generiske "vi ved at klienter er vigtige". Hvis ingen data: lad feltet stå tomt (ærligt).
 
-Hvis enten Code eller Codex leverer overfladisk output: Mathias markerer "FULDSTYRKE-MANGEL — gentag iteration".
+Hvis nogen af de tre leverer overfladisk output: Mathias markerer "FULDSTYRKE-MANGEL — gentag iteration".
 
 **FULDSTYRKE-MANGEL-procedure:**
 
@@ -245,11 +246,59 @@ Hvis enten Code eller Codex leverer overfladisk output: Mathias markerer "FULDST
 
 Skal være sjælden — disciplinen er fuldstyrke fra start.
 
+**Code's V<n>-disciplin under Codex' parallel research:** Code stopper IKKE mid-V<n> baseret på Codex' parallel kode-research. V<n> færdiggøres som planlagt; Codex' fund håndteres i V<n+1>-åbning (samme mønster som KODE-FUND-håndtering). Undtagelse: hvis Code SELV opdager fundament-mangler under V<n>-skrivning (eksisterende recon-først-disciplin), STOP og recon-først igen FØR V<n> committes.
+
 **Hvad ændres ikke:**
 
 - Codex' eksisterende reviewer-rolle (udvides med parallel research, ikke erstattes)
 - Code's plan-skabelon (Verificerede afhængigheder + Fire-dokument-konsultation består)
 - OPGRADERING-disciplin (eksisterende, kører parallelt med KODE-FUND-håndtering)
+
+## Slut-rapport-fase: reference-konsistens + fix-cycle-disciplin (V3 2026-05-21)
+
+Trin 10's slut-rapport-fase havde 7 review-runder, primært pga. konsistens-tjek og stale referencer (G-numre, filnavne, kildehenvisninger forskellige på tværs af filer). To V3-tilføjelser optimerer fasen:
+
+**1. Reference-konsistens-pass FØR slut-rapport committes (Code's disciplin):**
+
+Før Code committer slut-rapport (eller rapport-fix), grep'er Code hver konkret reference:
+
+- Filstier (`docs/...`, `supabase/migrations/...`)
+- G-numre (G055, G056, ...)
+- Codex-runde-numre (build-runde 4, plan-runde 8)
+- Commit-SHA'er (`1831760`, ...)
+
+For hver reference: verificér at den faktisk eksisterer og er konsistent på tværs af alle filer i rapport-spakken. Hvis Code rapporterer G059 = "build-runde 4 fund" i rapport, men teknisk-gaeld.md siger "plan-runde 8 / Code-observation": pre-rapport-tjekket skal fange det inden commit.
+
+**2. Fix-cycle-disciplin under rapport-review-runder:**
+
+Når Codex eller Claude.ai finder LAV-fund i rapport-runde (typisk konsistens-mismatches), gælder reglen:
+
+- Efter hver LAV-fix: kør **konsistens-pass på tværs af alle relevante filer** FØR commit
+- Hver fix kan generere nye mismatches i søster-filer; pass'et skal fange dem
+- Eksempel: hvis G059-kilde ændres i teknisk-gaeld.md, tjek også slut-rapport.md, bygge-status.md, master-plan.md for samme G059-reference
+
+Disciplinen forhindrer "cascade-fixes" (fix #1 skaber nyt mismatch fund #2 skaber nyt mismatch fund #3 ...) som drev trin 10's 7 runder.
+
+**Forventet effekt:** færre slut-rapport-runder (V14's 7 runder kunne være 3-4 med konsistens-pass + fix-cycle-disciplin).
+
+## Build-fase parallel Code+Codex (V3 2026-05-21)
+
+Build-fase udvides med per-batch Codex-review parallelt med Code's bygning. Ikke kun ved PR-tid.
+
+**Sekvens:**
+
+1. Code committer migrations i batches (3-5 migrations pr. batch, naturligt sammenhængende)
+2. Codex laver per-batch review (samme dybde som plan-review) parallelt med Code's næste batch
+3. Codex flagger fund som "BUILD-KODE-FUND N" — Code adresserer i næste batch eller commit
+4. Ved PR-tid: Codex laver final overall review (eksisterende V2-flow)
+
+**Fordele:**
+
+- Fund findes tidligere (per-batch ≈ 1-3 dage) i stedet for ved PR-tid (efter alle migrations)
+- Code kan rette mens kontekst er frisk (ikke 14 migrations senere)
+- Reducerer build-runde-fund mod færdig PR (eksempel: trin 10's runde 4 cron-context-fund ramte 8 migrations; per-batch ville have fanget det efter migrations 7-8)
+
+**Hvad ændres ikke:** Eksisterende build-review-mekanisme ved PR-tid består (final overall review). Per-batch er TILFØJELSE, ikke erstatning.
 
 ## Plan- og bygge-fase overholder 3 dokumenter (V3 2026-05-21)
 

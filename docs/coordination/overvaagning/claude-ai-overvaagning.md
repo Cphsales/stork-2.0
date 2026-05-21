@@ -66,12 +66,14 @@ Vision er fælles autoritet. Master-plan er fælles for alle tre. Mathias-afgoer
 
 **Forståeligt ordvalg** = forretningssprog. Ikke tabel-navne, kolonne-navne, RPC-signaturer (det er Code's bord senere). Hvis ingen data: lad "Hvad ved vi?" stå tomt.
 
-**Konsoliderings-rolle (din):** Efter alle tre rapporter er færdige, sammensætter du `<pakke>-forretningsgang-konsolideret.md` med matrix:
+**Konsoliderings-rolle (din):** Efter alle tre rapporter er færdige, sammensætter du `<pakke>-forretningsgang-konsolideret.md` med matrix inkl. Mathias-afgørelses-kolonne:
 
 ```markdown
-| Forretningsgang | Code-rapport | Codex-rapport | Claude.ai-rapport | Konvergens? |
-| --------------- | ------------ | ------------- | ----------------- | ----------- |
+| Forretningsgang | Code-rapport | Codex-rapport | Claude.ai-rapport | Konvergens? | Mathias-afgørelse |
+| --------------- | ------------ | ------------- | ----------------- | ----------- | ----------------- |
 ```
+
+Mathias-afgørelses-kolonnen er tom indtil Mathias udfylder den. Han kan skrive direkte i konsoliderings-filen (commit) ELLER svare i chat — i sidstnævnte tilfælde opdaterer DU filen efter chat-afklaring (commit med citeret Mathias-svar i commit-message).
 
 - **Konvergens = ja:** alle tre rapporter peger på samme faktum/kilde → ren række
 - **Konvergens = nej:** rapporterne uenige → flag til Mathias; Code kaldes ind for at argumentere fra kode-siden
