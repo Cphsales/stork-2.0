@@ -1,0 +1,90 @@
+name: Migrations deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/*.sql"
+
+# Kør kun ét deploy ad gangen — undgå race-conditions mellem merges
+concurrency:
+  group: migrations-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  deploy:
+    name: Deploy migrations to live Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HUSKY: "0"
+      TURBO_TELEMETRY_DISABLED: "1"
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Link Supabase project
+        run: pnpm supabase:link
+
+      - name: Deploy migrations (db push --linked)
+        id: deploy
+        run: pnpm exec supabase db push --linked --include-all
+
+      - name: Post success to tracker
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          NUMBER=$(gh issue list --search "Codex review queue in:title" --state open --json number,title --jq '.[] | select(.title == "Codex review queue") | .number' | head -n1)
+          if [ -n "$NUMBER" ]; then
+            gh issue comment "$NUMBER" --body "$(cat <<EOF
+          **Migrations deployed** — commit \`$SHA\`
+
+          Auto-deployet via \`migrations-deploy.yml\`. Live Supabase-project (\`imtxvrymaqbgcvsarlib\`) er nu i sync med main.
+
+          - Run: <$RUN_URL>
+          EOF
+          )"
+          fi
+
+      - name: Post failure to tracker
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          NUMBER=$(gh issue list --search "Codex review queue in:title" --state open --json number,title --jq '.[] | select(.title == "Codex review queue") | .number' | head -n1)
+          if [ -n "$NUMBER" ]; then
+            gh issue comment "$NUMBER" --body "$(cat <<EOF
+          🚨 **Migrations deploy FEJLEDE** — commit \`$SHA\`
+
+          Mathias skal intervenere. Live-DB er sandsynligvis IKKE i sync med main.
+
+          - Run: <$RUN_URL>
+          EOF
+          )"
+          fi
