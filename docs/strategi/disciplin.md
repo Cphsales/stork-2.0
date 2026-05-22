@@ -29,16 +29,20 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 ```
 0. Pakke-åbning (Mathias åbner ny pakke)
    ↓
-1. Krav-dok (Mathias → Claude.ai-typist; Mathias-validator i chat)
-   ↓
+1. Krav-dok (Mathias → Claude.ai-typist med proaktiv recon; Mathias-validator)
+   │  Mathias merger krav-dok-PR
+   ↓ (Code auto-fortsætter)
 2. Plan (Code + Codex parallel; skitse → størrelses-tjek → fuld plan eller split)
    ↓
 3. qwerg approval (Mathias)
    ↓
 4. Build (Code batches; Codex per-batch auto; end-to-end-konsistens-tjek per batch)
-   ↓
+   │  Mathias merger build-PR; migrations auto-deployes
+   ↓ (Code auto-fortsætter)
 5. Slut-rapport (Code skriver; Claude.ai-review FØR merge; Mathias merger)
 ```
+
+**Auto-fortsæt-pile (V4):** Mathias paster KUN ved Step 0 (pakke-åbning) og Step 3 (`qwerg`); resten er auto via Code's state-detection (se §8.2).
 
 ### Step 0 — Pakke-åbning
 
@@ -367,18 +371,20 @@ Hver AI har sin egen sektion. Når Mathias paster `qwers` læser AI'en sin sekti
 **Triggers:**
 
 - `qwers` (uden pakke-kontekst) → læs §8.1, bekræft "Rolle bekræftet som Claude.ai. Klar til qwerr eller pakke-kontekst."
-- `qwers <pakke-emne>` (Step 1-start) → læs §8.1, bekræft rolle, **OG lav proaktiv kontekst-recon FØR krav-dok-skrivning:**
+- `qwers <pakke-emne>` (Step 1-start) → læs §8.1, bekræft rolle, **OG lav proaktiv kontekst-recon FØR krav-dok-skrivning** — STRENGT i forretnings-sprog:
   1. Læs relevante sektioner i `forretningsforstaaelse.md` (matcher pakke-emne)
-  2. Læs `master-plan.md` §4-trin-spec hvis pakken er et §4-trin
-  3. Search `rapport-historik/` for relaterede tidligere pakker
-  4. Bed Mathias om DB-state-output for relevante tabeller hvis nødvendigt
+  2. Læs `vision-og-principper.md` hvis pakken rammer princip-niveau
+  3. Search `rapport-historik/` for tidligere relaterede forretnings-pakker — kun forretnings-niveau-resume
+  4. Spørg Mathias om uddybning hvis forretnings-konteksten er uklar
 
-  Output i chat:
-  - Kort "Det vi har"-sammenfatning (3-5 punkter)
-  - Targeted spørgsmål til Mathias om uafklarede områder
+  **FORBUDT i recon-output:** tabel-navne, kolonne-navne, RPC-signaturer, kode-eksempler, datamodel-skitser. Det er Code's bord i plan-fasen. Hvis du ser kode-sprog i kilder, OVERSÆT til forretnings-sprog ("klient-data" ikke "core_identity.clients").
+
+  Output i chat (forretnings-niveau):
+  - Kort "Det vi har"-sammenfatning af forretnings-evne (3-5 punkter)
+  - Targeted forretnings-spørgsmål til Mathias
   - Forslag til scope-grænser
 
-  Mathias' svar bliver til krav-dok-indhold.
+  Mathias' svar bliver til krav-dok-indhold (også forretnings-niveau).
 
 - `qwerr` → tjek tracker for `slut-rapport-pr` eller `slut-rapport-push`; lever review
 
@@ -411,6 +417,22 @@ Hver AI har sin egen sektion. Når Mathias paster `qwers` læser AI'en sin sekti
 - `qwers` → læs §8.2, bekræft "Rolle bekræftet som Code"
 - `qwerr` → læs pakke-status.md + tracker; udfør næste handling
 - `qwerg` → start build af approved plan
+
+**Auto-fortsæt mellem steps (V4 — ingen manuel `qwerr` mellem):**
+
+Når Code opdager følgende state-ændringer via tracker + repo, fortsæt automatisk uden at vente på ny prompt fra Mathias:
+
+| Detekteret state                                                                     | Auto-handling                                                                                                                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Krav-dok-PR merget til main (`docs/coordination/<pakke>-krav-og-data.md` ny på main) | Start Step 2.0 plan-skitse + størrelses-tjek; hvis ≤5 mig → fortsæt med Step 2.1 V1; hvis 6+ → rapport split-forslag og stop |
+| Plan-V<n> committet til `claude/<pakke>-plan`                                        | Vent på Codex-review (manuelt eller via tracker); ved nyt KODE-FUND → V<n+1>; ved APPROVAL → vent på `qwerg` fra Mathias     |
+| Build-PR merget til main (post-deploy + types-regen lykkedes)                        | Start Step 5 slut-rapport-skrivning automatisk; commit + åbn slut-rapport-PR                                                 |
+
+Code må IKKE auto-fortsætte ved:
+
+- Blokerende udfordring under build → STOP-FOR-CLARIFICATION-gate
+- Konvergens-counter ≥ 5 → pause + Mathias-afgørelse
+- Plan-skitse > 5 migrations → split-forslag, stop
 
 **Step 2 plan-disciplin:**
 
