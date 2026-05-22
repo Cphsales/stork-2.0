@@ -12,8 +12,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   issues: write
+  pull-requests: write
 
 jobs:
   deploy:
@@ -88,3 +89,62 @@ jobs:
           EOF
           )"
           fi
+
+  types-regen:
+    name: Regenerate types if drift
+    needs: deploy
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HUSKY: "0"
+      TURBO_TELEMETRY_DISABLED: "1"
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Link Supabase project
+        run: pnpm supabase:link
+
+      - name: Regenerate types
+        run: pnpm types:generate
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet packages/types/src/database.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR with regenerated types
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "types: auto-regen efter migration deploy (${{ github.sha }})"
+          title: "types: auto-regen efter migration deploy"
+          body: |
+            Auto-genereret af `migrations-deploy.yml`.
+
+            Migration på commit ${{ github.sha }} ændrede schema. Database-types er regenereret.
+
+            **Merge når CI er grøn.** Ingen review nødvendig — denne PR er ren codegen-output.
+          branch: claude/types-regen-${{ github.sha }}
+          delete-branch: true
+          add-paths: packages/types/src/database.ts
