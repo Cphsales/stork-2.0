@@ -2,18 +2,21 @@ name: Codex notify
 
 on:
   push:
+    branches:
+      - main
+      - "claude/*-build"
     paths:
       - "docs/coordination/aktiv-plan.md"
-      - "docs/coordination/plan-feedback/*.md"
       - "docs/coordination/seneste-rapport.md"
+      - "supabase/migrations/*.sql"
   pull_request:
+    types: [opened]
     branches: [main]
-    paths:
-      - "docs/coordination/seneste-rapport.md"
 
 permissions:
   issues: write
   contents: read
+  pull-requests: read
 
 jobs:
   notify:
@@ -23,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Locate tracker issue
         id: tracker
@@ -45,44 +48,49 @@ jobs:
         if: steps.tracker.outputs.skip != 'true'
         env:
           EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         run: |
           set -euo pipefail
 
+          # V4 slut-rapport-PR-event: PR åbnet hvor source-branch matcher claude/*-slut-rapport
           if [ "$EVENT" = "pull_request" ]; then
-            # Pre-merge slut-rapport-trigger; paths-filteret garanterer seneste-rapport.md er ramt.
-            echo "type=slut-rapport-pr" >> "$GITHUB_OUTPUT"
+            case "$HEAD_REF" in
+              claude/*-slut-rapport)
+                echo "type=slut-rapport-pr" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                # PR fra anden branch — ignorer
+                echo "type=skip" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
             exit 0
           fi
 
-          # Push-event: brug git diff til at finde ændrede filer.
-          changed=$(git diff --name-only HEAD~1 HEAD || true)
+          # V4 build-branch-event: push til claude/<pakke>-build
+          case "$REF" in
+            refs/heads/claude/*-build)
+              echo "type=build-batch" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # Push til main: brug bulk-push-range (V4-fix — før var det HEAD~1..HEAD som tabte multi-commit pushes)
+          # Hvis BEFORE er nulhash (ny branch / force push uden parent), fald tilbage til HEAD~1
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
+          else
+            changed=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || true)
+          fi
           echo "changed files:" >&2
           echo "$changed" >&2
 
-          plan_feedback_changed=$(echo "$changed" | grep -E '^docs/coordination/plan-feedback/.+\.md$' | head -n1 || true)
           aktiv_plan_changed=$(echo "$changed" | grep -E '^docs/coordination/aktiv-plan\.md$' || true)
           seneste_rapport_changed=$(echo "$changed" | grep -E '^docs/coordination/seneste-rapport\.md$' || true)
 
-          if [ -n "$plan_feedback_changed" ]; then
-            echo "feedback_file=$plan_feedback_changed" >> "$GITHUB_OUTPUT"
-            case "$plan_feedback_changed" in
-              *-approved.md)
-                echo "type=plan-approved" >> "$GITHUB_OUTPUT"
-                ;;
-              *-blokeret.md)
-                echo "type=plan-blokeret" >> "$GITHUB_OUTPUT"
-                ;;
-              *-codex.md)
-                echo "type=codex-feedback" >> "$GITHUB_OUTPUT"
-                ;;
-              *-code.md)
-                echo "type=code-feedback" >> "$GITHUB_OUTPUT"
-                ;;
-              *)
-                echo "type=plan-feedback-other" >> "$GITHUB_OUTPUT"
-                ;;
-            esac
-          elif [ -n "$aktiv_plan_changed" ]; then
+          if [ -n "$aktiv_plan_changed" ]; then
             echo "type=ny-plan-version" >> "$GITHUB_OUTPUT"
           elif [ -n "$seneste_rapport_changed" ]; then
             echo "type=slut-rapport-push" >> "$GITHUB_OUTPUT"
@@ -92,47 +100,35 @@ jobs:
 
       - name: Compose comment body
         id: body
-        if: steps.tracker.outputs.skip != 'true'
+        if: steps.tracker.outputs.skip != 'true' && steps.trigger.outputs.type != 'skip'
         env:
           TYPE: ${{ steps.trigger.outputs.type }}
-          FEEDBACK_FILE: ${{ steps.trigger.outputs.feedback_file }}
           SHA: ${{ github.sha }}
           REF: ${{ github.ref }}
+          HEAD_REF: ${{ github.head_ref }}
           ACTOR: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
 
           case "$TYPE" in
+            build-batch)
+              HEADER="**Build-batch pushet** — \`$REF\`"
+              ACTION="Code committet ny build-batch. Codex skal lave per-batch review (V4 disciplin.md §6.1 build-fase). Læs \`docs/strategi/disciplin.md\` §8.3 (Codex-rolle) + §3.3 (end-to-end-spor)."
+              ;;
+            slut-rapport-pr)
+              HEADER="**Slut-rapport-PR åbnet** — \`$HEAD_REF\`"
+              ACTION="Claude.ai skal lave step-5 review **FØR merge** (V4 disciplin.md §2 Step 5). Læs \`docs/strategi/disciplin.md\` §8.1 (Claude.ai-rolle) + §7 (Stork-invariant-tjek)."
+              ;;
             ny-plan-version)
               HEADER="**Ny plan-version** — \`docs/coordination/aktiv-plan.md\` ændret"
-              ACTION="Code's tur er forbi. Codex skal reviewe planen som aktiv-plan peger på. Læs \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review."
+              ACTION="Code's tur er forbi. Codex skal reviewe planen som aktiv-plan peger på. Læs \`docs/strategi/disciplin.md\` §8.3 (Codex plan-review-fokus)."
               ;;
-            codex-feedback)
-              HEADER="**Codex-feedback leveret** — \`$FEEDBACK_FILE\`"
-              ACTION="Codex's tur er forbi. Code skal læse feedback og levere V<n+1> (enten ny \`-code.md\` eller opdateret plan-fil)."
+            slut-rapport-push)
+              HEADER="**Slut-rapport pushet** — \`docs/coordination/seneste-rapport.md\` ændret"
+              ACTION="Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/strategi/disciplin.md\` §8.3 (Codex slut-rapport-review)."
               ;;
-            code-feedback)
-              HEADER="**Code-feedback leveret** — \`$FEEDBACK_FILE\`"
-              ACTION="Code har svaret. Codex's tur — committ næste \`-codex.md\` eller \`-approved.md\` hvis konvergens nået."
-              ;;
-            plan-approved)
-              HEADER="**Plan godkendt fra Codex' side** — \`$FEEDBACK_FILE\`"
-              ACTION="Plan godkendt fra Codex. Klar til Mathias-validering. Mathias + Claude.ai tjekker plan mod krav-dokument."
-              ;;
-            plan-blokeret)
-              HEADER="**Plan-blokeret — krav-dokument-brud** — \`$FEEDBACK_FILE\`"
-              ACTION="Forslag i runden modsiger krav-dokument. Aktør (Code eller Codex) har stoppet runden. Mathias eskaleres."
-              ;;
-            plan-feedback-other)
-              HEADER="**Plan-feedback ændret** — \`$FEEDBACK_FILE\`"
-              ACTION="Manuelt review nødvendigt. Filnavnet matcher ikke standard-pattern (\`-codex.md\` / \`-code.md\` / \`-approved.md\` / \`-blokeret.md\`)."
-              ;;
-            slut-rapport-pr|slut-rapport-push)
-              HEADER="**Codex-review trigger** — \`docs/coordination/seneste-rapport.md\` ændret"
-              ACTION="Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/skabeloner/codex-review-prompt.md\` niveau 1-prefix før review."
-              ;;
-            *)
+            ukendt)
               HEADER="**Codex-notify trigger** — ukendt fil-type ramt"
               ACTION="Tjek run-log for at se hvilke filer der trigger'ede. Sandsynligvis konfig-fejl i \`codex-notify.yml\`."
               ;;
@@ -153,7 +149,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Post comment
-        if: steps.tracker.outputs.skip != 'true'
+        if: steps.tracker.outputs.skip != 'true' && steps.trigger.outputs.type != 'skip'
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ steps.tracker.outputs.number }}
