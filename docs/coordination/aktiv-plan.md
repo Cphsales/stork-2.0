@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** T9-supplement-2 — build under CI-validering (PR #74). Plan + krav-dok + recon arkiveret i `docs/coordination/arkiv/`.
+**Aktuel:** ingen aktiv pakke — T9-supplement-2 afsluttet 2026-05-22 (PR #74 merged). Slut-rapport: `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md`. Venter på næste pakke-valg fra Mathias.
 
 Workflow-spec V2 (`mathias-afgoerelser.md` 2026-05-20 "Workflow-justering V2") er etableret som autoritativ operationel guide for kommende pakker. Detaljer i `docs/skabeloner/workflow-skabelon.md` + overvaagning-filer.
 
