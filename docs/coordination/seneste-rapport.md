@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-21-trin-10.md` (PR #64 squash-merged til main 2026-05-21; commit `1831760`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md` (PR #74 rebase-merged til main 2026-05-22)
 
 Når ny rapport leveres:
 
