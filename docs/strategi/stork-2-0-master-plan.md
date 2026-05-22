@@ -35,7 +35,9 @@ Vision, tre bærende principper og ni operationelle principper er defineret i `d
 
 ### Strategiske retning-skift
 
-Beslutninger der ændrer retning, låser ramme, eller etablerer princip/disciplin på tværs af pakker dokumenteres i `docs/coordination/mathias-afgoerelser.md`. Master-planen reflekterer kun arkitektur-konsekvensen af disse beslutninger (Appendix C rettelser); selve beslutningen + begrundelse lever i mathias-afgoerelser. Ved konflikt mellem mathias-afgoerelser og master-plan vinder mathias-afgoerelser (kilde) og master-plan tilrettes.
+Mathias' tanker pr. pakke lever i `docs/coordination/<pakke>-krav-og-data.md` (pakke-kontrakt). Tanker der ændrer ramme på tværs af pakker går ind i `docs/strategi/forretningsforstaaelse.md` (tanke-data) eller `docs/strategi/vision-og-principper.md` (LÅST evig, ved princip-niveau). Master-planen reflekterer arkitektur-konsekvensen som Appendix C-rettelser. Ved konflikt vinder vision (LÅST) → forretningsforstaaelse + krav-dok → master-plan tilrettes.
+
+Historiske ramme-niveau-beslutninger fra V3 og tidligere lever i `docs/coordination/arkiv/mathias-afgoerelser-historik.md` som læsbar reference (ikke aktiv kilde).
 
 ### Filosofi
 
