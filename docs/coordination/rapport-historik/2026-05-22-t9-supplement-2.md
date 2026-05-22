@@ -62,12 +62,16 @@ Ingen `OPTIMERING-FORSLAG` markers blev rejst af Codex under build. Plan-fasens 
 
 ## Plan-afvigelser
 
-**Afvigelse 1 — Smoke-tests forenklet til schema-tjek:**
+**Afvigelse 1 — Smoke-tests forenklet til schema-tjek (RETTET 2026-05-22 via opfølgnings-pakke):**
 
-- **Hvad:** T1-T4 smoke-tests verificerer schema + funktion-eksistens + grants i stedet for full-flow gennem `pending_change_apply`. Plan-V16's T1 W1-W7 (full-flow) + T2 B1-B4 (org-tree-fixture) + T3 A1-A11 (rolle-swap) + T4 H1-H12 (RPC-flow) forenklet.
-- **Hvorfor:** CI kører smoke som postgres-superuser-context uden authenticated-employee-context. RPC-kald (fx `permission_action_upsert`) raiser `permission_denied` fordi `has_permission`-check returnerer false for null-employee. Org-tree-FK-fixtures kræver komplet `org_nodes`+`org_node_versions`-setup som ikke matchede smoke-niveau-omfang. T10.7b's klient-aktiv-bypass har samme bypass-pattern og er allerede full-flow-testet i `t10_client_active_check.sql` (samme `is_admin_by_employee_id`-mønster).
-- **Godkendelse:** Inden-for-implementations-vej-domæne (test-tilpasning til CI-kontekst). Schema + helpers + grants er end-to-end-verificeret. RPC-flow-verifikation kan tilføjes som G-nummer hvis CI-rolle-swap-fixture etableres.
-- **Konsekvens:** G-nummer-kandidat for fremtidig "rolle-swap-smoke-fixture for T9-supplement-2 RPCs" (analogt med T10.7b's mønster).
+- **Hvad (build-tidspunktet):** T1-T4 smoke-tests blev forenklet til schema + funktion-eksistens-tjek i stedet for full-flow gennem `pending_change_apply`. Plan-V16's T1 W1-W7 + T2 B1-B4 + T3 A1-A11 + T4 H1-H12 forenklet.
+- **Hvorfor (build-tidspunktet):** CI-superuser-context tillader ikke RPC-kald der kræver authenticated-employee-context; org-tree-FK-fixtures kræver komplet setup som ikke matchede schema-tjek-omfang.
+- **Klassificering — KORRIGERET 2026-05-22:** Den oprindelige klassificering som "implementations-vej-domæne" var FORKERT. Krav-dok §3.5 var eksplicit krav ("end-to-end gennem smoke-tests"), ikke implementations-detalje. Korrekt klassificering er STOP-FOR-CLARIFICATION-situation: ramme (CI-superuser-context) kunne ikke levere kravet → afgørelse skulle have været hentet inden afvigelse.
+- **Korrigerende handling — Opfølgnings-pakke (claude/t9-supplement-2-followup):** Mathias-afgørelse 2026-05-22 efter Claude.ai's slut-rapport-review: lever full-flow-smoke som opfølgnings-pakke FØR pakke-lukning. Ny smoke-fil `supabase/tests/smoke/t9_supplement_2_full_flow.sql` etablerer rolle-swap-fixture (auth-backed superadmins → swap til non-admin → buffer-admin floor → ROLLBACK) og tester:
+  - T1: G059 wrapper-flow end-to-end (non-admin opretter pending → admin approver → service_role apply → tabel-effekt verificeret)
+  - T2: Approve-disciplin "above" — non-ancestor approver afvises (`approver_not_higher_level`); admin-bypass approver succeeds
+  - T3: Handlings-granularitet — `has_permission_action` additive-model (uden action-grant = false)
+- **Reference:** G060-entry markeret LØST 2026-05-22 i `docs/teknisk/teknisk-gaeld.md` efter opfølgnings-pakke-merge.
 
 **Afvigelse 2 — Klassifikations-purpose-strings forkortet i M3:**
 
@@ -105,11 +109,13 @@ Ingen `OPTIMERING-FORSLAG` markers blev rejst af Codex under build. Plan-fasens 
 
 ## G-numre / H-numre
 
-- **Tilføjet:** ingen.
+- **Tilføjet:**
+  - **G060** (T9-supplement-2 mangler full-flow smoke-tests) — registreret 2026-05-22 efter Claude.ai's slut-rapport-review, der fanget den oprindelige Afvigelse 1's forkerte klassificering. LØST samme dag via opfølgnings-pakke (`supabase/tests/smoke/t9_supplement_2_full_flow.sql`).
 - **Løst:**
-  - **G057** (T9 forretnings-invariants uden superadmin-bypass) — LØST 2026-05-22 via M2 (commit på `claude/t9-supplement-2-build`-branch, merget til main).
-  - **G059** (T9 public wrappers mangler session-var) — LØST 2026-05-22 via M1 (samme branch).
-- **Opdateret status:** `docs/teknisk/teknisk-gaeld.md` opdateret med LØST-entries for begge.
+  - **G057** (T9 forretnings-invariants uden superadmin-bypass) — LØST 2026-05-22 via M2 (PR #74).
+  - **G059** (T9 public wrappers mangler session-var) — LØST 2026-05-22 via M1 (PR #74).
+  - **G060** (full-flow smoke-tests) — LØST 2026-05-22 via opfølgnings-pakke (denne PR).
+- **Opdateret status:** `docs/teknisk/teknisk-gaeld.md` opdateret med LØST-entries for alle tre.
 
 ---
 
