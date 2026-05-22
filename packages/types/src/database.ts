@@ -1639,6 +1639,7 @@ export type Database = {
       };
       pending_changes: {
         Row: {
+          action_id: string | null;
           applied_at: string | null;
           approved_at: string | null;
           approved_by: string | null;
@@ -1656,6 +1657,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          action_id?: string | null;
           applied_at?: string | null;
           approved_at?: string | null;
           approved_by?: string | null;
@@ -1673,6 +1675,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          action_id?: string | null;
           applied_at?: string | null;
           approved_at?: string | null;
           approved_by?: string | null;
@@ -1691,6 +1694,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: "pending_changes_action_id_fkey";
+            columns: ["action_id"];
+            isOneToOne: false;
+            referencedRelation: "permission_actions";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "pending_changes_approved_by_fkey";
             columns: ["approved_by"];
             isOneToOne: false;
@@ -1702,6 +1712,56 @@ export type Database = {
             columns: ["requested_by"];
             isOneToOne: false;
             referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      permission_actions: {
+        Row: {
+          bypass_tab_write: boolean;
+          created_at: string;
+          has_undo: boolean;
+          id: string;
+          is_active: boolean;
+          name: string;
+          requires_second_approver: boolean;
+          second_approver_type: string;
+          sort_order: number;
+          tab_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          bypass_tab_write?: boolean;
+          created_at?: string;
+          has_undo?: boolean;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          requires_second_approver?: boolean;
+          second_approver_type?: string;
+          sort_order?: number;
+          tab_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          bypass_tab_write?: boolean;
+          created_at?: string;
+          has_undo?: boolean;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          requires_second_approver?: boolean;
+          second_approver_type?: string;
+          sort_order?: number;
+          tab_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "permission_actions_tab_id_fkey";
+            columns: ["tab_id"];
+            isOneToOne: false;
+            referencedRelation: "permission_tabs";
             referencedColumns: ["id"];
           },
         ];
@@ -1855,6 +1915,7 @@ export type Database = {
       };
       role_permission_grants: {
         Row: {
+          action_id: string | null;
           area_id: string | null;
           can_access: boolean;
           can_write: boolean;
@@ -1867,6 +1928,7 @@ export type Database = {
           visibility: string;
         };
         Insert: {
+          action_id?: string | null;
           area_id?: string | null;
           can_access?: boolean;
           can_write?: boolean;
@@ -1879,6 +1941,7 @@ export type Database = {
           visibility?: string;
         };
         Update: {
+          action_id?: string | null;
           area_id?: string | null;
           can_access?: boolean;
           can_write?: boolean;
@@ -1891,6 +1954,13 @@ export type Database = {
           visibility?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "role_permission_grants_action_id_fkey";
+            columns: ["action_id"];
+            isOneToOne: false;
+            referencedRelation: "permission_actions";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "role_permission_grants_area_id_fkey";
             columns: ["area_id"];
@@ -2044,6 +2114,10 @@ export type Database = {
         Returns: undefined;
       };
       acl_all: { Args: never; Returns: boolean };
+      acl_higher_level_employees: {
+        Args: { p_requester_employee_id: string };
+        Returns: string[];
+      };
       acl_self: { Args: { p_target_employee_id: string }; Returns: boolean };
       acl_subtree_employees: {
         Args: { p_employee_id: string };
@@ -2373,6 +2447,7 @@ export type Database = {
         Args: { p_can_edit?: boolean; p_page_key: string; p_tab_key?: string };
         Returns: boolean;
       };
+      has_permission_action: { Args: { p_action_id: string }; Returns: boolean };
       is_active_employee_state: {
         Args: { p_anonymized_at: string; p_termination_date: string };
         Returns: boolean;
@@ -2425,6 +2500,10 @@ export type Database = {
         Args: { p_change_id: string };
         Returns: undefined;
       };
+      pending_change_eligible_approvers: {
+        Args: { p_pending_change_id: string };
+        Returns: string[];
+      };
       pending_change_request: {
         Args: {
           p_change_type: string;
@@ -2438,6 +2517,7 @@ export type Database = {
       pending_changes_read: {
         Args: never;
         Returns: {
+          action_id: string;
           applied_at: string;
           approved_at: string;
           change_id: string;
@@ -2448,6 +2528,24 @@ export type Database = {
           target_id: string;
           undo_deadline: string;
         }[];
+      };
+      permission_action_deactivate: {
+        Args: { p_action_id: string };
+        Returns: undefined;
+      };
+      permission_action_set_approver_type: {
+        Args: { p_action_id: string; p_type: string };
+        Returns: undefined;
+      };
+      permission_action_upsert: {
+        Args: {
+          p_id: string;
+          p_is_active?: boolean;
+          p_name: string;
+          p_sort_order?: number;
+          p_tab_id: string;
+        };
+        Returns: string;
       };
       permission_area_deactivate: {
         Args: { p_area_id: string };
