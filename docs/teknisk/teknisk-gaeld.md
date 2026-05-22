@@ -14,6 +14,16 @@
 
 ## Åben gæld
 
+### [G060] LØST 2026-05-22 — T9-supplement-2 mangler full-flow smoke-tests
+
+- **Hvad:** Build-tidspunktet's smoke-tests (T1-T4) blev forenklet til schema-tjek + funktion-eksistens-tjek pga. CI-superuser-context. Krav-dok §3.1 + §3.5 specificerer "fra anmodning gennem godkendelse til effektuering" — det blev IKKE leveret i build.
+- **Klassificerings-rettelse:** Slut-rapportens oprindelige klassificering ("implementations-vej-domæne") var forkert. Krav-dok §3.5 er eksplicit krav, ikke implementations-detalje. Korrekt: STOP-FOR-CLARIFICATION (Claude.ai's slut-rapport-review-fund).
+- **Løsning:** Opfølgnings-pakke (`claude/t9-supplement-2-followup`). Ny smoke-fil `supabase/tests/smoke/t9_supplement_2_full_flow.sql` etablerer rolle-swap-fixture (auth-backed superadmins → swap til non-admin → buffer-admin floor → ROLLBACK) per `t10_client_active_check.sql`-mønstret. Verificerer end-to-end:
+  - T1 (G059): non-admin opretter pending via `org_node_upsert`-wrapper → admin approver → service_role apply → status='applied'
+  - T2 (Approve-disciplin "above"): non-ancestor approver afvises med `approver_not_higher_level`; admin-bypass approver succeeds (superadmin-undtagelse)
+  - T3 (Handlings-granularitet): `has_permission_action`-additive-model — action uden grant returnerer false
+- **Reference:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md` Plan-afvigelse 1 (rettet). Mathias-afgørelse 2026-05-22: lever full-flow-smoke FØR pakke-lukning (krav-dok §3.5).
+
 ### [G059] LØST 2026-05-22 — T9 public wrappers mangler `stork.t9_write_authorized` session-var
 
 - **Løsning:** T9-supplement-2 M1 (PR #74). 5 T9 wrapper-RPC'er fik `perform set_config('stork.t9_write_authorized', 'true', true)` FØR `pending_change_request`. Plus eksplicit `grant execute ... to authenticated` på 5 G059-wrappers + 2 T10-client-wrappers (Codex V7 systemisk recon).
