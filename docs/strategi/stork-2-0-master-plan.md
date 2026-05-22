@@ -1547,6 +1547,80 @@ Pre-commit-hook kræver "ZONE: red"-prefix for ændringer i `core_*`-schemas, `@
 | 30   | FM checkliste-system (skabeloner + instanser + resumé-aggregat)                                                                                                                                                                                                                                                                                                                                                                        | core_money                                                                    |
 | 31   | **Cutover-leverancer: legacy_audit-tabel + audit-import-script + cutover-checklist + adapter-re-pointing-procedure**. Eksekveres når Mathias er overbevist efter manuel sammenligning af 2.0's data mod 1.0                                                                                                                                                                                                                            | core_compliance                                                               |
 
+### §4.1 Status pr. trin
+
+For detaljerede leverance-rapporter pr. trin: se `docs/coordination/rapport-historik/<dato>-<pakke>.md`.
+
+| §4 trin | Beskrivelse                                                    | Status               | Vores trin | Commit  | Dato    |
+| ------- | -------------------------------------------------------------- | -------------------- | ---------- | ------- | ------- |
+| 1       | Adgangs-mekanik                                                | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 2       | Audit-mønster (partitioneret)                                  | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 3       | Drift-skabelon (heartbeats)                                    | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 4       | Klassifikations-registry + migration-gate Phase 1              | ✓ Godkendt           | Trin 1     | ce8c609 | 13. maj |
+| 5       | Identitet del 1 (medarbejdere, roller, permissions)            | ✓ Godkendt           | Trin 2     | 14dd814 | 14. maj |
+| 6       | Anonymisering (anonymization_state + replay)                   | ✓ Godkendt           | Trin 3     | fd2ba48 | 14. maj |
+| 7       | Periode-skabelon + lock-pipeline (skeleton-benchmark)          | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7b      | Auto-lock-cron + candidate-pre-compute-cron                    | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 7c      | break_glass_requests + RPC-skabelon                            | ✓ Godkendt           | Trin 4     | bc57ae0 | 14. maj |
+| 8       | Migration-gate Phase 2 strict                                  | ✓ Aktiveret i trin 1 | Trin 1     | ce8c609 | 13. maj |
+| 9       | Identitet del 2 (org-træ + permission-fundament + fortrydelse) | ✓ Godkendt           | Trin 5     | d73d929 | 18. maj |
+| 10      | Klient-skabelon + felt-definitions                             | ✓ Godkendt           | Trin 6     | 1831760 | 21. maj |
+| 10b     | Lokations-skabelon                                             | ⌛ Udestående        | —          | —       | —       |
+| 11      | UDGÅR (schema-grænser fra trin 1)                              | —                    | —          | —       | —       |
+| 12      | @stork/core skeleton                                           | ⌛ Udestående        | —          | —       | —       |
+| 13      | Formel-system                                                  | ⌛ Udestående        | —          | —       | —       |
+| 14      | Salgs-stamme + legacy_snapshots                                | ⌛ Udestående        | —          | —       | —       |
+| 15      | Pricing + identitets-master + sælger-attribution               | ⌛ Udestående        | —          | —       | —       |
+| 16      | Annulleringer + corrections + reversal                         | ⌛ Udestående        | —          | —       | —       |
+| 16b     | rejections + basket_corrections + fuld dispatcher              | ⌛ Udestående        | —          | —       | —       |
+| 17      | Vagter + skabeloner + pauser                                   | ⌛ Udestående        | —          | —       | —       |
+| 18      | Stempelur + corrections                                        | ⌛ Udestående        | —          | —       | —       |
+| 19      | UDSKUDT (flyttet til 21b)                                      | —                    | —          | —       | —       |
+| 20a     | Fire fravær-tabeller                                           | ⌛ Udestående        | —          | —       | —       |
+| 20b     | Vagt-status enum udvidelse                                     | ⌛ Udestående        | —          | —       | —       |
+| 20c     | Klient-tilhør-snapshot (relations-tabel)                       | ⌛ Udestående        | —          | —       | —       |
+| 20d     | Fraværs-triggers                                               | ⌛ Udestående        | —          | —       | —       |
+| 20e     | Overtid                                                        | ⌛ Udestående        | —          | —       | —       |
+| 20f     | Sygeløn-formel + ferie-løn-formel                              | ⌛ Udestående        | —          | —       | —       |
+| 21      | Ingest-tabeller + Adversus sync-job + call_records             | ⌛ Udestående        | —          | —       | —       |
+| 21b     | Klient-fordeling-segmenter                                     | ⌛ Udestående        | —          | —       | —       |
+| 22      | Medarbejder-aggregater + payroll-linjer + KPI-snapshots        | ⌛ Udestående        | —          | —       | —       |
+| 23      | Dashboards + aggregat-tabeller                                 | ⌛ Udestående        | —          | —       | —       |
+| 24      | FM booking-stamme                                              | ⌛ Udestående        | —          | —       | —       |
+| 25      | FM booking-assignments + auto-vagt-generering                  | ⌛ Udestående        | —          | —       | —       |
+| 26      | FM hotel-booking                                               | ⌛ Udestående        | —          | —       | —       |
+| 27      | FM køretøj og mileage                                          | ⌛ Udestående        | —          | —       | —       |
+| 28      | FM diæt og oplæringsbonus                                      | ⌛ Udestående        | —          | —       | —       |
+| 29      | FM leverandør-fakturering                                      | ⌛ Udestående        | —          | —       | —       |
+| 30      | FM checkliste-system                                           | ⌛ Udestående        | —          | —       | —       |
+| 31      | Cutover-leverancer                                             | ⌛ Udestående        | —          | —       | —       |
+
+**Status-symboler:**
+
+- ✓ Godkendt — bygget, verificeret, accepteret af Mathias
+- 🔨 Under bygning — Code arbejder
+- ⏳ Næste — klar til at starte
+- ⏸ PAUSET — byggetrin pauset af Mathias
+- ⌛ Udestående — venter på tidligere trin
+- — UDGÅR / UDSKUDT
+
+### §4.2 Action-items (ikke-blokerende)
+
+| Punkt                            | Beskrivelse                                                                                                                                                                                                                                                                                                                                               | Skal håndteres før                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| PITR-aktivering                  | Admin-handling i Supabase dashboard                                                                                                                                                                                                                                                                                                                       | §4 trin 14 (sales-stamme)                                  |
+| Backup-retention                 | Verificér Pro-default 14 dage                                                                                                                                                                                                                                                                                                                             | §4 trin 14                                                 |
+| retention_cleanup_daily          | Refactoreres til generisk evaluator                                                                                                                                                                                                                                                                                                                       | Når flere entities har retention-deadlines (trin 10+)      |
+| replay_anonymization             | Udvides med branches per entity                                                                                                                                                                                                                                                                                                                           | §4 trin 10 (clients) + trin 15 (identitets-master)         |
+| Migration TODO-markører          | Erstattes med faktiske 1.0-skema-referencer                                                                                                                                                                                                                                                                                                               | Når Mathias kører discovery mod 1.0                        |
+| Anonymization-revert break-glass | Bygges sammen med break-glass-tabel                                                                                                                                                                                                                                                                                                                       | §4 trin 7c                                                 |
+| Dependabot-sårbarheder           | 4 sårbarheder på default branch (3 moderate, 1 low) pr. 2026-05-16. Skal håndteres før produktion. Liste de kritiske til Mathias når relevant.                                                                                                                                                                                                            | Før produktion                                             |
+| Lock-pipeline fuld benchmark     | Trin 7's skeleton-benchmark var 61ms@130 candidate-rows. Fuld benchmark (500 medarbejdere × 100k sales × <10s SLA, master-plan §1.6/rettelse 19 C3) udskydes til trin 14 (sales) og trin 22 (aggregater) som CI-blocker                                                                                                                                   | §4 trin 22 senest                                          |
+| pay_period_unlock re-lock        | Break-glass-unlock bevarer commission_snapshots (immutable). Re-lock skal håndtere overskrivning via ON CONFLICT DO NOTHING. Formaliseres når sales eksisterer                                                                                                                                                                                            | §4 trin 14                                                 |
+| Benchmark-artifacts i prod-DB    | Skeleton-benchmark efterlod 1 syntetisk pay_period (2020-01-15→2020-02-14, locked), 260 commission_snapshots og 1 salary_correction (description='smoke test', amount=-100). Ufarligt men kosmetisk støj. **Note:** Cutover-blocker #6 G017-tjek dækker pre-2000-perioder, ikke 2020-artefakter (åbent G-nummer-kandidat fra master-plan sandheds-audit). | Inden produktions-go-live                                  |
+| Klassifikations-tal-inkonsistens | Trin 1-3 rapporterede 202 klassificerede kolonner; trin 4 rapporterede 193. Faldet er ikke dokumenteret. Skal verificeres mod faktisk DB-state. Kan være korrekt (kolonner fjernet under trin 4) eller dokumentations-fejl.                                                                                                                               | Når trin 9+ genoptages — klassifikations-tal tjekkes på ny |
+| Frontend hosting-platform        | Master-plan rettelse 32 låste managed-service som ramme. Specifik platform (Vercel vs. Cloudflare Pages) afgøres ved tilkobling i samme pakke som første frontend-side. Selv-hosting eksplicit afvist.                                                                                                                                                    | Lag F (første frontend-side)                               |
+
 ---
 
 ## §5 Det vi står inde for
