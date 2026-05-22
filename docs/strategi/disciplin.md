@@ -224,12 +224,12 @@ Skitse > 5 migrations → STOP, foreslå split (se Step 2.0). Forhindrer pakker 
 
 ### Bevares evigt på main
 
-| Fil                              | Sti                                                                                                                                                                                           |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Krav-dok                         | `docs/coordination/<pakke>-krav-og-data.md`                                                                                                                                                   |
-| Godkendt plan (kun slut-version) | `docs/coordination/<pakke>-plan.md`                                                                                                                                                           |
-| Slut-rapport                     | `docs/coordination/rapport-historik/<dato>-<pakke>.md`                                                                                                                                        |
-| Opdateringer til                 | `docs/strategi/vision-og-principper.md`, `docs/strategi/forretningsforstaaelse.md`, `docs/strategi/stork-2-0-master-plan.md` (overblik, opdateres til sidst), `docs/teknisk/teknisk-gaeld.md` |
+| Fil                              | Sti under pakke-arbejde                                                                                                                                                                       | Sti efter pakke-lukker                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Krav-dok                         | `docs/coordination/<pakke>-krav-og-data.md`                                                                                                                                                   | `docs/coordination/arkiv/<pakke>-krav-og-data.md`      |
+| Godkendt plan (kun slut-version) | `docs/coordination/<pakke>-plan.md`                                                                                                                                                           | `docs/coordination/arkiv/<pakke>-plan.md`              |
+| Slut-rapport                     | —                                                                                                                                                                                             | `docs/coordination/rapport-historik/<dato>-<pakke>.md` |
+| Opdateringer til                 | `docs/strategi/vision-og-principper.md`, `docs/strategi/forretningsforstaaelse.md`, `docs/strategi/stork-2-0-master-plan.md` (overblik, opdateres til sidst), `docs/teknisk/teknisk-gaeld.md` | (uændret — opdateres in-place på main)                 |
 
 ### Slettes ved pakke-lukker
 
@@ -303,17 +303,15 @@ Codex modsvarer AGREE / REFINE / ESCALATE. Max 3 LØS-iterationer pr. fund. Iter
 | `WORKAROUND-INTRODUCERET` | Bevidst kvalitets-sænkning                         | Mathias-gate to-fil-flow                               |
 | `STOP-FOR-CLARIFICATION`  | Info mangler genuint ELLER afvigelse fra krav-dok  | Auto-STOP; gate-fil; mål-part svarer; genoptag         |
 
-### 6.2 Automation (gap-luk fra V3)
+### 6.2 Automation (V4 leveret)
 
-Aktuel state: codex-notify.yml triggrer kun på aktiv-plan.md, plan-feedback/, seneste-rapport.md. **Mangler V4-events:**
-
-| Event                                  | Trigger                             | Aktion                                       |
-| -------------------------------------- | ----------------------------------- | -------------------------------------------- |
-| Push til `claude/<pakke>-build`        | Code committer batch                | Auto-trigger Codex per-batch review          |
-| Push til `claude/<pakke>-krav-og-data` | Claude.ai-typist committer krav-dok | Auto-trigger Claude.ai-forfatter-bekræftelse |
-| Slut-rapport-PR åbnet                  | Code åbner PR                       | Auto-trigger Claude.ai-step-5 (FØR merge)    |
-
-**Deploy-automation:** CI tester live Supabase-project; migrations deployes manuelt → kreds-afhængighed. V4 sigter på preview-deploy på PR-åbning + auto-types-regen. Konkret implementation aftales pakke-vis.
+| Workflow                              | Trigger                                         | Aktion                                                              |
+| ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `codex-notify.yml`                    | Push til main rører aktiv-plan/seneste-rapport  | Tracker-comment "ny plan-version" / "slut-rapport pushet"           |
+| `codex-notify.yml`                    | Push til `claude/<pakke>-build`                 | Tracker-comment "Codex per-batch review klar"                       |
+| `codex-notify.yml`                    | PR åbnet med head=`claude/<pakke>-slut-rapport` | Tracker-comment "Claude.ai step-5 — FØR merge"                      |
+| `migrations-deploy.yml` (deploy)      | Push til main rører `supabase/migrations/*.sql` | `supabase db push --linked` til live + tracker-comment success/fail |
+| `migrations-deploy.yml` (types-regen) | Efter deploy lykkedes                           | Regen `packages/types/src/database.ts`; hvis ændringer: auto-PR     |
 
 ### 6.3 Mathias-gate to-fil-flow
 
