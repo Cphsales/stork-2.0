@@ -14,6 +14,20 @@
 
 ## Åben gæld
 
+### [G060] MELLEM — T9-supplement-2 mangler full-flow smoke-tests
+
+- **Beskrivelse:** T9-supplement-2's smoke-tests (T1-T4) blev forenklet til schema-tjek + funktion-eksistens-tjek under build, ikke full-flow gennem `pending_change_apply`. Krav-dok §3.1 og §3.5 specificerer eksplicit "fra anmodning gennem godkendelse til effektuering" + "selv-approve virker som default; 'kræver 2. godkender' + 'Højere medarbejder' tillader højere placeret medarbejder og afviser ikke-højere placeret; 'Superadmin' tillader kun superadmin; fortrydelses-frist sættes når handlingen har 'har fortrydelse'". Disse end-to-end-scenarier verificeres IKKE i nuværende smoke-tests.
+- **Vision-svækkelse:** Princip 2 (rettigheder der virker) — logikfejl i M5's `pending_change_approve` (fx `has_permission_action`-gate, ancestor-tjek, superadmin-bypass) eller M4's `has_permission_action` (additive-model) kan slippe igennem uden runtime-detection.
+- **Introduceret:** T9-supplement-2 build (PR #74, 2026-05-22). Smoke-tests måtte forenkles pga. CI-superuser-context (RPC-kald som `permission_action_upsert` raiser `permission_denied` fordi `has_permission` returnerer false for null-employee) + org-tree-FK-fixture-omfang.
+- **Skal løses:** Næste smoke-fixture-pakke. Kan kombineres med fremtidig action-seed-pakke.
+- **Risiko hvis glemt:** Mellem. Backend-koden er korrekt per implementations-leverancer (§3.2-§3.4 verificeret), men runtime-adfærd mangler dækning. Hvis fremtidig refactor bryder approve-disciplin eller handlings-granularitet uden compile-time-fejl, fanger CI ikke regressionen.
+- **Plan:** Smoke-test-fil(er) der bruger rolle-swap-mønstret fra `supabase/tests/smoke/t10_client_active_check.sql` (auth-backed superadmins → swap til non-admin → ROLLBACK restorer; buffer-admin floor):
+  - T1 full-flow: opret pending via wrapper som non-admin → admin approver → service_role apply → assert tabel-effekt
+  - T2 G057 negativ: non-admin requester + non-admin approver → apply efter target-inaktivering → raise
+  - T3 approve-disciplin: action med `requires_second_approver=true, second_approver_type='above'` → ancestor approver OK, sibling afvist; `'superadmin'` → kun admin OK; `has_undo=true/false` → undo respekteres
+  - T4 handlings-granularitet: `has_permission_action`-evaluering med rolle-context — standard, konfigureret, bypass_tab_write-grenene
+- **Reference:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md` Plan-afvigelse 1.
+
 ### [G059] LØST 2026-05-22 — T9 public wrappers mangler `stork.t9_write_authorized` session-var
 
 - **Løsning:** T9-supplement-2 M1 (PR #74). 5 T9 wrapper-RPC'er fik `perform set_config('stork.t9_write_authorized', 'true', true)` FØR `pending_change_request`. Plus eksplicit `grant execute ... to authenticated` på 5 G059-wrappers + 2 T10-client-wrappers (Codex V7 systemisk recon).
