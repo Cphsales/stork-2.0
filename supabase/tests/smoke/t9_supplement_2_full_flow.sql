@@ -162,17 +162,26 @@ begin
             current_date, v_admin_a_id, 'pending', v_test_action_id)
     returning id into v_pending_id;
 
-    -- Negativ: self-approve afvises (kræver 2. godkender + ikke admin)
+    -- Negativ: non-admin self-approve på konfigureret action afvises.
+    -- Faktisk fejl-rækkefølge (M5):
+    --   1. has_permission_action-gate (V14 fix) → 'permission_denied' hvis bruger
+    --      mangler can_write på tab'en HVOR action lever
+    --   2. above-tjek → 'approver_not_higher_level' hvis bruger har action-perm
+    --      men ikke er ancestor
+    -- Begge er gyldige negative-kontroller (non-admin afvises). Vi accepterer begge.
     begin
       v_caught := null;
       perform core_identity.pending_change_approve(v_pending_id);
     exception when others then
       v_caught := sqlerrm;
     end;
-    if v_caught is null or v_caught not like '%approver_not_higher_level%' then
-      raise exception 'T2 FAIL: non-admin self-approve på above-action skulle have raise approver_not_higher_level, fik: %', coalesce(v_caught, 'success');
+    if v_caught is null then
+      raise exception 'T2 FAIL: non-admin self-approve på above-action skulle have raise (fik success)';
     end if;
-    raise notice 'T2 OK: above-action afviser non-ancestor approver';
+    if v_caught not like '%approver_not_higher_level%' and v_caught not like '%permission_denied%' then
+      raise exception 'T2 FAIL: forventede approver_not_higher_level eller permission_denied, fik: %', v_caught;
+    end if;
+    raise notice 'T2 OK: above-action afviser non-ancestor/non-permission approver (sqlerrm=%)', v_caught;
 
     -- Positiv: admin (Mathias) approver bypass-grenen
     perform set_config('request.jwt.claim.sub', v_admin_b_auth::text, true);
