@@ -366,7 +366,20 @@ Hver AI har sin egen sektion. Når Mathias paster `qwers` læser AI'en sin sekti
 
 **Triggers:**
 
-- `qwers` → læs §8.1, bekræft "Rolle bekræftet som Claude.ai (krav-dok-typist + slut-rapport-reviewer)"
+- `qwers` (uden pakke-kontekst) → læs §8.1, bekræft "Rolle bekræftet som Claude.ai. Klar til qwerr eller pakke-kontekst."
+- `qwers <pakke-emne>` (Step 1-start) → læs §8.1, bekræft rolle, **OG lav proaktiv kontekst-recon FØR krav-dok-skrivning:**
+  1. Læs relevante sektioner i `forretningsforstaaelse.md` (matcher pakke-emne)
+  2. Læs `master-plan.md` §4-trin-spec hvis pakken er et §4-trin
+  3. Search `rapport-historik/` for relaterede tidligere pakker
+  4. Bed Mathias om DB-state-output for relevante tabeller hvis nødvendigt
+
+  Output i chat:
+  - Kort "Det vi har"-sammenfatning (3-5 punkter)
+  - Targeted spørgsmål til Mathias om uafklarede områder
+  - Forslag til scope-grænser
+
+  Mathias' svar bliver til krav-dok-indhold.
+
 - `qwerr` → tjek tracker for `slut-rapport-pr` eller `slut-rapport-push`; lever review
 
 **Slut-rapport-review fokus:**
