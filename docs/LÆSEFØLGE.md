@@ -19,22 +19,26 @@ Procedure:
    viser commits der ikke var forventede — rapportér til Mathias.
 
 1. `docs/strategi/vision-og-principper.md`
-   Hvad vi bygger og hvorfor (formål-niveau).
+   Vision og 9 principper. **LÅST-AUTORITATIV** — vinder over alt andet ved konflikt.
 
-2. `docs/strategi/stork-2-0-master-plan.md`
-   Autoritativ teknisk plan.
+2. `docs/strategi/forretningsforstaaelse.md`
+   Mathias' tanker om hvad systemet skal kunne på forretnings-niveau.
+   **TANKE-DATA** — kontekst-grundlag for krav-dok, ikke kontrakt.
+   Kan opdateres når Mathias' tanker udvikler sig.
 
-3. `docs/strategi/arbejds-disciplin.md`
-   Hvordan vi arbejder (disciplin-pakke, formåls-immutabilitet,
-   Codex-scope, git-sync-disciplin).
+3. `docs/strategi/disciplin.md`
+   Hvordan vi arbejder sammen (V4): aktører + workflow + disciplin +
+   skabeloner + rolle-disciplin pr. AI. Læs §8.X for din egen rolle.
 
-4. `docs/coordination/mathias-afgoerelser.md`
-   Låste afgørelser. Overskygger fortolkning af 1-3 ved konflikt.
+4. `docs/strategi/stork-2-0-master-plan.md`
+   **OVERBLIK** — autoritativ teknisk plan + status pr. trin (§4.1) + action-items (§4.2).
+   Rettes til sidst i hver pakke. Konsulteres for kontekst, men er ikke kilde i pakke-arbejde.
 
 5. `docs/coordination/aktiv-plan.md`
-   Peger på nuværende plan-arbejde.
+   Peger på nuværende plan-arbejde + pakke-status.
 
 6. `docs/coordination/seneste-rapport.md`
    Sidste leverance-state.
 
 Stop ved tvivl. Spørg Mathias hvis 1-6 modsiger hinanden.
+Ved konflikt mellem dokumenter: vision (1) vinder over alle andre.
