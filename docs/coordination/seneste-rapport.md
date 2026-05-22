@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md` (PR #74 rebase-merged til main 2026-05-22)
+**Aktuel:** `docs/coordination/rapport-historik/2026-05-22-v4-automation.md` (PR #80 rebase-merged til main 2026-05-22)
 
 Når ny rapport leveres:
 
