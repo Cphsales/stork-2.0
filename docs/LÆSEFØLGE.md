@@ -27,8 +27,8 @@ Procedure:
    Kan opdateres når Mathias' tanker udvikler sig.
 
 3. `docs/strategi/disciplin.md`
-   Hvordan vi arbejder sammen (V4): aktører + workflow + disciplin +
-   skabeloner + rolle-disciplin pr. AI. Læs §8.X for din egen rolle.
+   Hvordan vi arbejder sammen (V5): aktører + roller + workflow + gates +
+   disciplin + skabeloner. **Eneste rolle-hjem** — læs §9.X for din egen rolle.
 
 4. `docs/strategi/stork-2-0-master-plan.md`
    **OVERBLIK** — autoritativ teknisk plan + status pr. trin (§4.1) + action-items (§4.2).

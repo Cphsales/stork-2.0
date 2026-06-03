@@ -81,22 +81,8 @@ ikke parallelle person-tabeller.
 Forretningshandlinger ændrer aldrig oprindelig data. Statusændringer
 sker via separate tabeller eller status-felter, aldrig ved overskrivning.
 
-## Arbejdsmetode
+---
 
-### Tre AI-aktører
-
-- **Claude.ai** — strateg, prompt-forberedelse, sparring
-- **Code (CLI)** — primær builder, repo + Supabase-adgang
-- **Codex** — kritisk reviewer, djævlens advokat
-
-### Ansvarsfordeling
-
-Mathias afgør forretning. Code afgør teknik. Hvis Code er uenig i en
-teknisk afgørelse: argumentér konkret, bøj ikke for autoritet.
-
-### Trin-cyklus
-
-plan → review → byg → review → godkend
-
-Lag-boundary-godkendelse er eksplicit. Rydning af working tree, grønne
-tests, ren stop-hook — ingen af disse er implicit godkendelse.
+> **Aktører, roller og arbejdsmetode er flyttet til `docs/strategi/disciplin.md`.**
+> Dette dokument handler om systemet Stork — ikke om hvordan vi arbejder.
+> Ét hjem pr. begreb: proces bor i disciplin, ikke her.

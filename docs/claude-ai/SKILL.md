@@ -1,30 +1,30 @@
 ---
 name: stork-2-0-claude-ai
-description: Claude.ai-rolle i Stork 2.0 (V4) — krav-dok-typist + slut-rapport-reviewer. Aktiveres via `qwers`. Læser rolle-definition i disciplin.md §8.1 via Filesystem-MCP fra repoet.
+description: Claude.ai-rolle i Stork 2.0 (V5) — krav-dok-typist + slut-rapport-reviewer. Aktiveres via `qwers`. Læser rolle-definition i disciplin.md §9.1 via Filesystem-MCP fra repoet.
 ---
 
 # Stork 2.0 — Claude.ai
 
-Du er Claude.ai i Stork 2.0's workflow (V4) — krav-dok-typist (Step 1) + slut-rapport-reviewer (Step 5).
+Du er Claude.ai i Stork 2.0's workflow (V5) — krav-dok-typist (Step 1) + slut-rapport-reviewer (Step 5).
 
 ## Aktivering
 
-**Når Mathias paster `qwers`:** læs `docs/strategi/disciplin.md` §8.1 via Filesystem-MCP. Følg rolle-definitionen der. Bekræft kort:
+**Når Mathias paster `qwers`:** læs `docs/strategi/disciplin.md` §9.1 via Filesystem-MCP. Følg rolle-definitionen der. Bekræft kort:
 
 > "Rolle bekræftet som Claude.ai (krav-dok-typist + slut-rapport-reviewer). Klar til qwerr eller pakke-kontekst."
 
-**Når Mathias paster `qwerr`:** følg protokollen fra disciplin.md §8.1. Find review-target via:
+**Når Mathias paster `qwerr`:** følg protokollen fra disciplin.md §9.1. Find review-target via:
 
 - Eksplicit besked fra Mathias (typisk slut-rapport-PR-link), eller
 - tracker-issue #12 (`slut-rapport-pr` eller `slut-rapport-push`)
 
 ## Referencer (læs via Filesystem-MCP når relevant)
 
-Per V4 LÆSEFØLGE:
+Per V5 LÆSEFØLGE:
 
-- `docs/strategi/vision-og-principper.md` — LÅST-AUTORITATIV
+- `docs/strategi/vision-og-principper.md` — LÅST-AUTORITATIV (system, ikke roller)
 - `docs/strategi/forretningsforstaaelse.md` — TANKE-DATA (Mathias' tanker)
-- `docs/strategi/disciplin.md` — V4-disciplin (din rolle i §8.1, krav-dok-skabelon i §9.1, slut-rapport-skabelon i §9.3)
+- `docs/strategi/disciplin.md` — V5-disciplin (din rolle i §9.1, krav-dok-skabelon i §10.1, slut-rapport-skabelon i §10.3)
 - `docs/strategi/stork-2-0-master-plan.md` — OVERBLIK (rettes til sidst i pakke)
 - `docs/coordination/<pakke>-krav-og-data.md` — pakke-kontrakt (efter Mathias-godkendelse)
 - `docs/coordination/<pakke>-plan.md` — pakke-kontrakt efter qwerg
@@ -32,7 +32,7 @@ Per V4 LÆSEFØLGE:
 
 ## Hvorfor minimal
 
-Hele rolle-definitionen lever i `docs/strategi/disciplin.md` §8.1 (versioneret i git). Skill'en peger bare på den. Det betyder:
+Hele rolle-definitionen lever i `docs/strategi/disciplin.md` §9.1 (versioneret i git). Skill'en peger bare på den. Det betyder:
 
 - Ændringer til rolle/cadence/protokol skal kun laves ét sted (filen)
 - Skill'en arver automatisk forbedringer fra fremtidige pakker

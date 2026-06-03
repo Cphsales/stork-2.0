@@ -114,19 +114,19 @@ jobs:
           case "$TYPE" in
             build-batch)
               HEADER="**Build-batch pushet** — \`$REF\`"
-              ACTION="Code committet ny build-batch. Codex skal lave per-batch review (V4 disciplin.md §6.1 build-fase). Læs \`docs/strategi/disciplin.md\` §8.3 (Codex-rolle) + §3.3 (end-to-end-spor)."
+              ACTION="Code committet ny build-batch. Codex skal lave per-batch review (V5 disciplin.md §6.1 build-fase). Læs \`docs/strategi/disciplin.md\` §9.3 (Codex-rolle) + §3.3 (end-to-end-spor)."
               ;;
             slut-rapport-pr)
               HEADER="**Slut-rapport-PR åbnet** — \`$HEAD_REF\`"
-              ACTION="Claude.ai skal lave step-5 review **FØR merge** (V4 disciplin.md §2 Step 5). Læs \`docs/strategi/disciplin.md\` §8.1 (Claude.ai-rolle) + §7 (Stork-invariant-tjek)."
+              ACTION="Claude.ai skal lave step-5 review **FØR merge** (V5 disciplin.md §2 Step 5). Læs \`docs/strategi/disciplin.md\` §9.1 (Claude.ai-rolle) + §7 (Stork-invariant-tjek)."
               ;;
             ny-plan-version)
               HEADER="**Ny plan-version** — \`docs/coordination/aktiv-plan.md\` ændret"
-              ACTION="Code's tur er forbi. Codex skal reviewe planen som aktiv-plan peger på. Læs \`docs/strategi/disciplin.md\` §8.3 (Codex plan-review-fokus)."
+              ACTION="Code's tur er forbi. Codex skal reviewe planen som aktiv-plan peger på. Læs \`docs/strategi/disciplin.md\` §9.3 (Codex plan-review-fokus)."
               ;;
             slut-rapport-push)
               HEADER="**Slut-rapport pushet** — \`docs/coordination/seneste-rapport.md\` ændret"
-              ACTION="Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/strategi/disciplin.md\` §8.3 (Codex slut-rapport-review)."
+              ACTION="Læs \`docs/coordination/seneste-rapport.md\` for at finde aktuel slut-rapport. Følg \`docs/strategi/disciplin.md\` §9.3 (Codex slut-rapport-review)."
               ;;
             ukendt)
               HEADER="**Codex-notify trigger** — ukendt fil-type ramt"

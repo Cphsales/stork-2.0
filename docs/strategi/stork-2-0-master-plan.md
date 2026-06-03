@@ -1687,16 +1687,16 @@ Hvis planen følges:
 
 ### Adgang
 
-| Område                      | Afgørelse                                                                                                                                   |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| RLS                         | FORCE RLS overalt, default deny                                                                                                             |
-| Permission-model            | 4-dimensionel (page+tab × view+edit × scope × rolle)                                                                                        |
-| Roller                      | Én rolle pr. medarbejder. Ingen M2M                                                                                                         |
-| Superadmin                  | Min N (default 2), defineret via permissions. Floor-trigger blokerer mutationer der reducerer admin-antal under N                           |
-| Stab/FM-leder               | Roller i samme permission-tabel. Ingen FM-isoleret rolle-mekanisme                                                                          |
-| Dashboard-adgang            | Team-matrix + person-tildeling som union                                                                                                    |
-| Løn-tabel SELECT-policy     | Samme scope-model som sales (self/team/subtree/all) for cancellations/rejections/basket_corrections/commission_snapshots/salary_corrections |
-| Payroll_lines SELECT-policy | Pr. payroll-line med samme scope-model. Ikke pr. lønart-formel                                                                              |
+| Område                      | Afgørelse                                                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RLS                         | FORCE RLS overalt, default deny                                                                                                                           |
+| Permission-model            | Tre-niveau (Område → Page → Tab) + to akser ((kan_tilgå/kan_skrive) × visibility (Sig selv/Hiraki/Alt)). **4-dim superseded af rettelse 35 (2026-05-18)** |
+| Roller                      | Én rolle pr. medarbejder. Ingen M2M                                                                                                                       |
+| Superadmin                  | Min N (default 2), defineret via permissions. Floor-trigger blokerer mutationer der reducerer admin-antal under N                                         |
+| Stab/FM-leder               | Roller i samme permission-tabel. Ingen FM-isoleret rolle-mekanisme                                                                                        |
+| Dashboard-adgang            | Team-matrix + person-tildeling som union                                                                                                                  |
+| Løn-tabel SELECT-policy     | Samme scope-model som sales (self/team/subtree/all) for cancellations/rejections/basket_corrections/commission_snapshots/salary_corrections               |
+| Payroll_lines SELECT-policy | Pr. payroll-line med samme scope-model. Ikke pr. lønart-formel                                                                                            |
 
 ### Datamodel
 
