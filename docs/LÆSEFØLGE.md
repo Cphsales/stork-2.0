@@ -1,5 +1,7 @@
 # Læsefølge
 
+<!-- governance-owns: laeseflade-nav -->
+
 Skal læses ved hver af følgende triggere:
 
 - Ny session/chat starter

@@ -60,6 +60,12 @@ jobs:
       - name: Fitness functions
         run: pnpm fitness
 
+      - name: Governance check (lag-1 spærhage)
+        run: pnpm governance:check
+
+      - name: Governance selftest
+        run: pnpm governance:selftest
+
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link

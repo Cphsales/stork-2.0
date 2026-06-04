@@ -18,7 +18,7 @@ if [ $# -lt 1 ]; then
 Usage: $0 <krav-dok-fil>
 
 Eksempel:
-  $0 docs/coordination/Lag1-krav-og-data.md
+  $0 docs/coordination/<pakke>-krav-og-data.md
 
 Output: docs/coordination/<pakke>-krav-afklaring.md
 EOF
