@@ -14,6 +14,22 @@
 
 ## Åben gæld
 
+### [G061] LAV — comment-parity-residual efter gov-1 registry-reconciliation
+
+- **Beskrivelse:** 2 `comment on`-labels fra PR-polish nåede aldrig live (deploy fyrede ikke, H020): `client_node_placements_client_id_fkey`-constraint + `permission_actions`-tabel. Repo-filerne definerer dem; live mangler dem.
+- **Vision-svækkelse:** Marginal — princip 1 (repo↔live 100% paritet) ikke helt opfyldt på comment-niveau. Ingen skema-/CI-/data-effekt.
+- **Introduceret:** Synliggjort ved gov-1-paritet-groen (2026-06-04). Selve glippet er fra t10/t9_supplement_2-PR-polish.
+- **Skal løses:** Opsamlings-migration (§E default) der `comment on` de 2 mål. Ejer: Code. **Deadline: før gov-4 (branch protection)** — så paritet er 100% når den håndhæves.
+- **Risiko hvis glemt:** Lav. Rent kosmetisk; fremtidig rebuild fra repo ville have dem.
+
+### [G062] LAV — recurring types-drift fra månedlige audit-partitioner
+
+- **Beskrivelse:** `audit_log_<YYYY_MM>`-partitioner (partition-create-cron) genereres månedligt og kan gen-introducere `types:check`-drift hver måned (nuværende fix krævede regen pga. `audit_log_2026_08`).
+- **Vision-svækkelse:** Drift-disciplin (§3) — CI kan blive rød hver måned uden kode-ændring.
+- **Introduceret:** Synliggjort ved gov-1 (2026-06-04).
+- **Skal løses:** Ekskludér partition-børn fra types-gen, eller auto-regen-cron. Ejer: Code. Deadline: senere gov-pakke.
+- **Risiko hvis glemt:** Lav-mellem. Manuel regen lukker hver forekomst; men gentager sig.
+
 ### [G060] LØST 2026-05-22 — T9-supplement-2 mangler full-flow smoke-tests
 
 - **Hvad:** Build-tidspunktet's smoke-tests (T1-T4) blev forenklet til schema-tjek + funktion-eksistens-tjek pga. CI-superuser-context. Krav-dok §3.1 + §3.5 specificerer "fra anmodning gennem godkendelse til effektuering" — det blev IKKE leveret i build.

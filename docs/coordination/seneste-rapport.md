@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md`
+**Aktuel:** `docs/coordination/rapport-historik/2026-06-04-gov-1-paritet-groen.md`
 
 Når ny rapport leveres:
 
