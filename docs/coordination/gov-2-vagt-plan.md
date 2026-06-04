@@ -1,113 +1,135 @@
-# gov-2-vagt — Plan V1
+# gov-2-vagt — Plan V2
 
 **Branch:** claude/gov-2-vagt-plan
-**Krav-dok:** governance-vagt (ét dok over 6 pakker — Claude.ai's bord; denne pakke = leverance "mekanisk governance-spærhage + Codex-mandat + H-hjem")
-**Forfatter:** Code · **Dato:** 2026-06-04 · **Type:** repo-side scanner + docs (0 migrations)
+**Krav-dok:** governance-vagt (ét dok over 6 pakker — Claude.ai's bord; denne pakke = "mekanisk governance-spærhage + Codex-mandat + H-hjem")
+**Forfatter:** Code · **Dato:** 2026-06-05 · **Type:** repo-side scanner + docs (0 migrations)
+
+## V2 — håndtering af Codex-fund (Step 2.1)
+
+| Fund                                                     | Severity | Svar       | Hvordan adresseret                                                                                                                                                                                                        |
+| -------------------------------------------------------- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1 H-ref-integrity selvmodsigende (åbne vs historiske H) | KRITISK  | **ACCEPT** | §C: huskeliste.md får TO sektioner (åbne H-entries + historisk-H-registry); H-ref-integrity accepterer begge; **number-home tæller kun kanoniske `### [Hxxx]`-entries, ikke mentions**; suffix `H010.6` → forælder `H010` |
+| #2 dead-doc-paths for bredt (FP mod ren repo)            | KRITISK  | **ACCEPT** | §A: eksplicit fil-scope + path-klasser (template-skip via `<>`, allowlist for historisk/future m. grund). Triageret konkret mod nuværende repo → grøn                                                                     |
+| #3 cutover-checklist vs huskeliste ejer-kant             | MELLEM   | **ACCEPT** | §B: cutover-checklist ejer **cutover-flade** (processen); huskeliste ejer **eksterne-handlinger** (H-actions). H001-006 = H-actions kanonisk i huskeliste; cutover-checklist _refererer_ dem. Distinkte begreber          |
+
+Codex Q-svar indarbejdet: owner = **definitionshjem, ikke mention-hjem** (gennemgående princip) · HTML-kommentar-markør (vision-ændring kræver CODEOWNERS-approval) · ci-step før remote/Supabase-afhængige checks (Q4) · alias/nabo-begreber håndteret (permission-model vs rpc-side-mapping, §B).
 
 ## Formål (låst)
 
-Byg det mekaniske lag-1 der fanger governance-drift automatisk, så V5-disciplinen ikke kun hviler på selv-tjek + manuel opmærksomhed. Scope B (Mathias): letvægts-`owns:`-register så "samme begreb defineret to steder" fanges mekanisk — root-cause-klassen der startede V5.
+Mekanisk lag-1 der fanger governance-drift automatisk. Scope B: letvægts-`owns:`-register så "begreb defineret to steder" fanges mekanisk.
 
-## §3.2 / §3.1 / §3.3 anvendelighed
+## §3.2/§3.1/§3.3
 
-- **DB-state-dump (§3.2):** ikke relevant (ingen DB-objekter).
-- **Patch-først (§3.1):** gælder for redigering af eksisterende docs (owns:-markører på ~9 docs, H-ref-migration, cutover-dup-resolution) — build viser nuværende body + diff pr. fil. `fitness.mjs` udvides IKKE (governance er eget begreb → nyt script).
-- **End-to-end-spor (§3.3):** ikke relevant (ingen write-vej). Erstattes af negativ-tests (§ End-to-end-test).
+DB-dump ikke relevant. Patch-først for doc-redigering (owns:-markører, H-migration, cutover-dup-resolution). End-to-end → negativ-tests.
 
 ---
 
-## Recon-grundlag (verificeret)
+## §A Mekanisk scanner (`scripts/governance-check.mjs`)
 
-- Doc-graf scanner validerer: 14 aktive .md + 6 LÆSEFØLGE-stier + 2 pointer-filer (lille, lav-FP).
-- `fitness.mjs` (19 checks) + `ci.yml`-step-mønster er skabelonen; ingen governance-scanner findes.
-- **H-numre er to klasser** (se §C) — ikke 10 ensartede ventende-handlinger.
-- **Cutover-blockers duplikeret** i `cutover-checklist.md` + `master-plan.md` (H001-003/006) — reel defined-twice.
+**Fil-scope (eksplicit):** `docs/**/*.md` MINUS `docs/coordination/arkiv/**`, `docs/coordination/v4-slettede-docs/**`, `docs/coordination/rapport-historik/**`. Plus `.github/workflows/*.yml` for §-ref-checks (codex-notify).
+
+**Gennemgående princip (Codex Q5):** _owner = definitionshjem, ikke mention-hjem._ Et begreb/nummer "bor" hvor det DEFINERES (owns:-claim; `### [Xxxx]`-entry), ikke hvor det blot nævnes.
+
+| Check                  | Regel                                                                                  | Path-/scope-håndtering         |
+| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
+| dead-doc-paths         | `docs/…`-ref skal eksistere                                                            | **path-klasser** nedenfor      |
+| junk-files             | intet `~$*`/Office-lock i docs/                                                        | —                              |
+| laesefoelge-targets    | de 6 LÆSEFØLGE-stier findes                                                            | —                              |
+| pointer-validity       | aktiv-plan/seneste-rapport-mål findes                                                  | —                              |
+| owns-uniqueness        | hvert begreb i præcis ÉN `owns:`-liste                                                 | deklareret-ejerskab            |
+| number-home-uniqueness | hvert G-/H-nummer har kanonisk `### [Xxxx]`-entry i præcis ét hjem                     | **kun entries, ikke mentions** |
+| H-ref-integrity        | hver `Hxxx`(-suffix)-ref er enten åben-entry i huskeliste ELLER i historisk-H-registry | suffix → forælder              |
+
+### dead-doc-paths — path-klasser (fund #2)
+
+1. **Template** — ref indeholder `<` `>` (fx `<pakke>`, `<dato>`) → **skip**. (4 nuværende: `<pakke>-{krav,plan,status}`, `<dato>-<pakke>`)
+2. **Inde i fenced code / §10-skabeloner** → skip (skabelon-eksempler, ikke links).
+3. **Current-link** → SKAL eksistere; ellers fejl.
+4. **Future/historisk** → kræver allowlist-entry `GOV_MISSING_PATH_ALLOWLIST` med grund (mønster fra fitness' `FK_COVERAGE_EXEMPTIONS`).
+
+**Triageret allowlist (nuværende repo → grøn):**
+
+- `docs/teknisk/huskeliste.md` — future-this-package (findes efter gov-2 trin 1; fjernes fra allowlist ved build-slut).
+- `docs/gdpr-compliance.md` — future-required (ej bygget endnu).
+- `docs/coordination/overvaagning/codex-overvaagning.md`, `docs/strategi/arbejds-disciplin.md`, `docs/strategi/bygge-status.md`, `docs/skabeloner/plan-skabelon.md` — historisk provenance (V4-slettede docs refereret i teknisk-gaeld G-entries). Grund pr. entry.
+
+Build verificerer: efter trin 1-2 kører scanneren grøn mod repo (template-skip + allowlist + reelle fixes).
 
 ---
 
-## Leverance A — Mekanisk scanner (`scripts/governance-check.mjs` + `pnpm governance:check` + ci.yml-step)
+## §B owns:-register + Codex-mandat
 
-Nyt script (ikke fitness-udvidelse — ét hjem pr. begreb). Check-klasser (alle deterministiske, lav-FP):
+**Markør:** `<!-- governance-owns: begreb-a, begreb-b -->` (HTML-kommentar, top af doc).
 
-| Check                  | Hvad                                                                 | Ville have fanget                                         |
-| ---------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
-| dead-doc-paths         | hver \`docs/…\`-reference i aktive .md stat'es; manglende mål = fejl | brudt seneste-rapport-pointer; stale codex-notify §8-refs |
-| junk-files             | `~$*` / Office-lock-filer i docs/                                    | V4-junk                                                   |
-| laesefoelge-targets    | de 6 LÆSEFØLGE-stier eksisterer                                      | brudt nav                                                 |
-| pointer-validity       | `aktiv-plan`/`seneste-rapport`-mål eksisterer                        | gov-1's brudte pointer                                    |
-| owns-uniqueness        | hvert begreb i præcis ÉN docs `owns:`-liste (se §B-register)         | rolle defineret i vision+disciplin                        |
-| number-home-uniqueness | hvert G-/H-nummer har kanonisk entry i præcis ét hjem                | cutover-blocker-dup                                       |
-| H-ref-integrity        | hver H-ref peger på eksisterende entry i `huskeliste.md`             | forældreløse H-refs                                       |
+**Begreb→hjem (definitionshjem; revideret for alias/nabo + cutover-kant):**
 
-**Ærlig grænse:** owns-uniqueness fanger _deklareret_ dobbelt-ejerskab (to docs claimer samme begreb). _Udeklareret_ prosa-overlap (en doc redefinerer i prosa et begreb en anden ejer, uden owns:-claim) fanges IKKE mekanisk → det er Codex-mandatets bord (B). Number-home-uniqueness fanger til gengæld nummer-dubletter mekanisk (derfor cutover-dup'en fanges).
+| Doc                       | owns                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| vision-og-principper.md   | vision, principper                                                                                |
+| disciplin.md              | aktører-roller, workflow, gates, severities, vagter, skabeloner, bevarings-politik                |
+| forretningsforstaaelse.md | forretnings-intention                                                                             |
+| stork-2-0-master-plan.md  | teknisk-plan, byggerækkefølge, låste-beslutninger, åbne-beslutninger, **permission-model**        |
+| permission-matrix.md      | **rpc-side-mapping** (nabo til permission-model, distinkt begreb — mapping, ikke model)           |
+| teknisk-gaeld.md          | kode-gæld                                                                                         |
+| huskeliste.md (ny)        | eksterne-handlinger                                                                               |
+| cutover-checklist.md      | **cutover-flade** (processen/checklisten — ikke "cutover-blockers"; H-actions ejes af huskeliste) |
+| LÆSEFØLGE.md              | læseflade-nav                                                                                     |
 
-## Leverance B — owns:-register + Codex-mandat
+owns-uniqueness fejler hvis et begreb optræder i ≥2 lister. permission-model (master-plan) og rpc-side-mapping (permission-matrix) er **distinkte** begreber — ingen konflikt.
 
-**owns:-markør:** HTML-kommentar nær top af hver governance-doc (usynlig ved render, parsebar):
-`<!-- governance-owns: begreb-a, begreb-b -->`
+**Codex-mandat** (disciplin.md §9.3 + §8): ved ændring til governance-doc SKAL Codex svare "modsiger dette prosa-mæssigt en anden docs ejede begreb?" før merge. Dækker udeklareret prosa-overlap (ikke mekanisk fangbart). Governance-ændringer = review-artefakter.
 
-**Initial begreb→hjem-mapping** (seedet fra V5-konsolideringen):
+---
 
-| Doc                       | owns                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------- |
-| vision-og-principper.md   | vision, principper                                                                 |
-| disciplin.md              | aktører-roller, workflow, gates, severities, vagter, skabeloner, bevarings-politik |
-| forretningsforstaaelse.md | forretnings-intention                                                              |
-| stork-2-0-master-plan.md  | teknisk-plan, byggerækkefølge, låste-beslutninger, åbne-beslutninger               |
-| teknisk-gaeld.md          | kode-gæld                                                                          |
-| huskeliste.md (ny)        | eksterne-handlinger                                                                |
-| permission-matrix.md      | rpc-side-mapping                                                                   |
-| cutover-checklist.md      | cutover-blockers                                                                   |
-| LÆSEFØLGE.md              | læseflade-nav                                                                      |
+## §C huskeliste.md — to-sektions-struktur + klassificering (fund #1)
 
-Scanner fejler hvis et begreb optræder i ≥2 owns:-lister.
+Konvention: **H = ekstern handling/ventende beslutning** (uden for koden); **G = kode-gæld** (teknisk-gaeld.md).
 
-**Codex-mandat** (tilføjelse til `disciplin.md` §9.3 + §8-modsigelses-disciplin): ved ændring til en governance-doc (vision/disciplin/master-plan/owns:-register) SKAL Codex eksplicit svare "modsiger dette en anden docs ejede begreb (prosa-niveau)?" før merge. Det dækker den semantiske klasse scanneren ikke kan. Governance-ændringer er review-artefakter (V5 §4).
+```
+## Åbne H-handlinger        ← kanoniske entries, format: ### [Hxxx] <titel>
+### [H001] Dependabot-sårbarheder håndteret
+### [H002] GHAS-beslutning
+### [H003] CodeQL-beslutning
+### [H006] Migration TODO-markører løst
+### [H012] <deadline-tracker → G039>
 
-## Leverance C — H-numrenes hjem (`docs/teknisk/huskeliste.md`) + klassificering
+## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
+| Kode | Var | Hvor dokumenteret |
+| H010 | arbejdsmetode/repo-struktur-pakke | rapport-historik/git-history |
+| H011 | §1.7-modsigelse (lukket v. rettelse 35) | master-plan Appendix C |
+| H020 | automation flow-fejl | arkiv/H020-flow-fejl.md |
+| H022 | immutable-test-tx-wrap (løst i H024) | teknisk-gaeld G-historik |
+| H024 | test-artefakt-cleanup-pakke | rapport-historik/git-history |
+```
 
-**Ny `docs/teknisk/huskeliste.md`** (parallel til teknisk-gaeld.md). Konvention: **H = ekstern handling / ventende beslutning** (uden for koden — Dependabot, deadlines, eksterne afgørelser); **G = kode-gæld**.
+**Scanner-semantik (fund #1):**
 
-**Klassificering af de 10 (recon-bekræftet):**
+- **number-home-uniqueness:** tæller kun `### [Hxxx]`-kanoniske entries → H001/002/003/006/012 hver præcis én gang (huskeliste). Historisk-registry-rækker er IKKE `### [Hxxx]`-entries → ingen konflikt. Mentions/referencer tælles ikke.
+- **H-ref-integrity:** en `Hxxx`-ref (inkl. suffix `H010.6` → forælder `H010`) er gyldig hvis den er ENTEN en åben-entry ELLER i historisk-registry. Ukendt `Hxxx` (ingen af delene) = fejl (forældreløs).
+- Cutover-blocker-dup (H001-006 kanonisk i både cutover-checklist OG master-plan i dag) → build flytter kanonisk indhold til huskeliste; cutover-checklist + master-plan beholder reference. number-home-uniqueness håndhæver fremover.
 
-| H                            | Klasse                                      | Handling                                                                                                                                                      |
-| ---------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| H001, H002, H003, H006       | åben ekstern-handling (cutover-blockers)    | kanonisk entry → huskeliste.md; cutover-checklist + master-plan beholder _reference_ (dup-resolution)                                                         |
-| H012                         | åben deadline-tracker (→ G039)              | kanonisk entry → huskeliste.md                                                                                                                                |
-| H010, H011, H020, H022, H024 | **historisk** pakke-/issue-kode (afsluttet) | IKKE huskeliste-items; dokumentér i konvention at historiske H-koder lever i rapport-historik/git-history (som T9/trin-10-koder). Referencer beholdes uændret |
-
-**Cutover-blocker-dup-resolution:** H001-003/006 har i dag kanonisk indhold i BÅDE cutover-checklist.md OG master-plan §Cutover-blockers. Build vælger huskeliste.md som kanonisk hjem; de to andre beholder reference. number-home-uniqueness-checken (A) håndhæver det fremover.
-
-⚠️ **Afviger fra pakke-åbningens premiss** ("migrér de 10 H-refs"): kun ~5 er migrerbare åbne handlinger; 5 er historiske koder der ikke hører i en ventende-liste. Flaget til din + Codex' bekræftelse.
+⚠️ **Premiss-afvigelse (bekræftet af Codex):** kun 5/10 H er åbne actions; 5 er historiske koder. Håndteres via to-sektions-struktur.
 
 ---
 
 ## Implementations-rækkefølge
 
-1. `huskeliste.md` oprettes + konvention (H vs G) + 5 åbne H-entries migreret; cutover-dup → reference.
-2. owns:-markører tilføjes til de 9 docs (patch-først: additiv kommentar-linje pr. doc).
-3. `governance-check.mjs` skrives (7 check-klasser) + `package.json` `governance:check` + `ci.yml`-step (efter `fitness`).
-4. Kør scanner mod nuværende repo → grøn (efter at trin 1-2 har ryddet kendte dubletter: cutover-dup + evt. eksisterende defined-twice).
-5. Codex-mandat + governance-ændring-som-review-artefakt → `disciplin.md`.
+1. `huskeliste.md` (to sektioner: 5 åbne entries migreret fra cutover-checklist/master-plan + historisk-registry for de 5) + H/G-konvention. Cutover-dup → reference.
+2. owns:-markører på 9 docs (patch-først; vision kræver CODEOWNERS-approval).
+3. `governance-check.mjs` (7 checks, path-klasser, allowlist) + `package.json` `governance:check` + `ci.yml`-step **før** Supabase-link-step (Q4).
+4. Triage + ryd: kør scanner → grøn (template-skip + allowlist + reelle fixes af evt. ægte dead-refs).
+5. Codex-mandat + governance-som-review-artefakt → disciplin.md.
 
-## End-to-end-test-design (§3.6 — leverings-kriterium)
+## End-to-end-test (§3.6 — negativ-tests)
 
-Negativ-tests (scanner-ækvivalent til smoke-test): plant syntetisk overtrædelse → scanner exit≠0:
-
-- planted dead doc-path → fejl
-- to docs med samme begreb i owns: → fejl
-- H-ref uden huskeliste-entry → fejl
-- planted `~$junk.md` → fejl
-  Plus positiv: ren repo → exit 0. Tests i `scripts/__tests__/` eller som selvtest-flag.
+Plant syntetisk overtrædelse → exit≠0: dead current-link · to docs samme owns:-begreb · `Hxxx` uden entry/registry · `~$junk.md` · samme G-nummer-entry i to docs. Positiv: ren repo → exit 0. I `scripts/__tests__/` eller selvtest-flag.
 
 ## Oprydnings-strategi
 
-`aktiv-plan.md` opdateres · disciplin.md (Codex-mandat) · ny huskeliste.md + cutover-checklist/master-plan dup-resolution · ingen vision/forretningsforstaaelse-ændring (kun owns:-markør).
+aktiv-plan · disciplin.md (Codex-mandat) · ny huskeliste.md · cutover-checklist + master-plan dup→reference · owns:-markører (9 docs).
 
-## Risici + åbne spørgsmål til Codex
+## Risici + åbne spørgsmål til Codex (runde 2)
 
-1. **owns:-register-grænsen:** er deklareret-ejerskabs-unikhed + number-home-unikhed tilstrækkelig mekanisk dækning, eller forventer I en heuristik for udeklareret prosa-overlap (med accepteret FP-risiko)? Min vurdering: hold mekanisk = deklareret; prosa → Codex-mandat.
-2. **H-klassificering:** enig i at H010/011/020/022/024 er historiske koder (ikke huskeliste-items), eller skal nogen af dem være åbne H-entries?
-3. **owns:-markør-format:** HTML-kommentar vs YAML-frontmatter — er der en doc hvor frontmatter brækker render/CODEOWNERS? (vision er LÅST m. CODEOWNERS — owns:-markør er en ændring til den; kræver Mathias-approve jf. CODEOWNERS.)
-4. **ci.yml-step nu, required senere:** scanner-step tilføjes men er ikke required før gov-4 (branch protection). Korrekt rækkefølge?
-5. **Begreb-vokabular:** er den initiale 9-doc-mapping for grov/fin? Risiko for at et ægte delt begreb (fx "permission-model" i master-plan §1.7 + permission-matrix) tvinger en kunstig opsplitning.
+1. §C historisk-H-registry: er tabel-rækker den rette "ikke-kanonisk"-form, eller foretrækker I en eksplicit `<!-- gov-historical-codes: H010,H011,... -->`-markør scanneren læser (mindre prosa-afhængig parsing)?
+2. §A allowlist for historisk provenance (4 V4-slettede-doc-refs): acceptabelt, eller skal de refs i teknisk-gaeld i stedet omskrives til ikke-link-form (så de ikke kræver allowlist)?
+3. §A: skal scanneren også dække `scripts/*.sh`-doc-refs (de havde stale refs i tidligere audit), eller er det uden for gov-2-scope?
