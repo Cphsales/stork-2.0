@@ -21,8 +21,8 @@ if [ $# -lt 2 ]; then
 Usage: $0 <plan-fil> <round-N> [--phase=plan|slut-rapport]
 
 Eksempel:
-  $0 docs/coordination/Lag1-plan.md 1
-  $0 docs/coordination/rapport-historik/2026-05-20-Lag1.md 1 --phase=slut-rapport
+  $0 docs/coordination/<pakke>-plan.md 1
+  $0 docs/coordination/rapport-historik/<dato>-<pakke>.md 1 --phase=slut-rapport
 
 Output:
   - STDOUT: paste-pakke (kopiér direkte fra terminal)

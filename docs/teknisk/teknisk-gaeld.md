@@ -1,5 +1,7 @@
 # Stork 2.0 — Teknisk gæld
 
+<!-- governance-owns: kode-gaeld -->
+
 **Formål:** Liste af kendt teknisk gæld der svækker visionen (én sandhed, styr på data, eksplicit sammenkobling, stamme=database, beregning over databasen, rettigheder der virker, anonymisering bevarer audit, alt drift styres i UI). Vedligeholdes efter hvert trin. Ny gæld tilføjes ved introduktion; løst gæld flyttes til arkiv.
 
 **Severitet:**

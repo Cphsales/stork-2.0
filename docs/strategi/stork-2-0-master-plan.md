@@ -1,5 +1,7 @@
 # Stork 2.0 — Master-plan
 
+<!-- governance-owns: teknisk-plan, byggeraekkefoelge, laaste-beslutninger, aabne-beslutninger, permission-model -->
+
 **Status:** Komplet med 45 rettelser indlejret (Appendix C — bemærk at tabel-numrene 18-29 er duplikerede pga. to lag af nummerering; antallet refererer faktiske row-entries)
 **Dato:** 13. maj 2026
 **Skopus:** Fundament + Lag E (forretnings-domæner)

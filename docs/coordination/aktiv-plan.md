@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** governance-vagt under arbejde (1/6). **gov-1-paritet-groen LEVERET 2026-06-04** (registry aligned → repo-stamps, types grøn, db push up-to-date; slut-rapport afventer Claude.ai-review før merge). Rest-sekvens: gov-2-vagt → gov-3-ci-blockers → gov-4-branch-protection → gov-5-automation → gov-6-arkiv-fold. Åbne G-numre fra gov-1: G061 (comment-parity, før gov-4), G062 (recurring types-drift). Krav-dok (ét dok over de 6): Claude.ai's bord.
+**Aktuel:** governance-vagt under arbejde (2/6). **gov-1 (paritet) merged 2026-06-04. gov-2-vagt LEVERET 2026-06-05** (mekanisk governance-scanner + owns:-register + Codex-mandat §8.1 + huskeliste.md; slut-rapport afventer Claude.ai-review før merge). Rest-sekvens: gov-3-ci-blockers → gov-4-branch-protection → gov-5-automation → gov-6-arkiv-fold. Åbne G-numre: G061 (comment-parity, før gov-4), G062 (recurring types-drift). Krav-dok (ét dok over de 6): Claude.ai's bord.
 
 Når ny pakke startes følges V5-flowet i `docs/strategi/disciplin.md` §2:
 

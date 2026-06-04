@@ -24,9 +24,9 @@ if [ $# -lt 2 ]; then
 Usage: $0 <plan-fil> <runde-N> [--xhigh|--quick] [--phase=plan|build|slut-rapport]
 
 Eksempel:
-  $0 docs/coordination/Lag1-plan.md 1
-  $0 docs/coordination/Lag1-plan.md 2 --quick
-  $0 docs/coordination/rapport-historik/2026-05-20-Lag1.md 1 --phase=slut-rapport
+  $0 docs/coordination/<pakke>-plan.md 1
+  $0 docs/coordination/<pakke>-plan.md 2 --quick
+  $0 docs/coordination/rapport-historik/<dato>-<pakke>.md 1 --phase=slut-rapport
 
 V5.3 marker-protokol: scriptet parser output for halt-markers + severity-prefixes + log-markers + positive markers.
 Exit-koder:

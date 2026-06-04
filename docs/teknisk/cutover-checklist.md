@@ -1,5 +1,7 @@
 # Cutover-checklist
 
+<!-- governance-owns: cutover-flade -->
+
 Pre-cutover-blockers samlet ét sted. Ingen cutover til produktion uden hver række er kvitteret. Master-plan-blockers er autoritative; tabel her er destilleret og holdt synkron med `docs/strategi/stork-2-0-master-plan.md` cutover-blocker-sektion.
 
 **Kilde-flag (H010.6):** Den oprindelige reference "plan v1 sektion 4" kunne ikke lokaliseres som distinkt artefakt i repo'et. Indholdet nedenfor er destilleret fra (a) master-plan §X cutover-blockers, (b) `docs/teknisk/permission-matrix.md` pre-cutover lifecycle-state, og (c) G039 i `docs/teknisk/teknisk-gaeld.md`. Hvis "plan v1 sektion 4" var en anden konkret kilde: send referencen, så afstemmes indholdet ordret.

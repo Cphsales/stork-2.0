@@ -73,7 +73,7 @@ trap 'rm -f "$CODE_SECTION"' EXIT
   echo ""
   echo "### Cutover-blockers"
   echo ""
-  grep -E "^### \[H[0-9]+\]" docs/coordination/cutover-checklist.md 2>/dev/null | head -10 || echo "_(ingen aktuelle cutover-blockers)_"
+  grep -E "^### \[H[0-9]+\]" docs/teknisk/huskeliste.md 2>/dev/null | head -10 || echo "_(ingen aktuelle cutover-blockers)_"
 } > "$CODE_SECTION"
 
 # ============================================================

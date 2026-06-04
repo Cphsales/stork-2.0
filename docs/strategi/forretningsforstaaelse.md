@@ -1,5 +1,7 @@
 # Stork 2.0 — Forretningsforståelse
 
+<!-- governance-owns: forretnings-intention -->
+
 Dette dokument forklarer hvordan Stork-forretningen hænger sammen. Hvert punkt beskriver hvad systemet skal kunne på forretnings-niveau, efterfulgt af en kort opsummering af hvorfor det er sådan.
 
 Dokumentet er målrettet roller der hjælper med plan-arbejde, krav-dok og review. Det erstatter ikke vision-dokumentet, master-planen eller Mathias-afgørelser — det er baggrunden der gør de dokumenter forståelige.

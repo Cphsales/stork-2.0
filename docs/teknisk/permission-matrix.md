@@ -1,5 +1,7 @@
 # RPC permission matrix
 
+<!-- governance-owns: rpc-side-mapping -->
+
 **Auto-genereret fra live DB introspection 2026-05-15** efter R-runde-2 (R7a-R7d + R7c verify_anonymization_consistency-konvertering).
 
 **Format:** RPC → (page_key, tab_key, can_edit) → auth-type. Auto-verificeret via `supabase/tests/smoke/m1_permission_matrix.sql`.
