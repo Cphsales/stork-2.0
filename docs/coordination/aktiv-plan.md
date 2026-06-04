@@ -2,9 +2,9 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** ingen aktiv pakke — T9-supplement-2 afsluttet 2026-05-22 (PR #74 merged). Workflow-omstilling V4 implementeret 2026-05-22. Venter på næste pakke-valg fra Mathias.
+**Aktuel:** governance-vagt under arbejde (1/6). **gov-1-paritet-groen LEVERET 2026-06-04** (registry aligned → repo-stamps, types grøn, db push up-to-date; slut-rapport afventer Claude.ai-review før merge). Rest-sekvens: gov-2-vagt → gov-3-ci-blockers → gov-4-branch-protection → gov-5-automation → gov-6-arkiv-fold. Åbne G-numre fra gov-1: G061 (comment-parity, før gov-4), G062 (recurring types-drift). Krav-dok (ét dok over de 6): Claude.ai's bord.
 
-Når ny pakke startes følges V4-flowet i `docs/strategi/disciplin.md` §2:
+Når ny pakke startes følges V5-flowet i `docs/strategi/disciplin.md` §2:
 
 1. **Step 0** — Pakke-åbning (Mathias melder ud)
 2. **Step 1** — Krav-dok (Claude.ai-typist + Mathias-validator i chat)

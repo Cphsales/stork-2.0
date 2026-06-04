@@ -368,6 +368,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      audit_log_2026_08: {
+        Row: {
+          actor_role: string | null;
+          actor_user_id: string | null;
+          change_reason: string;
+          changed_columns: string[] | null;
+          id: string;
+          new_values: Json | null;
+          occurred_at: string;
+          old_values: Json | null;
+          operation: string;
+          record_id: string | null;
+          schema_version: number;
+          source_type: string;
+          table_name: string;
+          table_schema: string;
+          trigger_depth: number;
+        };
+        Insert: {
+          actor_role?: string | null;
+          actor_user_id?: string | null;
+          change_reason: string;
+          changed_columns?: string[] | null;
+          id?: string;
+          new_values?: Json | null;
+          occurred_at?: string;
+          old_values?: Json | null;
+          operation: string;
+          record_id?: string | null;
+          schema_version?: number;
+          source_type: string;
+          table_name: string;
+          table_schema: string;
+          trigger_depth?: number;
+        };
+        Update: {
+          actor_role?: string | null;
+          actor_user_id?: string | null;
+          change_reason?: string;
+          changed_columns?: string[] | null;
+          id?: string;
+          new_values?: Json | null;
+          occurred_at?: string;
+          old_values?: Json | null;
+          operation?: string;
+          record_id?: string | null;
+          schema_version?: number;
+          source_type?: string;
+          table_name?: string;
+          table_schema?: string;
+          trigger_depth?: number;
+        };
+        Relationships: [];
+      };
       audit_log_default: {
         Row: {
           actor_role: string | null;
@@ -3214,7 +3268,33 @@ export type Database = {
   };
   public: {
     Tables: {
-      [_ in never]: never;
+      gov1_registry_backup: {
+        Row: {
+          created_by: string | null;
+          idempotency_key: string | null;
+          name: string | null;
+          rollback: string[] | null;
+          statements: string[] | null;
+          version: string | null;
+        };
+        Insert: {
+          created_by?: string | null;
+          idempotency_key?: string | null;
+          name?: string | null;
+          rollback?: string[] | null;
+          statements?: string[] | null;
+          version?: string | null;
+        };
+        Update: {
+          created_by?: string | null;
+          idempotency_key?: string | null;
+          name?: string | null;
+          rollback?: string[] | null;
+          statements?: string[] | null;
+          version?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
