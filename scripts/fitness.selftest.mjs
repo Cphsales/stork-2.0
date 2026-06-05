@@ -105,6 +105,24 @@ plant(
   "undtager EKSTRA felt",
 );
 
+// #4 SAME-FILE drop+recreate table uden trigger -> final-state har immutable tabel uden trigger
+// (Codex runde 2: ordnet op-stream pr. migration, ikke create-så-drop i to passes)
+plant(
+  "#4 same-file drop+recreate table uden trigger -> fanges",
+  (d) =>
+    writeFileSync(
+      join(d, "supabase/migrations/99999999999998_core_money_recreate_cancel.sql"),
+      "drop table core_money.cancellations;\ncreate table core_money.cancellations (id uuid primary key);\n",
+    ),
+  "core_money\\.cancellations: immutable tabel mangler surviving BEFORE-trigger",
+);
+// #7 old/new-sammenligning fjernet (if false then) -> guard raiser ikke ved snapshot-felt-ændring
+plant(
+  "#7 old/new-sammenligning fjernet -> fanges",
+  (d) => sed(d, "s/if v_old <> v_new then/if false then/Ig"),
+  "ingen old/new-sammenligning",
+);
+
 if (failed) {
   console.error(`\nfitness selftest FEJLEDE (${failed})`);
   process.exit(1);
