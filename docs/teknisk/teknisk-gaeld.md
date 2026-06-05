@@ -16,6 +16,14 @@
 
 ## Åben gæld
 
+### [G064] MELLEM — types:check holder CI rød på main (gov-4-forudsætning)
+
+- **Beskrivelse:** `pnpm types:check` fejler på main på hver nylig run. Committed `packages/types/src/database.ts` lister `gov1_registry_backup` under `public.Tables`, men tabellen ligger faktisk i `supabase_migrations`-schemaet (gov-1-backup, ikke i types-gen's schema-liste `public,core_identity,core_compliance,core_money`) → frisk gen udelader den → drift. Dertil G062's månedlige audit-partition-drift. Fitness (inkl. live-checks #6/#19/fk-coverage/index-per-policy), supabase-link og governance er GRØNNE i CI — det er alene `types:check` der er rød.
+- **Vision-svækkelse:** Drift-disciplin (§3) + gov-4. CI har været rød på hver nylig main-run uden at blokere, fordi checks ikke er required endnu. gov-4 kan ikke gøre checks required mens CI er pålideligt rød.
+- **Introduceret:** Synliggjort 2026-06-05 (Supabase-credential-kortlægning før gov-4; præmissen "credential-gab" holdt ikke — fundamentet er sat op, det er types-drift der er hullet).
+- **Skal løses:** (1) Engangs: regen typer (`pnpm types:generate`) rydder `gov1_registry_backup`-driften — sker i samme token-fix-tråd. (2) Durabelt: G062's månedlige partition-drift (ekskludér partition-børn fra types-gen eller auto-regen-cron). Begge skal være på plads så CI er grøn mod ren tilstand FØR gov-4. Ejer: Code.
+- **Risiko hvis glemt:** Mellem. Blokerer gov-4 (en evigt-rød check kan ikke gøres required) og maskerer fremtidige reelle drift-fund i støjen.
+
 ### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
 
 - **Beskrivelse:** `scripts/governance-check.mjs` `MISSING_PATH_ALLOWLIST` har en entry for `docs/coordination/v4-slettede-docs` (klasse `scope-excluded-local`). Tilføjet i gov-docs-housekeeping så clean-checkout `governance:check` er grøn, mens dir'en stadig ligger untracked og afventer fold i gov-6.
