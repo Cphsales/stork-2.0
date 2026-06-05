@@ -91,6 +91,11 @@ const MISSING_PATH_ALLOWLIST = [
     klasse: "runtime-ephemeral",
     grund: "output-dir ved pakke-kørsel; slettes ved pakke-luk (disciplin §4)",
   },
+  {
+    path: "docs/coordination/v4-slettede-docs",
+    klasse: "scope-excluded-local",
+    grund: "lokale midlertidige V4-gennemgangs-kopier; aldrig committet; scope-ekskluderet; foldes/fjernes i gov-6",
+  },
 ];
 const ALLOWED = new Set(MISSING_PATH_ALLOWLIST.map((a) => a.path));
 
