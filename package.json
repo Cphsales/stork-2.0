@@ -23,6 +23,7 @@
     "schema:check": "bash scripts/schema-check.sh",
     "migration:check": "node scripts/migration-gate.mjs",
     "fitness": "node scripts/fitness.mjs",
+    "fitness:selftest": "node scripts/fitness.selftest.mjs",
     "governance:check": "node scripts/governance-check.mjs",
     "governance:selftest": "node scripts/governance-check.selftest.mjs",
     "db:test": "node scripts/run-db-tests.mjs",

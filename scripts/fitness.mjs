@@ -1146,6 +1146,147 @@ async function dbTestNoT9SkipGuards() {
 
 // ─── runner ────────────────────────────────────────────────────────────────
 
+// ─── gov-3a: §3-blockers #4, #7, #16, #17 ────────────────────────────────────
+// #4/#7 = static + final-state-aware (Codex: droppede tabeller ignoreres; sidste
+// guard-funktions-def vinder). #16/#17 = live introspektion (robust mod fragil
+// static FK-source-schema-parsing; skip uden token, mønster som dbRlsPolicies).
+
+const STRICT_IMMUTABLE_TABLES = [
+  "core_compliance.audit_log",
+  "core_compliance.anonymization_state",
+  "core_money.cancellations",
+  "core_money.salary_corrections",
+];
+// conditional: guard-funktion + felter der MÅ muteres (resten skal fejle). null = lock-and-delete (ingen felt-guard).
+const CONDITIONAL_IMMUTABLE_TABLES = {
+  "core_money.pay_periods": { guardFn: "pay_periods_lock_and_delete_check", flags: null },
+  "core_money.commission_snapshots": {
+    guardFn: "commission_snapshots_immutability_check",
+    flags: ["is_candidate", "candidate_run_id"],
+  },
+};
+// #17: tilladte cross-schema-FK-mål (grund pr. entry). Nye mål → flag (review/migration-kommentar).
+const CROSS_SCHEMA_FK_ALLOWED_TARGETS = {
+  "core_identity.employees":
+    "actor/medarbejder-ref (created_by, approved_by, employee_id, gdpr_responsible_employee_id m.fl.)",
+  "auth.users": "employees.auth_user_id → Supabase auth (Entra-login)",
+};
+
+// final-state-aware: surviving tables = CREATE TABLE minus DROP TABLE (kronologisk).
+function survivingQualifiedTables(migrations) {
+  const set = new Set();
+  for (const { sql } of migrations) {
+    for (const m of sql.matchAll(/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_]+)\.([a-z0-9_]+)/gi))
+      set.add(`${m[1]}.${m[2]}`.toLowerCase());
+    for (const m of sql.matchAll(/\bdrop\s+table\s+(?:if\s+exists\s+)?([a-z_]+)\.([a-z0-9_]+)/gi))
+      set.delete(`${m[1]}.${m[2]}`.toLowerCase());
+  }
+  return set;
+}
+// BEFORE-trigger (events incl. update/delete) på qualified tabel i nogen migration
+function hasBeforeUpdateDeleteTrigger(allSql, qualified) {
+  const re = new RegExp(
+    `create\\s+trigger\\s+\\w+\\s+before\\s+([a-z\\s]+?)\\s+on\\s+${qualified.replace(".", "\\.")}\\b`,
+    "gi",
+  );
+  let m;
+  while ((m = re.exec(allSql))) if (/\b(update|delete)\b/.test(m[1].toLowerCase())) return true;
+  return false;
+}
+// sidste create-or-replace-function-blok for en navngiven guard-funktion (final-state)
+function lastFunctionBody(allSql, fnName) {
+  const parts = allSql.split(/create\s+or\s+replace\s+function/gi);
+  let last = null;
+  for (let i = 1; i < parts.length; i++)
+    if (new RegExp(`\\b${fnName}\\b`, "i").test(parts[i].slice(0, 200))) last = parts[i];
+  return last;
+}
+async function liveQuery(query) {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+  if (!token) return { skipped: "SUPABASE_ACCESS_TOKEN ikke sat" };
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return { soft: `Management API ${res.status}` };
+    const body = await res.json();
+    return { rows: Array.isArray(body) ? body : body.result || body.rows || [] };
+  } catch (err) {
+    return { soft: `Network fejl: ${err.message}` };
+  }
+}
+
+// #4 immutability-trigger
+async function immutabilityTriggerCoverage() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  const allSql = migrations.map((x) => x.sql).join("\n");
+  const surviving = survivingQualifiedTables(migrations);
+  for (const q of [...STRICT_IMMUTABLE_TABLES, ...Object.keys(CONDITIONAL_IMMUTABLE_TABLES)]) {
+    if (!surviving.has(q.toLowerCase())) continue; // droppet tabel ignoreres
+    if (!hasBeforeUpdateDeleteTrigger(allSql, q))
+      violations.push(`${q}: immutable tabel mangler BEFORE UPDATE/DELETE-trigger`);
+  }
+  return { name: "immutability-trigger-coverage", violations };
+}
+
+// #7 snapshot-felt-beskyttelse: sidste guard-funktion for conditional-felt-tabel skal referere hver mutable-flag
+async function snapshotFieldProtection() {
+  const violations = [];
+  const migrations = await readMigrationFiles();
+  const allSql = migrations.map((x) => x.sql).join("\n");
+  const surviving = survivingQualifiedTables(migrations);
+  for (const [q, cfg] of Object.entries(CONDITIONAL_IMMUTABLE_TABLES)) {
+    if (cfg.flags === null || !surviving.has(q.toLowerCase())) continue;
+    const body = lastFunctionBody(allSql, cfg.guardFn);
+    if (!body) {
+      violations.push(`${q}: guard-funktion ${cfg.guardFn} ikke fundet`);
+      continue;
+    }
+    for (const f of cfg.flags)
+      if (!new RegExp(`'${f}'`).test(body))
+        violations.push(
+          `${q}: ${cfg.guardFn} beskytter ikke snapshot-felter korrekt — mutable-flag '${f}' ikke undtaget`,
+        );
+  }
+  return { name: "snapshot-field-protection", violations };
+}
+
+// #16 schema-ownership (live): ingen stork-tabel i public
+async function schemaOwnership() {
+  const r = await liveQuery(
+    `select c.relname as t from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname='public';`,
+  );
+  if (r.skipped) return { name: "schema-ownership", violations: [], skipped: r.skipped };
+  if (r.soft) return { name: "schema-ownership", violations: [r.soft], soft: true };
+  return {
+    name: "schema-ownership",
+    violations: r.rows.map((x) => `public.${x.t}: stork-tabel i public — skal ligge i core_*`),
+  };
+}
+
+// #17 cross-schema-FK (live): cross-schema-FK fra core_* skal ramme allowlist-mål, ellers review
+async function crossSchemaFkDiscipline() {
+  const r =
+    await liveQuery(`select con.conname, sn.nspname||'.'||sc.relname as src, tn.nspname||'.'||tc.relname as target
+    from pg_constraint con
+    join pg_class sc on con.conrelid=sc.oid join pg_namespace sn on sc.relnamespace=sn.oid
+    join pg_class tc on con.confrelid=tc.oid join pg_namespace tn on tc.relnamespace=tn.oid
+    where con.contype='f' and sn.nspname<>tn.nspname and sn.nspname like 'core_%';`);
+  if (r.skipped) return { name: "cross-schema-fk-discipline", violations: [], skipped: r.skipped };
+  if (r.soft) return { name: "cross-schema-fk-discipline", violations: [r.soft], soft: true };
+  const violations = [];
+  for (const row of r.rows)
+    if (!CROSS_SCHEMA_FK_ALLOWED_TARGETS[row.target])
+      violations.push(
+        `${row.src} → ${row.target} (${row.conname}): cross-schema-FK uden allowlist-mønster — kræver review/migration-kommentar`,
+      );
+  return { name: "cross-schema-fk-discipline", violations };
+}
+
 const checks = [
   noTsIgnore,
   eslintDisableJustified,
@@ -1166,6 +1307,10 @@ const checks = [
   dbTestNoT9SeedUserFixtures,
   dbTestNoT9SkipGuards,
   postgrestT9SchemaExposure,
+  immutabilityTriggerCoverage,
+  snapshotFieldProtection,
+  schemaOwnership,
+  crossSchemaFkDiscipline,
 ];
 
 async function main() {
