@@ -2,7 +2,7 @@
 
 Peger på den plan-fil der aktuelt er under arbejde (skrives → reviewes → bygges).
 
-**Aktuel:** governance-vagt (2/6 merged). **gov-1 (paritet) merged 2026-06-04. gov-2-vagt merged (PR #93, main @ e1273c9)** — mekanisk governance-scanner + owns:-register + Codex-mandat §8.1 + huskeliste.md; `governance:check` live i CI (ikke-required indtil gov-4). **gov-3a LEVERET 2026-06-05** (4 §3-checks: #4 immutability · #7 snapshot-felt · #16 schema-ownership · #17 cross-schema-FK + zone-§3-fjernelse; 23 fitness-checks grønne; slut-rapport afventer Claude.ai-review før merge). Rest-sekvens: gov-3b (#6/#10/#18/#19) → gov-4-branch-protection → gov-5-automation → gov-6-arkiv-fold. Åbne G-numre: G061 (comment-parity, før gov-4), G062 (recurring types-drift). Krav-dok (ét dok over de 6): `docs/coordination/governance-vagt-krav-og-data.md` ✓.
+**Aktuel:** ingen pakke under arbejde — næste i rest-sekvens: gov-3b-2 (#10 SECDEF-markør + #18 app-write-REVOKE). **Merged:** gov-1 (paritet, 2026-06-04) · gov-2 (vagt, PR #93) · gov-docs-housekeeping (krav-dok-familie, PR #94) · **gov-3a** (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95, main @ c32097c; ikke-required indtil gov-4) · **gov-3b-1** (#19 FK-dækning + #6 indeks-pr-policy, PR #96, main @ \<hash\>; 23→25 fitness-checks; 0 SQL-/indeks-migrations; 3 sale-FK'er FK_PENDING → Trin 14 [H025]). Rest-sekvens: gov-3b-2 → gov-4-branch-protection → gov-5-automation → gov-6-arkiv-fold. Åbne G-numre: G061 (comment-parity, før gov-4), G062 (recurring types-drift), G063 (v4-slettede-docs-allowlist → gov-6). Åbne H: [H025] (Trin 14: sale-FK'er + orphan-cleanup). Krav-dok (ét dok over de 6): `docs/coordination/governance-vagt-krav-og-data.md` ✓.
 
 Når ny pakke startes følges V5-flowet i `docs/strategi/disciplin.md` §2:
 
