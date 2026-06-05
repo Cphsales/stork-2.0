@@ -4,7 +4,7 @@
 // på planted overtrædelser pr. check-klasse. Kører scanneren via cwd=temp-fixture.
 
 import { execSync } from "node:child_process";
-import { mkdtempSync, cpSync, writeFileSync, appendFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -25,9 +25,10 @@ function run(root) {
   }
 }
 function fixture() {
+  // git archive HEAD = committed tree (uden untracked strays) — afspejler hvad CI ser,
+  // så untracked-fil-falsk-grøn fanges. Working-tree-kopi ville skjule den klasse.
   const d = mkdtempSync(join(tmpdir(), "govtest-"));
-  cpSync("docs", join(d, "docs"), { recursive: true });
-  cpSync("scripts", join(d, "scripts"), { recursive: true });
+  execSync(`git archive HEAD | tar -x -C "${d}"`, { stdio: "pipe" });
   return d;
 }
 
