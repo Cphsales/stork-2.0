@@ -16,6 +16,14 @@
 
 ## Åben gæld
 
+### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
+
+- **Beskrivelse:** `scripts/governance-check.mjs` `MISSING_PATH_ALLOWLIST` har en entry for `docs/coordination/v4-slettede-docs` (klasse `scope-excluded-local`). Tilføjet i gov-docs-housekeeping så clean-checkout `governance:check` er grøn, mens dir'en stadig ligger untracked og afventer fold i gov-6.
+- **Vision-svækkelse:** Marginal — en "midlertidig" allowlist kan blive permanent (drift) hvis ikke sporet.
+- **Introduceret:** gov-docs-housekeeping (2026-06-05).
+- **Skal løses:** Når **gov-6** folder `docs/coordination/v4-slettede-docs/` til git-history → **fjern allowlist-entryen igen**. Ejer: Code (i gov-6). Gov-6-krav-dok §6 dækker selve foldningen; denne G sporer allowlist-oprydningen.
+- **Risiko hvis glemt:** Lav. Entryen er eksplicit dokumenteret med grund + gov-6-trigger.
+
 ### [G061] LAV — comment-parity-residual efter gov-1 registry-reconciliation
 
 - **Beskrivelse:** 2 `comment on`-labels fra PR-polish nåede aldrig live (deploy fyrede ikke, H020): `client_node_placements_client_id_fkey`-constraint + `permission_actions`-tabel. Repo-filerne definerer dem; live mangler dem.
