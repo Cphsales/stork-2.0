@@ -46,7 +46,7 @@ Lav-brud-flade halvdel af gov-3: byg de §3-fitness-blockers der mangler og pass
 
 ## G-numre rejst
 
-Ingen nye. (Note: §-sektions-ref-validering uden for governance-check-scope — uændret fra gov-2.)
+**G063** (rejst ved merge, Step 5-note): sporer den midlertidige `v4-slettede-docs`-allowlist i `governance-check.mjs` → fjernes når gov-6 folder dir'en. (Note: §-sektions-ref-validering uden for governance-check-scope — uændret fra gov-2.)
 
 ## Codex build-review (runde 1) — 4 KRITISK rettet (falsk-grøn-klasse)
 
@@ -78,13 +78,17 @@ Konsekvens: #4-besked er nu guard-specifik ("guard-trigger `<fn>` dækker ikke B
 
 ## Konvergens-historie
 
-| V             | Codex-fund                                                                         | Code-svar                       | Outcome       |
-| ------------- | ---------------------------------------------------------------------------------- | ------------------------------- | ------------- |
-| V1            | scope/split-spørgsmål                                                              | scope-split godkendt            | V1-grundlag   |
-| V2 (Step 2.1) | fund 2 (STRICT/CONDITIONAL-split) + fund 3 (commission_snapshots reklassificering) | begge ACCEPT (live-verificeret) | V2            |
-| V2 (runde 2)  | APPROVAL — ingen nye fund                                                          | —                               | qwerg → build |
+| V                  | Codex-fund                                                                                          | Code-svar                       | Outcome       |
+| ------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------- | ------------- |
+| Plan V1            | scope/split-spørgsmål                                                                               | scope-split godkendt            | V1-grundlag   |
+| Plan V2 (Step 2.1) | fund 2 (STRICT/CONDITIONAL-split) + fund 3 (commission_snapshots reklassificering)                  | begge ACCEPT (live-verificeret) | V2            |
+| Plan V2 (runde 2)  | APPROVAL — ingen nye fund                                                                           | —                               | qwerg → build |
+| Build-review r1    | **4 KRITISK** (live-skip-til-grøn, #4 OR-ikke-AND, #4 ikke-trigger-final-state, #7 ikke-eksakt-sæt) | alle ACCEPT                     | build v2      |
+| Build-review r2    | **2 KRITISK** (#7 beviste ikke raise, #4 ikke kronologisk inden-for-fil)                            | alle ACCEPT                     | build v3      |
+| Build-review r3    | **1 KRITISK** (#4 union'ede alle before-triggere, ikke guarden)                                     | ACCEPT                          | build v4      |
+| Build-review r4    | APPROVAL (Codex build) → Claude.ai Step 5 APPROVAL                                                  | —                               | merge         |
 
-Normalt leje (§3.4).
+**Ærlig rundeoptælling:** plan 3 runder (normalt leje, §3.4) + **build 4 runder med 7 KRITISK i alt** — alle falsk-grøn-klasser, hver lukket med en specifik negativ-test der beviser fangsten. Build-review-iterationen var hvor de subtile huller blev fanget; lag-2 (Codex) var det bærende værn, ikke selv-tjek.
 
 ## Vision-tjek
 
