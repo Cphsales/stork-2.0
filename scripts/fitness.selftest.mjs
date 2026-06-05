@@ -9,7 +9,7 @@ import { execSync } from "node:child_process";
 import { mkdtempSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { predicateColumns, classifyIdColumn, leadingBtreeColumns } from "./fitness.mjs";
+import { predicateColumns, classifyIdColumn, leadingBtreeColumns, secdefMarkerViolations } from "./fitness.mjs";
 
 const ROOT = process.cwd();
 let failed = 0;
@@ -217,6 +217,43 @@ plant(
   {
     const v = cv("core_money.cancellations.mystery_id", { isPK: false, hasFK: false });
     v && /uden FK/.test(v) ? ok("#19 ukendt *_id uden FK -> violation") : bad("#19 ukendt", String(v));
+  }
+}
+
+// ─── gov-3b-2: ren-helper unit-tests (#10 SECDEF-markør-disciplin) ──
+// Mekanisk §3.6-bevis uden live-DB: baseline grøn, trigger OK, ukendt SECDEF, stale allowlist-entry.
+{
+  const sanctioned = { "s.f(uuid)": "write-rpc" };
+  // baseline: trigger-row + sanctioned-row -> ingen violations
+  secdefMarkerViolations(
+    [
+      { key: "s.trig()", returnsTrigger: true },
+      { key: "s.f(uuid)", returnsTrigger: false },
+    ],
+    sanctioned,
+  ).length === 0
+    ? ok("#10 baseline (trigger + sanctioned) -> 0 violations")
+    : bad("#10 baseline", "forventede 0 violations");
+  // trigger-funktion ikke i allowlist -> stadig OK
+  secdefMarkerViolations([{ key: "s.onlytrigger()", returnsTrigger: true }], {}).length === 0
+    ? ok("#10 trigger uden allowlist-entry -> OK")
+    : bad("#10 trigger OK", "trigger må passere uden markør");
+  // ukendt non-trigger SECDEF (tom allowlist, isolerer unknown-grenen) -> præcis 1 violation
+  {
+    const v = secdefMarkerViolations([{ key: "s.ny(uuid)", returnsTrigger: false }], {});
+    v.length === 1 && /uden markør/.test(v[0])
+      ? ok("#10 ukendt SECDEF uden markør -> violation")
+      : bad("#10 ukendt SECDEF", JSON.stringify(v));
+  }
+  // stale allowlist-entry (ingen matchende live-row) -> violation
+  {
+    const v = secdefMarkerViolations([{ key: "s.f(uuid)", returnsTrigger: false }], {
+      "s.f(uuid)": "write-rpc",
+      "s.gone()": "write-rpc",
+    });
+    v.length === 1 && /fjern entry/.test(v[0])
+      ? ok("#10 stale allowlist-entry -> violation")
+      : bad("#10 stale entry", JSON.stringify(v));
   }
 }
 

@@ -1524,6 +1524,166 @@ async function indexPerPolicy() {
   return { name: "index-per-policy", violations: [...new Set(violations)] };
 }
 
+// ─── gov-3b-2: §3-blocker #10 (SECURITY DEFINER markør-disciplin) ───────────────
+// Live (pg_catalog = kilde-of-truth), fail-closed i CI. Trigger-funktioner tilladt uden markør
+// (§3 #10); al anden SECDEF skal stå i SECDEF_SANCTIONED. Key = SIGNATUR
+// (schema.name(identity-args)), så en ny overload af et sanctioned navn ikke arver markøren.
+// Markør = reviewet allowlist-entry ("hvidliste vs marker = Code's valg", master-plan §3:168-169;
+// FK_COVERAGE_EXEMPTIONS-præcedens). Kategori-tag pr. entry = begrundelse.
+// Seed (81 ikke-trigger SECDEF) = DB-state-dump 2026-06-05; de 7 trigger-fns auto-OK (ikke listet).
+const SECDEF_SANCTIONED = {
+  // ── core_compliance ──
+  "core_compliance.anonymization_mapping_activate(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_approve(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_test_run(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_upsert(p_entity_type text, p_table_schema text, p_table_name text, p_field_strategies jsonb, p_anonymized_check_column text, p_retention_event_column text, p_internal_rpc_anonymize text, p_internal_rpc_apply text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.anonymization_state_read(p_entity_type text, p_entity_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_limit integer)":
+    "laese-rpc",
+  "core_compliance.anonymization_strategy_activate(p_strategy_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymize_generic_apply(p_entity_type text, p_entity_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.audit_filter_values(p_schema text, p_table text, p_values jsonb)": "laese-rpc",
+  "core_compliance.audit_log_read(p_table_schema text, p_table_name text, p_record_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_limit integer)":
+    "laese-rpc",
+  "core_compliance.break_glass_approve(p_request_id uuid, p_approval_notes text)": "write-rpc",
+  "core_compliance.break_glass_execute(p_request_id uuid)": "write-rpc",
+  "core_compliance.break_glass_operation_type_activate(p_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.break_glass_operation_type_approve(p_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.break_glass_operation_type_upsert(p_operation_type text, p_display_name text, p_description text, p_internal_rpc text, p_required_payload_schema jsonb, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.break_glass_reject(p_request_id uuid, p_rejection_reason text)": "write-rpc",
+  "core_compliance.break_glass_request(p_operation_type text, p_target_id uuid, p_target_payload jsonb, p_reason text)":
+    "write-rpc",
+  "core_compliance.break_glass_requests_read(p_status text, p_operation_type text, p_limit integer)": "laese-rpc",
+  "core_compliance.cron_heartbeat_record(p_job_name text, p_schedule text, p_status text, p_error text, p_duration_ms integer)":
+    "cron-rpc",
+  "core_compliance.cron_heartbeats_export()": "laese-rpc",
+  "core_compliance.cron_heartbeats_read()": "laese-rpc",
+  "core_compliance.data_field_definition_delete(p_table_schema text, p_table_name text, p_column_name text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.data_field_definition_upsert(p_table_schema text, p_table_name text, p_column_name text, p_category text, p_pii_level text, p_purpose text, p_retention_type text, p_retention_value jsonb, p_match_role text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.ensure_audit_partition(p_months_ahead integer)": "cron-rpc",
+  "core_compliance.gdpr_responsible_set(p_employee_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.healthcheck()": "laese-rpc",
+  "core_compliance.replay_anonymization(p_entity_type text, p_dry_run boolean)": "laese-rpc",
+  "core_compliance.superadmin_settings_update(p_min_admin_count integer, p_change_reason text)": "write-rpc",
+  "core_compliance.verify_anonymization_consistency()": "laese-rpc",
+  // ── core_identity ──
+  "core_identity._anonymize_employee_apply(p_employee_id uuid, p_strategies jsonb, p_reason text)": "intern-helper",
+  "core_identity._anonymize_employee_log_state(p_employee_id uuid, p_reason text, p_strategies jsonb, p_strategy_version integer)":
+    "intern-helper",
+  "core_identity._apply_client_close(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_client_place(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_employee_place(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_employee_remove(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_org_node_deactivate(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_org_node_upsert(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_team_close(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._org_node_closure_rebuild()": "intern-helper",
+  "core_identity.anonymize_employee(p_employee_id uuid, p_reason text)": "write-rpc",
+  "core_identity.anonymize_employee_internal(p_employee_id uuid, p_reason text)": "intern-helper",
+  "core_identity.client_field_definition_set_active(p_field_id uuid, p_is_active boolean, p_change_reason text)":
+    "write-rpc",
+  "core_identity.client_field_definition_upsert(p_key text, p_display_name text, p_field_type text, p_pii_level text, p_change_reason text, p_required boolean, p_display_order integer, p_is_active boolean, p_field_id uuid)":
+    "write-rpc",
+  "core_identity.client_logo_clear(p_client_id uuid, p_change_reason text)": "write-rpc",
+  "core_identity.client_logo_set(p_client_id uuid, p_logo_bytes bytea, p_logo_content_type text, p_logo_filename text, p_change_reason text)":
+    "write-rpc",
+  "core_identity.client_node_close(p_client_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.client_node_place(p_client_id uuid, p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.client_set_active(p_client_id uuid, p_is_active boolean, p_change_reason text)": "write-rpc",
+  "core_identity.client_upsert(p_name text, p_fields jsonb, p_change_reason text, p_is_active boolean, p_client_id uuid)":
+    "write-rpc",
+  "core_identity.employee_active_config_update(p_post_termination_grace_days integer, p_treat_anonymized_as_active boolean, p_change_reason text)":
+    "write-rpc",
+  "core_identity.employee_place(p_employee_id uuid, p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.employee_remove_from_node(p_employee_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.employee_terminate(p_employee_id uuid, p_termination_date date, p_change_reason text)": "write-rpc",
+  "core_identity.employee_upsert(p_id uuid, p_auth_user_id uuid, p_first_name text, p_last_name text, p_email text, p_hire_date date, p_termination_date date, p_role_id uuid, p_change_reason text)":
+    "write-rpc",
+  "core_identity.org_node_deactivate(p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.org_node_upsert(p_id uuid, p_name text, p_parent_id uuid, p_node_type text, p_is_active boolean, p_effective_from date)":
+    "write-rpc",
+  "core_identity.pending_change_apply(p_change_id uuid)": "write-rpc",
+  "core_identity.role_page_permission_upsert(p_role_id uuid, p_page_key text, p_tab_key text, p_can_view boolean, p_can_edit boolean, p_scope text, p_change_reason text)":
+    "intern-helper",
+  "core_identity.role_upsert(p_id uuid, p_name text, p_description text, p_change_reason text)": "write-rpc",
+  "core_identity.team_close(p_node_id uuid, p_effective_from date)": "write-rpc",
+  // ── core_money ──
+  "core_money._compute_period_data_checksum(p_period_id uuid)": "intern-helper",
+  "core_money._pay_period_compute_candidate_internal(p_period_id uuid, p_change_reason text)": "intern-helper",
+  "core_money._pay_period_lock_internal(p_period_id uuid, p_change_reason text)": "intern-helper",
+  "core_money.pay_period_compute_candidate(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.pay_period_compute_candidate_via_cron(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_for_date(p_date date)": "laese-rpc",
+  "core_money.pay_period_lock(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.pay_period_lock_attempt(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_lock_via_cron(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_settings_update(p_start_day_of_month integer, p_recommended_lock_date_rule text, p_auto_lock_enabled boolean, p_change_reason text)":
+    "write-rpc",
+  "core_money.pay_period_unlock_via_break_glass(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.period_recommended_lock_date(p_period_id uuid)": "laese-rpc",
+  // ── public (API-overflade; sanktioneret write-vej §1.1:55/:603) ──
+  "public.client_assign_to_team(p_client_id uuid, p_team_id uuid, p_change_reason text, p_from_date date)": "write-rpc",
+  "public.client_field_definition_upsert(p_key text, p_display_name text, p_field_type text, p_pii_level text, p_change_reason text, p_required boolean, p_match_role text, p_display_order integer, p_is_active boolean, p_field_id uuid)":
+    "write-rpc",
+  "public.client_upsert(p_name text, p_fields jsonb, p_change_reason text, p_client_id uuid)": "write-rpc",
+  "public.data_field_definition_upsert(p_table_schema text, p_table_name text, p_column_name text, p_category text, p_pii_level text, p_purpose text, p_retention_type text, p_retention_value jsonb, p_match_role text, p_change_reason text)":
+    "write-rpc",
+  "public.employee_assign_to_team(p_employee_id uuid, p_team_id uuid, p_change_reason text, p_from_date date)":
+    "write-rpc",
+  "public.employee_upsert(p_auth_user_id uuid, p_first_name text, p_last_name text, p_email text, p_hire_date date, p_change_reason text, p_employee_id uuid, p_termination_date date)":
+    "write-rpc",
+  "public.org_unit_upsert(p_name text, p_change_reason text, p_org_unit_id uuid, p_parent_id uuid, p_is_active boolean)":
+    "write-rpc",
+  "public.role_page_permission_upsert(p_role_id uuid, p_page_key text, p_can_view boolean, p_can_edit boolean, p_scope text, p_change_reason text, p_tab_key text)":
+    "write-rpc",
+  "public.role_upsert(p_name text, p_change_reason text, p_role_id uuid, p_description text)": "write-rpc",
+  "public.team_upsert(p_name text, p_org_unit_id uuid, p_change_reason text, p_team_id uuid, p_is_active boolean)":
+    "write-rpc",
+};
+
+// ren helper (unit-testet i selftest, INGEN live-DB): returnér ALLE violations givet live-rows +
+// allowlist. row = { key: "schema.name(identity_args)", returnsTrigger: bool }. Dækker både
+// umarkeret-SECDEF og stale-allowlist-entry (mekanisk §3.6-bevis).
+export function secdefMarkerViolations(rows, sanctioned) {
+  const violations = [];
+  const liveKeys = new Set();
+  for (const row of rows || []) {
+    liveKeys.add(row.key);
+    if (row.returnsTrigger) continue; // trigger-funktion — tilladt uden markør (§3 #10)
+    if (Object.prototype.hasOwnProperty.call(sanctioned, row.key)) continue; // markeret + reviewet
+    violations.push(
+      `${row.key}: SECURITY DEFINER uden markør — gør funktionen ikke-SECDEF, ELLER (hvis bevidst) tilføj til SECDEF_SANCTIONED med kategori-begrundelse (§3 #10)`,
+    );
+  }
+  // allowlist-hygiejne (mod drift, jf. audit-trigger-coverage): hver entry skal matche en live SECDEF-fn
+  for (const key of Object.keys(sanctioned)) {
+    if (!liveKeys.has(key))
+      violations.push(`${key}: i SECDEF_SANCTIONED men ingen matchende SECDEF-funktion findes live — fjern entry`);
+  }
+  return [...new Set(violations)];
+}
+
+// #10 SECDEF-markør-disciplin (live, fail-closed i CI): hver SECDEF-funktion i stork-schemas er
+// enten trigger-funktion (tilladt uden markør) eller i SECDEF_SANCTIONED (eksplicit markør + review).
+async function secdefMarkerDiscipline() {
+  const r = await liveQuery(
+    `select n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' as key,
+       (t.typname = 'trigger') as returns_trigger
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     join pg_type t on t.oid = p.prorettype
+     where n.nspname in ('public','core_identity','core_compliance','core_money')
+       and p.prosecdef = true;`,
+  );
+  const g = liveGuard("secdef-marker-discipline", r);
+  if (g) return g;
+  const rows = r.rows.map((row) => ({ key: row.key, returnsTrigger: row.returns_trigger }));
+  return { name: "secdef-marker-discipline", violations: secdefMarkerViolations(rows, SECDEF_SANCTIONED) };
+}
+
 const checks = [
   noTsIgnore,
   eslintDisableJustified,
@@ -1550,6 +1710,7 @@ const checks = [
   crossSchemaFkDiscipline,
   fkCoverage,
   indexPerPolicy,
+  secdefMarkerDiscipline,
 ];
 
 async function main() {
