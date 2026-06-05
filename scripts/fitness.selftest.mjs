@@ -9,7 +9,7 @@ import { execSync } from "node:child_process";
 import { mkdtempSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { predicateColumns, classifyIdColumn } from "./fitness.mjs";
+import { predicateColumns, classifyIdColumn, leadingBtreeColumns } from "./fitness.mjs";
 
 const ROOT = process.cwd();
 let failed = 0;
@@ -162,6 +162,17 @@ plant(
       : bad("#6 act.id falsk-match", [...r].join(","));
   }
   {
+    // Codex build-review HØJ: fuld schema.table.column må heller ikke efterlade ".id"
+    const r = predicateColumns(
+      "exists (select 1 from core_identity.permission_actions where core_identity.permission_actions.id = action_id)",
+      ["id", "action_id", "requested_by"],
+      "core_identity.pending_changes",
+    );
+    r.has("action_id") && !r.has("id")
+      ? ok("#6 schema-kvalificeret fremmed ref -> {action_id}, ikke {id}")
+      : bad("#6 schema-kvalificeret fremmed ref", [...r].join(","));
+  }
+  {
     const r = predicateColumns(
       "pending_changes.requested_by = current_employee_id()",
       ["requested_by"],
@@ -176,6 +187,16 @@ plant(
     predicateColumns("current_setting('stork.allow_clients_write', true)='true'", ["id"], "core_identity.clients").size,
     0,
   );
+  {
+    const lead = leadingBtreeColumns([
+      { tbl: "core_identity.pending_changes", col: "action_id", amname: "hash" },
+      { tbl: "core_identity.pending_changes", col: "requested_by", amname: "btree" },
+    ]);
+    const cols = lead.get("core_identity.pending_changes") || new Set();
+    cols.has("requested_by") && !cols.has("action_id")
+      ? ok("#6 non-btree leading index tæller ikke som dækning")
+      : bad("#6 non-btree index", [...cols].join(","));
+  }
 
   // #19 classifyIdColumn
   const cv = (k, o) => classifyIdColumn(k, o);
