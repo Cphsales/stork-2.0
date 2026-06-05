@@ -141,6 +141,8 @@ Pre-cutover (ingen rigtige data): tom-check + audit-spor er minimum. Post-cutove
 
 **Én bevarings-politik.** Arkivet er ikke en voksende kirkegård; iterations-, recon- og review-filer lever i git-history, ikke som filer på main.
 
+**Pakke-luk-tjek — udtømt formål (Mathias-princip, 2026-06-10):** ved hver pakke-luk tjekkes også: docs hvis formål DENNE pakke har udtømt — også uden for pakkens egne filer — slettes/arkiveres med begrundelse. Repo-renhed gælder alt der mister formål, ikke kun pakkens egne artefakter. (Samme princip gælder GitHub-fladen: døde PR'er lukkes med begrundelse; merged branches auto-slettes — `delete_branch_on_merge` aktiv.)
+
 ---
 
 ## §5 Severities + FLAG/LØS-dialog
