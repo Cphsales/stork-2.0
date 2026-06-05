@@ -1,61 +1,69 @@
-# gov-3a-ci-blockers — Plan V1
+# gov-3a-ci-blockers — Plan V2
 
 **Branch:** claude/gov-3a-ci-blockers-plan
 **Krav-dok:** `docs/coordination/governance-vagt-krav-og-data.md` (familie; gov-3 = manglende §3-checks)
 **Forfatter:** Code · **Dato:** 2026-06-05 · **Type:** fitness-udvidelse + doc-fix (0 migrations)
 
+## V2 — håndtering af Codex-fund (Step 2.1)
+
+| Fund                                                                      | Svar                          | Hvordan adresseret                                                                                                                                                                 |
+| ------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fund 2 — STRICT/CONDITIONAL ikke splittet (V1 lumpede immutable-tabeller) | **ACCEPT**                    | §3.2 + design: eksplicit `STRICT_IMMUTABLE` (blanket-blok) vs `CONDITIONAL_IMMUTABLE` (kontrolleret mutation). #4 kræver det rette mønster pr. klasse                              |
+| Fund 3 — commission_snapshots fejl-klassificeret som strict               | **ACCEPT**                    | Verificeret live: triggeren tillader kun `is_candidate`/`candidate_run_id` (snapshot-felter låst) → **CONDITIONAL**. #7 validerer **snapshot-felt-beskyttelse, ikke blanket-blok** |
+| Proces — rebase på merged housekeeping                                    | **ACCEPT (sekvens-afhængig)** | Housekeeping afventer Codex prosa-svar + merge; gov-3a rebases på main når housekeeping er merged. V2-indhold er uafhængigt reviewbart                                             |
+
 ## Formål
 
-Lav-brud-flade halvdel af gov-3: byg de §3-fitness-blockers der mangler og forventes at passere rent mod main — #4 immutability-trigger · #7 snapshot-disciplin · #16 schema-ownership · #17 cross-schema-FK. Plus doc-fix: fjern stale zone-§3-paragraf fra master-plan (gennem §8.1-gaten). gov-3b (#6, #10, #18, #19 — høj-brud-flade) er separat.
+Lav-brud-flade halvdel af gov-3: #4 immutability-trigger · #7 snapshot-disciplin · #16 schema-ownership · #17 cross-schema-FK + fjern stale zone-§3-paragraf (master-plan, gennem §8.1-gaten). gov-3b (#6, #10, #18, #19) separat.
 
 ## §3.1/§3.2/§3.9
 
-- **Patch-først (§3.1):** `fitness.mjs` udvides — nuværende `const checks`-array + relevante const-lister vises 1:1 + diff (4 nye funktioner tilføjes til array; ingen eksisterende check ændres).
-- **§3.2 DB-state-dump:** kørt (nedenfor) — checks valideret mod faktisk main-state.
-- **§3.9:** ingen destructive drops (scanner + doc-fix; ingen DB-mutation).
+Patch-først ved fitness-udvidelse (§3.1; eksisterende `const checks` + lister 1:1 + diff). §3.2-dump kørt (nedenfor). Ingen destructive drops (§3.9).
 
 ## §3.2 Verificerede DB-objekter (rå live-dump 2026-06-05)
 
 **Schema-fordeling (#16):** core_compliance 13 · core_identity 18 · core_money 6 · **public: 0 stork-tabeller**.
 
-**Strict-immutable tabeller + BEFORE UPDATE/DELETE-trigger (#4):**
+**Immutabilitets-klassificering (#4 + #7) — verificeret pr. trigger:**
 
-- `audit_log` → `audit_log_immutability` ✓ · `anonymization_state` → `anonymization_state_immutability` ✓ · `cancellations` → `cancellations_immutability` ✓ · `commission_snapshots` → `commission_snapshots_immutability` ✓ · `salary_corrections` → `salary_corrections_immutability` ✓
-- `pay_periods` → **`pay_periods_lock_and_delete_check`** (conditional immutability, ikke `*_immutability` — by design: mutabel indtil lås).
+| Tabel                                                                | Klasse          | Trigger / mekanisme (live-verificeret)                                                                                                                                                                               |
+| -------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| audit_log · anonymization_state · cancellations · salary_corrections | **STRICT**      | `*_immutability` — blanket-blok UPDATE+DELETE                                                                                                                                                                        |
+| pay_periods                                                          | **CONDITIONAL** | `pay_periods_lock_and_delete_check` — mutabel indtil lås                                                                                                                                                             |
+| commission_snapshots                                                 | **CONDITIONAL** | `commission_snapshots_immutability_check`: kun `is_candidate`/`candidate_run_id` muteres; øvrige (snapshot-)felter immutable; DELETE kun hvis `is_candidate` (verificeret body: _"Fund 3 conditional immutability"_) |
 
 **Cross-schema-FK (#17) — 12, ét mønster:** 11× `core_{money,compliance}.* → core_identity.employees` (actor-refs: `*_by`, `employee_id`, `gdpr_responsible_employee_id`) + 1× `core_identity.employees → auth.users`.
 
 ## Per-check design + forventet resultat mod main
 
-| Check                       | Design                                                                                                                                                                                                                                                          | Forventet mod main                                                   |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **#4 immutability-trigger** | For hver tabel i `STRICT_IMMUTABLE`-liste: kræv BEFORE UPDATE/DELETE-trigger der RAISE'r. For `CONDITIONAL_IMMUTABLE` (pay_periods): kræv lock-and-delete-trigger. Static-parse af migrations (mønster fra `truncateBlockedOnImmutable`) ELLER live pg_trigger. | **GRØN** — alle 6 har trigger (5 strict + pay_periods conditional)   |
-| **#7 snapshot-disciplin**   | Tabeller med snapshot-felter (commission_snapshots m.fl.) har BEFORE UPDATE-trigger der blokerer snapshot-felt-ændring. Genbruger immutability-/snapshot-lister.                                                                                                | **GRØN** (commission_snapshots immutable; snapshot-felter beskyttet) |
-| **#16 schema-ownership**    | Ingen stork-domæne-tabel uden for `core_identity/core_money/core_compliance` (live pg_class, eller migration CREATE TABLE-schema-præfiks).                                                                                                                      | **GRØN** — 0 tabeller i public                                       |
-| **#17 cross-schema-FK**     | Cross-schema-FK tilladt hvis (a) migration-kommentar dokumenterer den, ELLER (b) matcher allowlist-mønster `CROSS_SCHEMA_FK_ALLOWED` (de 12 actor-refs → core_identity.employees + → auth.users).                                                               | **GRØN** via allowlist-mønster for de 12 verificerede                |
+| Check                       | Design                                                                                                                                                                                                                                                      | Forventet                                                         |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| **#4 immutability-trigger** | `STRICT_IMMUTABLE`-liste → kræv blanket-blok BEFORE UPDATE/DELETE-trigger. `CONDITIONAL_IMMUTABLE`-liste → kræv den klassens guard-trigger (lock-and-delete / felt-guard) findes. Static-parse af migrations (mønster fra #5 `truncateBlockedOnImmutable`). | **GRØN** — 4 strict + 2 conditional alle har deres trigger        |
+| **#7 snapshot-disciplin**   | Snapshot-felt-tabeller (commission_snapshots m.fl.) har BEFORE UPDATE-trigger der **blokerer snapshot-felt-ændring** (ikke blanket — kontrollerede flag-felter som `is_candidate` må muteres). Validerer felt-beskyttelse, ikke blanket-blok.               | **GRØN** — commission_snapshots-trigger beskytter snapshot-felter |
+| **#16 schema-ownership**    | Ingen stork-domæne-tabel uden for core_identity/core_money/core_compliance.                                                                                                                                                                                 | **GRØN** — 0 i public                                             |
+| **#17 cross-schema-FK**     | Tilladt hvis migration-kommentar dokumenterer ELLER matcher `CROSS_SCHEMA_FK_ALLOWED` (actor-refs → employees + → auth.users).                                                                                                                              | **GRØN** via allowlist-mønster for de 12                          |
 
-**Ingen reel brud-flade** — alle 4 passerer mod main med korrekt design. #17's allowlist (12 actor-FKs) er triage, ikke fix.
+**Ingen reel brud-flade** — alle 4 passerer mod main med korrekt design + klassificering.
 
 ## Doc-fix — fjern zone-§3 (gennem §8.1-gaten)
 
-master-plan §3 "Zone-disciplin" (linje ~1500-1502: _"Pre-commit-hook kræver 'ZONE: red'-prefix…"_) fjernes. Zone er 1.0-arv, aldrig godkendt til 2.0 (krav-dok IKKE-i-scope; Mathias 2026-06-05). §8.1-gate: `governance:check` grøn + Codex prosa-modsigelses-svar (master-plan ejer teknisk-plan; fjernelse modsiger intet ejet begreb).
+master-plan §3 "Zone-disciplin" (linje ~1500-1502, _"ZONE: red"-prefix_) fjernes. Zone = 1.0-arv, aldrig godkendt til 2.0 (krav-dok IKKE-i-scope; Mathias 2026-06-05). §8.1: governance:check grøn + Codex prosa-svar.
 
 ## Implementations-rækkefølge
 
-1. Patch-først: vis `fitness.mjs` nuværende `const checks` + immutable-lister 1:1 + diff.
-2. Tilføj `STRICT_IMMUTABLE` / `CONDITIONAL_IMMUTABLE` / `CROSS_SCHEMA_FK_ALLOWED`-lister + 4 check-funktioner.
-3. Registrér de 4 i `const checks`-array.
+1. (Når housekeeping merged) rebase gov-3a på main.
+2. Patch-først: vis `fitness.mjs` nuværende `const checks` + immutable-lister 1:1 + diff.
+3. Tilføj `STRICT_IMMUTABLE` / `CONDITIONAL_IMMUTABLE` / `CROSS_SCHEMA_FK_ALLOWED`-lister + 4 check-funktioner; registrér i `const checks`.
 4. Fjern zone-§3-paragraf fra master-plan.
-5. Kør `pnpm fitness` → alle (19+4) grønne mod main. Kør `governance:check` grøn (master-plan-ændring).
-6. Udvid negativ-test-dækning (selftest-mønster fra gov-2 / fitness' egne).
+5. `pnpm fitness` (19+4) grøn mod main · `governance:check` grøn (master-plan-ændring).
+6. Negativ-tests pr. ny check (planted overtrædelse → exit≠0).
 
 ## End-to-end-test (§3.6)
 
-Hver ny check: negativ-test (planted overtrædelse → fitness exit≠0) + positiv (main → grøn). Mønster: fitness' eksisterende checks + gov-2's selftest-tilgang.
+Pr. ny check: negativ-test (plant overtrædelse → fitness exit≠0) + positiv (main → grøn). Inkl. CONDITIONAL-specifik negativ: forsøg UPDATE af snapshot-felt på commission_snapshots → fanges; UPDATE af `is_candidate` → tilladt (ikke falsk-positiv).
 
-## Risici + åbne spørgsmål til Codex
+## Risici + åbne spørgsmål til Codex (runde 2)
 
-1. **#4/#7 static-parse vs live-introspektion:** `truncateBlockedOnImmutable` er static migration-parse. Skal #4/#7 også være static (konsistent, ingen token-afhængighed) eller live pg_trigger (robust mod drift)? Min hældning: static (matcher #5's mønster, kører uden token).
-2. **#17 allowlist vs kommentar-krav:** er `CROSS_SCHEMA_FK_ALLOWED`-mønster (core\_\*→employees actor-refs) acceptabelt, eller skal hver cross-schema-FK have eksplicit migration-kommentar (tungere, men mere eksplicit)?
-3. **#16 scope:** kun core*\*-schemas, eller skal app*\*-schemas (når de bygges) også dækkes? (Ingen app-schemas endnu.)
-4. **pay_periods conditional immutability:** er `lock_and_delete_check` den korrekte klassifikation, eller skal pay_periods ud af immutability-listen helt?
+1. **#4/#7 static-parse:** static migration-parse (matcher #5, kører uden token) — enig, eller foretrækkes live pg_trigger-introspektion for robusthed mod drift mellem migration-tekst og faktisk DB?
+2. **#7 felt-liste:** skal "snapshot-felter" udledes pr. tabel (alt undtagen en allowlist af mutable flag-felter som `is_candidate`/`candidate_run_id`), eller eksplicit snapshot-felt-liste pr. tabel? Min hældning: mutable-flag-allowlist pr. CONDITIONAL-tabel (matcher trigger-logikken).
+3. **#17 allowlist vs kommentar-krav** (uændret fra V1).
