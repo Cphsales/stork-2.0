@@ -6,6 +6,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", ".git", "coverage"]);
@@ -1359,6 +1360,159 @@ async function crossSchemaFkDiscipline() {
   return { name: "cross-schema-fk-discipline", violations };
 }
 
+// ─── gov-3b-1: §3-blockers #19 (FK-dækning) + #6 (indeks pr. policy-prædikat) ──
+// Begge live (pg_catalog = kilde-of-truth, robust mod fragil migration-parsing), fail-closed i CI.
+
+// #19: *_id-kolonner på core_* der bevidst IKKE har FK (permanent, begrundet). Polymorfe/eksterne refs.
+const FK_COVERAGE_EXEMPTIONS = {
+  "core_compliance.anonymization_state.entity_id": "polymorf (entity_type-diskriminator) — ingen enkelt-tabel-target",
+  "core_compliance.audit_log.actor_user_id":
+    "audit skal overleve sletning af aktør; FK ville koble audit til users-livscyklus (cascade/block) og bryde audit-immutabilitet",
+  "core_compliance.audit_log.record_id": "polymorf (peger på række i vilkårlig auditeret tabel via tabel-navn-kolonne)",
+  "core_compliance.break_glass_requests.target_id": "polymorf (mål-entitet varierer per operation_type)",
+  "core_identity.pending_changes.target_id": "polymorf (mål varierer per change_type)",
+  "core_money.cancellations.match_id": "ekstern CRM-match-id, ikke en intern tabel-PK",
+};
+// #19: *_id-kolonner hvis FK er BESLUTTET men afventer target-tabellens eksistens (selv-udløbende).
+// Honoreres KUN mens target-tabellen er fraværende; findes target uden FK → violation (grace udløbet).
+// Spores af [H025] (Trin 14): tilføj FK + ryd orphans + fjern entry her. Anti-permanens (jf. G063).
+const FK_PENDING = {
+  "core_money.cancellations.source_sale_id": { targetTable: "core_money.sales" },
+  "core_money.commission_snapshots.sale_id": { targetTable: "core_money.sales" },
+  "core_money.salary_corrections.source_sale_id": { targetTable: "core_money.sales" },
+};
+// #6: policy-prædikat-kolonner der bevidst ikke har ledende indeks (lav selektivitet / sekundære).
+const POLICY_INDEX_EXEMPTIONS = {
+  "core_identity.pending_changes.action_id": "NULL-check, ikke selektivt scope-filter",
+  "core_identity.pending_changes.change_type": "sekundær OR-betingelse (koblet til action_id IS NULL)",
+  "core_money.commission_snapshots.is_candidate": "boolean-flag, lav selektivitet",
+};
+
+// #19 helper (ren — unit-testet i selftest): klassificér en *_id-kolonne. Returnerer violation-streng eller null.
+export function classifyIdColumn(key, { isPK, hasFK, targetExists }) {
+  if (isPK) return null; // PK (fx version_id) — ikke FK-kandidat
+  if (hasFK) return null; // allerede dækket
+  if (FK_COVERAGE_EXEMPTIONS[key]) return null; // permanent, begrundet
+  if (FK_PENDING[key]) {
+    if (targetExists)
+      return `${key}: FK_PENDING-target ${FK_PENDING[key].targetTable} findes nu, men FK mangler — grace udløbet (tilføj FK + fjern FK_PENDING-entry, jf. [H025])`;
+    return null; // honoreres mens target-tabel fraværende
+  }
+  return `${key}: *_id-reference uden FK, PK eller exemption — tilføj FK eller begrund i FK_COVERAGE_EXEMPTIONS`;
+}
+
+// #6 helper (ren — unit-testet i selftest): udtræk current-table-prædikat-kolonner fra en policy-qual.
+// (1) strip current_setting('...')-kald (string-arg må ikke forveksles med kolonne); (2) eksplicit
+// current-table-kvalificering (<tabel>.col) tælles; (3) fremmed-alias-kvalificerede refs (alias.col hvor
+// alias != tabel, fx subquery-alias act.id) fjernes; (4) ukvalificerede tokens der matcher current-table-
+// kolonner tælles (fanger korreleret action_id). Codex HØJ-fix: act.id falsk-matcher ikke pending_changes.id.
+export function predicateColumns(expr, tableCols, tableName) {
+  const cols = new Set((tableCols || []).map((c) => c.toLowerCase()));
+  const lowerName = (tableName || "").toLowerCase();
+  const short = lowerName.includes(".") ? lowerName.split(".").pop() : lowerName;
+  const s = (expr || "").toLowerCase().replace(/current_setting\s*\([^)]*\)/g, " ");
+  const found = new Set();
+  // (2) eksplicit current-table-kvalificering: <tabel>.col eller <short>.col
+  for (const m of s.matchAll(/(\w+)\.(\w+)/g)) {
+    const [, qualifier, col] = m;
+    if ((qualifier === short || qualifier === lowerName) && cols.has(col)) found.add(col);
+  }
+  // (3) fjern ALLE kvalificerede alias.col (fremmed-alias droppes); (4) tokenisér resten
+  const unqualified = s.replace(/\w+\.\w+/g, " ");
+  for (const tok of unqualified.match(/[a-z_][a-z0-9_]*/g) || []) if (cols.has(tok)) found.add(tok);
+  return found;
+}
+
+// #19 FK-dækning (live, fail-closed i CI): hver *_id-reference på core_* har FK, er PK, er exempt,
+// eller er FK_PENDING (kun mens target fraværende). Partition-børn springes over (deler forælder-kolonner).
+async function fkCoverage() {
+  const r = await liveQuery(
+    `select n.nspname||'.'||c.relname as tbl, a.attname as col,
+       exists(select 1 from pg_constraint k where k.conrelid=c.oid and k.contype='p' and a.attnum=any(k.conkey)) as is_pk,
+       exists(select 1 from pg_constraint k where k.conrelid=c.oid and k.contype='f' and a.attnum=any(k.conkey)) as has_fk
+     from pg_class c join pg_namespace n on c.relnamespace=n.oid
+     join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+     where n.nspname like 'core_%' and c.relkind in ('r','p') and not c.relispartition and a.attname ~ '_id$';`,
+  );
+  const g = liveGuard("fk-coverage", r);
+  if (g) return g;
+  // selv-udløb: findes FK_PENDING-target-tabellerne nu?
+  const targets = [...new Set(Object.values(FK_PENDING).map((p) => p.targetTable))];
+  const existing = new Set();
+  if (targets.length) {
+    const list = targets.map((t) => `'${t}'`).join(",");
+    const tr = await liveQuery(
+      `select n.nspname||'.'||c.relname as tbl from pg_class c join pg_namespace n on c.relnamespace=n.oid
+       where c.relkind in ('r','p') and (n.nspname||'.'||c.relname) in (${list});`,
+    );
+    const tg = liveGuard("fk-coverage", tr);
+    if (tg) return tg;
+    for (const row of tr.rows) existing.add(row.tbl);
+  }
+  const violations = [];
+  for (const row of r.rows) {
+    const key = `${row.tbl}.${row.col}`;
+    const pend = FK_PENDING[key];
+    const v = classifyIdColumn(key, {
+      isPK: row.is_pk,
+      hasFK: row.has_fk,
+      targetExists: pend ? existing.has(pend.targetTable) : false,
+    });
+    if (v) violations.push(v);
+  }
+  return { name: "fk-coverage", violations };
+}
+
+// #6 indeks pr. policy-prædikat (live, fail-closed i CI): hver policy-prædikat-kolonne (reel current-table-
+// kolonne, ikke session-var/funktions-gate) skal være ledende kolonne i et btree-indeks — ellers exempt.
+async function indexPerPolicy() {
+  const pr = await liveQuery(
+    `select schemaname||'.'||tablename as tbl, policyname,
+       coalesce(qual,'')||' '||coalesce(with_check,'') as expr
+     from pg_policies where schemaname like 'core_%';`,
+  );
+  const g = liveGuard("index-per-policy", pr);
+  if (g) return g;
+  const cr = await liveQuery(
+    `select n.nspname||'.'||c.relname as tbl, a.attname as col
+     from pg_attribute a join pg_class c on a.attrelid=c.oid join pg_namespace n on c.relnamespace=n.oid
+     where n.nspname like 'core_%' and c.relkind in ('r','p') and a.attnum>0 and not a.attisdropped;`,
+  );
+  const cg = liveGuard("index-per-policy", cr);
+  if (cg) return cg;
+  const lr = await liveQuery(
+    `select n.nspname||'.'||t.relname as tbl, a.attname as col
+     from pg_index i join pg_class t on i.indrelid=t.oid join pg_namespace n on t.relnamespace=n.oid
+     join pg_attribute a on a.attrelid=t.oid and a.attnum=i.indkey[0]
+     where n.nspname like 'core_%';`,
+  );
+  const lg = liveGuard("index-per-policy", lr);
+  if (lg) return lg;
+  const colsByTbl = new Map();
+  const leadByTbl = new Map();
+  for (const row of cr.rows) {
+    if (!colsByTbl.has(row.tbl)) colsByTbl.set(row.tbl, []);
+    colsByTbl.get(row.tbl).push(row.col);
+  }
+  for (const row of lr.rows) {
+    if (!leadByTbl.has(row.tbl)) leadByTbl.set(row.tbl, new Set());
+    leadByTbl.get(row.tbl).add(row.col.toLowerCase());
+  }
+  const violations = [];
+  for (const p of pr.rows) {
+    const cols = colsByTbl.get(p.tbl) || [];
+    const lead = leadByTbl.get(p.tbl) || new Set();
+    for (const col of predicateColumns(p.expr, cols, p.tbl)) {
+      if (lead.has(col)) continue;
+      if (POLICY_INDEX_EXEMPTIONS[`${p.tbl}.${col}`]) continue;
+      violations.push(
+        `${p.tbl}.${col} (policy ${p.policyname}): prædikat-kolonne uden ledende btree-indeks — tilføj indeks eller begrund i POLICY_INDEX_EXEMPTIONS`,
+      );
+    }
+  }
+  return { name: "index-per-policy", violations: [...new Set(violations)] };
+}
+
 const checks = [
   noTsIgnore,
   eslintDisableJustified,
@@ -1383,6 +1537,8 @@ const checks = [
   snapshotFieldProtection,
   schemaOwnership,
   crossSchemaFkDiscipline,
+  fkCoverage,
+  indexPerPolicy,
 ];
 
 async function main() {
@@ -1415,7 +1571,10 @@ async function main() {
   process.exit(1);
 }
 
-main().catch((err) => {
-  console.error("Fitness fatal:", err);
-  process.exit(1);
-});
+// Kør kun når invokeret direkte (node fitness.mjs) — ikke ved import (selftest importerer rene helpers).
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err) => {
+    console.error("Fitness fatal:", err);
+    process.exit(1);
+  });
+}
