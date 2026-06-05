@@ -16,6 +16,14 @@
 
 ## Åben gæld
 
+### [G065] MELLEM — `authenticated` direkte write-grant + session-var-gate = privilegie-eskaleringshul på core\_\*
+
+- **Beskrivelse:** `authenticated` har direkte INSERT/UPDATE/DELETE-grant på 25 core*\*-tabeller, hver med FORCE RLS + en `authenticated`-write-policy gated på session-var (`stork.allow*_*write`/`stork.t9_write_authorized`). Da `authenticated`selv kan sætte session-var'en, kan rollen i princippet skrive direkte uden om de respektive RPC'ers`has_permission`-tjek. De fleste write-RPC'er er SECDEF (postgres/`bypassrls`) → der er grantet rent drift; men **14 auth-eksekverbare SECURITY INVOKER T9-fns** (`permission*_\_upsert/\_deactivate`, `permission_action_set_approver_type`, `role_permission_grant_set/remove`, `pending_change_approve/undo`, `undo_setting_update`) kører som `authenticated` og afhænger af grantet — REVOKE ville bryde dem.
+- **Severity-nuance (defense-in-depth, ikke live-REST-eksploiterbart i dag):** `/rpc/set_config` er ikke PostgREST-eksponeret (404/PGRST202 i live-probe), så en normal `authenticated`-klient kan ikke sætte session-var'en via REST. Krydsref [G039] (REST-eksponerings-test). Hullet er en privilegie-flade der bør lukkes mekanisk, ikke et åbent live-exploit.
+- **Vision-svækkelse:** §1.1:157 ("direkte tabel-rettigheder revokes fra alle roller") + §3 #18.
+- **Introduceret:** Synliggjort 2026-06-05 (gov-3b-2 DB-state-dump for #10; #18 udskilt til egen pakke).
+- **Skal løses:** gov-3b-3 (#18, retning A): konvertér de auth-eksekverbare SECURITY INVOKER-write-RPC'er til SECURITY DEFINER, derefter REVOKE alle `authenticated`-write-grants på core\_\*. Præcist inventory afgøres af gov-3b-3's egen friske dump (klassen er stabil: auth-eksekverbar INVOKER-write-vej afhængig af direkte grant). Ejer: Code. Deadline: gov-3b-3, direkte efter gov-3b-2.
+
 ### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
 
 - **Beskrivelse:** `scripts/governance-check.mjs` `MISSING_PATH_ALLOWLIST` har en entry for `docs/coordination/v4-slettede-docs` (klasse `scope-excluded-local`). Tilføjet i gov-docs-housekeeping så clean-checkout `governance:check` er grøn, mens dir'en stadig ligger untracked og afventer fold i gov-6.
