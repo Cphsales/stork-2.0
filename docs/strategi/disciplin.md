@@ -427,11 +427,11 @@ Master-plan-konflikt (men master-plan er overblik — se §8) · vision-modsigel
 
 Adoption af denne fil er første skridt, ikke hele V5. Udestår:
 
-- **Docs-oprydning (Claude.ai's bord):** fold arkivet til git-history · afklar H-numrenes hjem.
+- **Docs-oprydning (Claude.ai's bord):** fold arkivet til git-history (gov-6).
 - **Master-plan (Claude.ai's bord):** afklar om Appendix C's rettelses-historik hører i planen eller i historik.
-- **Fundament + spærhager (Codes bord):** governance-vagt + branch protection (`governance-vagt`-pakke) · repo↔DB-paritet · de manglende CI-blockers · Codex-runner + auto-merge + plan-branch-trigger.
+- **Fundament + spærhager (Codes bord):** de manglende CI-blockers (gov-3, i gang) · branch protection (gov-4) · Codex-runner + auto-merge + plan-branch-trigger (gov-5).
 
-Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3.
+Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)**.
 
 V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ikke ved siden af.
 
