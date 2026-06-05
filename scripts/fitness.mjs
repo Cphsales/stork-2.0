@@ -1151,14 +1151,15 @@ async function dbTestNoT9SkipGuards() {
 // guard-funktions-def vinder). #16/#17 = live introspektion (robust mod fragil
 // static FK-source-schema-parsing; skip uden token, mønster som dbRlsPolicies).
 
-const STRICT_IMMUTABLE_TABLES = [
-  "core_compliance.audit_log",
-  "core_compliance.anonymization_state",
-  "core_money.cancellations",
-  "core_money.salary_corrections",
-];
-// conditional: guard-funktion + felter der MÅ muteres (resten skal fejle). null = lock-and-delete (ingen felt-guard).
-const CONDITIONAL_IMMUTABLE_TABLES = {
+// Hver immutable tabel → dens GUARD-trigger (identificeret via execute-funktion). #4 validerer at
+// netop guard-triggeren dækker update+delete — IKKE union af alle before-triggere (en almindelig
+// before-update som *_set_updated_at må ikke "dække" UPDATE-immutabilitet). flags: felter der MÅ
+// muteres (kun conditional felt-guard); null = strict eller lock-and-delete (intet felt-guard, #7 skipper).
+const IMMUTABLE_GUARDS = {
+  "core_compliance.audit_log": { guardFn: "audit_log_immutability_check", flags: null },
+  "core_compliance.anonymization_state": { guardFn: "anonymization_state_immutability_check", flags: null },
+  "core_money.cancellations": { guardFn: "cancellations_immutability_check", flags: null },
+  "core_money.salary_corrections": { guardFn: "salary_corrections_immutability_check", flags: null },
   "core_money.pay_periods": { guardFn: "pay_periods_lock_and_delete_check", flags: null },
   "core_money.commission_snapshots": {
     guardFn: "commission_snapshots_immutability_check",
@@ -1172,12 +1173,11 @@ const CROSS_SCHEMA_FK_ALLOWED_TARGETS = {
   "auth.users": "employees.auth_user_id → Supabase auth (Entra-login)",
 };
 
-// final-state-aware: surviving tables = CREATE TABLE minus DROP TABLE (kronologisk).
 // final-state-aware, kronologisk INDEN FOR hver migration: alle CREATE/DROP table+trigger samles
 // som én op-stream sorteret efter match.index og anvendes i kildekode-rækkefølge. DROP TABLE
 // cascader til tabellens triggere; CREATE TABLE nulstiller dens trigger-sæt (recreate kræver ny
 // trigger). Migrations behandles i filnavn-rækkefølge (readMigrationFiles sorterer).
-// Returnerer { tables:Set, triggers:Map(table -> Map(triggerName -> events)) }.
+// Returnerer { tables:Set, triggers:Map(table -> Map(triggerName -> {events, fn})) } — fn = execute-funktion (schema-strippet).
 function finalState(migrations) {
   const tables = new Set();
   const triggers = new Map();
@@ -1187,8 +1187,17 @@ function finalState(migrations) {
       ops.push({ i: m.index, kind: "ct", t: m[1].toLowerCase() });
     for (const m of sql.matchAll(/\bdrop\s+table\s+(?:if\s+exists\s+)?([a-z_]+\.[a-z0-9_]+)/gi))
       ops.push({ i: m.index, kind: "dt", t: m[1].toLowerCase() });
-    for (const m of sql.matchAll(/\bcreate\s+trigger\s+(\w+)\s+before\s+([a-z\s]+?)\s+on\s+([a-z_]+\.[a-z0-9_]+)/gi))
-      ops.push({ i: m.index, kind: "cg", t: m[3].toLowerCase(), name: m[1].toLowerCase(), events: m[2].toLowerCase() });
+    for (const m of sql.matchAll(
+      /\bcreate\s+trigger\s+(\w+)\s+before\s+([a-z\s]+?)\s+on\s+([a-z_]+\.[a-z0-9_]+)[\s\S]{0,200}?execute\s+(?:function|procedure)\s+(?:[a-z_]+\.)?(\w+)/gi,
+    ))
+      ops.push({
+        i: m.index,
+        kind: "cg",
+        t: m[3].toLowerCase(),
+        name: m[1].toLowerCase(),
+        events: m[2].toLowerCase(),
+        fn: m[4].toLowerCase(),
+      });
     for (const m of sql.matchAll(/\bdrop\s+trigger\s+(?:if\s+exists\s+)?(\w+)\s+on\s+([a-z_]+\.[a-z0-9_]+)/gi))
       ops.push({ i: m.index, kind: "dg", t: m[2].toLowerCase(), name: m[1].toLowerCase() });
     ops.sort((a, b) => a.i - b.i);
@@ -1201,7 +1210,7 @@ function finalState(migrations) {
         triggers.delete(o.t);
       } else if (o.kind === "cg") {
         if (!triggers.has(o.t)) triggers.set(o.t, new Map());
-        triggers.get(o.t).set(o.name, o.events);
+        triggers.get(o.t).set(o.name, { events: o.events, fn: o.fn });
       } else if (o.kind === "dg") {
         triggers.get(o.t)?.delete(o.name);
       }
@@ -1253,24 +1262,32 @@ function liveGuard(name, r) {
   return null;
 }
 
-// #4 immutability-trigger: hver immutable tabel skal have surviving BEFORE-trigger(e) der dækker
-// BÅDE update OG delete (ikke OR). Final-state-aware: trigger create/drop/recreate tracked.
+// #4 immutability-trigger: den KONKRETE guard-trigger (identificeret via execute-funktion, ikke
+// vilkårlige before-triggere som *_set_updated_at) skal dække BÅDE update OG delete. Final-state-aware.
 async function immutabilityTriggerCoverage() {
   const violations = [];
   const migrations = await readMigrationFiles();
   const { tables, triggers } = finalState(migrations);
-  for (const q of [...STRICT_IMMUTABLE_TABLES, ...Object.keys(CONDITIONAL_IMMUTABLE_TABLES)]) {
+  for (const [q, cfg] of Object.entries(IMMUTABLE_GUARDS)) {
     if (!tables.has(q.toLowerCase())) continue; // droppet tabel ignoreres
     const trigs = triggers.get(q.toLowerCase()) || new Map();
-    let upd = false,
+    const guardFn = cfg.guardFn.toLowerCase();
+    let found = false,
+      upd = false,
       del = false;
-    for (const events of trigs.values()) {
-      if (/\bupdate\b/.test(events)) upd = true;
-      if (/\bdelete\b/.test(events)) del = true;
+    for (const t of trigs.values()) {
+      if (t.fn !== guardFn) continue; // KUN guard-triggeren tæller — ikke set_updated_at o.l.
+      found = true;
+      if (/\bupdate\b/.test(t.events)) upd = true;
+      if (/\bdelete\b/.test(t.events)) del = true;
     }
-    if (!upd || !del)
+    if (!found)
       violations.push(
-        `${q}: immutable tabel mangler surviving BEFORE-trigger der dækker BÅDE update og delete (update=${upd}, delete=${del})`,
+        `${q}: guard-trigger (execute ${cfg.guardFn}) ikke fundet/surviving — immutabilitet ikke håndhævet`,
+      );
+    else if (!upd || !del)
+      violations.push(
+        `${q}: guard-trigger ${cfg.guardFn} dækker ikke BÅDE update og delete (update=${upd}, delete=${del})`,
       );
   }
   return { name: "immutability-trigger-coverage", violations };
@@ -1283,7 +1300,7 @@ async function snapshotFieldProtection() {
   const migrations = await readMigrationFiles();
   const allSql = migrations.map((x) => x.sql).join("\n");
   const { tables } = finalState(migrations);
-  for (const [q, cfg] of Object.entries(CONDITIONAL_IMMUTABLE_TABLES)) {
+  for (const [q, cfg] of Object.entries(IMMUTABLE_GUARDS)) {
     if (cfg.flags === null || !tables.has(q.toLowerCase())) continue;
     const body = lastFunctionBody(allSql, cfg.guardFn);
     if (!body) {
