@@ -1403,24 +1403,38 @@ export function classifyIdColumn(key, { isPK, hasFK, targetExists }) {
 
 // #6 helper (ren — unit-testet i selftest): udtræk current-table-prædikat-kolonner fra en policy-qual.
 // (1) strip current_setting('...')-kald (string-arg må ikke forveksles med kolonne); (2) eksplicit
-// current-table-kvalificering (<tabel>.col) tælles; (3) fremmed-alias-kvalificerede refs (alias.col hvor
-// alias != tabel, fx subquery-alias act.id) fjernes; (4) ukvalificerede tokens der matcher current-table-
-// kolonner tælles (fanger korreleret action_id). Codex HØJ-fix: act.id falsk-matcher ikke pending_changes.id.
+// current-table-kvalificering (<tabel>.col / <schema>.<tabel>.col) tælles; (3) alle kvalificerede refs
+// (alias.col / schema.table.col) fjernes; (4) ukvalificerede tokens der matcher current-table-kolonner
+// tælles (fanger korreleret action_id). Codex HØJ-fix: fremmede refs falsk-matcher ikke current-table.
 export function predicateColumns(expr, tableCols, tableName) {
   const cols = new Set((tableCols || []).map((c) => c.toLowerCase()));
   const lowerName = (tableName || "").toLowerCase();
   const short = lowerName.includes(".") ? lowerName.split(".").pop() : lowerName;
   const s = (expr || "").toLowerCase().replace(/current_setting\s*\([^)]*\)/g, " ");
   const found = new Set();
-  // (2) eksplicit current-table-kvalificering: <tabel>.col eller <short>.col
-  for (const m of s.matchAll(/(\w+)\.(\w+)/g)) {
-    const [, qualifier, col] = m;
+  const dotted = /\b[a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)+\b/g;
+  // (2) eksplicit current-table-kvalificering: <tabel>.col eller <schema>.<tabel>.col
+  for (const m of s.matchAll(dotted)) {
+    const parts = m[0].split(".");
+    const col = parts.at(-1);
+    const qualifier = parts.slice(0, -1).join(".");
     if ((qualifier === short || qualifier === lowerName) && cols.has(col)) found.add(col);
   }
-  // (3) fjern ALLE kvalificerede alias.col (fremmed-alias droppes); (4) tokenisér resten
-  const unqualified = s.replace(/\w+\.\w+/g, " ");
+  // (3) fjern ALLE kvalificerede refs som hele dotted chains; (4) tokenisér resten
+  const unqualified = s.replace(dotted, " ");
   for (const tok of unqualified.match(/[a-z_][a-z0-9_]*/g) || []) if (cols.has(tok)) found.add(tok);
   return found;
+}
+
+// #6 helper (ren — unit-testet): leading btree-kolonner pr. tabel. Non-btree må ikke tælle som dækning.
+export function leadingBtreeColumns(rows) {
+  const byTbl = new Map();
+  for (const row of rows || []) {
+    if ((row.amname || row.am || "").toLowerCase() !== "btree") continue;
+    if (!byTbl.has(row.tbl)) byTbl.set(row.tbl, new Set());
+    byTbl.get(row.tbl).add(row.col.toLowerCase());
+  }
+  return byTbl;
 }
 
 // #19 FK-dækning (live, fail-closed i CI): hver *_id-reference på core_* har FK, er PK, er exempt,
@@ -1481,23 +1495,20 @@ async function indexPerPolicy() {
   const cg = liveGuard("index-per-policy", cr);
   if (cg) return cg;
   const lr = await liveQuery(
-    `select n.nspname||'.'||t.relname as tbl, a.attname as col
+    `select n.nspname||'.'||t.relname as tbl, a.attname as col, am.amname
      from pg_index i join pg_class t on i.indrelid=t.oid join pg_namespace n on t.relnamespace=n.oid
+     join pg_class idx on idx.oid=i.indexrelid join pg_am am on am.oid=idx.relam
      join pg_attribute a on a.attrelid=t.oid and a.attnum=i.indkey[0]
-     where n.nspname like 'core_%';`,
+     where n.nspname like 'core_%' and am.amname='btree';`,
   );
   const lg = liveGuard("index-per-policy", lr);
   if (lg) return lg;
   const colsByTbl = new Map();
-  const leadByTbl = new Map();
   for (const row of cr.rows) {
     if (!colsByTbl.has(row.tbl)) colsByTbl.set(row.tbl, []);
     colsByTbl.get(row.tbl).push(row.col);
   }
-  for (const row of lr.rows) {
-    if (!leadByTbl.has(row.tbl)) leadByTbl.set(row.tbl, new Set());
-    leadByTbl.get(row.tbl).add(row.col.toLowerCase());
-  }
+  const leadByTbl = leadingBtreeColumns(lr.rows);
   const violations = [];
   for (const p of pr.rows) {
     const cols = colsByTbl.get(p.tbl) || [];
