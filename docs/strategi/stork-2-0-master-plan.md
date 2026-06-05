@@ -1497,10 +1497,6 @@ Ikke en særmodel. Type-felt på lokation: messe eller marked blandt mulige vær
 
 **Syntetisk data-generator:** Pre-bygget mod realistisk skala-profil. Genereres deterministisk (samme seed → samme data) så benchmark-resultater er sammenlignelige over commits.
 
-### Zone-disciplin
-
-Pre-commit-hook kræver "ZONE: red"-prefix for ændringer i `core_*`-schemas, `@stork/core`, pricing-/permissions-/lønberegnings-filer.
-
 ---
 
 ## §4 Byggerækkefølge

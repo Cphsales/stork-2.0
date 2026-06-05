@@ -60,6 +60,9 @@ jobs:
       - name: Fitness functions
         run: pnpm fitness
 
+      - name: Fitness selftest (§3-checks negativ-test)
+        run: pnpm fitness:selftest
+
       - name: Governance check (lag-1 spærhage)
         run: pnpm governance:check
 
