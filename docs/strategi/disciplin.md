@@ -66,6 +66,8 @@ Claude.ai skriver `docs/coordination/<pakke>-krav-og-data.md` fra Mathias' chat-
 
 Mathias paster `qwerg` når Codex har approved OG Mathias selv har læst igennem.
 
+**Forudsætning — fundament-validering (grøn før qwerg):** planen skal stå på mål med vision + forretningsforstaaelse. Almindelig plan bekræfter "ingen forretnings-intentions-ændring" (Doc-currency A, §10.2). Plan der ændrer intention: fundament-doc'en reconciles først gennem §8.1-gaten + Mathias' CODEOWNERS — FØR qwerg. Modsigelses-konsekvens per §8 (vision LÅST = STOP). En plan godkendes ikke stående på fundament den modsiger.
+
 ### Step 4 — Build
 
 Batches på 3-5 migrations. Patch-først (§3.1). End-to-end-konsistens per batch. Smoke-fejl → STOP-gate (§3.7).
@@ -321,9 +323,25 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 
 [Konkret smoke-test-fil + flow]
 
-## Oprydnings- og opdaterings-strategi
+## Doc-currency
 
-[Hvilke autoritative docs opdateres: forretningsforstaaelse, master-plan, teknisk-gaeld]
+**A. Fundament-validering (FØR qwerg — jf. §2 Step 3):**
+Står planen på mål med vision + forretningsforstaaelse?
+
+- Ingen intent-ændring: "verificeret current pr. <hash>".
+- Intent-ændring: hvilken fundament-doc reconciles gennem §8.1-gate FØR qwerg.
+
+**B. Status-opdatering (committes MED merge-commit, ikke ved Step 5-review):**
+Eksplicit verdikt pr. række — ingen tom:
+
+| Doc                        | Berørt? | Opdatering / N/A            |
+| -------------------------- | ------- | --------------------------- |
+| aktiv-plan.md              | ja/nej  | pakke-status → ny tilstand  |
+| seneste-rapport.md         | ja/nej  | ny rapport-sti + commit     |
+| master-plan §4.1 status    | ja/nej  | trin-status                 |
+| teknisk-gaeld.md (G)       | ja/nej  | G rejst/løst                |
+| huskeliste.md (H)          | ja/nej  | H rejst/løst                |
+| disciplin "Forudsætninger" | ja/nej  | milestone gjort (§8.1-gate) |
 ```
 
 ### §10.3 Slut-rapport-skabelon
@@ -429,9 +447,9 @@ Adoption af denne fil er første skridt, ikke hele V5. Udestår:
 
 - **Docs-oprydning (Claude.ai's bord):** fold arkivet til git-history (gov-6).
 - **Master-plan (Claude.ai's bord):** afklar om Appendix C's rettelses-historik hører i planen eller i historik.
-- **Fundament + spærhager (Codes bord):** de manglende CI-blockers (gov-3, i gang) · branch protection (gov-4) · Codex-runner + auto-merge + plan-branch-trigger (gov-5).
+- **Fundament + spærhager (Codes bord):** resterende CI-blocker (gov-3b-2: #10 SECDEF + #18 app-write) · branch protection (gov-4) · Codex-runner + auto-merge + plan-branch-trigger (gov-5).
 
-Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)**.
+Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)** · **gov-docs-housekeeping (krav-dok-familie, PR #94 merged)** · **gov-3a (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95 merged)** · **gov-3b-1 (#19 FK-dækning + #6 indeks-pr-policy, PR #96 merged)**.
 
 V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ikke ved siden af.
 
