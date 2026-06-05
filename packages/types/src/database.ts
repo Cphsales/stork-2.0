@@ -3268,33 +3268,7 @@ export type Database = {
   };
   public: {
     Tables: {
-      gov1_registry_backup: {
-        Row: {
-          created_by: string | null;
-          idempotency_key: string | null;
-          name: string | null;
-          rollback: string[] | null;
-          statements: string[] | null;
-          version: string | null;
-        };
-        Insert: {
-          created_by?: string | null;
-          idempotency_key?: string | null;
-          name?: string | null;
-          rollback?: string[] | null;
-          statements?: string[] | null;
-          version?: string | null;
-        };
-        Update: {
-          created_by?: string | null;
-          idempotency_key?: string | null;
-          name?: string | null;
-          rollback?: string[] | null;
-          statements?: string[] | null;
-          version?: string | null;
-        };
-        Relationships: [];
-      };
+      [_ in never]: never;
     };
     Views: {
       [_ in never]: never;
