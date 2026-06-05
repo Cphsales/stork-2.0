@@ -90,7 +90,14 @@ plant(
       join(d, "supabase/migrations/99999999999999_zz_drop_immut.sql"),
       "drop trigger audit_log_immutability on core_compliance.audit_log;\n",
     ),
-  "core_compliance\\.audit_log: immutable tabel mangler surviving BEFORE-trigger",
+  "guard-trigger \\(execute audit_log_immutability_check\\) ikke fundet",
+);
+// #4 GUARD-specifik: pay_periods-guard ændret til delete-only, men pay_periods_set_updated_at
+// (before update) intakt -> union ville false-green'e; guard-specifik check fanger det (Codex runde 3)
+plant(
+  "#4 guard delete-only m. set_updated_at intakt -> fanges (ikke union)",
+  (d) => sed(d, "s/before update or delete on core_money.pay_periods/before delete on core_money.pay_periods/I"),
+  "pay_periods_lock_and_delete_check dækker ikke BÅDE update og delete \\(update=false, delete=true\\)",
 );
 // #7 manglende mutable-flag i guard
 plant(
@@ -114,7 +121,7 @@ plant(
       join(d, "supabase/migrations/99999999999998_core_money_recreate_cancel.sql"),
       "drop table core_money.cancellations;\ncreate table core_money.cancellations (id uuid primary key);\n",
     ),
-  "core_money\\.cancellations: immutable tabel mangler surviving BEFORE-trigger",
+  "guard-trigger \\(execute cancellations_immutability_check\\) ikke fundet",
 );
 // #7 old/new-sammenligning fjernet (if false then) -> guard raiser ikke ved snapshot-felt-ændring
 plant(

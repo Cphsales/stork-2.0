@@ -10,14 +10,14 @@ Lav-brud-flade halvdel af gov-3: byg de §3-fitness-blockers der mangler og pass
 
 ## Leverancer (mod plan)
 
-| Leverance               | Status | Evidens                                                                                                                                                                                      |
-| ----------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #4 immutability-trigger | ✓      | `immutabilityTriggerCoverage` (static) — kræver surviving BEFORE-trigger der dækker **BÅDE update OG delete**; trigger create/drop/recreate final-state-tracked. Grøn mod main               |
-| #7 snapshot-disciplin   | ✓      | **To lag:** `snapshotFieldProtection` (static) — old/new-sammenligning koblet til RAISE + PRÆCIS undtagelses-sæt; **+ behavioral: `db:test` r3** (amount-UPDATE → P0001, flag-UPDATE lykkes) |
-| #16 schema-ownership    | ✓      | `schemaOwnership` (live pg_class, **fail-closed i CI**) — grøn; 0 stork-tabeller i public                                                                                                    |
-| #17 cross-schema-FK     | ✓      | `crossSchemaFkDiscipline` (live pg_constraint, **fail-closed i CI**) — grøn; 12 FKs alle → allowlist-mål (employees/auth.users)                                                              |
-| zone-§3-fjernelse       | ✓      | master-plan §3 "Zone-disciplin"-paragraf fjernet (§8.1-gate: governance:check grøn)                                                                                                          |
-| Negativ-test (§3.6)     | ✓      | `fitness:selftest` — baseline + 6 negativ-cases (fail-closed, #4 update-only/delete-only/drop-after-create, #7 manglende/ekstra flag) — alle fanges (se build-review-sektion)                |
+| Leverance               | Status | Evidens                                                                                                                                                                                                                                                |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| #4 immutability-trigger | ✓      | `immutabilityTriggerCoverage` (static) — den **konkrete guard-trigger** (identificeret via execute-funktion, ikke union af alle before-triggere) skal dække **BÅDE update OG delete**; trigger create/drop/recreate final-state-tracked. Grøn mod main |
+| #7 snapshot-disciplin   | ✓      | **To lag:** `snapshotFieldProtection` (static) — old/new-sammenligning koblet til RAISE + PRÆCIS undtagelses-sæt; **+ behavioral: `db:test` r3** (amount-UPDATE → P0001, flag-UPDATE lykkes)                                                           |
+| #16 schema-ownership    | ✓      | `schemaOwnership` (live pg_class, **fail-closed i CI**) — grøn; 0 stork-tabeller i public                                                                                                                                                              |
+| #17 cross-schema-FK     | ✓      | `crossSchemaFkDiscipline` (live pg_constraint, **fail-closed i CI**) — grøn; 12 FKs alle → allowlist-mål (employees/auth.users)                                                                                                                        |
+| zone-§3-fjernelse       | ✓      | master-plan §3 "Zone-disciplin"-paragraf fjernet (§8.1-gate: governance:check grøn)                                                                                                                                                                    |
+| Negativ-test (§3.6)     | ✓      | `fitness:selftest` — baseline + 8 negativ-cases (fail-closed; #4 update-only/delete-only/drop-after-create/same-file-recreate/guard-delete-only; #7 manglende-flag/ekstra-felt/sammenligning-fjernet) — alle fanges; + `db:test` r3 behavioral         |
 
 **Alle 23 fitness-checks grønne mod main** (19 eksisterende + 4 nye). governance:check grøn (master-plan-ændring). Ingen reel brud-flade — som planlagt.
 
@@ -67,6 +67,14 @@ Rapport-påstanden om final-state-aware (Codex #3) er rettet til at matche koden
 | #B2 #4-parser ikke kronologisk inden-for-fil (create-så-drop i to passes) | `finalState`: én op-stream pr. migration sorteret efter `match.index`; DROP TABLE cascader til triggere; CREATE TABLE nulstiller trigger-sæt                                                                                                  | `#4 same-file drop+recreate table uden trigger -> fanges` |
 
 **#7 to-lags-bevis:** `snapshotFieldProtection` (fitness, static, struktur) + `r3_commission_snapshots_immutability.sql` (`db:test`, behavioral mod live, tx-wrapped). Den behavioral test er det autoritative bevis for at snapshot-felt-UPDATE blokeres; static-checken er hurtig struktur-sikring.
+
+### Build-review runde 3 — 1 KRITISK rettet
+
+| Fund                                                                                                                                                                                            | Rettelse                                                                                                                                                                          | Negativ-test                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| #C1 #4 union'ede events på tværs af ALLE before-triggere — en almindelig `pay_periods_set_updated_at` (before update) kunne "dække" UPDATE-immutabilitet, selvom selve guarden blev delete-only | `finalState` gemmer nu hver triggers **execute-funktion**; #4 validerer at **netop guard-triggeren** (matchet på `IMMUTABLE_GUARDS[q].guardFn`) dækker update+delete — ikke union | `#4 guard delete-only m. set_updated_at intakt -> fanges (ikke union)` |
+
+Konsekvens: #4-besked er nu guard-specifik ("guard-trigger `<fn>` dækker ikke BÅDE update og delete" / "guard-trigger (execute `<fn>`) ikke fundet"). Runde-1/2's "union"-formulering er afløst.
 
 ## Konvergens-historie
 
