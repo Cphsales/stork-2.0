@@ -9,6 +9,7 @@ import { execSync } from "node:child_process";
 import { mkdtempSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { predicateColumns, classifyIdColumn } from "./fitness.mjs";
 
 const ROOT = process.cwd();
 let failed = 0;
@@ -129,6 +130,74 @@ plant(
   (d) => sed(d, "s/if v_old <> v_new then/if false then/Ig"),
   "ingen old/new-sammenligning",
 );
+
+// ─── gov-3b-1: rene-helper unit-tests (#19 FK-dækning + #6 indeks-pr-policy) ──
+// Behavioral bevis uden DB: parserne fanger brud (ikke kun grøn mod main).
+{
+  const eq = (n, got, want) =>
+    got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, ville ${JSON.stringify(want)}`);
+
+  // #6 predicateColumns
+  eq(
+    "#6 session-var-gate -> ingen prædikat-kolonne",
+    predicateColumns("(current_setting('stork.allow_x_write', true) = 'true'::text)", ["id", "status"], "core_x.t")
+      .size,
+    0,
+  );
+  {
+    const r = predicateColumns("(auth_user_id = auth.uid())", ["auth_user_id", "id"], "core_identity.employees");
+    r.has("auth_user_id") && !r.has("uid") && r.size === 1
+      ? ok("#6 reel kolonne auth_user_id (ikke auth.uid)")
+      : bad("#6 auth_user_id", [...r].join(","));
+  }
+  {
+    // Codex HØJ-negativ-test: fremmed-alias act.id må IKKE blive pending_changes.id
+    const r = predicateColumns(
+      "exists (select 1 from core_identity.permission_actions act where act.id = action_id)",
+      ["id", "action_id", "requested_by"],
+      "core_identity.pending_changes",
+    );
+    r.has("action_id") && !r.has("id")
+      ? ok("#6 Codex-negativ: act.id -> {action_id}, ikke {id}")
+      : bad("#6 act.id falsk-match", [...r].join(","));
+  }
+  {
+    const r = predicateColumns(
+      "pending_changes.requested_by = current_employee_id()",
+      ["requested_by"],
+      "core_identity.pending_changes",
+    );
+    r.has("requested_by")
+      ? ok("#6 eksplicit current-table-kvalificering tælles")
+      : bad("#6 requested_by", [...r].join(","));
+  }
+  eq(
+    "#6 setting-streng m. tabel-navn -> ingen falsk kolonne",
+    predicateColumns("current_setting('stork.allow_clients_write', true)='true'", ["id"], "core_identity.clients").size,
+    0,
+  );
+
+  // #19 classifyIdColumn
+  const cv = (k, o) => classifyIdColumn(k, o);
+  eq("#19 PK -> null", cv("core_identity.org_node_versions.version_id", { isPK: true, hasFK: false }), null);
+  eq("#19 hasFK -> null", cv("core_money.commission_snapshots.employee_id", { isPK: false, hasFK: true }), null);
+  eq("#19 exemption -> null", cv("core_money.cancellations.match_id", { isPK: false, hasFK: false }), null);
+  eq(
+    "#19 FK_PENDING m. target fraværende -> null",
+    cv("core_money.cancellations.source_sale_id", { isPK: false, hasFK: false, targetExists: false }),
+    null,
+  );
+  {
+    const v = cv("core_money.cancellations.source_sale_id", { isPK: false, hasFK: false, targetExists: true });
+    v && /grace udløbet/.test(v)
+      ? ok("#19 FK_PENDING selv-udløb: target findes uden FK -> violation")
+      : bad("#19 selv-udløb", String(v));
+  }
+  {
+    const v = cv("core_money.cancellations.mystery_id", { isPK: false, hasFK: false });
+    v && /uden FK/.test(v) ? ok("#19 ukendt *_id uden FK -> violation") : bad("#19 ukendt", String(v));
+  }
+}
 
 if (failed) {
   console.error(`\nfitness selftest FEJLEDE (${failed})`);

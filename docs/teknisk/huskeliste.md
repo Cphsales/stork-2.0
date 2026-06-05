@@ -40,6 +40,11 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 - **Handling:** Sporer den hårde deadline knyttet til G039 (se `teknisk-gaeld.md`). Lukkes når G039 er løst inden for deadline, eller eskaleres til Mathias hvis deadline nærmer sig.
 - **Status:** åben.
 
+### [H025] Sale-FK'er + orphan-oprydning ved Trin 14
+
+- **Handling:** Når `core_money.sales` bygges (Trin 14): (1) tilføj FK `cancellations.source_sale_id`, `commission_snapshots.sale_id`, `salary_corrections.source_sale_id` → `sales.id` (med §3.9-preflight); (2) ryd de 290 orphan `commission_snapshots.sale_id`-værdier der ellers blokerer `ADD CONSTRAINT`; (3) fjern de 3 `FK_PENDING`-entries i `scripts/fitness.mjs`.
+- **Status:** åben (Trin 14-blocker). Rejst af gov-3b-1 (#19 FK-dækning). #19's selv-udløb gør (3) mekanisk håndhævet — `fk-coverage` bliver rød hvis FK'erne mangler efter `sales` findes.
+
 ---
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
