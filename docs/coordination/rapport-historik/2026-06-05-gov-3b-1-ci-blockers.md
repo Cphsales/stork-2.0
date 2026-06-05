@@ -1,6 +1,6 @@
 # gov-3b-1 — Slut-rapport
 
-**Dato:** 2026-06-05 · **Branch:** claude/gov-3b-1-ci-blockers-build · **Merge-commit:** \<afventer merge\>
+**Dato:** 2026-06-05 · **Branch:** claude/gov-3b-1-ci-blockers-build · **Merge-commit:** a88d217 (PR #96, rebase-merge til main)
 
 ## Formål (genfremlagt fra krav-dok)
 
