@@ -40,9 +40,9 @@ bygge-rækkefølge og split i plan-fasen; krav-dok'en fastlåser den ikke.
 
 1. **gov-1 — paritet-grøn** · LEVERET 2026-06-04. Repo↔live-DB migration-registre
    bragt i overensstemmelse; CI grøn mod live. _(gov-1 slut-rapport)_
-2. **gov-2 — vagt** · LEVERET 2026-06-05, slut-rapport afventer Claude.ai-review
-   før merge. Mekanisk lag-1 governance-scanner + owns-register + Codex-mandat
-   (§8.1) + H-hjem (huskeliste.md). _(gov-2 slut-rapport)_
+2. **gov-2 — vagt** · MERGED (PR #93, main @ e1273c9; slut-rapport:
+   `rapport-historik/2026-06-05-gov-2-vagt.md`). Mekanisk lag-1 governance-scanner,
+   owns-register, Codex-mandat (§8.1) og H-hjem (huskeliste.md). _(gov-2 slut-rapport)_
 3. **gov-3 — CI-blockers** · Færdiggør fitness-laget: de af master-plan §3's 20
    checks der mangler. Hvilke der mangler afgøres af Codes live-dump, ikke af
    doc'en. _(aktiv-plan; disciplin "Forudsætninger")_
