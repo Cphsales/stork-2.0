@@ -1183,57 +1183,92 @@ function survivingQualifiedTables(migrations) {
   }
   return set;
 }
-// BEFORE-trigger (events incl. update/delete) på qualified tabel i nogen migration
-function hasBeforeUpdateDeleteTrigger(allSql, qualified) {
-  const re = new RegExp(
-    `create\\s+trigger\\s+\\w+\\s+before\\s+([a-z\\s]+?)\\s+on\\s+${qualified.replace(".", "\\.")}\\b`,
-    "gi",
-  );
-  let m;
-  while ((m = re.exec(allSql))) if (/\b(update|delete)\b/.test(m[1].toLowerCase())) return true;
-  return false;
+// final-state-aware trigger-tracking: surviving BEFORE-triggere pr. tabel (CREATE minus DROP,
+// kronologisk — senere DROP TRIGGER fjerner den). Map(qualified-table -> Map(triggerName -> events)).
+function survivingTriggers(migrations) {
+  const byTable = new Map();
+  for (const { sql } of migrations) {
+    for (const m of sql.matchAll(/\bcreate\s+trigger\s+(\w+)\s+before\s+([a-z\s]+?)\s+on\s+([a-z_]+\.[a-z0-9_]+)/gi)) {
+      const t = m[3].toLowerCase();
+      if (!byTable.has(t)) byTable.set(t, new Map());
+      byTable.get(t).set(m[1].toLowerCase(), m[2].toLowerCase());
+    }
+    for (const m of sql.matchAll(/\bdrop\s+trigger\s+(?:if\s+exists\s+)?(\w+)\s+on\s+([a-z_]+\.[a-z0-9_]+)/gi)) {
+      byTable.get(m[2].toLowerCase())?.delete(m[1].toLowerCase());
+    }
+  }
+  return byTable;
 }
-// sidste create-or-replace-function-blok for en navngiven guard-funktion (final-state)
+// sidste create-or-replace-function-blok for en navngiven guard-funktion (final-state).
+// Returnerer den dollar-quotede body ($tag$ ... $tag$), så undtagelses-parsing er afgrænset.
 function lastFunctionBody(allSql, fnName) {
-  const parts = allSql.split(/create\s+or\s+replace\s+function/gi);
-  let last = null;
-  for (let i = 1; i < parts.length; i++)
-    if (new RegExp(`\\b${fnName}\\b`, "i").test(parts[i].slice(0, 200))) last = parts[i];
+  const re = /create\s+or\s+replace\s+function\s+([\s\S]*?)\$(\w*)\$([\s\S]*?)\$\2\$/gi;
+  let last = null,
+    m;
+  while ((m = re.exec(allSql))) if (new RegExp(`\\b${fnName}\\b`, "i").test(m[1])) last = m[3];
   return last;
 }
 async function liveQuery(query) {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-  if (!token) return { skipped: "SUPABASE_ACCESS_TOKEN ikke sat" };
+  if (!token) return { noToken: true };
   try {
     const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
-    if (!res.ok) return { soft: `Management API ${res.status}` };
+    if (!res.ok) return { apiError: `Management API ${res.status}` };
     const body = await res.json();
     return { rows: Array.isArray(body) ? body : body.result || body.rows || [] };
   } catch (err) {
-    return { soft: `Network fejl: ${err.message}` };
+    return { apiError: `Network fejl: ${err.message}` };
   }
 }
+// fail-closed: required live-checks må IKKE skippe-til-grøn i CI. Mangler token / API-fejl i CI = violation.
+// Lokalt (uden CI) skippes for udvikler-flow. Returnerer et check-resultat hvis guard rammer, ellers null.
+function liveGuard(name, r) {
+  if (r.noToken) {
+    if (process.env.CI)
+      return {
+        name,
+        violations: [`SUPABASE_ACCESS_TOKEN mangler i CI — required live-check kan ikke køre (fail-closed)`],
+      };
+    return { name, violations: [], skipped: "SUPABASE_ACCESS_TOKEN ikke sat (lokal)" };
+  }
+  if (r.apiError) {
+    if (process.env.CI) return { name, violations: [`live-query fejl: ${r.apiError} (fail-closed i CI)`] };
+    return { name, violations: [r.apiError], soft: true };
+  }
+  return null;
+}
 
-// #4 immutability-trigger
+// #4 immutability-trigger: hver immutable tabel skal have surviving BEFORE-trigger(e) der dækker
+// BÅDE update OG delete (ikke OR). Final-state-aware: trigger create/drop/recreate tracked.
 async function immutabilityTriggerCoverage() {
   const violations = [];
   const migrations = await readMigrationFiles();
-  const allSql = migrations.map((x) => x.sql).join("\n");
   const surviving = survivingQualifiedTables(migrations);
+  const triggers = survivingTriggers(migrations);
   for (const q of [...STRICT_IMMUTABLE_TABLES, ...Object.keys(CONDITIONAL_IMMUTABLE_TABLES)]) {
     if (!surviving.has(q.toLowerCase())) continue; // droppet tabel ignoreres
-    if (!hasBeforeUpdateDeleteTrigger(allSql, q))
-      violations.push(`${q}: immutable tabel mangler BEFORE UPDATE/DELETE-trigger`);
+    const trigs = triggers.get(q.toLowerCase()) || new Map();
+    let upd = false,
+      del = false;
+    for (const events of trigs.values()) {
+      if (/\bupdate\b/.test(events)) upd = true;
+      if (/\bdelete\b/.test(events)) del = true;
+    }
+    if (!upd || !del)
+      violations.push(
+        `${q}: immutable tabel mangler surviving BEFORE-trigger der dækker BÅDE update og delete (update=${upd}, delete=${del})`,
+      );
   }
   return { name: "immutability-trigger-coverage", violations };
 }
 
-// #7 snapshot-felt-beskyttelse: sidste guard-funktion for conditional-felt-tabel skal referere hver mutable-flag
+// #7 snapshot-felt-beskyttelse: sidste guard-funktion skal (a) RAISE og (b) undtage PRÆCIS
+// mutable-flag-sættet — et ekstra mutérbart snapshot-felt (eller et manglende flag) skal fejle.
 async function snapshotFieldProtection() {
   const violations = [];
   const migrations = await readMigrationFiles();
@@ -1246,29 +1281,36 @@ async function snapshotFieldProtection() {
       violations.push(`${q}: guard-funktion ${cfg.guardFn} ikke fundet`);
       continue;
     }
-    for (const f of cfg.flags)
-      if (!new RegExp(`'${f}'`).test(body))
-        violations.push(
-          `${q}: ${cfg.guardFn} beskytter ikke snapshot-felter korrekt — mutable-flag '${f}' ikke undtaget`,
-        );
+    if (!/raise\s+(exception|sqlstate)/i.test(body))
+      violations.push(`${q}: ${cfg.guardFn} har ingen RAISE — håndhæver ikke immutabilitet`);
+    // jsonb-subtraktions-undtagelser (`- '<felt>'`) skal være PRÆCIS flag-sættet
+    const excluded = new Set([...body.matchAll(/-\s*'(\w+)'/g)].map((m) => m[1].toLowerCase()));
+    const expected = new Set(cfg.flags.map((f) => f.toLowerCase()));
+    const extra = [...excluded].filter((f) => !expected.has(f));
+    const missing = [...expected].filter((f) => !excluded.has(f));
+    if (extra.length)
+      violations.push(
+        `${q}: ${cfg.guardFn} undtager EKSTRA felt(er) fra immutabilitet: ${extra.join(", ")} (kun ${cfg.flags.join(", ")} må muteres)`,
+      );
+    if (missing.length) violations.push(`${q}: ${cfg.guardFn} undtager ikke mutable-flag(s): ${missing.join(", ")}`);
   }
   return { name: "snapshot-field-protection", violations };
 }
 
-// #16 schema-ownership (live): ingen stork-tabel i public
+// #16 schema-ownership (live, fail-closed i CI): ingen stork-tabel i public
 async function schemaOwnership() {
   const r = await liveQuery(
     `select c.relname as t from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname='public';`,
   );
-  if (r.skipped) return { name: "schema-ownership", violations: [], skipped: r.skipped };
-  if (r.soft) return { name: "schema-ownership", violations: [r.soft], soft: true };
+  const g = liveGuard("schema-ownership", r);
+  if (g) return g;
   return {
     name: "schema-ownership",
     violations: r.rows.map((x) => `public.${x.t}: stork-tabel i public — skal ligge i core_*`),
   };
 }
 
-// #17 cross-schema-FK (live): cross-schema-FK fra core_* skal ramme allowlist-mål, ellers review
+// #17 cross-schema-FK (live, fail-closed i CI): cross-schema-FK fra core_* skal ramme allowlist-mål, ellers review
 async function crossSchemaFkDiscipline() {
   const r =
     await liveQuery(`select con.conname, sn.nspname||'.'||sc.relname as src, tn.nspname||'.'||tc.relname as target
@@ -1276,8 +1318,8 @@ async function crossSchemaFkDiscipline() {
     join pg_class sc on con.conrelid=sc.oid join pg_namespace sn on sc.relnamespace=sn.oid
     join pg_class tc on con.confrelid=tc.oid join pg_namespace tn on tc.relnamespace=tn.oid
     where con.contype='f' and sn.nspname<>tn.nspname and sn.nspname like 'core_%';`);
-  if (r.skipped) return { name: "cross-schema-fk-discipline", violations: [], skipped: r.skipped };
-  if (r.soft) return { name: "cross-schema-fk-discipline", violations: [r.soft], soft: true };
+  const g = liveGuard("cross-schema-fk-discipline", r);
+  if (g) return g;
   const violations = [];
   for (const row of r.rows)
     if (!CROSS_SCHEMA_FK_ALLOWED_TARGETS[row.target])
