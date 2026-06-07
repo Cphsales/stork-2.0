@@ -58,7 +58,7 @@ begin
     raise exception 'permission_denied' using errcode = '42501';
   end if;
   if p_type not in ('above', 'superadmin') then
-    raise exception 'invalid_approver_type: %', p_type using errcode = '22023';
+    raise exception 'invalid_approver_type: % (forventet: above eller superadmin)', p_type using errcode = '22023';
   end if;
   select requires_second_approver into v_requires from core_identity.permission_actions where id = p_action_id;
   if not found then
