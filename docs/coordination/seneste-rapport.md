@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-06-07-gov-3b-3b.md` (PR #105, main @ `<udfyldes ved merge>`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-06-07-gov-3b-3b.md` (PR #105, main @ `7be6511`)
 
 Når ny rapport leveres:
 
