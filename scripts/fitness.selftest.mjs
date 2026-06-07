@@ -9,7 +9,13 @@ import { execSync } from "node:child_process";
 import { mkdtempSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { predicateColumns, classifyIdColumn, leadingBtreeColumns, secdefMarkerViolations } from "./fitness.mjs";
+import {
+  predicateColumns,
+  classifyIdColumn,
+  leadingBtreeColumns,
+  secdefMarkerViolations,
+  appWriteViolations,
+} from "./fitness.mjs";
 
 const ROOT = process.cwd();
 let failed = 0;
@@ -255,6 +261,28 @@ plant(
       ? ok("#10 stale allowlist-entry -> violation")
       : bad("#10 stale entry", JSON.stringify(v));
   }
+}
+
+// ─── gov-3b-3b: ren-helper unit-tests (#18 app-write-REVOKE-disciplin) ──
+// Mekanisk §3.6-bevis uden live-DB: ren tilstand, app-rolle-write fanges, exemption respekteres.
+{
+  // ren tilstand (ingen app-rolle-write) -> 0 violations
+  appWriteViolations([], {}).length === 0
+    ? ok("#18 ingen app-write -> 0 violations")
+    : bad("#18 baseline", "forventede 0");
+  // app-rolle med write på core_* -> violation
+  {
+    const v = appWriteViolations([{ tbl: "core_identity.clients", role: "authenticated", priv: "INSERT" }], {});
+    v.length === 1 && /skal skrive via SECURITY DEFINER-RPC/.test(v[0])
+      ? ok("#18 authenticated INSERT på core_* -> violation")
+      : bad("#18 violation", JSON.stringify(v));
+  }
+  // exemption -> skippes
+  appWriteViolations([{ tbl: "core_identity.clients", role: "authenticated", priv: "INSERT" }], {
+    "core_identity.clients.authenticated.INSERT": "begrundet undtagelse",
+  }).length === 0
+    ? ok("#18 exemption -> skippes")
+    : bad("#18 exemption", "forventede 0");
 }
 
 if (failed) {
