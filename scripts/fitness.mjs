@@ -1624,6 +1624,13 @@ const SECDEF_SANCTIONED = {
   "core_identity.permission_tab_upsert(p_id uuid, p_page_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
     "write-rpc",
   "core_identity.permission_tab_deactivate(p_tab_id uuid)": "write-rpc",
+  // gov-3b-3b: resterende T9-write-RPC'er konverteret INVOKER→SECDEF (#18 retning A, lukker G065)
+  "core_identity.pending_change_approve(p_change_id uuid)": "write-rpc",
+  "core_identity.pending_change_undo(p_change_id uuid)": "write-rpc",
+  "core_identity.role_permission_grant_set(p_role_id uuid, p_element_type text, p_element_id uuid, p_can_access boolean, p_can_write boolean, p_visibility text)":
+    "write-rpc",
+  "core_identity.role_permission_grant_remove(p_role_id uuid, p_element_type text, p_element_id uuid)": "write-rpc",
+  "core_identity.undo_setting_update(p_change_type text, p_undo_period_seconds integer)": "write-rpc",
   // ── core_money ──
   "core_money._compute_period_data_checksum(p_period_id uuid)": "intern-helper",
   "core_money._pay_period_compute_candidate_internal(p_period_id uuid, p_change_reason text)": "intern-helper",
@@ -1698,6 +1705,43 @@ async function secdefMarkerDiscipline() {
   return { name: "secdef-marker-discipline", violations: secdefMarkerViolations(rows, SECDEF_SANCTIONED) };
 }
 
+// ─── gov-3b-3b: §3-blocker #18 (app-write-REVOKE-disciplin) ─────────────────────
+// App-roller (authenticated/anon/fremtidige app_*) må IKKE have direkte INSERT/UPDATE/DELETE/TRUNCATE på
+// core_* — apps skriver udelukkende via SECURITY DEFINER-RPC'er (§1.1:157 + §3 #18). Live, fail-closed.
+// EFFEKTIV privilegie-test (has_table_privilege fanger også PUBLIC-grants + rolle-medlemskab), ikke kun
+// rå information_schema-grant-rækker. Allowlist for evt. legitime undtagelser (tom).
+const APP_WRITE_REVOKE_EXEMPTIONS = {}; // "schema.table.role.PRIV" → begrundelse
+
+// ren helper (unit-testet i selftest, INGEN live-DB): row = { tbl, role, priv }.
+export function appWriteViolations(rows, exemptions) {
+  const violations = [];
+  for (const row of rows || []) {
+    if (Object.prototype.hasOwnProperty.call(exemptions, `${row.tbl}.${row.role}.${row.priv}`)) continue;
+    violations.push(
+      `${row.tbl}: app-rolle '${row.role}' har ${row.priv} på core_* — apps skal skrive via SECURITY DEFINER-RPC (§1.1:157/#18); REVOKE eller begrund i APP_WRITE_REVOKE_EXEMPTIONS`,
+    );
+  }
+  return violations;
+}
+
+async function appWriteRevokeDiscipline() {
+  const r = await liveQuery(
+    `select n.nspname||'.'||c.relname as tbl, r.rolname as role, priv
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     cross join pg_roles r
+     cross join unnest(array['INSERT','UPDATE','DELETE','TRUNCATE']) as priv
+     where n.nspname in ('core_identity','core_compliance','core_money')
+       and c.relkind in ('r','p')
+       and (r.rolname in ('authenticated','anon') or r.rolname like 'app\\_%')
+       and has_table_privilege(r.oid, c.oid, priv)
+     order by 1,2,3;`,
+  );
+  const g = liveGuard("app-write-revoke-discipline", r);
+  if (g) return g;
+  return { name: "app-write-revoke-discipline", violations: appWriteViolations(r.rows, APP_WRITE_REVOKE_EXEMPTIONS) };
+}
+
 const checks = [
   noTsIgnore,
   eslintDisableJustified,
@@ -1725,6 +1769,7 @@ const checks = [
   fkCoverage,
   indexPerPolicy,
   secdefMarkerDiscipline,
+  appWriteRevokeDiscipline,
 ];
 
 async function main() {
