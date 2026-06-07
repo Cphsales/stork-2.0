@@ -1610,6 +1610,20 @@ const SECDEF_SANCTIONED = {
     "intern-helper",
   "core_identity.role_upsert(p_id uuid, p_name text, p_description text, p_change_reason text)": "write-rpc",
   "core_identity.team_close(p_node_id uuid, p_effective_from date)": "write-rpc",
+  // gov-3b-3a: T9 permission-tree RPC'er konverteret INVOKER→SECDEF (#18 retning A, forbereder REVOKE i 3b)
+  "core_identity.permission_action_upsert(p_id uuid, p_tab_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_action_deactivate(p_action_id uuid)": "write-rpc",
+  "core_identity.permission_action_set_approver_type(p_action_id uuid, p_type text)": "write-rpc",
+  "core_identity.permission_area_upsert(p_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_area_deactivate(p_area_id uuid)": "write-rpc",
+  "core_identity.permission_page_upsert(p_id uuid, p_area_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_page_deactivate(p_page_id uuid)": "write-rpc",
+  "core_identity.permission_tab_upsert(p_id uuid, p_page_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_tab_deactivate(p_tab_id uuid)": "write-rpc",
   // ── core_money ──
   "core_money._compute_period_data_checksum(p_period_id uuid)": "intern-helper",
   "core_money._pay_period_compute_candidate_internal(p_period_id uuid, p_change_reason text)": "intern-helper",

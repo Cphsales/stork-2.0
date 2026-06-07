@@ -157,7 +157,7 @@ Stack-konsekvens af Supabase + PostgREST: FORCE RLS som default pr. tabel. Defau
 - Direkte tabel-rettigheder revokes fra alle roller. Adgang sker udelukkende via policies + RPC'er
 - Policy-prædikater er simple lookups (session-var, indexed kolonne, helper-funktion). Ingen tunge joins
 - Helper-funktioner: pure, STABLE, SECURITY INVOKER, deterministisk search_path
-- SECURITY DEFINER tillades kun for trigger-funktioner (audit, immutability, cycle-detection) og for sjældne læse-RPC'er på tabeller uden FORCE RLS. Aldrig for forretningsfunktioner
+- SECURITY DEFINER er undtagelse, ikke regel. Tilladt for: (a) trigger-funktioner (audit, immutability, cycle-detection); (b) sanktionerede write-/læse-RPC'er der selv håndhæver adgang via `has_permission()` og er markeret i §3 #10's SECDEF*SANCTIONED-register — dette er den fysiske write-vej for apps (jf. §603: apps skriver til core*\* udelukkende via SECURITY DEFINER RPC'er ejet af core-schemaet). FORBUDT: SECDEF uden has_permission-gate eller uden #10-markør (skjult RLS-bypass). Princippet bevares: default deny; al skrivning gennem kontrolleret, reviewet RPC
 - Pr. rolle pr. tabel: smoke-test som CI-blocker
 - Hver policy-prædikat-kolonne har et index
 
