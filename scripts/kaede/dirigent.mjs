@@ -68,9 +68,17 @@ export function decide(tilstand, regler) {
     handlinger.push({ handling: "GATE-ORD-REGISTRERET", ord: ord.tekst });
   }
 
-  // 3. Untracked leverancer → transport-commit (ordret) før routing.
+  // 3. Untracked leverancer → transport-commit (ordret) før routing — men
+  // ALDRIG mens en kørsel er aktiv på sporet (Codex runde 15-fund): filen kan
+  // være halvskrevet indtil aktørens exit 0 har bevist at den er færdig.
+  // Konservativt: enhver aktiv kørsel på sporet → VENT.
   for (const lev of tilstand.leverancer ?? []) {
-    if (lev.untracked) handlinger.push({ handling: "TRANSPORT-COMMIT", fil: lev.fil });
+    if (!lev.untracked) continue;
+    if (laase.some((l) => l.spor === spor)) {
+      handlinger.push({ handling: "VENT", fil: lev.fil, grund: "koersel-paa-spor" });
+      continue;
+    }
+    handlinger.push({ handling: "TRANSPORT-COMMIT", fil: lev.fil });
   }
 
   // 4. Committede, ubehandlede leverancer → routing.
