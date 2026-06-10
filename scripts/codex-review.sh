@@ -36,6 +36,7 @@ set -euo pipefail
 
 parse_markers() {
   local f="$1"
+  local round="${2:-1}"
   local clarification_hit=0 halt_hit=0 severity_hit=0
   local workaround_hit=0 escalate_hit=0 needs_mathias_hit=0
 
@@ -62,6 +63,16 @@ parse_markers() {
   if grep -qE '^\[?MANGLENDE-EKSISTERENDE-BEVARELSE\]?\b' "$f"; then
     severity_hit=1
     echo "  🛑 MANGLENDE-EKSISTERENDE-BEVARELSE rejst (KRITISK-undertype) — stopper" >&2
+  fi
+
+  # MELLEM er runde-afhængig (§5 runde-trapper): stopper i runde 1, G-spor i runde 2+
+  if grep -qE '^\[?MELLEM\]?\b' "$f"; then
+    if [ "$round" = "1" ]; then
+      severity_hit=1
+      echo "  🛑 MELLEM-severity i runde 1 — stopper (§5 runde-trapper)" >&2
+    else
+      echo "  📝 MELLEM-severity (runde $round) — G-nummer-spor, fortsæt (§5)" >&2
+    fi
   fi
 
   # NEEDS-MATHIAS — stopper plan og kræver Mathias-afgørelse før V<n+1>
@@ -111,33 +122,40 @@ parse_markers() {
 # ============================================================
 
 if [ "${1:-}" = "--parse-test" ]; then
+  # Format: indhold|runde|forventet-exit
   declare -a FIXTURES=(
-    "APPROVAL — Runde 1|0"
-    "[KRITISK] fund|2"
-    "KRITISK: fund|2"
-    "KRITISKE detaljer|0"
-    "[NEEDS-MATHIAS] spørgsmål|4"
-    "STOP-FOR-CLARIFICATION: mangler X|1"
-    "[PLAN-AFVIGELSE] afviger fra plan|2"
-    "WORKAROUND-INTRODUCERET: hack|3"
-    "[ESCALATE] iter > 3|4"
-    "[MANGLENDE-EKSISTERENDE-BEVARELSE] gate tabt|2"
+    "APPROVAL — Runde 1|1|0"
+    "[KRITISK] fund|1|2"
+    "KRITISK: fund|1|2"
+    "[KRITISK] fund|3|2"
+    "KRITISKE detaljer|1|0"
+    "[NEEDS-MATHIAS] spørgsmål|1|4"
+    "STOP-FOR-CLARIFICATION: mangler X|1|1"
+    "[PLAN-AFVIGELSE] afviger fra plan|1|2"
+    "WORKAROUND-INTRODUCERET: hack|1|3"
+    "[ESCALATE] iter > 3|1|4"
+    "[MANGLENDE-EKSISTERENDE-BEVARELSE] gate tabt|2|2"
+    "[MELLEM] fund i runde 1|1|2"
+    "[MELLEM] fund i runde 2|2|0"
+    "MELLEM: fund i runde 3|3|0"
   )
   FAILED=0
   TMP="$(mktemp -t parse-test.XXXXXX)"
   trap 'rm -f "$TMP"' EXIT
   for fixture in "${FIXTURES[@]}"; do
-    CONTENT="${fixture%|*}"
-    WANT="${fixture##*|}"
+    CONTENT="${fixture%%|*}"
+    REST="${fixture#*|}"
+    ROUND="${REST%%|*}"
+    WANT="${REST##*|}"
     printf '%s\n' "$CONTENT" > "$TMP"
     set +e
-    parse_markers "$TMP" 2>/dev/null
+    parse_markers "$TMP" "$ROUND" 2>/dev/null
     GOT=$?
     set -e
     if [ "$GOT" = "$WANT" ]; then
-      echo "  ✓ '$CONTENT' -> exit $GOT"
+      echo "  ✓ '$CONTENT' (runde $ROUND) -> exit $GOT"
     else
-      echo "  ✗ '$CONTENT' -> exit $GOT (forventede $WANT)" >&2
+      echo "  ✗ '$CONTENT' (runde $ROUND) -> exit $GOT (forventede $WANT)" >&2
       FAILED=1
     fi
   done
@@ -349,7 +367,7 @@ echo "" >&2
 echo "▶ Marker-parsing:" >&2
 
 set +e
-parse_markers "$RAW_OUTPUT"
+parse_markers "$RAW_OUTPUT" "$ROUND_N"
 ROUTING_EXIT=$?
 set -e
 

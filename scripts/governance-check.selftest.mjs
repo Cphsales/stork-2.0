@@ -131,7 +131,9 @@ for (const [name, plant] of cases) {
 {
   const d = fixture();
   appendFileSync(join(d, "scripts/types-gen.sh"), "\n# governance: deprecated\ncat docs/skabeloner/plan-skabelon.md\n");
-  run(d) === 0 ? ok("script-dead-path-deprecated -> exit 0") : bad("script-dead-path-deprecated", "deprecated script burde gå grøn");
+  run(d) === 0
+    ? ok("script-dead-path-deprecated -> exit 0")
+    : bad("script-dead-path-deprecated", "deprecated script burde gå grøn");
   rmSync(d, { recursive: true, force: true });
 }
 

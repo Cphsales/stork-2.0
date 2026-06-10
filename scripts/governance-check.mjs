@@ -72,7 +72,8 @@ const MISSING_PATH_ALLOWLIST = [
   {
     path: "docs/skabeloner/rapport-skabelon.md",
     klasse: "historisk-provenance",
-    grund: "V4-slettet (inline i disciplin §10.3); refereres som provenance i gov-docs-renhed-plan A.12 — prune ved pakke-luk (gov-6)",
+    grund:
+      "V4-slettet (inline i disciplin §10.3); refereres som provenance i gov-docs-renhed-plan A.12 — prune ved pakke-luk (gov-6)",
   },
   {
     path: "docs/skabeloner/codex-review-prompt.md",
