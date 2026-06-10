@@ -19,42 +19,49 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 
 - **Handling:** 0 høj/kritisk-sårbarheder på default branch.
 - **Status:** åben (cutover-blocker). Refereret fra `cutover-checklist.md`.
+- **Løses-i:** før cutover (cutover-checklist)
 
 ### [H002] GHAS-beslutning
 
 - **Handling:** GitHub Advanced Security aktiveret ELLER eksplicit Mathias-godkendt undtagelse dokumenteret.
 - **Status:** åben (cutover-blocker). Refereret fra `cutover-checklist.md`.
+- **Løses-i:** før cutover (Mathias-beslutning)
 
 ### [H003] CodeQL-beslutning
 
 - **Handling:** CodeQL aktiveret ELLER eksplicit Mathias-godkendt undtagelse dokumenteret.
 - **Status:** åben (cutover-blocker). Refereret fra `cutover-checklist.md`.
+- **Løses-i:** før cutover (Mathias-beslutning)
 
 ### [H006] Migration TODO-markører løst
 
 - **Handling:** 0 TODO-markører i migration-filer før cutover.
 - **Status:** åben (cutover-blocker). Refereret fra `cutover-checklist.md`.
+- **Løses-i:** 1.0-discovery / før cutover (kobler til G007)
 
 ### [H012] Hård deadline-tracker for G039
 
 - **Handling:** Sporer den hårde deadline knyttet til G039 (se `teknisk-gaeld.md`). Lukkes når G039 er løst inden for deadline, eller eskaleres til Mathias hvis deadline nærmer sig.
 - **Status:** åben.
+- **Løses-i:** følger G039 (REST-eksponeringstest)
 
 ### [H025] Sale-FK'er + orphan-oprydning ved Trin 14
 
 - **Handling:** Når `core_money.sales` bygges (Trin 14): (1) tilføj FK `cancellations.source_sale_id`, `commission_snapshots.sale_id`, `salary_corrections.source_sale_id` → `sales.id` (med §3.9-preflight); (2) ryd de 290 orphan `commission_snapshots.sale_id`-værdier der ellers blokerer `ADD CONSTRAINT`; (3) fjern de 3 `FK_PENDING`-entries i `scripts/fitness.mjs`.
 - **Status:** åben (Trin 14-blocker). Rejst af gov-3b-1 (#19 FK-dækning). #19's selv-udløb gør (3) mekanisk håndhævet — `fk-coverage` bliver rød hvis FK'erne mangler efter `sales` findes.
+- **Løses-i:** Trin 14 (sales-stamme)
 
-### [H027] CI-actions på Node 20 — tvungen Node 24 fra 2026-06-16
+### [H028] Mekanisk G/H-opslag i recon-doc'en (partnerskabs-runde-input)
 
-- **Handling:** Bump `actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` (alle workflows) til Node 24-kompatible versioner + verificér grøn CI. KRITISK timing: GitHub tvinger Node 24 fra **2026-06-16**; knækker en action, bliver den required CI-check rød og main er LÅST (gov-4-gates er fuldt bindende).
-- **Status:** løst 2026-06-10 — alle tre actions bumpet til v6 (Node 24-native) i alle 4 workflows; CI-bevis på PR'en. Rejst samme dag (runner-warning på PR #110).
+- **Handling:** Recon-/data-grundlags-mekanismen skal udføre G/H-opslaget mekanisk (filtrér åbne G/H på Løses-i mod pakkens trin/scope og præsentér dem i plan-fasen). §3.2's manuelle G/H-opslags-pligt (indført 2026-06-10) er broen indtil da.
+- **Status:** åben. Rejst af Mathias 2026-06-10 (restliste DEL 3-note).
+- **Løses-i:** gov-5-automation / partnerskabs-runde (recon-doc)
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 
 Maskin-læsbar source of truth (læses af `governance-check.mjs` til H-ref-integrity):
 
-<!-- gov-historical-codes: H010, H011, H020, H022, H024, H026 -->
+<!-- gov-historical-codes: H010, H011, H020, H022, H024, H026, H027 -->
 
 Tabel for mennesker:
 
