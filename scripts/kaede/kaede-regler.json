@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "kommentar": "Kædens deklarative routing (gov-5, plan V7 step 2). Kuréren læser KUN denne tabel + aktørernes deklarationer — den har ingen egen dagsorden. Ændringer til denne fil er en Mathias-beslutning (CODEOWNERS default-own).",
+  "poll_interval_sekunder": 60,
+  "identiteter": {
+    "gate_author": "mgrubak",
+    "bot": "stork-code-bot"
+  },
+  "gate_ord": ["qwers", "krav OK", "qwerg", "slut OK", "GODKENDT", "AFVIST", "stop"],
+  "aktoerer": {
+    "code": { "adapter": "scripts/kaede/adapters/code.sh" },
+    "codex": { "adapter": "scripts/kaede/adapters/codex.sh" },
+    "claude-ai-rolle": { "adapter": "scripts/kaede/adapters/claude-ai-rolle.sh" },
+    "mathias": { "adapter": "scripts/kaede/adapters/mathias.mjs" }
+  },
+  "leverance_typer": {
+    "plan-version": { "modtager": "codex", "opgave": "plan-review" },
+    "build-batch": { "modtager": "codex", "opgave": "batch-review" },
+    "slut-rapport": { "modtager": "claude-ai-rolle", "opgave": "slut-rapport-review" },
+    "review-feedback": { "modtager": "code", "opgave": "naeste-version" },
+    "review-approval": { "modtager": "code", "opgave": "build-start" },
+    "sparring-oenske": { "modtager": "codex", "opgave": "sparring-svar" },
+    "sparring-svar": { "modtager": "code", "opgave": "fortsaet" },
+    "kode-fund": { "modtager": "code", "opgave": "fund-haandtering" },
+    "optimering-forslag": { "modtager": "code", "opgave": "adopt-defer-dismiss" },
+    "loes-replik": { "modtager": "codex", "opgave": "agree-refine-escalate" },
+    "fund-gate-pakke": { "modtager": "mathias", "opgave": "gate-anmodning" }
+  },
+  "events": {
+    "qwers-aabning": [{ "aktoer": "mathias", "opgave": "kvittering" }],
+    "krav-dok-merged": [
+      { "aktoer": "code", "opgave": "plan-start" },
+      { "aktoer": "codex", "opgave": "kode-research" }
+    ],
+    "build-pr-klar-beslutningssti": [{ "aktoer": "mathias", "opgave": "review-request" }],
+    "build-pr-merged": [{ "aktoer": "code", "opgave": "slut-rapport" }],
+    "slut-ok-registreret": [{ "aktoer": "code", "opgave": "slut-merge" }]
+  },
+  "fund_gate_markers": [
+    "NEEDS-MATHIAS",
+    "ESCALATE",
+    "STOP-FOR-CLARIFICATION",
+    "WORKAROUND-INTRODUCERET",
+    "BRUD-PAA-KRAV",
+    "TEKNISK-BLOKERING",
+    "PLAN-AFVIGELSE",
+    "KRITISK-SIKKERHEDSHUL"
+  ]
+}
