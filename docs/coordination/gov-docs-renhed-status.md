@@ -1,8 +1,8 @@
 # gov-docs-renhed — Pakke-status
 
-**Sidste handling:** Build batch 6: Codex runde 7 gav 2 KRITISK — begge rettet (sidste to tanke-data-rester: disciplin §8-pointen + SKILL.md-referencelisten; fuld grep bekræfter ingen flere i aktive docs; denne status-fil synkroniseret). 2026-06-10.
-**Næste forventet:** Codex verifikations-review (runde 8) af batch 6 → grøn → Code skriver slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
-**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 (2 KRITISK → batch 6) · runde 8 afventes.
+**Sidste handling:** Codex runde 8: **APPROVAL + §8.1-SVAR: INGEN-MODSIGELSE** på batch 6. Batch 7 (Code-eget fund 6): scriptets parser scannede hele codex-transcriptet i stedet for finalt svar — false-positive exit 2 på APPROVAL; final-answer-ekstraktion tilføjet + verificeret (APPROVAL→0, KRITISK→2). 2026-06-10.
+**Næste forventet:** Codex runde 9 (--quick, kun batch 7) → grøn → slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
+**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 (2 KRITISK → batch 6) · runde 8 (APPROVAL; transcript-støj i routing → batch 7) · runde 9 afventes.
 **Aktuel blocker:** ingen.
 
 Build-state (qwerg 2026-06-10):
