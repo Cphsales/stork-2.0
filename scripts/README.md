@@ -8,7 +8,6 @@ Disciplin-mekanismer der køres lokalt og i CI.
 | `schema-check.sh`    | Drift-detection: remote schema vs `supabase/schema.sql`. Skipper på `-- PLACEHOLDER`-marker.                                                                                                                                         | `pnpm schema:check`                                        |
 | `migration-gate.mjs` | Phase 1: warner på uklassificerede kolonner. Phase 2 (`MIGRATION_GATE_STRICT=true`): blokerer.                                                                                                                                       | `pnpm migration:check`                                     |
 | `fitness.mjs`        | Arkitektoniske invarianter på tværs af repo. Hver check er en function.                                                                                                                                                              | `pnpm fitness`                                             |
-| `krav-afklar.sh`     | Codex-dispatcher med "stil spørgsmål, ingen plan"-mode for krav-afklaring. Output: `<pakke>-krav-afklaring.md`.                                                                                                                      | `scripts/krav-afklar.sh <krav-dok-fil>`                    |
 
 ## Fitness checks
 
