@@ -1,9 +1,9 @@
-# gov-4-branch-protection — Plan V4
+# gov-4-branch-protection — Plan V5
 
 **Branch:** claude/gov-4-branch-protection-plan
 **Krav-dok:** docs/coordination/gov-4-branch-protection-krav-og-data.md (ekstrakt; fælles dok: governance-vagt-krav-og-data.md pkt 4 + D2)
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 4 — §3.4-alert rejst, se status-fil)
+**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 5 — **§3.4 AUTO-PAUSE aktiv**, se status-fil)
 
 ## Formål
 
@@ -32,6 +32,12 @@
 | #    | Fund                                                                                        | Severity | Code-svar                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---- | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R3-1 | CODEOWNERS-fix ikke pin'et til eksakt handle + ingen gyldigheds-verifikation før aktivering | KRITISK  | **ACCEPT.** Handle pin'et deterministisk (se CODEOWNERS-sektionen — definitionen er bindende; selve strengen kan ikke stå i denne fil pga. Mathias' stork1-lås-hook, rejst som åbent spørgsmål 3). Codex' API-tjek bekræftede 5 "Unknown owner"-fejl på nuværende fil. Ny gate: `codeowners/errors` SKAL være tom efter CODEOWNERS-PR og FØR `require_code_owner_reviews=true` (step 2-gate + verifikations-case e) |
+
+## V4 → V5: Codex-fund runde 4 (ADRESSERET)
+
+| #    | Fund                                                                                     | Severity | Code-svar                                                                                                                                                                                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R4-1 | ADMIN-HANDLE-definitionen er tidsafhængig — efter bot-auth-skift resolver den til botten | KRITISK  | **ACCEPT.** Capture-rækkefølge bindende i step 1: `ADMIN_HANDLE` fanges FØR bot-login, `BOT_LOGIN` efter, assert `ADMIN_HANDLE != BOT_LOGIN`; CODEOWNERS bruger den capturede `ADMIN_HANDLE`-værdi; step 2-gaten udvidet med indholds-tjek (aktive linjer indeholder ADMIN_HANDLE) |
 
 ## Step 2.0 — Skitse + størrelses-tjek
 
@@ -152,18 +158,24 @@ Nuværende (1:1, alle aktive regler):
 /docs/strategi/stork-2-0-master-plan.md    @Cphsales
 ```
 
-Ny: `@Cphsales` → `@<ADMIN-HANDLE>` på alle 5 linjer, hvor **ADMIN-HANDLE :=
-output af `gh api user --jq .login` på Codes maskine** — det verificerede
-Mathias-admin-handle (User-type, dokumenteret 1:1 i Codex' runde 3-review).
+Ny: `@Cphsales` → `@<ADMIN-HANDLE>` på alle 5 linjer. **ADMIN-HANDLE :=
+værdien af `gh api user --jq .login` CAPTURET FØR bot-auth-skiftet (fund
+R4-1)** — det verificerede Mathias-admin-handle (User-type, dokumenteret 1:1 i
+Codex' runde 3-review). Capture-protokol i step 1: (i) under nuværende
+Mathias-admin-auth: `ADMIN_HANDLE` fanges og noteres i status-filen; (ii)
+efter bot-login: `BOT_LOGIN` fanges; (iii) assert `ADMIN_HANDLE != BOT_LOGIN`
+— fejler asserten STOPPER builden (H026 ville være uløst).
 Definitionen er bindende og deterministisk; selve strengen kan ikke skrives i
 denne plan-fil, fordi Mathias' stork1-lås-hook blokerer Code-writes der
 indeholder den (åbent spørgsmål 3). Kommentar-blok opdateres med hvorfor (org
 kan ikke være code owner — GitHubs codeowners-errors viser 5 "Unknown owner"
 på nuværende fil). Kommenterede lag-B-linjer bevares uændret.
 
-**Gyldigheds-gate (fund R3-1):** efter CODEOWNERS-PR'en er merget og FØR step
-4 aktiveres: `gh api repos/Cphsales/stork-2.0/codeowners/errors` SKAL
-returnere `errors: []`.
+**Gyldigheds-gate (fund R3-1 + R4-1):** efter CODEOWNERS-PR'en er merget og
+FØR step 4 aktiveres: (1) `gh api repos/Cphsales/stork-2.0/codeowners/errors`
+SKAL returnere `errors: []`; (2) alle 5 aktive CODEOWNERS-linjer SKAL
+indeholde den capturede `ADMIN_HANDLE` (indholds-tjek — beviser owner er
+Mathias, ikke kun at owner er gyldig).
 
 ### 2. Branch protection (API-kald, ikke fil)
 
@@ -214,13 +226,13 @@ men live havde TOM contexts-liste — gabet lukkes af step 3.
 
 ## Implementations-rækkefølge (rækkefølgen ER risiko-styringen)
 
-| Step | Hvad (0 = G061-migration: batch 1, kan køre når som helst før step 3)                  | Gate                                                                           |
-| ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1    | Mathias: bot-konto + org-invite + PAT; Code: auth-skift                                | Verifikation: test-PR fra bot, Mathias kan trykke Approve (selve H026-beviset) |
-| 2    | CODEOWNERS-fix (PR fra bot)                                                            | governance:check grøn; Mathias-merge; `codeowners/errors` == [] (fund R3-1)    |
-| 3    | required_status_checks.contexts udfyldes (API)                                         | Verifikation: PR med rød CI kan ikke merges                                    |
-| 4    | require_code_owner_reviews + count=1 (API) — **SIDST, kun efter step 1-2 verificeret** | Verifikation: PR uden approval blokeret; med Mathias-approval mergeable        |
-| 5    | Docs-opdateringer + H026-luk + banner-koordinering (Claude.ai-forfattet)               | §8.1-gate (governance-docs berørt)                                             |
+| Step | Hvad (0 = G061-migration: batch 1, kan køre når som helst før step 3)                                                              | Gate                                                                           |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1    | Capture ADMIN_HANDLE (før!); Mathias: bot-konto + org-invite + PAT; Code: auth-skift; capture BOT_LOGIN; assert forskellige (R4-1) | Verifikation: test-PR fra bot, Mathias kan trykke Approve (selve H026-beviset) |
+| 2    | CODEOWNERS-fix (PR fra bot)                                                                                                        | governance:check grøn; Mathias-merge; `codeowners/errors` == [] (fund R3-1)    |
+| 3    | required_status_checks.contexts udfyldes (API)                                                                                     | Verifikation: PR med rød CI kan ikke merges                                    |
+| 4    | require_code_owner_reviews + count=1 (API) — **SIDST, kun efter step 1-2 verificeret**                                             | Verifikation: PR uden approval blokeret; med Mathias-approval mergeable        |
+| 5    | Docs-opdateringer + H026-luk + banner-koordinering (Claude.ai-forfattet)                                                           | §8.1-gate (governance-docs berørt)                                             |
 
 Step 3 kan ikke bricke (CI er grøn på main). Step 4 er det farlige — deraf
 rækkefølgekravet fra Mathias ("H026 løst FØR required review").
