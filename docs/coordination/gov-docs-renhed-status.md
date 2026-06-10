@@ -1,8 +1,8 @@
 # gov-docs-renhed — Pakke-status
 
-**Sidste handling:** Build batch 4 (fix-batch): Codex build-review runde 5 gav 3 KRITISK — alle rettet (v4-slettede-docs untracked igen + .gitignore-værn; denne status-fil synkroniseret; MANGLENDE-EKSISTERENDE-BEVARELSE routet til exit 2 + fixture). 2026-06-10.
-**Næste forventet:** Codex verifikations-review (runde 6) af batch 4 → grøn → Code skriver slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
-**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4), runde 6 afventes.
+**Sidste handling:** Build batch 5: Codex runde 6 gav 2 KRITISK — begge rettet (prettier-format på de to .mjs; MELLEM runde-aware routing + 4 nye fixtures, parse-test 14/14). 2026-06-10.
+**Næste forventet:** Codex verifikations-review (runde 7) af batch 5 → grøn → Code skriver slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
+**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 afventes.
 **Aktuel blocker:** ingen.
 
 Build-state (qwerg 2026-06-10):
@@ -28,6 +28,8 @@ Plan-afvigelser (til slut-rapport):
 4. codex-reviews/ tilføjet scannerens DOC_EXCLUDE (batch 4b) — review-filer er
    ephemeral rå-output (§4) der bevidst citerer døde stier; first-time-fund da
    reviews aldrig før var committet som filer.
+5. MELLEM-routing gjort runde-aware i parseren (runde 6-fund, batch 5) —
+   §5 runde-trapper: exit 2 i runde 1, G-spor i runde 2+.
 
 Noter:
 
