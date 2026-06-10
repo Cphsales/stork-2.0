@@ -4,10 +4,10 @@
 // Dækker decide() (ren kerne) + tilstand.mjs' rene parsere — UDEN git/gh.
 // Kør: pnpm kaede:selftest
 
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decide, behandletNoegler } from "./dirigent.mjs";
+import { decide, behandletNoegler, udfoer } from "./dirigent.mjs";
 import { parseDeklaration, udtraekMarkers, findDivergens, afledEvents, erBogfoeringsSti } from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
@@ -458,6 +458,77 @@ check(
   "arkiv-plan er IKKE bogføring (anchored mønster)",
   !erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"),
 );
+
+// ---------- 20. parallel eksekvering (Codex runde 12: BEVIS, ikke kun beslutning) ----------
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const TMP = join(KAEDE, ".selftest-tmp");
+  const LOG = join(KAEDE, ".dispatch-log.jsonl");
+  const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
+  const stub = (navn) =>
+    writeFileSync(
+      join(TMP, navn),
+      `#!/bin/bash\ndate +%s%N > "${TMP}/${navn}-start"\nsleep 0.4\ndate +%s%N > "${TMP}/${navn}-slut"\n`,
+    );
+  stub("a.sh");
+  stub("b.sh");
+  writeFileSync(join(TMP, "fejl.sh"), "#!/bin/bash\nexit 7\n");
+
+  const koerende = new Map();
+  const dispatches = [
+    {
+      handling: "DISPATCH",
+      aktoer: "code",
+      opgave: "t",
+      adapter: "scripts/kaede/.selftest-tmp/a.sh",
+      kontekst: { fil: "a", sha: "s", spor: "test" },
+    },
+    {
+      handling: "DISPATCH",
+      aktoer: "codex",
+      opgave: "t",
+      adapter: "scripts/kaede/.selftest-tmp/b.sh",
+      kontekst: { fil: "b", sha: "s", spor: "test" },
+    },
+  ];
+  udfoer(dispatches, { koerende });
+  check("to dispatches → to samtidige kørsler i registret", koerende.size === 2);
+  await Promise.all([...koerende.values()].map((k) => k.faerdig));
+  const t = (f) => BigInt(readFileSync(join(TMP, f), "utf8").trim());
+  check("parallelitet BEVIST: b startede FØR a sluttede (overlap)", t("b.sh-start") < t("a.sh-slut"));
+  check("kørende-register tømt efter afslutning", koerende.size === 0);
+
+  let stoppet = false;
+  udfoer(
+    [
+      {
+        handling: "DISPATCH",
+        aktoer: "code",
+        opgave: "t",
+        adapter: "scripts/kaede/.selftest-tmp/fejl.sh",
+        kontekst: { fil: "c", sha: "s", spor: "test" },
+      },
+    ],
+    { koerende, onStop: () => (stoppet = true) },
+  );
+  await Promise.all([...koerende.values()].map((k) => k.faerdig));
+  check("adapter exit ≠ 0 → onStop kaldt (KAEDE-STOP, ingen stille videre)", stoppet);
+  const logLinjer = readFileSync(LOG, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  check(
+    "fejlet kørsel logget m. exit 7 + KAEDE-STOP",
+    logLinjer.some((p) => p.handling === "KOERSEL-SLUT" && p.exit === 7) &&
+      logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "adapter-fejl"),
+  );
+
+  rmSync(TMP, { recursive: true, force: true });
+  if (logBackup === null) rmSync(LOG, { force: true });
+  else writeFileSync(LOG, logBackup);
+}
 
 // ---------- resultat ----------
 if (failed) {
