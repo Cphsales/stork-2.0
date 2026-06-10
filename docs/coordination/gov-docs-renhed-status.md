@@ -25,6 +25,9 @@ Plan-afvigelser (til slut-rapport):
    untracked igen + .gitignore-værn i batch 4. Aldrig på main.
 3. MANGLENDE-EKSISTERENDE-BEVARELSE-routing tilføjet parseren (runde 5-fund) —
    udvidelse af B.1 inden for §5-semantikken.
+4. codex-reviews/ tilføjet scannerens DOC_EXCLUDE (batch 4b) — review-filer er
+   ephemeral rå-output (§4) der bevidst citerer døde stier; first-time-fund da
+   reviews aldrig før var committet som filer.
 
 Noter:
 
