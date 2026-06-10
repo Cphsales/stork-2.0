@@ -5,7 +5,12 @@
 // ikke mention-hjem. Semantisk/prosa-modsigelse er Codex-mandatets bord (ikke her).
 //
 // Checks: dead-doc-paths · junk-files · laesefoelge-targets · pointer-validity ·
-//         owns-uniqueness · number-home-uniqueness · H-ref-integrity
+//         owns-uniqueness · number-home-uniqueness · H-ref-integrity ·
+//         structural-chain (gov-docs-renhed)
+//
+// Allowlist-split (gov-docs-renhed pkt 9): prosa-docs MÅ referere slettede
+// stier (historisk-provenance); aktive scripts MÅ IKKE — medmindre scriptet
+// bærer standalone-linjen "# governance: deprecated".
 //
 // Build-krav (Codex): fenced code blocks strippes FØR alle heading/ref-checks,
 // så skabelon-eksempler (fx ### [Hxxx] i ```-blok) ikke tæller som kanoniske.
@@ -47,11 +52,6 @@ const MISSING_PATH_ALLOWLIST = [
     grund: "V4-slettet doc, refereret som provenance",
   },
   {
-    path: "docs/coordination/overvaagning/claude-ai-overvaagning.md",
-    klasse: "historisk-provenance",
-    grund: "V4-slettet doc, refereret som provenance",
-  },
-  {
     path: "docs/strategi/arbejds-disciplin.md",
     klasse: "historisk-provenance",
     grund: "V4-slettet (konsolideret til disciplin.md)",
@@ -67,19 +67,14 @@ const MISSING_PATH_ALLOWLIST = [
     grund: "V4-slettet (inline i disciplin §10.2)",
   },
   {
+    path: "docs/skabeloner/rapport-skabelon.md",
+    klasse: "historisk-provenance",
+    grund: "V4-slettet (inline i disciplin §10.3); refereres som provenance i gov-docs-renhed-plan A.12 — prune ved pakke-luk (gov-6)",
+  },
+  {
     path: "docs/skabeloner/codex-review-prompt.md",
     klasse: "historisk-provenance",
     grund: "V4-slettet (inline i disciplin §10.4)",
-  },
-  {
-    path: "docs/skabeloner/rapport-skabelon.md",
-    klasse: "historisk-provenance",
-    grund: "V4-slettet (inline i disciplin §10.3)",
-  },
-  {
-    path: "docs/coordination/mathias-afgoerelser.md",
-    klasse: "historisk-provenance",
-    grund: "V4-slettet (arkiv/mathias-afgoerelser-historik.md)",
   },
   {
     path: "docs/coordination/plan-feedback",
@@ -108,9 +103,11 @@ function stripFenced(text) {
   return text.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
 }
 // doc-path-refs i en tekst (efter fenced-strip). Skip templates (< >).
+// Charclass inkluderer danske bogstaver (gov-docs-renhed: docs/LÆSEFØLGE.md
+// ville ellers matche afskåret og give falsk violation).
 function docRefs(text) {
   const out = new Set();
-  const re = /docs\/[A-Za-z0-9_./<>-]+/g;
+  const re = /docs\/[A-Za-z0-9_./<>ÆØÅæøå-]+/g;
   let m;
   while ((m = re.exec(text))) {
     let p = m[0].replace(/[.)\]:,/]+$/, ""); // strip trailing punktuation + slash
@@ -125,14 +122,31 @@ function pathExists(p) {
   return existsSync(clean);
 }
 
-// ---------- check: dead-doc-paths (docs + scripts) ----------
+// ---------- check: dead-doc-paths (docs + scripts, klasse-split) ----------
+const ALLOW_BY_PATH = new Map(MISSING_PATH_ALLOWLIST.map((a) => [a.path, a]));
+const SCRIPT_SET = new Set(SCRIPT_FILES);
+function isDeprecated(file) {
+  return read(file)
+    .split("\n")
+    .some((l) => l.trim().startsWith("# governance: deprecated"));
+}
 function deadDocPaths() {
   const scan = [...DOC_FILES, ...SCRIPT_FILES];
   for (const f of scan) {
     const refs = docRefs(stripFenced(read(f)));
     for (const r of refs) {
       if (pathExists(r)) continue;
-      if (ALLOWED.has(r)) {
+      const entry = ALLOW_BY_PATH.get(r);
+      if (entry) {
+        // Split (gov-docs-renhed): prosa må bære historisk-provenance;
+        // aktive scripts må ikke — medmindre scriptet selv er deprecated.
+        if (SCRIPT_SET.has(f) && entry.klasse === "historisk-provenance" && !isDeprecated(f)) {
+          v(
+            "dead-doc-paths",
+            `${f}: aktivt script peger på slettet ${r} (historisk-provenance er kun for prosa — markér scriptet '# governance: deprecated' eller fjern referencen)`,
+          );
+          continue;
+        }
         notes.push(`dead-doc-paths: tilladt manglende ${r} (${f})`);
         continue;
       }
@@ -252,6 +266,60 @@ function hRefIntegrity() {
   }
 }
 
+// ---------- check: structural-chain (gov-docs-renhed pkt 10) ----------
+// Strukturelt + string-match — ingen semantik. Formåls-immutabilitet (§3.0) mekanisk.
+function normFormaal(text) {
+  const lines = text.split("\n");
+  const i = lines.findIndex((l) => l.trim().startsWith("> Denne pakke leverer:"));
+  if (i === -1) return null;
+  const out = [];
+  for (let j = i; j < lines.length && lines[j].trim().startsWith(">"); j++) {
+    out.push(lines[j].replace(/^\s*>\s?/, ""));
+  }
+  return out.join(" ").replace(/\s+/g, " ").trim();
+}
+function structuralChain() {
+  const ap = read("docs/coordination/aktiv-plan.md");
+  let marker = null;
+  for (const line of ap.split("\n")) {
+    const m = line.trim().match(/^<!--\s*aktiv-pakke:\s*(\S+)(?:\s+fase:\s*(plan|build|rapport))?\s*-->$/);
+    if (m) marker = { pakke: m[1], fase: m[2] ?? "plan" };
+  }
+  if (!marker)
+    return v(
+      "structural-chain",
+      "aktiv-plan.md mangler standalone-markør <!-- aktiv-pakke: <navn|ingen> [fase: plan|build|rapport] -->",
+    );
+  if (marker.pakke === "ingen") return;
+  const base = "docs/coordination";
+  const krav = `${base}/${marker.pakke}-krav-og-data.md`;
+  const plan = `${base}/${marker.pakke}-plan.md`;
+  const status = `${base}/${marker.pakke}-status.md`;
+  for (const f of [krav, plan, status]) {
+    if (!existsSync(f)) v("structural-chain", `aktiv pakke '${marker.pakke}': mangler ${f}`);
+  }
+  if (!existsSync(krav) || !existsSync(plan)) return;
+  if (!read(plan).includes(krav)) v("structural-chain", `${plan}: krydspeger ikke ${krav}`);
+  if (!read(plan).includes(status)) v("structural-chain", `${plan}: krydspeger ikke ${status}`);
+  if (existsSync(status) && !read(status).includes(marker.pakke))
+    v("structural-chain", `${status}: nævner ikke pakken '${marker.pakke}'`);
+  const fk = normFormaal(read(krav));
+  const fp = normFormaal(stripFenced(read(plan)));
+  if (!fk) v("structural-chain", `${krav}: ingen "> Denne pakke leverer:"-blok`);
+  if (!fp) v("structural-chain", `${plan}: ingen "> Denne pakke leverer:"-blok`);
+  if (fk && fp && fk !== fp) v("structural-chain", `Formål-streng afviger mellem ${krav} og ${plan} (§3.0)`);
+  if (marker.fase === "rapport") {
+    const dir = "docs/coordination/rapport-historik";
+    const rapporter = existsSync(dir) ? readdirSync(dir).filter((x) => x.endsWith(`-${marker.pakke}.md`)) : [];
+    if (!rapporter.length)
+      return v("structural-chain", `fase: rapport men ingen rapport-historik/*-${marker.pakke}.md`);
+    const nyeste = rapporter.sort().at(-1);
+    const fr = normFormaal(read(join(dir, nyeste)));
+    if (!fr) v("structural-chain", `${dir}/${nyeste}: ingen "> Denne pakke leverer:"-blok`);
+    else if (fk && fk !== fr) v("structural-chain", `Formål-streng afviger mellem ${krav} og ${dir}/${nyeste} (§3.0)`);
+  }
+}
+
 // ---------- run ----------
 const CHECKS = [
   ["dead-doc-paths", deadDocPaths],
@@ -261,6 +329,7 @@ const CHECKS = [
   ["owns-uniqueness", ownsUniqueness],
   ["number-home-uniqueness", numberHomeUniqueness],
   ["H-ref-integrity", hRefIntegrity],
+  ["structural-chain", structuralChain],
 ];
 for (const [name, fn] of CHECKS) {
   const before = violations.length;
