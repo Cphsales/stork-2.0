@@ -179,31 +179,46 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     .filter((l) => l.startsWith("??"))
     .map((l) => l.slice(3).trim());
 
-  const leverancer = [];
-  for (const dir of ["codex-reviews", "plan-feedback"]) {
+  // Leverance-bærere (Codex B1-runde 9-fund 1 — fuld flade):
+  //   codex-reviews/ + plan-feedback/  → Codex'/Claude.ai-rollens leverancer
+  //   rapport-historik/                → slut-rapporter
+  //   <pakke>-status.md                → CODES leverance-bærer (§3.5: status
+  //     opdateres sidst i hver leverance med →NÆSTE-deklaration som sidste
+  //     linje — plan-V<n>/build-batch/slut-rapport routes via den)
+  const aktivPakke = (existsSync(aktivPlanSti) && parseAktivMarker(readFileSync(aktivPlanSti, "utf8"))?.pakke) || "ingen";
+  const leveranceStier = [];
+  for (const dir of ["codex-reviews", "plan-feedback", "rapport-historik"]) {
     const fuldDir = join(koordDir, dir);
     if (!existsSync(fuldDir)) continue;
     for (const fil of readdirSync(fuldDir)) {
-      if (!fil.endsWith(".md")) continue;
-      const sti = `docs/coordination/${dir}/${fil}`;
-      const tekst = readFileSync(join(repoRod, sti), "utf8");
-      const erUntracked = untracked.includes(sti);
-      leverancer.push({
-        fil: sti,
-        untracked: erUntracked,
-        sha: erUntracked ? null : filSha(sti, repoRod), // frossen-version-binding (Codex B1-fund 2)
-        deklaration: parseDeklaration(tekst),
-        markers: udtraekMarkers(tekst),
-      });
+      if (fil.endsWith(".md")) leveranceStier.push(`docs/coordination/${dir}/${fil}`);
     }
+  }
+  if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-status.md`))) {
+    leveranceStier.push(`docs/coordination/${aktivPakke}-status.md`);
+  }
+
+  const leverancer = [];
+  for (const sti of leveranceStier) {
+    const tekst = readFileSync(join(repoRod, sti), "utf8");
+    const erUntracked = untracked.includes(sti);
+    leverancer.push({
+      fil: sti,
+      untracked: erUntracked,
+      sha: erUntracked ? null : filSha(sti, repoRod), // frossen-version-binding (Codex B1-fund 2)
+      deklaration: parseDeklaration(tekst),
+      markers: udtraekMarkers(tekst),
+    });
   }
 
   // Gate-ord fra kæde-issue (author + kommentar-id følger med — verifikation i decide())
   let gateOrd = [];
   if (kaedeIssue) {
     try {
+      // NB: jq-filteret gives RÅT (Codex runde 9-fund 2: JSON.stringify gjorde
+      // det til streng-literal → gh-fejl → catch → tomme gate-ord, stille).
       const raw = gh(
-        ["issue", "view", String(kaedeIssue), "--json", "comments", "--jq", JSON.stringify(".comments[] | {id: .id, author: .author.login, body: .body}")],
+        ["issue", "view", String(kaedeIssue), "--json", "comments", "--jq", ".comments[] | {id: .id, author: .author.login, body: .body}"],
         repoRod,
       );
       gateOrd = raw
