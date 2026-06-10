@@ -46,3 +46,6 @@ supabase/.branches/
 
 # MS Office lock-filer (utilsigtet åbnet i Word/Excel)
 ~$*
+
+# Lokale V4-gennemgangs-kopier — aldrig committet; foldes/fjernes i gov-6 (G063)
+docs/coordination/v4-slettede-docs/

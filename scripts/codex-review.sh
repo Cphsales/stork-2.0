@@ -58,6 +58,12 @@ parse_markers() {
     echo "  🛑 KRITISK-severity rejst — stopper plan i alle runder" >&2
   fi
 
+  # MANGLENDE-EKSISTERENDE-BEVARELSE er KRITISK-undertype (§5) — samme routing
+  if grep -qE '^\[?MANGLENDE-EKSISTERENDE-BEVARELSE\]?\b' "$f"; then
+    severity_hit=1
+    echo "  🛑 MANGLENDE-EKSISTERENDE-BEVARELSE rejst (KRITISK-undertype) — stopper" >&2
+  fi
+
   # NEEDS-MATHIAS — stopper plan og kræver Mathias-afgørelse før V<n+1>
   if grep -qE '^\[?NEEDS-MATHIAS\]?\b' "$f"; then
     needs_mathias_hit=1
@@ -115,6 +121,7 @@ if [ "${1:-}" = "--parse-test" ]; then
     "[PLAN-AFVIGELSE] afviger fra plan|2"
     "WORKAROUND-INTRODUCERET: hack|3"
     "[ESCALATE] iter > 3|4"
+    "[MANGLENDE-EKSISTERENDE-BEVARELSE] gate tabt|2"
   )
   FAILED=0
   TMP="$(mktemp -t parse-test.XXXXXX)"
