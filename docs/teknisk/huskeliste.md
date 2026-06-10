@@ -57,6 +57,12 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 - **Status:** åben. Rejst af Mathias 2026-06-10 (restliste DEL 3-note).
 - **Løses-i:** gov-5-automation / partnerskabs-runde (recon-doc)
 
+### [H029] Indre tekst-staleness-gennemgang af alle docs
+
+- **Handling:** Indholds-påstande (tal, status, beskrivelser) i alle docs gennemgås mod den endelige virkelighed. Delt efter bord: Claude.ai tager forretnings-docs, Code tekniske docs. Kun reelle fejl rettes — ingen omskrivninger. [G018] (bygge-status-klassifikations-tal) hører under denne paraply.
+- **Status:** åben. **Bevidst udskudt til efter gov-5 (Mathias 2026-06-10):** sandheden skal være stabil før teksterne rettes mod den; gov-5 ændrer selv hvad der er sandt.
+- **Løses-i:** dedikeret pakke LIGE EFTER gov-6 (Codes anbefaling ved oprettelsen: gov-6's arkiv-fold reducerer doc-fladen først, så gennemgangen rammer mindst mulig flade; gov-6 selv er strukturel, denne er indholds-revision med to aktører — blandes ikke)
+
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 
 Maskin-læsbar source of truth (læses af `governance-check.mjs` til H-ref-integrity):
