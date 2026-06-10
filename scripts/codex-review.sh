@@ -332,6 +332,21 @@ if [ $CODEX_EXIT -ne 0 ]; then
 fi
 
 # ============================================================
+# Ekstrahér finalt svar fra codex-transcript
+# Transcriptet echo'er læste filer/tool-trace — markers dér er citater, ikke
+# fund (fx tidligere reviews' "[KRITISK]"-linjer). Final answer er sidste
+# "codex"-blok før "tokens used". Fallback: hele output (format-skift).
+# ============================================================
+
+FINAL_OUTPUT="$(mktemp -t codex-review-final.XXXXXX)"
+trap 'rm -f "$RAW_OUTPUT" "$FINAL_OUTPUT"' EXIT
+awk '/^codex$/{n=NR} {l[NR]=$0} /^tokens used/{t=NR} END{if(n&&t&&t>n){for(i=n+1;i<t;i++) print l[i]}}' "$RAW_OUTPUT" > "$FINAL_OUTPUT"
+if [ ! -s "$FINAL_OUTPUT" ]; then
+  echo "⚠️  Kunne ikke isolere finalt codex-svar (format-skift?) — parser hele transcriptet." >&2
+  cp "$RAW_OUTPUT" "$FINAL_OUTPUT"
+fi
+
+# ============================================================
 # Skriv output-fil med header
 # ============================================================
 
@@ -357,22 +372,22 @@ cat > "$OUTPUT_FILE" <<EOF
 ---
 
 EOF
-cat "$RAW_OUTPUT" >> "$OUTPUT_FILE"
+cat "$FINAL_OUTPUT" >> "$OUTPUT_FILE"
 
 # ============================================================
-# Marker-parsing + echo output + exit per routing
+# Marker-parsing (på finalt svar) + echo output + exit per routing
 # ============================================================
 
 echo "" >&2
 echo "▶ Marker-parsing:" >&2
 
 set +e
-parse_markers "$RAW_OUTPUT" "$ROUND_N"
+parse_markers "$FINAL_OUTPUT" "$ROUND_N"
 ROUTING_EXIT=$?
 set -e
 
 echo "" >&2
 echo "▶ Output:" >&2
-cat "$RAW_OUTPUT"
+cat "$FINAL_OUTPUT"
 
 exit $ROUTING_EXIT
