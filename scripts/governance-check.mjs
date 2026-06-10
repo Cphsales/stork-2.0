@@ -28,6 +28,9 @@ const DOC_EXCLUDE = [
   "docs/coordination/arkiv",
   "docs/coordination/v4-slettede-docs",
   "docs/coordination/rapport-historik",
+  // Rå reviewer-output (ephemeral, slettes ved pakke-luk per §4) — citerer
+  // bevidst døde/historiske stier og skal ikke holdes path-rene.
+  "docs/coordination/codex-reviews",
 ];
 function walk(dir, acc = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
