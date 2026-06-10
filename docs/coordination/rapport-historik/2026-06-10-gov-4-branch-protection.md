@@ -75,6 +75,11 @@ Codex runde 8 svarede `§8.1-SVAR: MODSIGELSE` (fund R8-2, korrekt): disciplin.m
 - **Lærepunkter (Code):** (1) V1's state-dump dækkede ikke GitHubs API-flade (permissions, check-navne, typed felter, handle-timing) — kostede 4 review-runder; ekstern-API-state skal dumpes med samme disciplin som DB-state. (2) Status-filen committes MED batchen. (3) Mathias-handlinger skal altid leveres klik-for-klik med valget truffet (squash/rebase-casen).
 - **Konklusion:** forsvarligt. Gates fuldt bindende; 0 åbne kompromiser; H027 rejst med hård deadline.
 
+## Step 5-gate
+
+Mathias: **slut OK** 2026-06-10 (Claude.ai-relæ er Mathias' bord — gate-ordet er
+afgivet efter banner-luk + Codex runde 9 INGEN-MODSIGELSE).
+
 ## Mathias-handlinger efter merge
 
 1. Ingen platform-/konto-handlinger udestår — tre-konto-strukturen er fuldt aktiv.
