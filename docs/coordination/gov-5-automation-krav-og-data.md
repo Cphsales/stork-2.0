@@ -1,12 +1,12 @@
 # gov-5-automation — Krav-og-data
 
 **Type:** Mathias' tanker om hvad pakken skal levere
-**Dato:** 2026-06-10 (fornyet samme dag efter krav-doc-feedback, runde 1)
+**Dato:** 2026-06-10 (fornyet samme dag efter krav-doc-feedback, runde 1 · prefix-fornyelse til governance-markør samme dag, indhold uændret)
 **Valideret:** krav OK (Mathias, 2026-06-10 i krav-dok-chat) · Fornyelse: krav OK (Mathias, 2026-06-10 — punkt 1+2-svar + krav 9)
 
 ## Formål
 
-> Workflowet kører automatisk fra start til slut: Mathias åbner, og Mathias lukker. Undervejs har han én fast kontrolpost — krav-dokket, forretningen, som kun han kan validere. Plan og byg valideres af rollerne; Mathias kaldes kun ind når der findes en afgørelse der er hans. Det vi bygger er grundstenen under alle fremtidige Stork 2.0-pakker, og målet er klart: sammen kan vi opnå greatness.
+> Denne pakke leverer: workflowet kørende automatisk fra start til slut — Mathias åbner, og Mathias lukker. Undervejs har han én fast kontrolpost — krav-dokket, forretningen, som kun han kan validere. Plan og byg valideres af rollerne; Mathias kaldes kun ind når der findes en afgørelse der er hans. Det vi bygger er grundstenen under alle fremtidige Stork 2.0-pakker, og målet er klart: sammen kan vi opnå greatness.
 
 ## Krav
 
