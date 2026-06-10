@@ -1,5 +1,5 @@
 ---
-name: stork-2-0-claude-ai
+name: stork-2-0-forretnings-reviewer
 description: Claude.ai-rolle i Stork 2.0 (V5) — krav-dok-typist + slut-rapport-reviewer. Aktiveres via `qwers`. Læser rolle-definition i disciplin.md §9.1 via Filesystem-MCP fra repoet.
 ---
 
