@@ -84,10 +84,81 @@ function parseAktivMarker(aktivPlanTekst) {
   return marker;
 }
 
-// Læser fuld kæde-tilstand. `behandlede` (Set af "fil@sha") leveres af
-// dirigentens dispatch-log så decide() forbliver ren og idempotent.
-export function laesTilstand({ repoRod, kaedeIssue = null }) {
-  git(["fetch", "--quiet"], repoRod);
+// ---------- ren event-afledning (Codex B1-fund 2) ----------
+//
+// Events er AFLEDTE TILSTANDE (ikke besked-strøm): genberegnes hver cyklus af
+// rå kilder; idempotens bæres af behandlede-nøgler (event:<type>@<sha>).
+// gateOrd filtreres på gateAuthor OGSÅ her (forsvar i dybden — decide() gør det igen).
+export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, mainSha }) {
+  if (!pakke || pakke === "ingen") return [];
+  const events = [];
+  if (paaMain.kravDok && !paaMain.planFil) events.push({ type: "krav-dok-merged", sha: mainSha });
+  if (buildPr?.merged && !paaMain.rapportFil) events.push({ type: "build-pr-merged", sha: buildPr.mergeSha ?? mainSha });
+  if (buildPr?.klar && buildPr?.beslutningsSti) events.push({ type: "build-pr-klar-beslutningssti", sha: buildPr.headSha ?? mainSha });
+  for (const ord of gateOrd ?? []) {
+    if (ord.author !== gateAuthor) continue;
+    if (ord.tekst === "slut OK") events.push({ type: "slut-ok-registreret", sha: ord.id ?? mainSha });
+    if (ord.tekst.startsWith("qwers ")) events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+  }
+  return events;
+}
+
+// Bogførings-sti-tjek (de 7 P3-mønstre). NB: CODEOWNERS er det HÅNDHÆVENDE
+// værn (GitHub) — denne helper afgør kun om kuréren skal re-requeste Mathias-
+// review (transport-høflighed); GitHub kræver det uanset hvad denne siger.
+const BOGFOERING_RES = [
+  /^docs\/coordination\/aktiv-plan\.md$/,
+  /^docs\/coordination\/seneste-rapport\.md$/,
+  /^docs\/coordination\/codex-reviews\//,
+  /^docs\/coordination\/plan-feedback\//,
+  /^docs\/coordination\/rapport-historik\//,
+  /^docs\/coordination\/[^/]+-status\.md$/,
+  /^docs\/coordination\/[^/]+-plan\.md$/,
+];
+export function erBogfoeringsSti(fil) {
+  return BOGFOERING_RES.some((re) => re.test(fil));
+}
+
+function filSha(sti, cwd) {
+  try {
+    return git(["log", "-1", "--format=%H", "--", sti], cwd) || null;
+  } catch {
+    return null;
+  }
+}
+
+function paaOriginMain(sti, cwd) {
+  try {
+    git(["cat-file", "-e", `origin/main:${sti}`], cwd);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function laesBuildPr(pakke, cwd) {
+  try {
+    const raw = gh(
+      ["pr", "view", `claude/${pakke}-build`, "--json", "state,mergedAt,mergeCommit,headRefOid,statusCheckRollup,files", "--jq", "{state, mergedAt, mergeSha: .mergeCommit.oid, headSha: .headRefOid, checks: [.statusCheckRollup[]?.conclusion // .statusCheckRollup[]?.status], filer: [.files[].path]}"],
+      cwd,
+    );
+    const pr = JSON.parse(raw);
+    return {
+      merged: pr.state === "MERGED",
+      mergeSha: pr.mergeSha ?? null,
+      headSha: pr.headSha ?? null,
+      klar: pr.state === "OPEN" && pr.checks.length > 0 && pr.checks.every((c) => c === "SUCCESS"),
+      beslutningsSti: (pr.filer ?? []).some((f) => !erBogfoeringsSti(f)),
+    };
+  } catch {
+    return null; // ingen build-PR endnu — ikke en fejl
+  }
+}
+
+// Læser fuld kæde-tilstand. `behandlede` (Set af "fil@sha"/"event:type@sha")
+// leveres af dirigentens dispatch-log så decide() forbliver ren og idempotent.
+export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
+  if (fetch) git(["fetch", "--quiet"], repoRod);
 
   const branch = git(["branch", "--show-current"], repoRod);
   const lokalSha = git(["rev-parse", "HEAD"], repoRod);
@@ -116,30 +187,62 @@ export function laesTilstand({ repoRod, kaedeIssue = null }) {
       if (!fil.endsWith(".md")) continue;
       const sti = `docs/coordination/${dir}/${fil}`;
       const tekst = readFileSync(join(repoRod, sti), "utf8");
+      const erUntracked = untracked.includes(sti);
       leverancer.push({
         fil: sti,
-        untracked: untracked.includes(sti),
+        untracked: erUntracked,
+        sha: erUntracked ? null : filSha(sti, repoRod), // frossen-version-binding (Codex B1-fund 2)
         deklaration: parseDeklaration(tekst),
         markers: udtraekMarkers(tekst),
       });
     }
   }
 
-  // Gate-ord fra kæde-issue (author følger med — verifikation sker i decide())
+  // Gate-ord fra kæde-issue (author + kommentar-id følger med — verifikation i decide())
   let gateOrd = [];
   if (kaedeIssue) {
     try {
       const raw = gh(
-        ["issue", "view", String(kaedeIssue), "--json", "comments", "--jq", JSON.stringify(".comments[] | {author: .author.login, body: .body}")],
+        ["issue", "view", String(kaedeIssue), "--json", "comments", "--jq", JSON.stringify(".comments[] | {id: .id, author: .author.login, body: .body}")],
         repoRod,
       );
       gateOrd = raw
         .split("\n")
         .filter(Boolean)
         .map((l) => JSON.parse(l))
-        .map((k) => ({ author: k.author, tekst: k.body.trim() }));
+        .map((k) => ({ id: k.id, author: k.author, tekst: k.body.trim() }));
     } catch {
       gateOrd = []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
+    }
+  }
+
+  // Events: afledte tilstande for den aktive pakke (rå kilder: origin/main + build-PR)
+  const pakke = marker?.pakke ?? "ingen";
+  const reglerSti = join(repoRod, "scripts/kaede/kaede-regler.json");
+  const gateAuthor = JSON.parse(readFileSync(reglerSti, "utf8")).identiteter.gate_author;
+  let events = [];
+  if (pakke !== "ingen") {
+    const mainSha = git(["rev-parse", "origin/main"], repoRod);
+    events = afledEvents({
+      pakke,
+      paaMain: {
+        kravDok: paaOriginMain(`docs/coordination/${pakke}-krav-og-data.md`, repoRod),
+        planFil: paaOriginMain(`docs/coordination/${pakke}-plan.md`, repoRod),
+        rapportFil: false, // rapport-historik/<dato>-<pakke>.md — dato ukendt; afklares ved opslag
+      },
+      buildPr: fetch ? laesBuildPr(pakke, repoRod) : null,
+      gateOrd,
+      gateAuthor,
+      mainSha,
+    });
+    // rapportFil: glob-opslag mod origin/main (dato-præfiks ukendt)
+    try {
+      const rapportFiler = git(["ls-tree", "--name-only", "origin/main", "docs/coordination/rapport-historik/"], repoRod);
+      if (rapportFiler.split("\n").some((f) => f.endsWith(`-${pakke}.md`))) {
+        events = events.filter((e) => e.type !== "build-pr-merged");
+      }
+    } catch {
+      /* rapport-historik findes ikke endnu — events står */
     }
   }
 
@@ -153,5 +256,5 @@ export function laesTilstand({ repoRod, kaedeIssue = null }) {
     },
   ]);
 
-  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, divergens };
+  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, divergens };
 }

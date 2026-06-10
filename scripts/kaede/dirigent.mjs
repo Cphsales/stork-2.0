@@ -116,6 +116,7 @@ export function decide(tilstand, regler) {
 
   // 5. Kalender-poll-events (eksterne tilstande: merges, checks, åbnings-ord).
   for (const ev of tilstand.events ?? []) {
+    if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}`)) continue; // event-idempotens
     const modtagere = regler.events[ev.type];
     if (!modtagere) {
       return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-event", event: ev.type }];
@@ -176,6 +177,9 @@ export function udfoer(handlinger, { dryRun = false } = {}) {
           console.error(`KÆDE-STOP: adapter mangler: ${h.adapter} — manuelt flow (krav 7)`);
           return { stoppet: true, laase };
         }
+        // DISPATCH-loggen ovenfor er FORSØG — behandlet-status bæres ALENE af
+        // KOERSEL-SLUT m. exit 0 (Codex B1-fund 1: fejlet kørsel må aldrig
+        // tælle som behandlet eller passere stille).
         laase.push({ aktoer: h.aktoer, spor: h.kontekst.spor });
         const res = spawnSync("bash", [adapterSti], {
           cwd: REPO_ROD,
@@ -183,7 +187,15 @@ export function udfoer(handlinger, { dryRun = false } = {}) {
           env: { ...process.env, KAEDE_OPGAVE: h.opgave, KAEDE_FIL: h.kontekst.fil ?? "", KAEDE_SHA: h.kontekst.sha ?? "", KAEDE_SPOR: h.kontekst.spor },
         });
         laase.pop();
-        log({ handling: "KOERSEL-SLUT", aktoer: h.aktoer, exit: res.status });
+        log({ handling: "KOERSEL-SLUT", aktoer: h.aktoer, exit: res.status, kontekst: h.kontekst });
+        if (res.status !== 0) {
+          // Adapter-kontrakt (B2): exit 0 = leverance leveret (indholdet bærer
+          // selv markers); alt andet = kørsel fejlede → STOP, manuelt flow.
+          // Ingen auto-retry: en permanent fejlende adapter må aldrig loope.
+          log({ handling: "KAEDE-STOP", grund: "adapter-fejl", aktoer: h.aktoer, exit: res.status });
+          console.error(`KÆDE-STOP: ${h.aktoer}-adapter exit ${res.status} — manuelt flow (krav 7)`);
+          return { stoppet: true, laase };
+        }
         break;
       }
       case "KAEDE-STOP":
@@ -199,19 +211,26 @@ export function udfoer(handlinger, { dryRun = false } = {}) {
 
 // ---------- CLI / poll-løkke ----------
 
-function laesBehandlede() {
-  if (!existsSync(LOG_STI)) return [];
-  return readFileSync(LOG_STI, "utf8")
-    .split("\n")
+// REN: behandlet-nøgler udledes KUN af succesfulde kørsler (KOERSEL-SLUT,
+// exit 0) — fejlede dispatches efterlader ingen behandlet-markering (de fører
+// til KAEDE-STOP i udfoer; ved manuel genstart re-evalueres leverancen).
+export function behandletNoegler(logLinjer) {
+  return logLinjer
     .filter(Boolean)
     .map((l) => JSON.parse(l))
-    .filter((p) => p.handling === "DISPATCH" && p.kontekst?.fil)
-    .map((p) => `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}`);
+    .filter((p) => p.handling === "KOERSEL-SLUT" && p.exit === 0 && p.kontekst)
+    .map((p) => (p.kontekst.fil ? `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}` : `event:${p.kontekst.event}@${p.kontekst.sha ?? "HEAD"}`));
+}
+
+function laesBehandlede() {
+  if (!existsSync(LOG_STI)) return [];
+  return behandletNoegler(readFileSync(LOG_STI, "utf8").split("\n"));
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const dryRun = argv.includes("--dry-run");
+  const offline = argv.includes("--offline"); // sandbox-verifikation: ingen fetch/gh
   const once = argv.includes("--once") || dryRun;
 
   if (existsSync(LAAS_STI)) {
@@ -226,7 +245,7 @@ async function main() {
 
   do {
     try {
-      const tilstand = laesTilstand({ repoRod: REPO_ROD });
+      const tilstand = laesTilstand({ repoRod: REPO_ROD, kaedeIssue: regler.kaede_issue ?? null, pakke: null, fetch: !offline });
       tilstand.behandlede = laesBehandlede();
       const handlinger = decide(tilstand, regler);
       const resultat = udfoer(handlinger, { dryRun });
