@@ -39,6 +39,23 @@
 | ---- | ---------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R4-1 | ADMIN-HANDLE-definitionen er tidsafhængig — efter bot-auth-skift resolver den til botten | KRITISK  | **ACCEPT.** Capture-rækkefølge bindende i step 1: `ADMIN_HANDLE` fanges FØR bot-login, `BOT_LOGIN` efter, assert `ADMIN_HANDLE != BOT_LOGIN`; CODEOWNERS bruger den capturede `ADMIN_HANDLE`-værdi; step 2-gaten udvidet med indholds-tjek (aktive linjer indeholder ADMIN_HANDLE) |
 
+## qwerg-revision af H026-strukturen (Mathias, §1-suverænitet, 2026-06-10)
+
+Mathias ændrede konto-strukturen ved build step 1 — gælder straks; planen
+opdateret som konsekvens (ikke betingelse):
+
+- Det hidtidige gh-login er et FÆLLES login (bærer Stork 1.0 + drift) — det
+  nedgraderes IKKE og bruges fremover KUN til protection-API-kaldene (step
+  3-4), som planlagt.
+- **ADMIN_HANDLE := `mgrubak`** — Mathias' NYE personlige konto (org-owner),
+  eksplicit udpeget (capture-protokollen fra R4-1 erstattet: værdien kan ikke
+  captures fra det fælles login). R4-1's formål (CODEOWNERS ≠ bot) opfyldes
+  fortsat: assert `mgrubak != BOT_LOGIN` efter auth-skift.
+- Bot uændret: `stork-code-bot` (org-member, write, fine-grained PAT godkendt
+  i org-settings).
+- CODEOWNERS peger på `@mgrubak` (ikke det fælles login).
+- H026-beviset: bot-PR approves af **mgrubak**.
+
 ## Step 2.0 — Skitse + størrelses-tjek
 
 **1 migration** (G061-opsamling: 2 `comment on`-statements — ikke-destruktiv,

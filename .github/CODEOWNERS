@@ -3,16 +3,19 @@
 # Linje-format: <path-glob>   <owner1> [<owner2> ...]
 # Den sidst-matchende regel vinder.
 
-# Default — alt review af Mathias (repo-ejer)
-*       @Cphsales
+# Default — alt review af Mathias (personlig konto, org-owner).
+# VIGTIGT: owner SKAL være en bruger eller @org/team — org-kontoen selv
+# (Cphsales) var ugyldig som code owner (GitHubs codeowners-errors viste 5
+# "Unknown owner"). Rettet i gov-4; mgrubak er Mathias' personlige konto.
+*       @mgrubak
 
 # Låste autoritative dokumenter — eksplicit Mathias-approval (redundant ift. default, men signalværdi)
-/docs/strategi/vision-og-principper.md     @Cphsales
-/docs/strategi/forretningsforstaaelse.md   @Cphsales
-/docs/strategi/disciplin.md                @Cphsales
-/docs/strategi/stork-2-0-master-plan.md    @Cphsales
+/docs/strategi/vision-og-principper.md     @mgrubak
+/docs/strategi/forretningsforstaaelse.md   @mgrubak
+/docs/strategi/disciplin.md                @mgrubak
+/docs/strategi/stork-2-0-master-plan.md    @mgrubak
 
 # Disciplin-mekanismer (lag B kommer) — kræver ekstra opmærksomhed
-# /supabase/migrations/        @Cphsales
-# /packages/core/              @Cphsales
-# /.github/                    @Cphsales
+# /supabase/migrations/        @mgrubak
+# /packages/core/              @mgrubak
+# /.github/                    @mgrubak
