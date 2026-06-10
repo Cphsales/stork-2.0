@@ -1,9 +1,9 @@
-# gov-docs-renhed — Plan V3
+# gov-docs-renhed — Plan V4
 
 **Branch:** claude/gov-docs-renhed-plan
 **Krav-dok:** docs/coordination/gov-docs-renhed-krav-og-data.md
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-docs-renhed-status.md (konvergens-counter: 3)
+**Status-fil:** docs/coordination/gov-docs-renhed-status.md (konvergens-counter: 4 — §3.4-alert rejst, se status-fil)
 
 ## Formål
 
@@ -30,6 +30,13 @@
 | R2-2 | State-dump stale pr. V2-commit (28e0010 = 22 docs, tabel siger 21)                                      | MELLEM   | **ACCEPT** (rettet nu frem for G-nummer — billigere end gælden). Dump omdefineret: baseline (main) er det autoritative måle-punkt planen patcher mod; branch-tallet drifter pr. plan-commit by construction og re-verificeres i build batch 3, ikke pr. V |
 | R2-3 | Kæde-tjek: ingen status-krydspeg; fase:rapport fejler ikke når rapport mangler Formål-blok              | MELLEM   | **ACCEPT** (rettet nu). B.3: rapport uden Formål-blok = violation; plan→status-sti-krydspeg + status→pakkenavn-krydspeg; B.4: +2 cases (i alt 9)                                                                                                          |
 | R2-4 | Master-plan kalder stadig forretningsforståelse "tanke-data" + vision-vinder-hierarki (§8.1-MODSIGELSE) | MELLEM   | **ACCEPT** (rettet nu). Ny A.14 patcher master-planens hierarki-afsnit. §8-rationale: master-plan er RETNINGSGIVENDE — Mathias har allerede afgjort løftet i krav-dok, så master-plan tilrettes (præcis som master-planen selv foreskriver)               |
+
+## V3 → V4: Codex-fund runde 3 (alle ADRESSERET)
+
+| #    | Fund                                                                                                 | Severity          | Code-svar                                                                                                                                              |
+| ---- | ---------------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R3-1 | A.6 efterlod §8-tabellens vision-række som "Vinder over alt" — to modsatrettede regler i samme tabel | KRITISK           | **ACCEPT.** A.6 udvidet: vision-rækken patches med D4-undtagelsen (nuværende 1:1 + ny 1:1 i A.6). Lukker §8.1-modsigelsen samlet med A.1/A.2/A.10/A.14 |
+| R3-2 | parse-test mangler routing-dækning for WORKAROUND/ESCALATE/halt-marker                               | G-NUMMER-KANDIDAT | **ADOPT** (rettet nu frem for G-nummer). +3 fixtures i B.1 — alle fem exit-koder 0/1/2/3/4 beviste                                                     |
 
 ## Step 2.0 — Skitse + størrelses-tjek
 
@@ -269,7 +276,20 @@ Ny: `| 4 | Konfiguration-i-data | Ingen hardkodede satser/lønarter (Codex + Cla
 
 ### A.6 `disciplin.md` §8 + §8.1 + §10.3
 
-§8-tabellen (linje 201-207): ny række indsættes efter vision-rækken:
+§8-tabellens vision-række (linje 203) patches OGSÅ (fund R3-1 — uden dette
+ville tabellen rumme to modsatrettede regler). Nuværende 1:1:
+
+```
+| `vision-og-principper.md`               | **LÅST**            | STOP. KRITISK. Vinder over alt. Dokumentér i blokker-fil, argumentér ikke videre                                                                             |
+```
+
+Ny:
+
+```
+| `vision-og-principper.md`               | **LÅST**            | STOP. KRITISK. Vinder over alt undtagen forretningsforstaaelse (D4: indbyrdes stamme-doc-modsigelse = hul → STOP → Mathias lukker). Dokumentér i blokker-fil, argumentér ikke videre |
+```
+
+Dernæst (uændret fra V2): ny række indsættes efter vision-rækken:
 
 ```
 | `forretningsforstaaelse.md` | **LÅST** | STOP. KRITISK. Stamme-doc med vision (D4): modsigelse mellem de to er et hul Mathias lukker — ingen trumf |
@@ -564,6 +584,13 @@ asserter routing:
 | `KRITISKE detaljer` (negativ-case)  | 0              |
 | `[NEEDS-MATHIAS] spørgsmål`         | 4              |
 | `STOP-FOR-CLARIFICATION: mangler X` | 1              |
+| `[PLAN-AFVIGELSE] afviger fra plan` | 2              |
+| `WORKAROUND-INTRODUCERET: hack`     | 3              |
+| `[ESCALATE] iter > 3`               | 4              |
+
+(De tre sidste fixtures tilføjet i V4 efter Codex' runde 3-kandidat — fuld
+routing-table-dækning: alle fem exit-koder 0/1/2/3/4 er nu beviste, frem for
+G-nummer.)
 
 Køres lokalt som build-evidens i batch 1; CI-wiring noteres til gov-5
 (runner-pakken, hvor scriptet får sin automation-rolle).
