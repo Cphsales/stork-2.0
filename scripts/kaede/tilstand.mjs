@@ -185,10 +185,12 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
 
   // Leverance-filer: coordination-fladen (untracked = afventer transport-commit)
   const koordDir = join(repoRod, "docs/coordination");
-  const untracked = git(["status", "--porcelain", "docs/coordination/"], repoRod)
-    .split("\n")
-    .filter((l) => l.startsWith("??"))
-    .map((l) => l.slice(3).trim());
+  const porcelain = git(["status", "--porcelain", "docs/coordination/"], repoRod).split("\n").filter(Boolean);
+  const untracked = porcelain.filter((l) => l.startsWith("??")).map((l) => l.slice(3).trim());
+  // Modificeret TRACKED fil (Codex runde 13-fund 1): en aktør m. commit-ret er
+  // midt i arbejdet — kuréren committer ALDRIG halvfærdigt arbejde og må ikke
+  // route filen (worktree-tekst + gammel filSha = forkert frossen version).
+  const aendrede = porcelain.filter((l) => !l.startsWith("??")).map((l) => l.slice(3).trim());
 
   // Leverance-bærere (Codex B1-runde 9-fund 1 — fuld flade):
   //   codex-reviews/ + plan-feedback/  → Codex'/Claude.ai-rollens leverancer
@@ -237,6 +239,7 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     leverancer.push({
       fil: sti,
       untracked: erUntracked,
+      aendret: aendrede.includes(sti),
       // frossen version: artefaktets SHA vinder over bærerens (runde 10-fund 1)
       sha: erUntracked ? null : (artefaktSha(deklaration?.type) ?? filSha(sti, repoRod)),
       deklaration,

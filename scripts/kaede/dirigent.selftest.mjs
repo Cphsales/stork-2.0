@@ -459,6 +459,30 @@ check(
   !erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"),
 );
 
+// ---------- 19b. modificeret tracked bærer → AFVENTER-COMMIT (Codex runde 13) ----------
+{
+  const h = decide(
+    {
+      ...TOM,
+      leverancer: [
+        {
+          fil: "docs/coordination/p-status.md",
+          aendret: true,
+          sha: "gammelSha",
+          deklaration: { naeste: "codex", type: "plan-version" },
+          markers: [],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "modificeret tracked bærer → AFVENTER-COMMIT, ingen routing (stale frossen SHA) og ingen transport-commit",
+    h.some((x) => x.handling === "AFVENTER-COMMIT") &&
+      !h.some((x) => x.handling === "DISPATCH" || x.handling === "TRANSPORT-COMMIT"),
+  );
+}
+
 // ---------- 20. parallel eksekvering (Codex runde 12: BEVIS, ikke kun beslutning) ----------
 {
   const KAEDE = dirname(fileURLToPath(import.meta.url));
