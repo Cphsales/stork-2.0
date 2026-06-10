@@ -1,19 +1,26 @@
 # gov-docs-renhed — Pakke-status
 
-**Sidste handling:** Plan V4 skrevet — runde 3-fund ADRESSERET (KRITISK R3-1: §8-tabellens vision-række D4-patches også; R3-2 ADOPT: parse-test fuld routing-dækning); Codex runde 4 dispatched (2026-06-10).
-**Næste forventet:** Codex runde 4: APPROVAL + INGEN NYE FUND → Mathias læser → `qwerg`. Ellers runde 5 = §3.4 auto-pause.
-**Konvergens-counter:** 4 — **§3.4 MATHIAS-ALERT:** "er krav-dok præcist nok?" Codes vurdering: ja — fund-kæden (5→4→1) har været plan-interne huller i Codes egne patches (samme D4-tema fra tre vinkler), ikke krav-uklarhed. Ingen krav-dok-genåbning foreslået; Mathias afgør om han er enig.
-**Aktuel blocker:** ingen (alerten er informativ, pause først ved counter 5).
+**Sidste handling:** Codex runde 4: **APPROVAL — INGEN NYE FUND + §8.1-SVAR: INGEN-MODSIGELSE** (2026-06-10). Plan V4 er Codex-approved.
+**Næste forventet:** Mathias læser Plan V4 igennem → paster `qwerg` → build starter (batch 1: script-reconcile). INTET bygges før qwerg (§2 Step 3).
+**Konvergens-counter:** 4 (afsluttet — konvergeret ved runde 4).
+**Aktuel blocker:** afventer Mathias-gennemlæsning + `qwerg`.
+
+Til Mathias' gennemlæsning (qwerg-forudsætninger, §2 Step 3):
+
+- **Fundament-validering:** planen implementerer dine egne krav-dok-afgørelser
+  (D4 + forretningsforståelse-løft). Vision-banneret får en minimal
+  D4-undtagelse (plan appendix A.1) — vision er LÅST, så DEN ændring håndhæves
+  af din CODEOWNERS-approval ved merge.
+- **§3.4-alert (counter 4):** rejst i runde 4-versionen — Codes vurdering: fund-
+  kæden var plan-interne huller (D4-temaet fra skiftende vinkler), ikke krav-
+  uklarhed. Konvergeret: 5 → 4 → 1 → 0 fund.
+- **Script-verdikter:** codex-review.sh repareres; claude-ai-prompt.sh,
+  data-grundlag.sh, krav-afklar.sh slettes (git-history bevarer).
 
 Noter:
 
-- Krav OK givet af Mathias 2026-06-10.
-- 0 migrations — ren docs+scripts-pakke; §3.2 DB-dump N/A (repo-state-dump i plan).
-- §8.1-gate aktiv: pakken berører begge stamme-docs + disciplin §8-tabellen +
-  master-planens hierarki-afsnit → Codex' §8.1-SVAR kræves; vision-ændring
-  håndhæves af Mathias-CODEOWNERS ved merge.
-- Reviews: codex-reviews/2026-06-10-gov-docs-renhed-runde-1.md (2 KRITISK +
-  3 MELLEM → V2) · runde-2.md (1 KRITISK + 3 MELLEM → V3) · runde-3.md
-  (1 KRITISK + 1 G-kandidat → V4).
-- Driftsnote: `codex exec` uden TTY kræver `< /dev/null` (ellers stdin-hænger) —
-  i codex-review.sh-repair (appendix B.1).
+- Krav OK givet af Mathias 2026-06-10. 0 migrations — ren docs+scripts-pakke.
+- Reviews: codex-reviews/2026-06-10-gov-docs-renhed-runde-{1,2,3,4}.md
+  (2K+3M → 1K+3M → 1K+1G-kandidat → APPROVAL).
+- Driftsnote: `codex exec` uden TTY kræver `< /dev/null` (stdin-hænger) — fix
+  indgår i codex-review.sh-repair (appendix B.1).
