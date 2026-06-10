@@ -49,3 +49,7 @@ supabase/.branches/
 
 # Lokale V4-gennemgangs-kopier — aldrig committet; foldes/fjernes i gov-6 (G063)
 docs/coordination/v4-slettede-docs/
+
+# Kædens runtime-filer (gov-5): dispatch-log + instans-lås — aldrig committet
+scripts/kaede/.dispatch-log.jsonl
+scripts/kaede/.dirigent.lock

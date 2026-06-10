@@ -69,6 +69,9 @@ jobs:
       - name: Governance selftest
         run: pnpm governance:selftest
 
+      - name: Kæde selftest (gov-5 kurér-kerne)
+        run: pnpm kaede:selftest
+
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
