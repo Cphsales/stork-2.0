@@ -48,7 +48,7 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 ### [H027] CI-actions på Node 20 — tvungen Node 24 fra 2026-06-16
 
 - **Handling:** Bump `actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` (alle workflows) til Node 24-kompatible versioner + verificér grøn CI. KRITISK timing: GitHub tvinger Node 24 fra **2026-06-16**; knækker en action, bliver den required CI-check rød og main er LÅST (gov-4-gates er fuldt bindende).
-- **Status:** åben (deadline 2026-06-16). Rejst 2026-06-10 (runner-warning på PR #110). Ejer: Code — mikro-PR umiddelbart efter gov-4-luk.
+- **Status:** løst 2026-06-10 — alle tre actions bumpet til v6 (Node 24-native) i alle 4 workflows; CI-bevis på PR'en. Rejst samme dag (runner-warning på PR #110).
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 
