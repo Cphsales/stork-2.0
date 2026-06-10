@@ -1,10 +1,10 @@
-# gov-5-automation — Plan V3
+# gov-5-automation — Plan V4
 
 **Branch:** claude/gov-5-automation-plan
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V3 · konvergens-counter: 3
+**Plan-version:** V4 · konvergens-counter: 4 (§3.4: Mathias-alert leveret i Code-rapport 2026-06-10 — Codes vurdering: krav-dok præcist nok; V4 er rest-fejning af V2-KRITISK 1, ikke ramme-problem)
 
 ## Kode-fund-håndtering (fra Codex V1)
 
@@ -17,6 +17,10 @@
 - **KRITISK 1 (codex.sh commit-ansvar bryder read-only): ACCEPT.** Reel V2-inkonsistens. Løsning: **transport-commit** — AL commit af aktør-leverancer i kæden sker ét sted: dirigentens transport-commit-funktion (bot-identitet), der committer leverance-filer ORDRET (aldrig indhold transporten selv har genereret, aldrig redigeret) med dispatch-log-reference i commit-besked. Codex-processen skriver fortsat intet i repo (dens output fanges af codex-review.sh som i dag); Claude.ai-rollens untracked output transport-committes ligeså. Code-adapteren committer kun Codes egne leverancer (uændret). Step 5 + rolle-tabel rettet; design-punkt 10 tilføjet.
 - **KRITISK 2 (protection-state fortsat uverificeret): ACCEPT.** 13a omformuleret: bevarelseslisten er nu eksplicit FORVENTNINGER fra gov-4-dokumentationen (ikke verificeret state — bot ser kun `required_status_checks`; admin-endpoint 403). 13a-dumpet er eneste sandhed; den eksakte diff skrives FØRST efter dump og verificeres mod forventningerne — afvigelse = rapport til Mathias før qwerg.
 - **KRITISK 3 (systemd-forudsætning matcher ikke faktisk state): ACCEPT.** Codex' uafhængige verifikation korrekt; egen efterprøvning bekræfter: `Linger=no` — user-services stopper når Mathias' sessions lukker; desuden kræver adapters bus-/runtime-env (`XDG_RUNTIME_DIR`) som ikke kan antages i exec-kontekster. Afhængigheds-rækken rettet til ærlig state; step 10 udvidet med preflight (linger-tjek + `loginctl enable-linger` + env-krav i unit) og risiko hævet Lav → Mellem. Fallback uændret: service nede = manuelt flow (krav 7).
+
+## Kode-fund-håndtering (fra Codex V3)
+
+- **KRITISK 1 (transport-commit-sporet inkonsistent — V2-fix ikke fejet igennem): ACCEPT.** Alle fire rest-steder rettet (Claude.ai-rolle-afsnit, Codex-adapter-række, kæde-spor led 4 + 7): aktør-leverancer → dirigentens transport-commit (ordret); Code committer KUN egne leverancer. Reference-konsistens-pass kørt over hele planen (grep "Code committer") — fix-cycle-disciplinens lektion anvendt: hver fix fejes igennem søster-sektioner i samme runde.
 
 ## Mathias-vagter indarbejdet (2026-06-10, efter V1)
 
@@ -85,7 +89,7 @@ Bærende valg (begrundet i formålet):
 9. **Suverænitet:** "stop" fra Mathias (enhver kanal dirigenten læser) → øjeblikkelig kæde-pause. Dirigent-tilstand (sidste handling + næste forventede) vises løbende i kæde-issuet.
 10. **Transport-commit (V3, Codex V2-KRITISK 1):** al commit af aktør-leverancer sker i dirigentens transport-commit-funktion — fil committes ORDRET som aktøren skrev den, med dispatch-log-reference; transporten genererer/redigerer aldrig leverance-indhold. Codex forbliver read-only (skriver intet i repo selv); Claude.ai-rollen forbliver docs-lag (untracked → transport-commit); Code committer egne leverancer som hidtil.
 
-**Claude.ai-rollen lokalt (krav 1, fornyet):** adapter kører `claude -p` med §9.1-rolleinstruks (`scripts/kaede/claude-ai-rolle-instruks.md`) for de to vækbare leverancer: slut-rapport-review og qwerg-gate-pakke. Leverancen skrives **untracked** (V2-mønstret); **Code committer**. Windows-appen består urørt til dialogen med Mathias.
+**Claude.ai-rollen lokalt (krav 1, fornyet):** adapter kører `claude -p` med §9.1-rolleinstruks (`scripts/kaede/claude-ai-rolle-instruks.md`) for de to vækbare leverancer: slut-rapport-review og qwerg-gate-pakke. Leverancen skrives **untracked**; **dirigentens transport-commit committer den ordret** (design pkt. 10). Windows-appen består urørt til dialogen med Mathias.
 
 ### Rolle- og ansvars-linjer (vagt 3)
 
@@ -93,7 +97,7 @@ Bærende valg (begrundet i formålet):
 | ----------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Dirigent                | stork-code-bot (gh)        | Læse tilstand; dispatche adapter-kørsler; poste kæde-issue-status/gate-anmodninger; re-requeste reviews; **transport-committe aktør-leverancer ORDRET** (logget, V3-design pkt. 10) | Generere/redigere leverance-indhold; læse/vurdere leverance-indhold; røre protection/admin-API; merge gated PR'er; dispatche krav-dok-skrivning |
 | Code-adapter            | Code (§9.2)                | Alt §9.2 tillader — fuld rolle, headless                                                                                                                                            | Overskride §9.2 (formål, scope, stamme-docs); fortsætte forbi STOP-betingelser uden gate-fil                                                    |
-| Codex-adapter           | Codex (§9.3), read-only    | Review + research; markers                                                                                                                                                          | Skrive kode; committe (Code committer outputtet)                                                                                                |
+| Codex-adapter           | Codex (§9.3), read-only    | Review + research; markers                                                                                                                                                          | Skrive kode; committe (dirigentens transport-commit committer outputtet ordret, design pkt. 10)                                                 |
 | Claude.ai-rolle-adapter | Claude.ai (§9.1), docs-lag | Slut-rapport-review + qwerg-gate-pakke; untracked output                                                                                                                            | Kode-vurdering; datamodel; committe; skrive krav-dok (krav-dok-fasen er dialog og vækkes ALDRIG af kæden)                                       |
 | Mathias-adapter         | bot poster; mgrubak afgør  | Notifikation + gate-ord-aflæsning m. author-verifikation                                                                                                                            | Tolke/sammenfatte gate-indhold (kun transport af ordret tekst); acceptere gate-ord fra andre authors                                            |
 
@@ -112,10 +116,10 @@ Bærende valg (begrundet i formålet):
 1. Mathias: "qwers gov-6-arkiv-fold"-kommentar på dirigent-issue (mobil) → author-verifikation → kvittering; Step 0/1 er dialog — kæden venter på krav-dok
 2. Krav-dok merged → dispatch Code-plan + Codex-research parallelt (§2.1)
 3. Code committer plan-V<n> → dispatch Codex-review
-4. Codex-output committet (af Code-adapter) → marker-parse: FEEDBACK → Code-V<n+1> · APPROVAL → dispatch Claude.ai-rolle (qwerg-gate-pakke, untracked → Code committer) → gate-anmodning + @mgrubak → **Mathias læser, svarer "qwerg" (mobil)**
+4. Codex-output transport-committet (dirigent, ordret) → marker-parse: FEEDBACK → Code-V<n+1> · APPROVAL → dispatch Claude.ai-rolle (qwerg-gate-pakke, untracked → transport-commit) → gate-anmodning + @mgrubak → **Mathias læser, svarer "qwerg" (mobil)**
 5. qwerg author-verificeret → Code-build; pr. batch dispatches Codex-batch-review parallelt
 6. Build-PR klar (grøn CI + reviews) → re-request mgrubak-review → **push → Mathias approver (mobil)** → auto-merge (armeret af Code ved PR-oprettelse) fyrer
-7. Merge set → Code-slut-rapport → push set → Claude.ai-rolle-review (untracked → Code committer) → APPROVAL → gate-anmodning → **Mathias: "slut OK" (mobil)** → Code merger slut-rapport-PR (konvention uændret)
+7. Merge set → Code-slut-rapport → push set → Claude.ai-rolle-review (untracked → transport-commit) → APPROVAL → gate-anmodning → **Mathias: "slut OK" (mobil)** → Code merger slut-rapport-PR (konvention uændret)
 8. Hvert led: marker-/exit-parse før næste dispatch; ethvert brud → spor-pause + notifikation + manuelt flow
 
 ## Implementations-rækkefølge
