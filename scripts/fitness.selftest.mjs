@@ -16,6 +16,7 @@ import {
   secdefMarkerViolations,
   appWriteViolations,
   compareAdvisorBaseline,
+  parseAdvisorLiveRow,
 } from "./fitness.mjs";
 
 const ROOT = process.cwd();
@@ -303,6 +304,20 @@ plant(
   fjernet.length === 1 && /findes ikke laengere live/.test(fjernet[0])
     ? ok("advisor-baseline fjernet entry -> roed (stram baselinen)")
     : bad("advisor-baseline fjernet", `fik ${fjernet.length}`);
+}
+
+// parseAdvisorLiveRow: string/objekt/tomt (R2-fund fra kode-review)
+{
+  const obj = { secdef_exposed: ["a"], rls_no_policy: [] };
+  JSON.stringify(parseAdvisorLiveRow([{ baseline: JSON.stringify(obj) }])) === JSON.stringify(obj)
+    ? ok("parseAdvisorLiveRow string -> parsed")
+    : bad("parseAdvisorLiveRow string", "mismatch");
+  JSON.stringify(parseAdvisorLiveRow([{ baseline: obj }])) === JSON.stringify(obj)
+    ? ok("parseAdvisorLiveRow objekt -> parsed")
+    : bad("parseAdvisorLiveRow objekt", "mismatch");
+  parseAdvisorLiveRow([]) === null && parseAdvisorLiveRow([{}]) === null
+    ? ok("parseAdvisorLiveRow tom/uventet -> null (fail-closed)")
+    : bad("parseAdvisorLiveRow tom", "forventede null");
 }
 
 if (failed) {

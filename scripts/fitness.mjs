@@ -1767,6 +1767,16 @@ export function compareAdvisorBaseline(live, baseline) {
   }
   return violations;
 }
+// Normalizer for live-row (testbar): row.baseline kan være JSON-string eller objekt.
+// Tomt/uventet resultat -> null (fail-closed: kalderen giver violation).
+export function parseAdvisorLiveRow(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const row = rows[0] || {};
+  const raw = row.baseline ?? row;
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  if (!parsed || typeof parsed !== "object" || !("secdef_exposed" in parsed)) return null;
+  return parsed;
+}
 async function advisorBaseline() {
   const name = "advisor-baseline";
   const baselinePath = "supabase/advisor-baseline.json";
@@ -1782,15 +1792,15 @@ async function advisorBaseline() {
     'rls_no_policy', (select coalesce(json_agg(t order by t),'[]'::json) from (
       select n.nspname||'.'||c.relname as t
       from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where c.relkind='r' and c.relrowsecurity
+      where c.relkind in ('r','p') and not c.relispartition and c.relrowsecurity
       and not exists (select 1 from pg_policy p where p.polrelid=c.oid)
       and n.nspname in ('public','core_identity','core_compliance','core_money')
     ) s)
   ) as baseline;`);
   const g = liveGuard(name, r);
   if (g) return g;
-  const row = r.rows[0] || {};
-  const live = typeof row.baseline === "string" ? JSON.parse(row.baseline) : row.baseline || row;
+  const live = parseAdvisorLiveRow(r.rows);
+  if (!live) return { name, violations: ["live-query gav tomt/uventet resultat — fail-closed (G066)"] };
   return { name, violations: compareAdvisorBaseline(live, baseline) };
 }
 

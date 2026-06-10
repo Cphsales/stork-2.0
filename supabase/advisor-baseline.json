@@ -2,7 +2,7 @@
   "_formaal": "Advisor-baseline (G066/DEL 5, 2026-06-10): dokumenteret accept af kendte Supabase-advisor-fund, så NYE fund bliver røde i stedet for at drukne i kendt støj. Vedligehold: ny bevidst eksponering tilføjes HER med begrundelse i samme PR; fjernet eksponering SKAL fjernes her (checken bider begge veje).",
   "_begrundelser": {
     "secdef_exposed": "gov-3b-designet: write-RPC'er er SECURITY DEFINER med has_permission-gates + session-var-audit INDE i funktionerne; eksekverbarhed for authenticated er den tilsigtede adgangsvej (REVOKE af direkte tabel-writes, #18). OBS: public.*-versionerne af upsert-funktioner ligner pre-T9-legacy-dubletter — oprydnings-kandidat, sporet i G066, accepteret som nuværende state.",
-    "rls_no_policy": "Bevidst RPC-only-design: tabellerne læses/skrives udelukkende via SECDEF-RPC'er (anonymization_state_read, cron_heartbeats_read m.fl.); RLS uden policy = default-deny for direkte adgang."
+    "rls_no_policy": "Bevidst RPC-only-design: tabellerne læses/skrives udelukkende via SECDEF-RPC'er (audit_log_read, anonymization_state_read, cron_heartbeats_read m.fl.); RLS uden policy = default-deny for direkte adgang. audit_log er partitioned parent (relkind=p) — designet dokumenteret i 20260514120003_t1_audit_partitioned.sql; partitions-børn ekskluderes af checken (relispartition)."
   },
   "secdef_exposed": [
     "core_compliance.anonymization_mapping_activate(p_mapping_id uuid, p_change_reason text)",
@@ -91,5 +91,9 @@
     "public.role_upsert(p_name text, p_change_reason text, p_role_id uuid, p_description text)",
     "public.team_upsert(p_name text, p_org_unit_id uuid, p_change_reason text, p_team_id uuid, p_is_active boolean)"
   ],
-  "rls_no_policy": ["core_compliance.anonymization_state", "core_compliance.cron_heartbeats"]
+  "rls_no_policy": [
+    "core_compliance.anonymization_state",
+    "core_compliance.audit_log",
+    "core_compliance.cron_heartbeats"
+  ]
 }
