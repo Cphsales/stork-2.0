@@ -1,6 +1,6 @@
 # gov-docs-renhed — Slut-rapport
 
-**Dato:** 2026-06-10 · **Branch:** claude/gov-docs-renhed-build · **Merge-commit:** _(udfyldes ved merge)_
+**Dato:** 2026-06-10 · **Branch:** claude/gov-docs-renhed-build · **Merge-commit:** `2aae50d`
 **Krav-dok:** docs/coordination/arkiv/gov-docs-renhed-krav-og-data.md · **Plan:** docs/coordination/arkiv/gov-docs-renhed-plan.md (V4, Codex-approved runde 4)
 
 ## Formål (genfremlagt fra krav-dok)
