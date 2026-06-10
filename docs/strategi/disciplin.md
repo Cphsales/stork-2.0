@@ -205,7 +205,7 @@ Hvad en modsigelse udløser afhænger af hvilket dokument den rammer. Det forhin
 | `stork-2-0-master-plan.md` + afgørelser | **RETNINGSGIVENDE** | Rapport til Mathias — IKKE auto-blokering. Han afgør: er rammen forældet (rettes) eller skal pakken justeres? Arbejdet stopper ikke, det venter på afgørelse                         |
 | krav-dok + plan (efter approval)        | **PAKKE-KONTRAKT**  | STOP. KRITISK indtil Mathias afgør re-godkendelse eller justering                                                                                                                    |
 
-Pointe: kun vision og pakke-kontrakten stopper automatisk. Master-plan-modsigelse er en trigger for en afgørelse, ikke en blokering.
+Pointe: kun de to stamme-docs (vision + forretningsforstaaelse) og pakke-kontrakten stopper automatisk. Master-plan-modsigelse er en trigger for en afgørelse, ikke en blokering.
 
 ### §8.1 Governance-vagt (gov-2 — mekanisk lag-1 + Codex-mandat)
 

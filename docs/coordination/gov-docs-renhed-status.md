@@ -1,8 +1,8 @@
 # gov-docs-renhed — Pakke-status
 
-**Sidste handling:** Build batch 5: Codex runde 6 gav 2 KRITISK — begge rettet (prettier-format på de to .mjs; MELLEM runde-aware routing + 4 nye fixtures, parse-test 14/14). 2026-06-10.
-**Næste forventet:** Codex verifikations-review (runde 7) af batch 5 → grøn → Code skriver slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
-**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 afventes.
+**Sidste handling:** Build batch 6: Codex runde 7 gav 2 KRITISK — begge rettet (sidste to tanke-data-rester: disciplin §8-pointen + SKILL.md-referencelisten; fuld grep bekræfter ingen flere i aktive docs; denne status-fil synkroniseret). 2026-06-10.
+**Næste forventet:** Codex verifikations-review (runde 8) af batch 6 → grøn → Code skriver slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
+**Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 (2 KRITISK → batch 6) · runde 8 afventes.
 **Aktuel blocker:** ingen.
 
 Build-state (qwerg 2026-06-10):
@@ -15,7 +15,14 @@ Build-state (qwerg 2026-06-10):
 - Batch 3 ✓ (`00c1ebd`): allowlist-split + structural-chain + sti-regex-fix +
   9 selftest-cases + aktiv-pakke-markør. Evidens: selftest fuldt grøn
   (baseline + 13 plantede + deprecated-positiv), fitness grøn.
-- Batch 4 ✓: runde 5-fund-fixes (denne commit).
+- Batch 4 ✓ (`1b87753`) + 4b ✓ (`821e1b3`): runde 5-fixes (v4-slettede-docs
+  untracked + .gitignore; status-sync; MANGLENDE-EKSISTERENDE-BEVARELSE-routing;
+  codex-reviews/ scope-ekskluderet).
+- Batch 5 ✓ (`2fdc9f0`): runde 6-fixes (prettier på de to .mjs; MELLEM
+  runde-aware routing, parse-test 14/14).
+- Batch 6 ✓: runde 7-fixes (sidste tanke-data-rester i disciplin §8-pointen +
+  SKILL.md; status-sync). Hash udfyldes i slut-rapporten (samme mønster som
+  merge-hash — undgår selvreferentiel staleness).
 
 Plan-afvigelser (til slut-rapport):
 
