@@ -1,9 +1,9 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling:** Plan V5 — runde 4-fund ADRESSERET (KRITISK R4-1: ADMIN_HANDLE-capture FØR bot-auth-skift + assert + CODEOWNERS-indholds-gate). Mathias ophævede §3.4-pausen (valg a) → Codex runde 5 dispatched. 2026-06-10.
-**Næste forventet:** MATHIAS AFGØR (§3.4 auto-pause ved counter 5): (a) ophæv pausen → Codex runde 5 verificerer V5; (b) genåbn krav-grundlaget; (c) split pakken. Codes anbefaling: (a) — V5-rettelsen er Codex' egen anviste fix, fund-kæden er konvergeret til ét snævert timing-hul, og alle fire runder har haft INGEN-MODSIGELSE på §8.1.
-**Konvergens-counter:** 5 — **§3.4 AUTO-PAUSE AKTIV.** Fund-kæde: 4 → 2 → 1 → 1 (alle KRITISK reelle, alle ACCEPT, §8.1 hele vejen INGEN-MODSIGELSE). Counter-4-alertens Code-læring står ved magt: V1's state-dump var ikke total. Pakken må ikke fortsætte uden Mathias' afgørelse.
-**Aktuel blocker:** ingen — Mathias ophævede §3.4-pausen 2026-06-10 (valg a: fortsæt review).
+**Sidste handling:** Codex runde 5: **APPROVAL + §8.1-SVAR: INGEN-MODSIGELSE** (routing exit 0). Plan V5 er Codex-approved. 2026-06-10.
+**Næste forventet:** (1) Claude.ai leverer qwerg-gate-pakken (§9.1 — Mathias relæer; HUSK frisk-pull-bekræftelse per §13); (2) Mathias læser + svarer de tre qwerg-spørgsmål (bot-navn/accept · commit-konvention · hook-valg a/b); (3) `qwerg` → build (step 1: ADMIN_HANDLE-capture + Mathias' bot-setup).
+**Konvergens-counter:** 5 (afsluttet — konvergeret ved runde 5-APPROVAL; pause ophævet af Mathias, valg a). Fund-kæde: 4 → 2 → 1 → 1 → 0.
+**Aktuel blocker:** afventer Claude.ai qwerg-gate-pakke + Mathias' qwerg (med svar på de tre spørgsmål).
 
 Noter:
 
