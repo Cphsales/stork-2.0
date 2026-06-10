@@ -1,9 +1,9 @@
-# gov-docs-renhed — Plan V2
+# gov-docs-renhed — Plan V3
 
 **Branch:** claude/gov-docs-renhed-plan
 **Krav-dok:** docs/coordination/gov-docs-renhed-krav-og-data.md
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-docs-renhed-status.md (konvergens-counter: 2)
+**Status-fil:** docs/coordination/gov-docs-renhed-status.md (konvergens-counter: 3)
 
 ## Formål
 
@@ -22,11 +22,20 @@
 | 5   | §10.4 bliver stale kanonisk prompt                                              | MELLEM   | **ACCEPT.** §10.4 patches med i batch 2 (appendix A.7)                                                                                                                                                                            |
 | 6   | _(Code-eget fund under runde 1-dispatch)_ `codex exec` hænger på stdin uden TTY | —        | Repair-diffen for codex-review.sh udvidet med `< /dev/null` på exec-linjen (appendix B.1) — fanget live: runde 1 hang på "Reading additional input from stdin..."                                                                 |
 
+## V2 → V3: Codex-fund runde 2 (alle ADRESSERET)
+
+| #    | Fund                                                                                                    | Severity | Code-svar                                                                                                                                                                                                                                                 |
+| ---- | ------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R2-1 | Parser matcher ikke `[KRITISK]`-bracketformat fra det nye §10.4-prompt — stopfund kan give exit 0       | KRITISK  | **ACCEPT.** Alle marker-greps gøres bracket-tolerante + ny `--parse-test`-selvtest i scriptet (appendix B.1, fund R2-1-blok)                                                                                                                              |
+| R2-2 | State-dump stale pr. V2-commit (28e0010 = 22 docs, tabel siger 21)                                      | MELLEM   | **ACCEPT** (rettet nu frem for G-nummer — billigere end gælden). Dump omdefineret: baseline (main) er det autoritative måle-punkt planen patcher mod; branch-tallet drifter pr. plan-commit by construction og re-verificeres i build batch 3, ikke pr. V |
+| R2-3 | Kæde-tjek: ingen status-krydspeg; fase:rapport fejler ikke når rapport mangler Formål-blok              | MELLEM   | **ACCEPT** (rettet nu). B.3: rapport uden Formål-blok = violation; plan→status-sti-krydspeg + status→pakkenavn-krydspeg; B.4: +2 cases (i alt 9)                                                                                                          |
+| R2-4 | Master-plan kalder stadig forretningsforståelse "tanke-data" + vision-vinder-hierarki (§8.1-MODSIGELSE) | MELLEM   | **ACCEPT** (rettet nu). Ny A.14 patcher master-planens hierarki-afsnit. §8-rationale: master-plan er RETNINGSGIVENDE — Mathias har allerede afgjort løftet i krav-dok, så master-plan tilrettes (præcis som master-planen selv foreskriver)               |
+
 ## Step 2.0 — Skitse + størrelses-tjek
 
 **0 migrations.** 3 scripts slettes, 1 script repareres, 2 `.mjs`-filer udvides
-(scanner + selftest), 10 docs patches (inkl. vision-banner, fund 1). Under
-§3.8-grænsen → fuld V2, intet split.
+(scanner + selftest), 11 docs patches (inkl. vision-banner, fund 1, +
+master-plan-hierarki, fund R2-4). Under §3.8-grænsen → fuld plan, intet split.
 
 ## Verificerede repo-objekter (state-dump, fund 3-rettet)
 
@@ -42,6 +51,11 @@ tree. Verificeret 2026-06-10:
 
 (V1 angav "19 docs" — det var en working-tree-kørsel med untracked krav-dok.
 Præcis den fabrikations-flade selftesten's git-archive-fixture eksisterer for.)
+
+**Måle-punkt-disciplin (fund R2-2):** baseline-rækken (main) er det autoritative
+dump planen patcher mod. Branch-rækken drifter pr. plan-commit by construction
+(hver V-commit tilføjer/ændrer docs — fx er V2-committen selv 22 docs) og
+fastfryses derfor ikke pr. V; den re-verificeres som build-evidens i batch 3.
 
 - **Scripts (`.sh`, scannet):** codex-review.sh (286 l) · claude-ai-prompt.sh
   (192 l) · data-grundlag.sh (173 l) · krav-afklar.sh (135 l) · schema-check.sh ·
@@ -106,13 +120,14 @@ Ny check `structural-chain` (kode 1:1 i appendix B.3):
   være eksplicit). `ingen` → pass.
 - Ellers: `<navn>-krav-og-data.md` + `<navn>-plan.md` + `<navn>-status.md`
   skal eksistere i docs/coordination/.
-- **Krydspeg (fund 4):** plan-filen skal indeholde strengen
-  `docs/coordination/<navn>-krav-og-data.md` (plan → krav-dok-pegning).
+- **Krydspeg (fund 4 + R2-3):** plan-filen skal indeholde stierne til BÅDE
+  krav-dok og status-fil; status-filen skal nævne pakkenavnet.
 - **Formåls-immutabilitet mekanisk (§3.0):** blockquoten der starter med
   `> Denne pakke leverer:` normaliseres (fortløbende `>`-linjer, prefix
   strippet, joinet, whitespace collapsed) — identisk i krav-dok og plan.
-- **fase: rapport (fund 4):** mindst én
-  `rapport-historik/*-<navn>.md` skal eksistere OG have samme normaliserede
+- **fase: rapport (fund 4 + R2-3):** mindst én
+  `rapport-historik/*-<navn>.md` skal eksistere, HAVE en Formål-blok (mangler
+  blokken er det en violation, ikke et skip) og matche den normaliserede
   Formål-streng.
 - Strukturel + string-match, ingen semantik (ærlig grænse per krav-dok).
 
@@ -135,7 +150,7 @@ Beviset er selftest-casene (§3.6 opfyldt, ikke schema-only).
 
 ## End-to-end-test-design (fund 4-udvidet)
 
-`governance-check.selftest.mjs` udvides med 7 cases (kode 1:1 i appendix B.4):
+`governance-check.selftest.mjs` udvides med 9 cases (kode 1:1 i appendix B.4):
 
 1. `script-dead-path`: script peger på historisk-provenance-sti → rød
    (ville have fanget krav-dok pkt 1)
@@ -144,17 +159,20 @@ Beviset er selftest-casene (§3.6 opfyldt, ikke schema-only).
 3. `chain-missing-files`: markør sat, filer mangler → rød
 4. `chain-formaal-mismatch`: krav↔plan Formål-streng afviger → rød
 5. `chain-missing-krydspeg`: plan uden krav-dok-sti → rød
-6. `chain-rapport-missing`: fase:rapport uden rapport-fil → rød
-7. `chain-rapport-formaal-mismatch`: rapport-Formål afviger → rød
+6. `chain-missing-status-krydspeg`: plan uden status-sti → rød (fund R2-3)
+7. `chain-rapport-missing`: fase:rapport uden rapport-fil → rød
+8. `chain-rapport-formaal-mismatch`: rapport-Formål afviger → rød
+9. `chain-rapport-no-formaal`: rapport uden Formål-blok → rød (fund R2-3)
 
-Baseline-case (ren git-archive-kopi → grøn) består uændret.
+Baseline-case (ren git-archive-kopi → grøn) består uændret. Dertil
+`codex-review.sh --parse-test` (appendix B.1, fund R2-1) som batch 1-evidens.
 
 ## Implementations-rækkefølge (3 batches)
 
 | Batch                | Hvad                                                                                           | Afhængighed | Risiko                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
 | 1 — script-reconcile | git rm 3 scripts · repair codex-review.sh (appendix B.1) · scripts/README.md                   | ingen       | Lav. Governance-check grøn efter                                                          |
-| 2 — doc-reconcile    | alle doc-patches (appendix A.1–A.13)                                                           | ingen       | Lav. §8.1-gate: Codex' §8.1-SVAR kræves; vision-patch kræver Mathias-CODEOWNERS ved merge |
+| 2 — doc-reconcile    | alle doc-patches (appendix A.1–A.14)                                                           | ingen       | Lav. §8.1-gate: Codex' §8.1-SVAR kræves; vision-patch kræver Mathias-CODEOWNERS ved merge |
 | 3 — mekaniske værn   | allowlist-split + prune · kæde-tjek · aktiv-pakke-markør · 7 selftest-cases (appendix B.2–B.4) | batch 1+2   | Mellem. Selftest beviser begge retninger                                                  |
 
 Rækkefølgen er bevidst: værnene lander mod et rent repo; selftest case 1
@@ -172,14 +190,14 @@ Mathias' CODEOWNERS-approval ved merge — valideret FØR qwerg via Codex'
 
 **B. Status-opdatering (committes med merge):**
 
-| Doc                        | Berørt? | Opdatering                                                                     |
-| -------------------------- | ------- | ------------------------------------------------------------------------------ |
-| aktiv-plan.md              | ja      | pakke-status + aktiv-pakke-markør (→ `ingen` ved pakke-luk)                    |
-| seneste-rapport.md         | ja      | ny rapport-sti + commit ved Step 5                                             |
-| master-plan §4.1           | nej     | gov-spor, ikke nummereret byggetrin; aktiv-plan bærer status                   |
-| teknisk-gaeld.md (G)       | nej     | G063 forbliver åben (gov-6); ingen G rejst/løst — medmindre build finder noget |
-| huskeliste.md (H)          | nej     | H020 forbliver historisk; refs repointes kun                                   |
-| disciplin "Forudsætninger" | ja      | CI-blocker-linje + Gjort-listen à jour (§8.1-gate)                             |
+| Doc                        | Berørt? | Opdatering                                                                      |
+| -------------------------- | ------- | ------------------------------------------------------------------------------- |
+| aktiv-plan.md              | ja      | pakke-status + aktiv-pakke-markør (→ `ingen` ved pakke-luk)                     |
+| seneste-rapport.md         | ja      | ny rapport-sti + commit ved Step 5                                              |
+| master-plan §4.1           | delvist | §4.1-trinstatus uberørt (gov-spor); hierarki-afsnittet patches dog (A.14, R2-4) |
+| teknisk-gaeld.md (G)       | nej     | G063 forbliver åben (gov-6); ingen G rejst/løst — medmindre build finder noget  |
+| huskeliste.md (H)          | nej     | H020 forbliver historisk; refs repointes kun                                    |
+| disciplin "Forudsætninger" | ja      | CI-blocker-linje + Gjort-listen à jour (§8.1-gate)                              |
 
 ## IKKE i denne plan
 
@@ -387,6 +405,21 @@ fil-indholdet til platform-skill'en når denne fil ændres (flagges i
 slut-rapport som Mathias-handling).
 ```
 
+### A.14 `docs/strategi/stork-2-0-master-plan.md` — hierarki-afsnit (fund R2-4)
+
+Nuværende (afsnittet under "### Strategiske retning-skift", 1:1):
+
+> Mathias' tanker pr. pakke lever i `docs/coordination/<pakke>-krav-og-data.md` (pakke-kontrakt). Tanker der ændrer ramme på tværs af pakker går ind i `docs/strategi/forretningsforstaaelse.md` (tanke-data) eller `docs/strategi/vision-og-principper.md` (LÅST evig, ved princip-niveau). Master-planen reflekterer arkitektur-konsekvensen som Appendix C-rettelser. Ved konflikt vinder vision (LÅST) → forretningsforstaaelse + krav-dok → master-plan tilrettes.
+
+Ny:
+
+> Mathias' tanker pr. pakke lever i `docs/coordination/<pakke>-krav-og-data.md` (pakke-kontrakt). Tanker der ændrer ramme på tværs af pakker går ind i `docs/strategi/forretningsforstaaelse.md` (LÅST stamme-doc) eller `docs/strategi/vision-og-principper.md` (LÅST evig, ved princip-niveau). Master-planen reflekterer arkitektur-konsekvensen som Appendix C-rettelser. Ved konflikt vinder stamme-docs (vision + forretningsforstaaelse — indbyrdes modsigelse mellem de to er et hul → STOP → Mathias lukker, D4) → krav-dok → master-plan tilrettes.
+
+§8-rationale: master-plan er RETNINGSGIVENDE — Mathias har afgjort løftet i
+krav-dok'en, så master-planen tilrettes (præcis som dens egen tekst foreskriver).
+Sammen med A.1 + A.2 + A.6 + A.10 er alle steder der beskriver
+dokument-hierarkiet nu konsistente med D4.
+
 ---
 
 ## Appendix B — Patch-først: scripts/checks (nuværende 1:1 → ny 1:1)
@@ -497,15 +530,54 @@ timeout --signal=KILL "$TIMEOUT_SEC" codex exec --skip-git-repo-check \
   "$PROMPT" > "$RAW_OUTPUT" 2>&1 < /dev/null
 ```
 
+**Marker-parsing gøres bracket-tolerant (fund R2-1, KRITISK):** §10.4-formatet
+er `[SEVERITY] Kort beskrivelse`, men parseren matcher kun nøgne prefixes — et
+`[KRITISK]`-fund ville give exit 0. Hver marker-grep ændres fra nøgent mønster
+til bracket-tolerant. Nuværende 1:1 → ny 1:1:
+
+```
+^(STOP-FOR-CLARIFICATION):                                      → ^\[?STOP-FOR-CLARIFICATION\]?(\b|:)
+^(BRUD-PAA-KRAV|TEKNISK-BLOKERING|PLAN-AFVIGELSE|KRITISK-SIKKERHEDSHUL): → ^\[?(BRUD-PAA-KRAV|TEKNISK-BLOKERING|PLAN-AFVIGELSE|KRITISK-SIKKERHEDSHUL)\]?(\b|:)
+^KRITISK\b                                                      → ^\[?KRITISK\]?\b
+^(\[NEEDS-MATHIAS\]|NEEDS-MATHIAS)\b                            → ^\[?NEEDS-MATHIAS\]?\b
+^(WORKAROUND-INTRODUCERET):                                     → ^\[?WORKAROUND-INTRODUCERET\]?(\b|:)
+^(ESCALATE|AUTO-ESKALATION):                                    → ^\[?(ESCALATE|AUTO-ESKALATION)\]?(\b|:)
+^(OPTIMERING-FORSLAG):                                          → ^\[?OPTIMERING-FORSLAG\]?(\b|:)
+^(SPARRING-OENSKE):                                             → ^\[?SPARRING-OENSKE\]?(\b|:)
+^(G-NUMMER-KANDIDAT):                                           → ^\[?G-NUMMER-KANDIDAT\]?(\b|:)
+^APPROVAL\b                                                     → ^\[?APPROVAL\]?\b
+```
+
+NB: `^\[?KRITISK\]?\b` bevarer G055-egenskaben (ordgrænse — "KRITISKE" matcher
+ikke). Eksisterende routing-prioritet og exit-koder uændret.
+
+**Ny `--parse-test`-mode (bevis for R2-1-fixet):** marker-parsing + exit-routing
+refaktoreres til funktionen `parse_markers <fil>` (samme logik, samme output);
+`scripts/codex-review.sh --parse-test` kører canned fixtures gennem den og
+asserter routing:
+
+| Fixture-indhold                     | Forventet exit |
+| ----------------------------------- | -------------- |
+| `APPROVAL — Runde 1`                | 0              |
+| `[KRITISK] fund`                    | 2              |
+| `KRITISK: fund`                     | 2              |
+| `KRITISKE detaljer` (negativ-case)  | 0              |
+| `[NEEDS-MATHIAS] spørgsmål`         | 4              |
+| `STOP-FOR-CLARIFICATION: mangler X` | 1              |
+
+Køres lokalt som build-evidens i batch 1; CI-wiring noteres til gov-5
+(runner-pakken, hvor scriptet får sin automation-rolle).
+
 **Kosmetisk i samme repair:** header linje 3 + usage linje 31: "V5.3
 marker-protocol/-protokol" → "V5 (disciplin §5 severities + §6.1 halt-markers)".
 
 **Bevares 1:1 (MANGLENDE-EKSISTERENDE-BEVARELSE-tjek):** argument-parsing
 (22-60) · pre-flight minus prefix-blok (66-76, 84-87) · PAKKE_NAME/DATE/
 OUTPUT_DIR/OUTPUT_FILE/PLAN_SHA (94-107) · timeout-/fejl-håndtering (137-165) ·
-output-fil-header m. re-run-command (167-193) · HELE marker-parsing-sektionen
-(199-259, inkl. G055 severity-prefix + NEEDS-MATHIAS) · exit-kode-routing
-(261-286). Ingen gates/markers/exit-koder tabes.
+output-fil-header m. re-run-command (167-193) · marker-parsing-sektionen
+(199-259) strukturelt bevaret — eneste ændring er de bracket-tolerante mønstre
+(R2-1-tabellen ovenfor) + flytning ind i `parse_markers`-funktion ·
+exit-kode-routing (261-286) uændret. Ingen gates/markers/exit-koder tabes.
 
 ### B.2 `scripts/governance-check.mjs` — allowlist-split
 
@@ -630,6 +702,9 @@ function structuralChain() {
   }
   if (!existsSync(krav) || !existsSync(plan)) return;
   if (!read(plan).includes(krav)) v("structural-chain", `${plan}: krydspeger ikke ${krav}`);
+  if (!read(plan).includes(status)) v("structural-chain", `${plan}: krydspeger ikke ${status}`);
+  if (existsSync(status) && !read(status).includes(marker.pakke))
+    v("structural-chain", `${status}: nævner ikke pakken '${marker.pakke}'`);
   const fk = normFormaal(read(krav));
   const fp = normFormaal(stripFenced(read(plan)));
   if (!fk) v("structural-chain", `${krav}: ingen "> Denne pakke leverer:"-blok`);
@@ -640,8 +715,10 @@ function structuralChain() {
     const rapporter = existsSync(dir) ? readdirSync(dir).filter((x) => x.endsWith(`-${marker.pakke}.md`)) : [];
     if (!rapporter.length)
       return v("structural-chain", `fase: rapport men ingen rapport-historik/*-${marker.pakke}.md`);
-    const fr = normFormaal(read(join(dir, rapporter.sort().at(-1))));
-    if (fk && fr && fk !== fr) v("structural-chain", `Formål-streng afviger mellem ${krav} og seneste rapport (§3.0)`);
+    const nyeste = rapporter.sort().at(-1);
+    const fr = normFormaal(read(join(dir, nyeste)));
+    if (!fr) v("structural-chain", `${dir}/${nyeste}: ingen "> Denne pakke leverer:"-blok`);
+    else if (fk && fk !== fr) v("structural-chain", `Formål-streng afviger mellem ${krav} og ${dir}/${nyeste} (§3.0)`);
   }
 }
 ```
@@ -652,19 +729,19 @@ ikke matcher; krav-dok/rapport læses råt (Formål står som blockquote, ikke f
 `docs/coordination/aktiv-plan.md` får markøren (build-fasen):
 `<!-- aktiv-pakke: gov-docs-renhed fase: build -->`.
 
-### B.4 `scripts/governance-check.selftest.mjs` — 7 nye cases
+### B.4 `scripts/governance-check.selftest.mjs` — 9 nye cases
 
-Nuværende cases-array (linje 43-55) bevares; appendes (ny 1:1):
+Nuværende cases-array (linje 43-55) bevares; appendes (ny 1:1). Helperen
+`chainFiles` producerer en FULDT konsistent kæde (krav+plan+status, begge
+krydspeg, Formål-match) — hver case planter præcis ÉN defekt ovenpå:
 
 ```js
 const FORMAAL = "> Denne pakke leverer: testleverance.\n";
-const chainFiles = (d, planExtra = "", kravFormaal = FORMAAL) => {
+const PLAN_OK = `# t\n\ndocs/coordination/testpakke-krav-og-data.md\ndocs/coordination/testpakke-status.md\n\n## Formål\n\n${FORMAAL}`;
+const chainFiles = (d, { plan = PLAN_OK, kravFormaal = FORMAAL } = {}) => {
   writeFileSync(join(d, "docs/coordination/testpakke-krav-og-data.md"), `# t\n\n## Formål\n\n${kravFormaal}`);
-  writeFileSync(
-    join(d, "docs/coordination/testpakke-plan.md"),
-    `# t\n\ndocs/coordination/testpakke-krav-og-data.md\n\n## Formål\n\n${FORMAAL}${planExtra}`,
-  );
-  writeFileSync(join(d, "docs/coordination/testpakke-status.md"), "# t\n");
+  writeFileSync(join(d, "docs/coordination/testpakke-plan.md"), plan);
+  writeFileSync(join(d, "docs/coordination/testpakke-status.md"), "# testpakke status\n");
 };
 const setMarker = (d, fase) =>
   appendFileSync(join(d, "docs/coordination/aktiv-plan.md"), `\n<!-- aktiv-pakke: testpakke fase: ${fase} -->\n`);
@@ -677,15 +754,21 @@ cases.push(
   [
     "chain-formaal-mismatch",
     (d) => {
-      chainFiles(d, "", "> Denne pakke leverer: noget ANDET.\n");
+      chainFiles(d, { kravFormaal: "> Denne pakke leverer: noget ANDET.\n" });
       setMarker(d, "plan");
     },
   ],
   [
     "chain-missing-krydspeg",
     (d) => {
-      chainFiles(d);
-      writeFileSync(join(d, "docs/coordination/testpakke-plan.md"), `# t\n\n## Formål\n\n${FORMAAL}`);
+      chainFiles(d, { plan: `# t\n\ndocs/coordination/testpakke-status.md\n\n## Formål\n\n${FORMAAL}` });
+      setMarker(d, "plan");
+    },
+  ],
+  [
+    "chain-missing-status-krydspeg",
+    (d) => {
+      chainFiles(d, { plan: `# t\n\ndocs/coordination/testpakke-krav-og-data.md\n\n## Formål\n\n${FORMAAL}` });
       setMarker(d, "plan");
     },
   ],
@@ -704,6 +787,14 @@ cases.push(
         join(d, "docs/coordination/rapport-historik/2099-01-01-testpakke.md"),
         "# t\n\n## Formål\n\n> Denne pakke leverer: noget TREDJE.\n",
       );
+      setMarker(d, "rapport");
+    },
+  ],
+  [
+    "chain-rapport-no-formaal",
+    (d) => {
+      chainFiles(d);
+      writeFileSync(join(d, "docs/coordination/rapport-historik/2099-01-01-testpakke.md"), "# t\n\nIngen blok.\n");
       setMarker(d, "rapport");
     },
   ],
