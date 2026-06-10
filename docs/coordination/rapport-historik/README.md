@@ -7,3 +7,5 @@ Hver rapport følger skabelonen i `docs/strategi/disciplin.md` §10.3.
 Den senest leverede rapport peges der på fra `docs/coordination/seneste-rapport.md`. Ændring i `seneste-rapport.md` trigger Codex-notify GitHub Action.
 
 Append-only struktur. Historikken bevares som audit-spor.
+
+<!-- gov-4 verifikations-touch (case c) — fjernes; PR lukkes uden merge -->
