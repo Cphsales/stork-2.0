@@ -333,21 +333,41 @@ check(
     JSON.stringify({ handling: "KOERSEL-SLUT", exit: 0, kontekst: { fil: "a.md", sha: "s1" } }),
     JSON.stringify({ handling: "DISPATCH", kontekst: { fil: "b.md", sha: "s2" } }),
     JSON.stringify({ handling: "KOERSEL-SLUT", exit: 1, kontekst: { fil: "b.md", sha: "s2" } }),
-    JSON.stringify({ handling: "KOERSEL-SLUT", exit: 0, kontekst: { event: "krav-dok-merged", sha: "m1" } }),
+    JSON.stringify({
+      handling: "KOERSEL-SLUT",
+      exit: 0,
+      aktoer: "code",
+      kontekst: { event: "krav-dok-merged", sha: "m1" },
+    }),
   ];
   const noegler = behandletNoegler(logLinjer);
   check("exit 0 → behandlet", noegler.includes("a.md@s1"));
   check("exit ≠ 0 → IKKE behandlet (fejlet kørsel droppes aldrig stille)", !noegler.includes("b.md@s2"));
-  check("event-kørsel m. exit 0 → event-nøgle", noegler.includes("event:krav-dok-merged@m1"));
+  check("event-kørsel m. exit 0 → nøgle PR. AKTØR (runde 11)", noegler.includes("event:krav-dok-merged@m1#code"));
 }
 
-// ---------- 17. event-idempotens i decide ----------
+// ---------- 17. event-idempotens i decide — PR. MODTAGER (Codex runde 11) ----------
 {
   const h = decide(
-    { ...TOM, events: [{ type: "krav-dok-merged", sha: "m1" }], behandlede: ["event:krav-dok-merged@m1"] },
+    {
+      ...TOM,
+      events: [{ type: "krav-dok-merged", sha: "m1" }],
+      behandlede: ["event:krav-dok-merged@m1#code", "event:krav-dok-merged@m1#codex"],
+    },
     REGLER,
   );
-  check("behandlet event → ingen ny dispatch", !h.some((x) => x.handling === "DISPATCH"));
+  check("begge modtagere behandlet → ingen ny dispatch", !h.some((x) => x.handling === "DISPATCH"));
+}
+{
+  const h = decide(
+    { ...TOM, events: [{ type: "krav-dok-merged", sha: "m1" }], behandlede: ["event:krav-dok-merged@m1#code"] },
+    REGLER,
+  );
+  const d = h.filter((x) => x.handling === "DISPATCH");
+  check(
+    "én modtager behandlet (code OK, codex fejlede) → KUN codex re-dispatches",
+    d.length === 1 && d[0].aktoer === "codex",
+  );
 }
 
 // ---------- 18. afledEvents (ren event-afledning af rå tilstand) ----------
