@@ -1,19 +1,146 @@
 #!/usr/bin/env bash
 # scripts/codex-review.sh
-# Wrapper for Codex CLI review-runder (V5.3 marker-protocol).
+# Wrapper for Codex CLI review-runder — V5 (disciplin.md §5 severities + §6.1 halt-markers).
 #
 # Brug:
 #   scripts/codex-review.sh <plan-fil> <runde-N> [--xhigh|--quick] [--phase=plan|build|slut-rapport]
+#   scripts/codex-review.sh --parse-test
 #
-# Defaults: xhigh + fast_mode + timeout 480s + file-reference prompt + tail-monitor.
+# Defaults: xhigh + fast_mode + timeout 480s + file-reference prompt.
 # --quick: medium reasoning + timeout 120s + max 150 ord output (til intermediate batch-tjek).
 # --xhigh: explicit (default — flag for klarhed når der er valg).
+# --parse-test: kør canned fixtures gennem marker-parseren og assertér exit-routing.
+#
+# Prompt genereres fra disciplin.md V5 §10.4 (inline — ingen prefix-fil).
 #
 # Output: docs/coordination/codex-reviews/<dato>-<pakke>-runde-<N>.md
 #         (med header om command + plan-SHA + raw codex-output)
-# Stdout: echoes outputtet samt parser markers per V5.3 marker-protokol
+# Stdout: echoes outputtet samt parser markers per V5 §5/§6.1
+#
+# Exit-koder:
+#   0  = clean eller G-NUMMER-KANDIDAT (fortsæt)
+#   1  = STOP-FOR-CLARIFICATION (info-mangel)
+#   2  = halt-marker (BRUD-PAA-KRAV / TEKNISK-BLOKERING / PLAN-AFVIGELSE / KRITISK-SIKKERHEDSHUL)
+#        ELLER severity-prefix (KRITISK — stopper plan i alle runder per §5)
+#   3  = WORKAROUND-INTRODUCERET (Mathias-gate)
+#   4  = ESCALATE / AUTO-ESKALATION / NEEDS-MATHIAS (Mathias-judgment kræves før V<n+1>)
+#   124 = codex timeout
 
 set -euo pipefail
+
+# ============================================================
+# Marker-parsing (V5 §5 severities + §6.1 halt-markers)
+# Bracket-tolerant: §10.4-formatet er "[SEVERITY] beskrivelse"; nøgne
+# "SEVERITY:"-prefixes accepteres også (gov-docs-renhed R2-1).
+# ============================================================
+
+parse_markers() {
+  local f="$1"
+  local clarification_hit=0 halt_hit=0 severity_hit=0
+  local workaround_hit=0 escalate_hit=0 needs_mathias_hit=0
+
+  if grep -qE '^\[?STOP-FOR-CLARIFICATION\]?(\b|:)' "$f"; then
+    clarification_hit=1
+    echo "  ⏸  STOP-FOR-CLARIFICATION rejst — info-mangel" >&2
+  fi
+
+  if grep -qE '^\[?(BRUD-PAA-KRAV|TEKNISK-BLOKERING|PLAN-AFVIGELSE|KRITISK-SIKKERHEDSHUL)\]?(\b|:)' "$f"; then
+    halt_hit=1
+    echo "  🛑 Halt-marker rejst — kræver LØS-dialog eller eskalation" >&2
+  fi
+
+  # Severity-prefix detection (G055-fix, bracket-tolerant per R2-1)
+  # KRITISK uden halt-marker er stadig blocker per §5
+  # ("KRITISK — stopper plan/build i alle runder").
+  # \b efter KRITISK så "KRITISKE" ikke triggers false positive.
+  if grep -qE '^\[?KRITISK\]?\b' "$f"; then
+    severity_hit=1
+    echo "  🛑 KRITISK-severity rejst — stopper plan i alle runder" >&2
+  fi
+
+  # NEEDS-MATHIAS — stopper plan og kræver Mathias-afgørelse før V<n+1>
+  if grep -qE '^\[?NEEDS-MATHIAS\]?\b' "$f"; then
+    needs_mathias_hit=1
+    echo "  🚦 NEEDS-MATHIAS rejst — Code må ikke lave V<n+1> før Mathias har afgjort" >&2
+  fi
+
+  if grep -qE '^\[?WORKAROUND-INTRODUCERET\]?(\b|:)' "$f"; then
+    workaround_hit=1
+    echo "  ⚠️  WORKAROUND-INTRODUCERET — Mathias-gate kræves" >&2
+  fi
+
+  if grep -qE '^\[?(ESCALATE|AUTO-ESKALATION)\]?(\b|:)' "$f"; then
+    escalate_hit=1
+    echo "  🚨 ESCALATE/AUTO-ESKALATION — Mathias-judgment via gate-fil" >&2
+  fi
+
+  if grep -qE '^\[?OPTIMERING-FORSLAG\]?(\b|:)' "$f"; then
+    echo "  💡 OPTIMERING-FORSLAG fundet — Code's valg (ADOPT/DEFER/DISMISS)" >&2
+  fi
+
+  if grep -qE '^\[?SPARRING-OENSKE\]?(\b|:)' "$f"; then
+    echo "  💬 SPARRING-OENSKE fundet" >&2
+  fi
+
+  if grep -qE '^\[?G-NUMMER-KANDIDAT\]?(\b|:)' "$f"; then
+    echo "  📝 G-NUMMER-KANDIDAT(er) — log til teknisk-gaeld.md (fortsæt)" >&2
+  fi
+
+  if grep -qE '^\[?APPROVAL\]?\b' "$f"; then
+    echo "  ✅ APPROVAL" >&2
+  fi
+
+  # Exit-koder per routing-tabel (uændret prioritet):
+  if [ "$clarification_hit" -eq 1 ]; then return 1; fi
+  if [ "$workaround_hit" -eq 1 ]; then return 3; fi
+  if [ "$escalate_hit" -eq 1 ]; then return 4; fi
+  if [ "$needs_mathias_hit" -eq 1 ]; then return 4; fi
+  if [ "$halt_hit" -eq 1 ] || [ "$severity_hit" -eq 1 ]; then return 2; fi
+  return 0
+}
+
+# ============================================================
+# --parse-test: canned fixtures gennem parseren, assertér routing
+# (gov-docs-renhed R2-1/R3-2 — fuld dækning af exit-koder 0/1/2/3/4)
+# ============================================================
+
+if [ "${1:-}" = "--parse-test" ]; then
+  declare -a FIXTURES=(
+    "APPROVAL — Runde 1|0"
+    "[KRITISK] fund|2"
+    "KRITISK: fund|2"
+    "KRITISKE detaljer|0"
+    "[NEEDS-MATHIAS] spørgsmål|4"
+    "STOP-FOR-CLARIFICATION: mangler X|1"
+    "[PLAN-AFVIGELSE] afviger fra plan|2"
+    "WORKAROUND-INTRODUCERET: hack|3"
+    "[ESCALATE] iter > 3|4"
+  )
+  FAILED=0
+  TMP="$(mktemp -t parse-test.XXXXXX)"
+  trap 'rm -f "$TMP"' EXIT
+  for fixture in "${FIXTURES[@]}"; do
+    CONTENT="${fixture%|*}"
+    WANT="${fixture##*|}"
+    printf '%s\n' "$CONTENT" > "$TMP"
+    set +e
+    parse_markers "$TMP" 2>/dev/null
+    GOT=$?
+    set -e
+    if [ "$GOT" = "$WANT" ]; then
+      echo "  ✓ '$CONTENT' -> exit $GOT"
+    else
+      echo "  ✗ '$CONTENT' -> exit $GOT (forventede $WANT)" >&2
+      FAILED=1
+    fi
+  done
+  if [ "$FAILED" -eq 1 ]; then
+    echo "parse-test FEJLEDE" >&2
+    exit 1
+  fi
+  echo "parse-test: alle fixtures passed"
+  exit 0
+fi
 
 # ============================================================
 # Argument-parsing
@@ -22,20 +149,20 @@ set -euo pipefail
 if [ $# -lt 2 ]; then
   cat <<EOF
 Usage: $0 <plan-fil> <runde-N> [--xhigh|--quick] [--phase=plan|build|slut-rapport]
+       $0 --parse-test
 
 Eksempel:
   $0 docs/coordination/<pakke>-plan.md 1
   $0 docs/coordination/<pakke>-plan.md 2 --quick
   $0 docs/coordination/rapport-historik/<dato>-<pakke>.md 1 --phase=slut-rapport
 
-V5.3 marker-protokol: scriptet parser output for halt-markers + severity-prefixes + log-markers + positive markers.
+V5 marker-routing: scriptet parser output for halt-markers + severity-prefixes + positive markers (disciplin §5/§6.1).
 Exit-koder:
   0  = clean eller G-NUMMER-KANDIDAT (fortsæt)
   1  = STOP-FOR-CLARIFICATION (info-mangel)
-  2  = halt-marker (BRUD-PAA-KRAV / TEKNISK-BLOKERING / PLAN-AFVIGELSE / KRITISK-SIKKERHEDSHUL)
-       ELLER severity-prefix (^KRITISK\b — stopper plan i alle runder per overvaagning)
+  2  = halt-marker ELLER KRITISK-severity
   3  = WORKAROUND-INTRODUCERET (Mathias-gate)
-  4  = ESCALATE / AUTO-ESKALATION / NEEDS-MATHIAS (Mathias-judgment kræves før V<n+1>)
+  4  = ESCALATE / AUTO-ESKALATION / NEEDS-MATHIAS
   124 = codex timeout
 EOF
   exit 64
@@ -75,20 +202,13 @@ if [ ! -f "$PLAN_FILE" ]; then
   exit 64
 fi
 
-PREFIX_FILE="docs/skabeloner/codex-review-prompt.md"
-if [ ! -f "$PREFIX_FILE" ]; then
-  echo "❌ Niveau 1-prefix-fil findes ikke: $PREFIX_FILE" >&2
-  exit 64
-fi
-
 if ! command -v codex >/dev/null 2>&1; then
   echo "❌ codex CLI ikke fundet i PATH. Kør 'codex doctor' for diagnose." >&2
   exit 64
 fi
 
 # ============================================================
-# Build prompt — file-reference > embedded content
-# (V5.3 workflow-skabelon tooling-disciplin #3)
+# Build prompt — genereret fra disciplin.md V5 §10.4 (inline)
 # ============================================================
 
 PAKKE_NAME="$(basename "$PLAN_FILE" | sed -E 's/-plan\.md$//; s/\.md$//; s/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')"
@@ -106,32 +226,54 @@ OUTPUT_FILE="${OUTPUT_DIR}/${DATE}-${PAKKE_NAME}-runde-${ROUND_N}.md"
 
 PLAN_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo 'uncommitted')"
 
+STATUS_FILE="docs/coordination/${PAKKE_NAME}-status.md"
+KRAV_FILE="docs/coordination/${PAKKE_NAME}-krav-og-data.md"
+
 case "$PHASE" in
   plan|build)
     FORMAAL_LINE='FORMÅL: udledes af "## Formål"-sektionen i '"$PLAN_FILE"'.'
     ;;
   slut-rapport)
-    FORMAAL_LINE='FORMÅL (slut-rapport-fase): Verificér at slut-rapporten reflekterer faktisk leverance, plan-afvigelser ærligt, og fire-dokument-tjek korrekt. Underliggende pakke-formål kan slås op i rapport-headerens "Plan-fil"-felt hvis nødvendigt.'
+    FORMAAL_LINE='FORMÅL (slut-rapport-fase): Verificér at slut-rapporten reflekterer faktisk leverance, plan-afvigelser ærligt, og leverance-tabel mod krav-dok + Stork-invariant-tjek (disciplin §10.3) korrekt.'
     ;;
 esac
 
 PROMPT=$(cat <<EOF
-Læs disse filer:
-1. $PREFIX_FILE (niveau 1-prefix — anvend ordret)
-2. $PLAN_FILE ($PHASE-fasen for pakke $PAKKE_NAME)
+Du er Codex i Stork 2.0 — uafhængig kode-reviewer, read-only (disciplin §9.3).
+
+Læs FØR review:
+- docs/strategi/vision-og-principper.md
+- docs/strategi/forretningsforstaaelse.md (LÅST stamme-doc, D4)
+- docs/strategi/disciplin.md §9.3 (din rolle) + §5 (severities) + §8.1
+- $KRAV_FILE (pakke-kontrakt — hvis den findes)
+- $PLAN_FILE ($PHASE-fasen for pakke $PAKKE_NAME)
+- $STATUS_FILE (kontekst + konvergens-counter — hvis den findes)
 
 RUNDE-NUMMER: $ROUND_N
 FASE: $PHASE
 $FORMAAL_LINE
 
-Følg niveau 1-prefixens scope-krav + marker-protokol + dialog-regler.
+Review-fokus (§9.3): patch-først (§3.1) · end-to-end-spor (§3.3) ·
+state-dump matcher faktisk state (§3.2) · krav-dok-konsistens uden
+scope-creep · vision/forretningsforstaaelse-modsigelse ·
+MANGLENDE-EKSISTERENDE-BEVARELSE.
 
-Max $MAX_WORDS ord output. Brug marker-format fra niveau 1-prefix (KRITISK/MELLEM/LAV/HUL/OPTIMERING-FORSLAG/G-NUMMER-KANDIDAT etc.). Hvis du ikke har fund: skriv "APPROVAL — Runde $ROUND_N".
+Format pr. fund:
+[SEVERITY] Kort beskrivelse
+Konkret afvigelse: ...
+Anbefalet handling: [V<n+1>-rettelse / G-nummer / kosmetisk note]
+
+Berører ændringen en governance-doc: afslut med
+"§8.1-SVAR: INGEN-MODSIGELSE" eller "§8.1-SVAR: MODSIGELSE — <hvad>".
+
+Max $MAX_WORDS ord. Hvis ingen fund: skriv "APPROVAL — Runde $ROUND_N".
 EOF
 )
 
 # ============================================================
 # Eksekvér med hard timeout + non-json (live tail-friendly)
+# stdin lukkes — codex exec uden TTY hænger ellers på
+# "Reading additional input from stdin..." (gov-docs-renhed fund 6)
 # ============================================================
 
 RAW_OUTPUT="$(mktemp -t codex-review-raw.XXXXXX)"
@@ -146,7 +288,7 @@ set +e
 timeout --signal=KILL "$TIMEOUT_SEC" codex exec --skip-git-repo-check \
   -c "model_reasoning_effort=\"$REASONING\"" \
   --enable fast_mode \
-  "$PROMPT" > "$RAW_OUTPUT" 2>&1
+  "$PROMPT" > "$RAW_OUTPUT" 2>&1 < /dev/null
 CODEX_EXIT=$?
 set -e
 
@@ -193,94 +335,19 @@ EOF
 cat "$RAW_OUTPUT" >> "$OUTPUT_FILE"
 
 # ============================================================
-# Marker-parsing (V5.3 marker-protokol)
+# Marker-parsing + echo output + exit per routing
 # ============================================================
 
 echo "" >&2
 echo "▶ Marker-parsing:" >&2
 
-HALT_HIT=0
-SEVERITY_HIT=0
-WORKAROUND_HIT=0
-CLARIFICATION_HIT=0
-ESCALATE_HIT=0
-NEEDS_MATHIAS_HIT=0
-
-if grep -qE '^(STOP-FOR-CLARIFICATION):' "$RAW_OUTPUT"; then
-  CLARIFICATION_HIT=1
-  echo "  ⏸  STOP-FOR-CLARIFICATION rejst — info-mangel" >&2
-fi
-
-if grep -qE '^(BRUD-PAA-KRAV|TEKNISK-BLOKERING|PLAN-AFVIGELSE|KRITISK-SIKKERHEDSHUL):' "$RAW_OUTPUT"; then
-  HALT_HIT=1
-  echo "  🛑 Halt-marker rejst — kræver LØS-dialog eller eskalation" >&2
-fi
-
-# Severity-prefix detection (NY 2026-05-20 — G055-fix)
-# KRITISK uden halt-marker er stadig blocker per overvaagning-disciplin
-# ("KRITISK — STOPPER plan i alle runder"). Halt-markeren kan være
-# eksplicit ("KRITISK — PLAN-AFVIGELSE:") eller alene ("KRITISK: <fund>").
-# Matcher ord-grænse efter KRITISK så "KRITISKE" ikke triggers false positive.
-if grep -qE '^KRITISK\b' "$RAW_OUTPUT"; then
-  SEVERITY_HIT=1
-  echo "  🛑 KRITISK-severity rejst — stopper plan i alle runder" >&2
-fi
-
-# NEEDS-MATHIAS — stopper plan og kræver Mathias-afgørelse før V<n+1>
-if grep -qE '^(\[NEEDS-MATHIAS\]|NEEDS-MATHIAS)\b' "$RAW_OUTPUT"; then
-  NEEDS_MATHIAS_HIT=1
-  echo "  🚦 NEEDS-MATHIAS rejst — Code må ikke lave V<n+1> før Mathias har afgjort" >&2
-fi
-
-if grep -qE '^(WORKAROUND-INTRODUCERET):' "$RAW_OUTPUT"; then
-  WORKAROUND_HIT=1
-  echo "  ⚠️  WORKAROUND-INTRODUCERET — Mathias-gate kræves" >&2
-fi
-
-if grep -qE '^(ESCALATE|AUTO-ESKALATION):' "$RAW_OUTPUT"; then
-  ESCALATE_HIT=1
-  echo "  🚨 ESCALATE/AUTO-ESKALATION — Mathias-judgment via gate-fil" >&2
-fi
-
-if grep -qE '^(OPTIMERING-FORSLAG):' "$RAW_OUTPUT"; then
-  echo "  💡 OPTIMERING-FORSLAG fundet — Code's valg (ADOPT/DEFER/DISMISS)" >&2
-fi
-
-if grep -qE '^(SPARRING-OENSKE):' "$RAW_OUTPUT"; then
-  echo "  💬 SPARRING-OENSKE fundet" >&2
-fi
-
-if grep -qE '^(G-NUMMER-KANDIDAT):' "$RAW_OUTPUT"; then
-  echo "  📝 G-NUMMER-KANDIDAT(er) — log til teknisk-gaeld.md (fortsæt)" >&2
-fi
-
-if grep -qE '^APPROVAL\b' "$RAW_OUTPUT"; then
-  echo "  ✅ APPROVAL" >&2
-fi
-
-# ============================================================
-# Echo output + exit per marker-priority
-# ============================================================
+set +e
+parse_markers "$RAW_OUTPUT"
+ROUTING_EXIT=$?
+set -e
 
 echo "" >&2
 echo "▶ Output:" >&2
 cat "$RAW_OUTPUT"
 
-# Exit-koder per V5.3 routing-tabel:
-if [ "$CLARIFICATION_HIT" -eq 1 ]; then
-  exit 1
-fi
-if [ "$WORKAROUND_HIT" -eq 1 ]; then
-  exit 3
-fi
-if [ "$ESCALATE_HIT" -eq 1 ]; then
-  exit 4
-fi
-if [ "$NEEDS_MATHIAS_HIT" -eq 1 ]; then
-  exit 4
-fi
-if [ "$HALT_HIT" -eq 1 ] || [ "$SEVERITY_HIT" -eq 1 ]; then
-  exit 2
-fi
-
-exit 0
+exit $ROUTING_EXIT
