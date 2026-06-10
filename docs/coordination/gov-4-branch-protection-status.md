@@ -1,8 +1,8 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling:** Plan V2 — runde 1-fund ADRESSERET (2 KRITISK: to-credential-design + CodeQL droppet fra required efter empirisk check-run-dump; 2 MELLEM: G061-migration med i build + BRANCH_PROTECTION.md i patch-listen). Codex runde 2 dispatched (2026-06-10).
-**Næste forventet:** Codex runde 2: APPROVAL + INGEN NYE FUND → Claude.ai qwerg-gate-pakke (§9.1) → Mathias læser → `qwerg`. Ellers V3.
-**Konvergens-counter:** 2
+**Sidste handling:** Plan V3 — runde 2-fund ADRESSERET (2 KRITISK: §3.2 live-dump af G061-målene indsat (begge null) + gh api -f→-F boolean-fix). Codex runde 3 dispatched (2026-06-10).
+**Næste forventet:** Codex runde 3: APPROVAL + INGEN NYE FUND → Claude.ai qwerg-gate-pakke (§9.1) → Mathias læser → `qwerg`. Ellers V4 (§3.4-alert ved counter 4).
+**Konvergens-counter:** 3
 **Aktuel blocker:** ingen.
 
 Noter:

@@ -1,9 +1,9 @@
-# gov-4-branch-protection — Plan V2
+# gov-4-branch-protection — Plan V3
 
 **Branch:** claude/gov-4-branch-protection-plan
 **Krav-dok:** docs/coordination/gov-4-branch-protection-krav-og-data.md (ekstrakt; fælles dok: governance-vagt-krav-og-data.md pkt 4 + D2)
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 2)
+**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 3)
 
 ## Formål
 
@@ -20,6 +20,13 @@
 | R1-3 | G061 har deadline "før gov-4" men planen ignorerede den           | MELLEM   | **ACCEPT.** G061-opsamlings-migrationen (2 `comment on`-mål) tages MED i builden (batch 1) — lukker gælden frem for rebaseline. Skitsen er nu 1 migration                                                                                                                                                |
 | R1-4 | `.github/BRANCH_PROTECTION.md` efterlades stale                   | MELLEM   | **ACCEPT.** Patch-først-sektion tilføjet (fil 4). Bonus-fund: doc'en kræver ci-checken som required, live har TOM contexts-liste — endnu et docs↔virkelighed-gab som pakken lukker                                                                                                                       |
 
+## V2 → V3: Codex-fund runde 2 (alle ADRESSERET)
+
+| #    | Fund                                                                         | Severity | Code-svar                                                                                                                                |
+| ---- | ---------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| R2-1 | §3.2-dump forkert markeret N/A — G061-migrationen er en DB-mutation          | KRITISK  | **ACCEPT.** Frisk live-dump af begge mål via Supabase MCP indsat i state-dump-sektionen: begge live-comments er `null`; repo-tekster 1:1 |
+| R2-2 | `gh api -f strict=true` sender string, API kræver boolean — step 3 kan fejle | KRITISK  | **ACCEPT.** `-f` → `-F` (typed felt) i kaldet                                                                                            |
+
 ## Step 2.0 — Skitse + størrelses-tjek
 
 **1 migration** (G061-opsamling: 2 `comment on`-statements — ikke-destruktiv,
@@ -28,7 +35,28 @@ BRANCH_PROTECTION.md, docs-opdateringer, H026-luk. Under §3.8-grænsen → fuld
 
 ## Verificerede repo-objekter (state-dump, 2026-06-10)
 
-§3.2 DB-dump N/A (ingen DB-objekter). Repo-/GitHub-state, råt:
+**§3.2 DB-state-dump (fund R2-1 — G061-målene, Supabase MCP `execute_sql`
+2026-06-10, råt):**
+
+```json
+[
+  { "art": "constraint", "navn": "client_node_placements_client_id_fkey", "live_comment": null },
+  { "art": "table", "navn": "core_identity.permission_actions", "live_comment": null }
+]
+```
+
+Repo-definitionerne (1:1, kilder til migrationen):
+
+- `supabase/migrations/20260521000007_t10_client_node_placements_fk.sql:20` —
+  `comment on constraint client_node_placements_client_id_fkey on core_identity.client_node_placements is 'T10.7: FK fra client_id til core_identity.clients(id). ON DELETE RESTRICT støtter krav-dok §2.2.3 (klient deaktiveres, ikke slettes). T9 Plan V6 Valg 4 indfriet.';`
+- `supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql:36` —
+  `comment on table core_identity.permission_actions is 'T9-supplement-2: handlings-granularitet under tabs. Konfigurerede actions kræver action-grant + tab-can_write (eller kun can_access hvis bypass_tab_write=true). requires_second_approver/has_undo/bypass_tab_write er kode-låste; second_approver_type er UI-redigerbart.';`
+
+Gabet er præcis G061: live `null` på begge, repo definerer begge.
+G061-migrationen genudfører de to statements ordret (patch-først: teksterne
+ovenfor ER migrations-indholdet). Ingen øvrige DB-objekter berøres.
+
+Repo-/GitHub-state, råt:
 
 **Branch protection på main (allerede delvist aktiv — Mathias slog PR-krav til
 2026-06-10; verificeret via `gh api .../branches/main/protection`):**
@@ -128,7 +156,7 @@ Udføres under Mathias' admin-auth på qwerg-mandat (fund R1-1), 1:1:
 
 ```
 gh api -X PATCH repos/Cphsales/stork-2.0/branches/main/protection/required_status_checks \
-  -f strict=true -f "contexts[]=Lint, typecheck, test, build"
+  -F strict=true -f "contexts[]=Lint, typecheck, test, build"
 gh api -X PATCH repos/Cphsales/stork-2.0/branches/main/protection/required_pull_request_reviews \
   -F required_approving_review_count=1 -F require_code_owner_reviews=true -F dismiss_stale_reviews=true
 ```
@@ -138,13 +166,11 @@ Rollback: samme endpoints med nuværende værdier (dumpet ovenfor).
 
 ### 2b. G061-opsamlings-migration (fund R1-3)
 
-Én migration (§E default-mønster), ikke-destruktiv: `comment on constraint
-client_node_placements_client_id_fkey ...` + `comment on table
-permission_actions ...`. Kommentar-TEKSTERNE tages 1:1 fra de eksisterende
-repo-migrationsfiler der definerede dem (patch-først — verificeres i build mod
-`grep -rn "comment on" supabase/migrations/`). Deploy: auto via
-migrations-deploy.yml ved merge → repo↔live comment-paritet 100% → G061 lukkes
-i teknisk-gaeld.md.
+Én migration (§E default-mønster), ikke-destruktiv: de to `comment on`-
+statements citeret 1:1 i state-dump-sektionen ovenfor (fund R2-1 — live-dump
+viser `null` på begge; repo-teksterne ER migrations-indholdet). Deploy: auto
+via migrations-deploy.yml ved merge → repo↔live comment-paritet 100% → G061
+lukkes i teknisk-gaeld.md.
 
 ### 2c. `.github/BRANCH_PROTECTION.md` (fund R1-4)
 
