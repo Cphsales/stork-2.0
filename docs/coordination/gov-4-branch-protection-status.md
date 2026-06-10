@@ -1,9 +1,9 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling (NYESTE ØVERST):** qwerg-revision (Mathias §1-suverænitet): tre-konto-struktur — fælles login urørt (kun protection-API), mgrubak = code owner/approver, stork-code-bot = committer. Hook-valg (b) LEVERET + verificeret begge veje. ADMIN_HANDLE := mgrubak (eksplicit). CODEOWNERS-fix skrevet (@mgrubak, 5 regler + kommentar). Afventer PAT-paste → auth-skift + assert + batch 2-commit som bot. Tidligere: qwerg 2026-06-10 → build batch 1: (i) ADMIN_HANDLE capturet FØR alt auth-arbejde (R4-1-protokol; gemt udenfor repo i ~/.stork-gov4-admin-handle — kan ikke stå her pga. hook-låsen); (ii) G061-migration `20260610190000_gov4_g061_comment_paritet.sql` + G061 → LØST; (iii) step 3 udført på qwerg-mandat: required check `Lint, typecheck, test, build` (strict) aktiv — verificeret via API. Codex batch-review dispatched.
-**Næste forventet:** BLOKERET PÅ MATHIAS (step 1-handlinger): (1) opret bot-GitHub-bruger (default ved tavshed: `stork-code-bot`); (2) invitér den til Cphsales-org'en med WRITE på stork-2.0 (ikke admin); (3) generér fine-grained PAT (contents RW + pull-requests RW) og udlevér; (4) hook-valg: (a) midlertidig unlock eller (b) regex-præcisering (handle+`/`). Derefter: Code auth-skift + assert → CODEOWNERS-PR (step 2, m. dobbelt gyldigheds-gate) → step 4 (required review) → step 5 (docs + H026-luk + Claude.ai-forfattet banner).
-**Konvergens-counter:** 5 (afsluttet — konvergeret ved runde 5-APPROVAL; pause ophævet af Mathias, valg a). Fund-kæde: 4 → 2 → 1 → 1 → 0.
-**Aktuel blocker:** PAT-paste (alt andet i step 1-2 er forberedt).
+**Sidste handling:** Build batch 2 committet SOM BOT (`041dff6`, author stork-code-bot — H026-authorship-skiftet i kraft): CODEOWNERS → @mgrubak (codeowners/errors: 5 → **0**, API-verificeret på branchen) + qwerg-revision (tre-konto-struktur) + hook-fix (b). R4-1-assert bestået (mgrubak ≠ stork-code-bot). **PR #110 oprettet af botten** = H026-beviset. Codex batch 2-review: status-staleness fanget → denne synkronisering. 2026-06-10.
+**Næste forventet:** (1) mgrubak approver PR #110 (H026-bevis + code-owner-kæde); (2) Mathias merger (required CI-check bider første gang); (3) Code: step 4 på qwerg-mandat (count=1 + code-owner=true) → gates fuldt bindende; (4) verifikations-protokol (b)-(e) m. rå outputs; (5) step 5: docs + H026-luk + Claude.ai-forfattet banner + slut-rapport.
+**Konvergens-counter:** 5 (plan-fase afsluttet). Build-reviews: runde 6 (batch 1 APPROVAL) · runde 7 (batch 2: 1 KRITISK status-staleness → rettet her).
+**Aktuel blocker:** mgrubak-approval + Mathias-merge af PR #110.
 
 Noter:
 
