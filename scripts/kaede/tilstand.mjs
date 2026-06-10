@@ -102,6 +102,11 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
     if (ord.tekst === "slut OK") events.push({ type: "slut-ok-registreret", sha: ord.id ?? mainSha });
     if (ord.tekst.startsWith("qwers "))
       events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+    // Gate-afgørelser (runde 16): GODKENDT/AFVIST løfter åben Mathias-gate
+    if (ord.tekst === "GODKENDT" || ord.tekst.startsWith("GODKENDT "))
+      events.push({ type: "gate-godkendt", sha: ord.id ?? mainSha });
+    if (ord.tekst === "AFVIST" || ord.tekst.startsWith("AFVIST "))
+      events.push({ type: "gate-afvist", sha: ord.id ?? mainSha });
   }
   return events;
 }

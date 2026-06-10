@@ -45,12 +45,8 @@ export function decide(tilstand, regler) {
     return [{ handling: "KAEDE-STOP", grund: "divergens", detalje: tilstand.divergens }];
   }
 
-  // 1b. Åben Mathias-gate (Codex runde 14-fund 1): findes en gate-fil med
-  // "AFVENTER MATHIAS", er sporet PAUSET — intet dispatches før Mathias har
-  // afgjort (gate-ord/gate-fil-opdatering). Kun observation logges.
-  if (tilstand.aabneGates?.length) {
-    return [{ handling: "SPOR-PAUSET", gates: tilstand.aabneGates, spor }];
-  }
+  // (Åben-gate-tjek flyttet til 2b — EFTER gate-ord-behandling, så Mathias'
+  // GODKENDT/AFVIST kan løfte pausen; Codex runde 16: deadlock ellers.)
 
   // 2. Gate-ord: author-verifikation FØR alt andet brug af ordet.
   for (const ord of tilstand.gateOrd ?? []) {
@@ -66,6 +62,33 @@ export function decide(tilstand, regler) {
       return [...handlinger, { handling: "KAEDE-PAUSE", grund: "Mathias-stop (suverænitet)" }];
     }
     handlinger.push({ handling: "GATE-ORD-REGISTRERET", ord: ord.tekst });
+  }
+
+  // 2b. Åben Mathias-gate (runde 14 + 16): gate-fil m. "AFVENTER MATHIAS"
+  // pauser sporet — MEN en frisk, author-verificeret afgørelse (gate-godkendt/
+  // gate-afvist-event fra GODKENDT/AFVIST-ord) løfter den: gate-filen afgøres
+  // (ordret transport af Mathias' ord) og Code dispatches til genoptagelse.
+  // Alt andet på sporet forbliver pauset i denne cyklus.
+  if (tilstand.aabneGates?.length) {
+    const afgoerelser = (tilstand.events ?? []).filter(
+      (e) =>
+        (e.type === "gate-godkendt" || e.type === "gate-afvist") &&
+        !behandlede.has(`event:${e.type}@${e.sha ?? "HEAD"}#code`),
+    );
+    if (!afgoerelser.length) {
+      return [...handlinger, { handling: "SPOR-PAUSET", gates: tilstand.aabneGates, spor }];
+    }
+    for (const e of afgoerelser) {
+      handlinger.push({ handling: "GATE-AFGJORT", afgoerelse: e.type, gates: tilstand.aabneGates, sha: e.sha });
+      handlinger.push({
+        handling: "DISPATCH",
+        aktoer: "code",
+        opgave: regler.events[e.type][0].opgave,
+        adapter: regler.aktoerer.code.adapter,
+        kontekst: { event: e.type, sha: e.sha ?? null, spor },
+      });
+    }
+    return handlinger; // afgørelsen bærer cyklussen; øvrig routing fra næste cyklus
   }
 
   // 3. Untracked leverancer → transport-commit (ordret) før routing — men
@@ -220,6 +243,18 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
       case "TRANSPORT-COMMIT":
         transportCommit(h.fil);
         break;
+      case "GATE-AFGJORT": {
+        // Ordret transport af Mathias' afgørelses-ord ind i gate-filen
+        // (§6.3-status-skift) — templated indsættelse, ingen vurdering.
+        const ord = h.afgoerelse === "gate-godkendt" ? "GODKENDT" : "AFVIST";
+        for (const gateFil of h.gates) {
+          const sti = join(REPO_ROD, gateFil);
+          const tekst = readFileSync(sti, "utf8");
+          writeFileSync(sti, tekst.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
+          transportCommit(gateFil);
+        }
+        break;
+      }
       case "DISPATCH": {
         const adapterSti = join(REPO_ROD, h.adapter);
         if (!existsSync(adapterSti)) {

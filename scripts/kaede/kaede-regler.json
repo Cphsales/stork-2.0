@@ -36,7 +36,9 @@
     ],
     "build-pr-klar-beslutningssti": [{ "aktoer": "mathias", "opgave": "review-request" }],
     "build-pr-merged": [{ "aktoer": "code", "opgave": "slut-rapport" }],
-    "slut-ok-registreret": [{ "aktoer": "code", "opgave": "slut-merge" }]
+    "slut-ok-registreret": [{ "aktoer": "code", "opgave": "slut-merge" }],
+    "gate-godkendt": [{ "aktoer": "code", "opgave": "gate-afgjort-fortsaet" }],
+    "gate-afvist": [{ "aktoer": "code", "opgave": "gate-afvist-alternativ" }]
   },
   "fund_gate_markers": [
     "NEEDS-MATHIAS",
