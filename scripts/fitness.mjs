@@ -5,6 +5,7 @@
 // Tilføj nye checks ved at skrive en function og pushe den til `checks`-array'et.
 
 import { readdir, readFile } from "node:fs/promises";
+import { readFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -1742,6 +1743,57 @@ async function appWriteRevokeDiscipline() {
   return { name: "app-write-revoke-discipline", violations: appWriteViolations(r.rows, APP_WRITE_REVOKE_EXEMPTIONS) };
 }
 
+// ---------- advisor-baseline (G066 / DEL 5, 2026-06-10) ----------
+// De SQL-tjekbare Supabase-advisor-klasser holdes mod committet baseline
+// (supabase/advisor-baseline.json) med begrundelser: nye eksponeringer = rød,
+// forsvundne baseline-entries = rød (stram baselinen — den bider begge veje).
+// Auth-config-advisors (Dashboard-klik, fx leaked-password-protection) kan
+// IKKE tjekkes via SQL — den flade er dokumenteret i G066.
+export function compareAdvisorBaseline(live, baseline) {
+  const violations = [];
+  for (const key of ["secdef_exposed", "rls_no_policy"]) {
+    const b = new Set(baseline[key] || []);
+    const l = new Set(live[key] || []);
+    for (const x of l)
+      if (!b.has(x))
+        violations.push(
+          `supabase/advisor-baseline.json: NY ${key}-eksponering ikke i baseline: ${x} (tilfoej med begrundelse i samme PR, eller fjern eksponeringen)`,
+        );
+    for (const x of b)
+      if (!l.has(x))
+        violations.push(
+          `supabase/advisor-baseline.json: baseline-entry findes ikke laengere live: ${x} (${key}) — fjern den fra baselinen`,
+        );
+  }
+  return violations;
+}
+async function advisorBaseline() {
+  const name = "advisor-baseline";
+  const baselinePath = "supabase/advisor-baseline.json";
+  if (!existsSync(baselinePath)) return { name, violations: [`${baselinePath} mangler (G066)`] };
+  const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
+  const r = await liveQuery(`select json_build_object(
+    'secdef_exposed', (select coalesce(json_agg(fn order by fn),'[]'::json) from (
+      select distinct n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' as fn
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where p.prosecdef and n.nspname in ('public','core_identity','core_compliance','core_money')
+      and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))
+    ) s),
+    'rls_no_policy', (select coalesce(json_agg(t order by t),'[]'::json) from (
+      select n.nspname||'.'||c.relname as t
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where c.relkind='r' and c.relrowsecurity
+      and not exists (select 1 from pg_policy p where p.polrelid=c.oid)
+      and n.nspname in ('public','core_identity','core_compliance','core_money')
+    ) s)
+  ) as baseline;`);
+  const g = liveGuard(name, r);
+  if (g) return g;
+  const row = r.rows[0] || {};
+  const live = typeof row.baseline === "string" ? JSON.parse(row.baseline) : row.baseline || row;
+  return { name, violations: compareAdvisorBaseline(live, baseline) };
+}
+
 const checks = [
   noTsIgnore,
   eslintDisableJustified,
@@ -1770,6 +1822,7 @@ const checks = [
   indexPerPolicy,
   secdefMarkerDiscipline,
   appWriteRevokeDiscipline,
+  advisorBaseline,
 ];
 
 async function main() {

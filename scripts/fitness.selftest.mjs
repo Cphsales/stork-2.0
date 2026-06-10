@@ -15,6 +15,7 @@ import {
   leadingBtreeColumns,
   secdefMarkerViolations,
   appWriteViolations,
+  compareAdvisorBaseline,
 } from "./fitness.mjs";
 
 const ROOT = process.cwd();
@@ -283,6 +284,25 @@ plant(
   }).length === 0
     ? ok("#18 exemption -> skippes")
     : bad("#18 exemption", "forventede 0");
+}
+
+// ---------- advisor-baseline (G066) — compare-logikken bider begge veje ----------
+{
+  const base = { secdef_exposed: ["public.f(a int)"], rls_no_policy: ["core_x.t"] };
+  compareAdvisorBaseline({ secdef_exposed: ["public.f(a int)"], rls_no_policy: ["core_x.t"] }, base).length === 0
+    ? ok("advisor-baseline match -> 0 violations")
+    : bad("advisor-baseline match", "forventede 0");
+  const ny = compareAdvisorBaseline(
+    { secdef_exposed: ["public.f(a int)", "public.NY(b text)"], rls_no_policy: ["core_x.t"] },
+    base,
+  );
+  ny.length === 1 && /NY secdef_exposed/.test(ny[0])
+    ? ok("advisor-baseline ny eksponering -> roed")
+    : bad("advisor-baseline ny", `fik ${ny.length}: ${ny[0] || ""}`);
+  const fjernet = compareAdvisorBaseline({ secdef_exposed: [], rls_no_policy: ["core_x.t"] }, base);
+  fjernet.length === 1 && /findes ikke laengere live/.test(fjernet[0])
+    ? ok("advisor-baseline fjernet entry -> roed (stram baselinen)")
+    : bad("advisor-baseline fjernet", `fik ${fjernet.length}`);
 }
 
 if (failed) {
