@@ -7,8 +7,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decide } from "./dirigent.mjs";
-import { parseDeklaration, udtraekMarkers, findDivergens } from "./tilstand.mjs";
+import { decide, behandletNoegler } from "./dirigent.mjs";
+import { parseDeklaration, udtraekMarkers, findDivergens, afledEvents, erBogfoeringsSti } from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
 
@@ -171,6 +171,57 @@ check("NEEDS-MATHIAS findes", udtraekMarkers("NEEDS-MATHIAS: afgørelse kræves\
 // ---------- 15. findDivergens ----------
 check("enige kilder → ingen divergens", findDivergens([{ felt: "sha", kilder: [{ navn: "a", vaerdi: "x" }, { navn: "b", vaerdi: "x" }] }]).length === 0);
 check("uenige kilder → divergens", findDivergens([{ felt: "sha", kilder: [{ navn: "a", vaerdi: "x" }, { navn: "b", vaerdi: "y" }] }]).length === 1);
+
+// ---------- 16. behandletNoegler (Codex B1-fund 1: kun succesfulde kørsler tæller) ----------
+{
+  const logLinjer = [
+    JSON.stringify({ handling: "DISPATCH", kontekst: { fil: "a.md", sha: "s1" } }),
+    JSON.stringify({ handling: "KOERSEL-SLUT", exit: 0, kontekst: { fil: "a.md", sha: "s1" } }),
+    JSON.stringify({ handling: "DISPATCH", kontekst: { fil: "b.md", sha: "s2" } }),
+    JSON.stringify({ handling: "KOERSEL-SLUT", exit: 1, kontekst: { fil: "b.md", sha: "s2" } }),
+    JSON.stringify({ handling: "KOERSEL-SLUT", exit: 0, kontekst: { event: "krav-dok-merged", sha: "m1" } }),
+  ];
+  const noegler = behandletNoegler(logLinjer);
+  check("exit 0 → behandlet", noegler.includes("a.md@s1"));
+  check("exit ≠ 0 → IKKE behandlet (fejlet kørsel droppes aldrig stille)", !noegler.includes("b.md@s2"));
+  check("event-kørsel m. exit 0 → event-nøgle", noegler.includes("event:krav-dok-merged@m1"));
+}
+
+// ---------- 17. event-idempotens i decide ----------
+{
+  const h = decide({ ...TOM, events: [{ type: "krav-dok-merged", sha: "m1" }], behandlede: ["event:krav-dok-merged@m1"] }, REGLER);
+  check("behandlet event → ingen ny dispatch", !h.some((x) => x.handling === "DISPATCH"));
+}
+
+// ---------- 18. afledEvents (ren event-afledning af rå tilstand) ----------
+{
+  const e = afledEvents({ pakke: "gov-6-arkiv-fold", paaMain: { kravDok: true, planFil: false, rapportFil: false }, buildPr: null, gateOrd: [], gateAuthor: "mgrubak", mainSha: "m" });
+  check("krav-dok på main + ingen plan → krav-dok-merged", e.some((x) => x.type === "krav-dok-merged"));
+}
+{
+  const e = afledEvents({ pakke: "gov-6-arkiv-fold", paaMain: { kravDok: true, planFil: true, rapportFil: false }, buildPr: { merged: true, mergeSha: "ms" }, gateOrd: [], gateAuthor: "mgrubak", mainSha: "m" });
+  check("build-PR merged + ingen rapport → build-pr-merged", e.some((x) => x.type === "build-pr-merged") && !e.some((x) => x.type === "krav-dok-merged"));
+}
+{
+  const e = afledEvents({ pakke: "p", paaMain: { kravDok: true, planFil: true }, buildPr: { klar: true, beslutningsSti: true, headSha: "h" }, gateOrd: [], gateAuthor: "mgrubak", mainSha: "m" });
+  check("build-PR klar m. beslutnings-sti → review-request-event", e.some((x) => x.type === "build-pr-klar-beslutningssti"));
+}
+{
+  const e = afledEvents({ pakke: "p", paaMain: { kravDok: true, planFil: true }, buildPr: null, gateOrd: [{ id: "c1", author: "mgrubak", tekst: "slut OK" }, { id: "c2", author: "anden", tekst: "slut OK" }], gateAuthor: "mgrubak", mainSha: "m" });
+  check("slut OK fra mgrubak → event; fra anden author → IKKE (forsvar i dybden)", e.filter((x) => x.type === "slut-ok-registreret").length === 1 && e[0].sha === "c1");
+}
+{
+  const e = afledEvents({ pakke: "ingen", paaMain: { kravDok: true, planFil: false }, buildPr: null, gateOrd: [], gateAuthor: "mgrubak", mainSha: "m" });
+  check("ingen aktiv pakke → ingen events", e.length === 0);
+}
+
+// ---------- 19. erBogfoeringsSti (de 7 P3-mønstre) ----------
+check("aktiv-plan.md er bogføring", erBogfoeringsSti("docs/coordination/aktiv-plan.md"));
+check("status-fil er bogføring", erBogfoeringsSti("docs/coordination/gov-6-arkiv-fold-status.md"));
+check("rapport-historik er bogføring", erBogfoeringsSti("docs/coordination/rapport-historik/2026-06-12-gov-5-automation.md"));
+check("krav-og-data er IKKE bogføring (kontrakt)", !erBogfoeringsSti("docs/coordination/gov-6-arkiv-fold-krav-og-data.md"));
+check("scripts/kaede er IKKE bogføring (værn)", !erBogfoeringsSti("scripts/kaede/dirigent.mjs"));
+check("arkiv-plan er IKKE bogføring (anchored mønster)", !erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"));
 
 // ---------- resultat ----------
 if (failed) {
