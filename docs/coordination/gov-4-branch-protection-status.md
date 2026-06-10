@@ -1,9 +1,9 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling:** Plan V4 — runde 3-fund ADRESSERET (KRITISK: CODEOWNERS-handle pin'et deterministisk + codeowners/errors-gate før aktivering; Codex API-beviste 5 'Unknown owner' på nuværende fil). Codex runde 4 dispatched (2026-06-10).
-**Næste forventet:** Codex runde 4: APPROVAL + INGEN NYE FUND → Claude.ai qwerg-gate-pakke (§9.1) → Mathias læser → `qwerg`. Ellers runde 5 = §3.4 auto-pause.
-**Konvergens-counter:** 4 — **§3.4 MATHIAS-ALERT** (anden pakke i træk ved 4): Codes vurdering er igen at krav-grundlaget er præcist nok — fundene er konvergerende implementations-skarphed (4→2→1), ikke ramme-uklarhed. Men mønsteret 'V1 mangler dybde der koster 3 runder' er Code-læring: state-dump-disciplinen skal være total fra V1 (inkl. afledte mutationer + eksterne API-formater). Mathias afgør om han er enig.
-**Aktuel blocker:** ingen.
+**Sidste handling:** Plan V5 — runde 4-fund ADRESSERET (KRITISK R4-1: ADMIN_HANDLE-capture FØR bot-auth-skift + assert + CODEOWNERS-indholds-gate). INGEN runde 5 dispatched — §3.4 AUTO-PAUSE. 2026-06-10.
+**Næste forventet:** MATHIAS AFGØR (§3.4 auto-pause ved counter 5): (a) ophæv pausen → Codex runde 5 verificerer V5; (b) genåbn krav-grundlaget; (c) split pakken. Codes anbefaling: (a) — V5-rettelsen er Codex' egen anviste fix, fund-kæden er konvergeret til ét snævert timing-hul, og alle fire runder har haft INGEN-MODSIGELSE på §8.1.
+**Konvergens-counter:** 5 — **§3.4 AUTO-PAUSE AKTIV.** Fund-kæde: 4 → 2 → 1 → 1 (alle KRITISK reelle, alle ACCEPT, §8.1 hele vejen INGEN-MODSIGELSE). Counter-4-alertens Code-læring står ved magt: V1's state-dump var ikke total. Pakken må ikke fortsætte uden Mathias' afgørelse.
+**Aktuel blocker:** §3.4 auto-pause — afventer Mathias.
 
 Noter:
 
