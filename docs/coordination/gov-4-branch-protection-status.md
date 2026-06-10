@@ -1,9 +1,9 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling:** Plan V5 — runde 4-fund ADRESSERET (KRITISK R4-1: ADMIN_HANDLE-capture FØR bot-auth-skift + assert + CODEOWNERS-indholds-gate). INGEN runde 5 dispatched — §3.4 AUTO-PAUSE. 2026-06-10.
+**Sidste handling:** Plan V5 — runde 4-fund ADRESSERET (KRITISK R4-1: ADMIN_HANDLE-capture FØR bot-auth-skift + assert + CODEOWNERS-indholds-gate). Mathias ophævede §3.4-pausen (valg a) → Codex runde 5 dispatched. 2026-06-10.
 **Næste forventet:** MATHIAS AFGØR (§3.4 auto-pause ved counter 5): (a) ophæv pausen → Codex runde 5 verificerer V5; (b) genåbn krav-grundlaget; (c) split pakken. Codes anbefaling: (a) — V5-rettelsen er Codex' egen anviste fix, fund-kæden er konvergeret til ét snævert timing-hul, og alle fire runder har haft INGEN-MODSIGELSE på §8.1.
 **Konvergens-counter:** 5 — **§3.4 AUTO-PAUSE AKTIV.** Fund-kæde: 4 → 2 → 1 → 1 (alle KRITISK reelle, alle ACCEPT, §8.1 hele vejen INGEN-MODSIGELSE). Counter-4-alertens Code-læring står ved magt: V1's state-dump var ikke total. Pakken må ikke fortsætte uden Mathias' afgørelse.
-**Aktuel blocker:** §3.4 auto-pause — afventer Mathias.
+**Aktuel blocker:** ingen — Mathias ophævede §3.4-pausen 2026-06-10 (valg a: fortsæt review).
 
 Noter:
 
