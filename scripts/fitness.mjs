@@ -1747,8 +1747,9 @@ async function appWriteRevokeDiscipline() {
 // De SQL-tjekbare Supabase-advisor-klasser holdes mod committet baseline
 // (supabase/advisor-baseline.json) med begrundelser: nye eksponeringer = rød,
 // forsvundne baseline-entries = rød (stram baselinen — den bider begge veje).
-// Auth-config-advisors (Dashboard-klik, fx leaked-password-protection) kan
-// IKKE tjekkes via SQL — den flade er dokumenteret i G066.
+// Auth-config-advisors (Dashboard-klik) kan IKKE tjekkes via SQL — fladen er
+// dokumenteret i G066 (leaked-password-protection slået TIL 2026-06-10;
+// auth-slutbillede: Entra eneste provider ved Lag F).
 export function compareAdvisorBaseline(live, baseline) {
   const violations = [];
   for (const key of ["secdef_exposed", "rls_no_policy"]) {
