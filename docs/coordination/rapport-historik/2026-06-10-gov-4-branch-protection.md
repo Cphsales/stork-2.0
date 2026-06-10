@@ -54,7 +54,7 @@ Ingen rejst. G061 LØST. [H027] rejst (Node 20-actions → tvungen Node 24 fra 2
 
 ## §8.1-svar (governance-docs berørt)
 
-Codex runde 8 svarede `§8.1-SVAR: MODSIGELSE` (fund R8-2, korrekt): disciplin.md siger gov-4 aktiv, mens forretningsforstaaelse-banneret stadig står i fremtidsform. **Banner-leveringen er derfor MERGE-BLOCKER for denne PR**: Claude.ai forfatter, Mathias godkender, Code committer ordret (§8.1 forfatterregel) — modsigelsen lukkes FØR merge, og §8.1-svaret re-indhentes derefter. (Runde 5/6/7: INGEN-MODSIGELSE.)
+Codex runde 8 svarede `§8.1-SVAR: MODSIGELSE` (fund R8-2, korrekt): disciplin.md sagde gov-4 aktiv mens forretningsforstaaelse-banneret stod i fremtidsform. **Lukket 2026-06-10:** Claude.ai-forfattet, Mathias-godkendt banner-tekst committet ordret af Code (§8.1 forfatterregel fulgt — første kørsel af reglen i praksis). Codex runde 9 re-indhentet: _(udfyldes — forventet INGEN-MODSIGELSE)_. (Runde 5/6/7: INGEN-MODSIGELSE.)
 
 ## Konvergens-historie (runde 8: 2 KRITISK + 1 MELLEM — R8-1 bevis-overdrivelse rettet ærligt, R8-2 banner = merge-blocker, R8-3 aktiv-plan-rester synkroniseret)
 
