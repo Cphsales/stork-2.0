@@ -204,7 +204,7 @@
 - **Skal løses:** Ved næste bygge-status-revision
 - **Risiko hvis glemt:** Lav — credibility
 - **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
-- **Løses-i:** master-plan §4.1-revision (bygge-status er foldet dertil)
+- **Løses-i:** [H029]-paraplyen (indre tekst-staleness-gennemgang, efter gov-6) — master-plan §4.1 er hjemmet for tallene
 
 ### [G031] MELLEM — Lock-pipeline-benchmark mangler (R8b post-lag-E)
 

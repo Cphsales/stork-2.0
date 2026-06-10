@@ -229,6 +229,8 @@ Spærhagen der fanger governance-drift, så disciplinen ikke kun hviler på selv
 
 **Governance-ændringer er review-artefakter:** en ændring til vision/disciplin/master-plan går gennem samme gate som kode — `governance:check` grøn + Codex' prosa-modsigelses-svar. Fraværet af netop dette gav V5's rolle-modsigelse (vision↔disciplin); §8.1 lukker den klasse.
 
+**Review-klassifikation (Mathias-godkendt 2026-06-10):** ren docs-ændring → §8.1-svar; alt der rører kode/SQL/YAML/workflows → fuldt Codex-kode-review (§9.3-standard) + §8.1-svar. Klassen afgøres af diffens indhold, ikke af pakkens etiket.
+
 ---
 
 ## §9 Rolle-disciplin pr. AI
