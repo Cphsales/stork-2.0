@@ -6,20 +6,20 @@ Verification-step nederst er færdig-kriteriet for A8.
 
 ## Beskyttelses-krav
 
-| Setting                                                          | Værdi                                                 |
-| ---------------------------------------------------------------- | ----------------------------------------------------- |
-| Branch name pattern                                              | `main`                                                |
-| Require a pull request before merging                            | ✓                                                     |
-| Required approving reviews                                       | 0 (solo — Mathias reviewer egen kode)                 |
-| Dismiss stale pull request approvals when new commits are pushed | ✓                                                     |
-| Require status checks to pass before merging                     | ✓                                                     |
-| Require branches to be up to date before merging                 | ✓                                                     |
-| Required status checks                                           | `Lint, typecheck, test, build` (CI workflow job-navn) |
-| Require conversation resolution before merging                   | ✓                                                     |
-| Require linear history                                           | ✓                                                     |
-| Do not allow bypassing the above settings (enforce admins)       | ✓                                                     |
-| Allow force pushes                                               | ✗                                                     |
-| Allow deletions                                                  | ✗                                                     |
+| Setting                                                          | Værdi                                                                |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Branch name pattern                                              | `main`                                                               |
+| Require a pull request before merging                            | ✓                                                                    |
+| Required approving reviews                                       | 1 (mgrubak — code owner; commits forfattes af stork-code-bot, gov-4) |
+| Dismiss stale pull request approvals when new commits are pushed | ✓                                                                    |
+| Require status checks to pass before merging                     | ✓                                                                    |
+| Require branches to be up to date before merging                 | ✓                                                                    |
+| Required status checks                                           | `Lint, typecheck, test, build` (CI workflow job-navn)                |
+| Require conversation resolution before merging                   | ✓                                                                    |
+| Require linear history                                           | ✓                                                                    |
+| Do not allow bypassing the above settings (enforce admins)       | ✓                                                                    |
+| Allow force pushes                                               | ✗                                                                    |
+| Allow deletions                                                  | ✗                                                                    |
 
 ## Metode A — gh CLI (anbefalet)
 
@@ -40,9 +40,9 @@ gh api \
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
-    "required_approving_review_count": 0,
+    "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false
+    "require_code_owner_reviews": true
   },
   "required_linear_history": true,
   "allow_force_pushes": false,
@@ -74,9 +74,9 @@ Succesfuld response ser ud som:
 
    **Protect matching branches:**
    - ☑ **Require a pull request before merging**
-     - Required approvals: `0` (solo)
+     - Required approvals: `1` (mgrubak, gov-4)
      - ☑ Dismiss stale pull request approvals when new commits are pushed
-     - ☐ Require review from Code Owners (lad være indtil flere udviklere)
+     - ☑ Require review from Code Owners (aktiv siden gov-4 — CODEOWNERS peger på @mgrubak)
    - ☑ **Require status checks to pass before merging**
      - ☑ Require branches to be up to date before merging
      - Status checks search: tilføj `Lint, typecheck, test, build`
@@ -164,7 +164,7 @@ gh api /repos/Cphsales/stork-2.0/branches/main/protection \
 }
 ```
 
-## Hvornår strammer vi op?
+## Stramnings-historik + næste
 
-- **Når 2. udvikler kommer ind:** sæt `required_approving_review_count` til 1 og aktivér `require_code_owner_reviews: true` (CODEOWNERS er allerede oprettet i `.github/CODEOWNERS`)
-- **Når lag B's disciplin-mekanismer lander:** udvid required checks til at inkludere migration-gate, classification-validator, fitness-functions
+- **gov-4 (2026-06-10):** `required_approving_review_count: 1` + `require_code_owner_reviews: true` aktiveret. "2. udvikler"-præmissen blev indfriet af tre-konto-strukturen: `stork-code-bot` committer, `@mgrubak` (Mathias) er code owner og approver, det fælles admin-login bruges kun til protection-API-kald.
+- **Næste (lag B / gov-5+):** udvid required checks med migration-gate, classification-validator, fitness-functions når de er modne.

@@ -45,25 +45,26 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 - **Handling:** Når `core_money.sales` bygges (Trin 14): (1) tilføj FK `cancellations.source_sale_id`, `commission_snapshots.sale_id`, `salary_corrections.source_sale_id` → `sales.id` (med §3.9-preflight); (2) ryd de 290 orphan `commission_snapshots.sale_id`-værdier der ellers blokerer `ADD CONSTRAINT`; (3) fjern de 3 `FK_PENDING`-entries i `scripts/fitness.mjs`.
 - **Status:** åben (Trin 14-blocker). Rejst af gov-3b-1 (#19 FK-dækning). #19's selv-udløb gør (3) mekanisk håndhævet — `fk-coverage` bliver rød hvis FK'erne mangler efter `sales` findes.
 
-### [H026] gov-4: approval-mekanik — Mathias kan ikke approve egen PR
+### [H027] CI-actions på Node 20 — tvungen Node 24 fra 2026-06-16
 
-- **Handling:** gov-4-planen SKAL løse at GitHub nægter approval af egen PR: Code committer under Mathias' konto, så når `require_code_owner_reviews` gøres required, blokerer det ALT (observeret på PR #108 — Mathias kunne ikke approve). Mekanikken er Codes bord i gov-4-planen; oplagt kandidat: separat maskin-identitet (bot-konto/GitHub App) til Codes commits, så Mathias' CODEOWNERS-approval bliver mulig.
-- **Status:** åben (gov-4-blocker — branch protection må ikke aktiveres med code-owner-review required før dette er løst). Rejst af Mathias 2026-06-10 efter gov-docs-renhed.
+- **Handling:** Bump `actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` (alle workflows) til Node 24-kompatible versioner + verificér grøn CI. KRITISK timing: GitHub tvinger Node 24 fra **2026-06-16**; knækker en action, bliver den required CI-check rød og main er LÅST (gov-4-gates er fuldt bindende).
+- **Status:** åben (deadline 2026-06-16). Rejst 2026-06-10 (runner-warning på PR #110). Ejer: Code — mikro-PR umiddelbart efter gov-4-luk.
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 
 Maskin-læsbar source of truth (læses af `governance-check.mjs` til H-ref-integrity):
 
-<!-- gov-historical-codes: H010, H011, H020, H022, H024 -->
+<!-- gov-historical-codes: H010, H011, H020, H022, H024, H026 -->
 
 Tabel for mennesker:
 
-| Kode | Var                                                 | Hvor dokumenteret                           |
-| ---- | --------------------------------------------------- | ------------------------------------------- |
-| H010 | Arbejdsmetode + repo-struktur-etablering (pakke)    | git-history; `teknisk-gaeld.md` G-historik  |
-| H011 | §1.7 permission-modsigelse (lukket v. rettelse 35)  | `stork-2-0-master-plan.md` Appendix C       |
-| H020 | Automation flow-fejl (trigger ej på feature-branch) | `docs/coordination/arkiv/H020-flow-fejl.md` |
-| H022 | Immutable-test tx-wrap (løst i H024)                | `teknisk-gaeld.md` G-historik               |
-| H024 | Test-artefakt-cleanup (pakke)                       | git-history; `rapport-historik/`            |
+| Kode | Var                                                                                                                                                                            | Hvor dokumenteret                           |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| H010 | Arbejdsmetode + repo-struktur-etablering (pakke)                                                                                                                               | git-history; `teknisk-gaeld.md` G-historik  |
+| H011 | §1.7 permission-modsigelse (lukket v. rettelse 35)                                                                                                                             | `stork-2-0-master-plan.md` Appendix C       |
+| H020 | Automation flow-fejl (trigger ej på feature-branch)                                                                                                                            | `docs/coordination/arkiv/H020-flow-fejl.md` |
+| H022 | Immutable-test tx-wrap (løst i H024)                                                                                                                                           | `teknisk-gaeld.md` G-historik               |
+| H026 | gov-4 approval-mekanik (løst: tre-konto-struktur — fælles login urørt/kun protection-API, mgrubak = code owner, stork-code-bot = committer; CODEOWNERS-fix; bevist på PR #110) | gov-4 slut-rapport                          |
+| H024 | Test-artefakt-cleanup (pakke)                                                                                                                                                  | git-history; `rapport-historik/`            |
 
 Historiske koder er afsluttede pakke-/issue-identifikatorer (som `T9`, `trin-10`). De er IKKE åbne handlinger og får ikke `### [Hxxx]`-entries; de lever som provenance i de angivne hjem.

@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-06-10-gov-docs-renhed.md` (PR #108, main @ `2aae50d`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-06-10-gov-4-branch-protection.md` (PR #110 + step 5-PR; merge-hash udfyldes ved merge)
 
 Når ny rapport leveres:
 
