@@ -94,6 +94,8 @@ For HVER eksisterende funktion/policy/tabel der ændres: plan inkluderer NUVÆRE
 
 Code må ikke skrive plan før konkret DB-state er dumpet via Supabase MCP (RPC-bodies via `pg_get_functiondef`, kolonner+constraints, policies, grants) og lagt i plan under "Verificerede DB-objekter" som råt output. Ingen gæt, ingen cached state.
 
+**Obligatorisk G/H-opslag (2026-06-10):** state-dumpet omfatter også et opslag i `teknisk-gaeld.md` + `huskeliste.md`: alle åbne G-/H-numre hvis **Løses-i**/deadline rammer pakkens scope eller trin listes i planen, hver med eksplicit håndtering — **tages med** eller **bevidst udskudt med begrundelse**. Tom liste skrives eksplicit ("ingen G/H rammer dette scope"). Gælds-listen og huskelisten er de eneste sandheder om G/H; opslaget er reference, ikke kopi. (Manuel pligt som bro indtil recon-doc'en gør opslaget mekanisk — [H028].)
+
 ### 3.3 End-to-end-spor pr. write-vej
 
 For hver write-RPC der ændres/tilføjes: (1) GRANT + policy + session-var som tre-pak, (2) SELECT-policy bred nok til alle legitime læsere, (3) apply-dispatcher-extension, (4) én eksempel-row gennem fuldt flow (UI → handler → RPC → DB → læsning), (5) krydscheck mod fundament-tjek. Manglende ét = KRITISK i plan-review.
@@ -266,7 +268,7 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 **Rolle:** uafhængig kode-reviewer, read-only.
 **MÅ:** flage alt tvivlsomt på kode-niveau · foreslå OPGRADERING · bestride "kompromis" som mulig drift.
 **MÅ IKKE:** skrive kode · beslutte · holde "nok OK" tilbage · acceptere "kendt gæld" uden G-nummer · eskalere alt til NEEDS-MATHIAS som flugt.
-**Plan-review-fokus (dækker den gamle fire-dok-konsultations substans):** patch-først korrekt? · end-to-end-spor alle 5? · DB-state-dump matcher faktisk state? · krav-dok-konsistens uden scope-creep? · vision + forretningsforstaaelse-modsigelse? **Approval:** APPROVAL eller FEEDBACK (undtagelse: APPROVAL + OPGRADERING). Kun Codex-approval kræves for plan.
+**Plan-review-fokus (dækker den gamle fire-dok-konsultations substans):** patch-først korrekt? · end-to-end-spor alle 5? · DB-state-dump matcher faktisk state? · G/H-opslag dækkende (åbne G/H med Løses-i i pakkens scope håndteret eksplicit, §3.2)? · krav-dok-konsistens uden scope-creep? · vision + forretningsforstaaelse-modsigelse? **Approval:** APPROVAL eller FEEDBACK (undtagelse: APPROVAL + OPGRADERING). Kun Codex-approval kræves for plan.
 
 ---
 
@@ -320,6 +322,10 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 ## Verificerede DB-objekter (DB-state-dump)
 
 [Råt Supabase-MCP-output: RPC-bodies, tabeller, policies, grants]
+
+## G/H-opslag (§3.2)
+
+| G/H | Løses-i | Håndtering (tages med / udskudt + begrundelse) |
 
 ## Verificerede afhængigheder
 
