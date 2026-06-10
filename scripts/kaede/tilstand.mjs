@@ -93,12 +93,15 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
   if (!pakke || pakke === "ingen") return [];
   const events = [];
   if (paaMain.kravDok && !paaMain.planFil) events.push({ type: "krav-dok-merged", sha: mainSha });
-  if (buildPr?.merged && !paaMain.rapportFil) events.push({ type: "build-pr-merged", sha: buildPr.mergeSha ?? mainSha });
-  if (buildPr?.klar && buildPr?.beslutningsSti) events.push({ type: "build-pr-klar-beslutningssti", sha: buildPr.headSha ?? mainSha });
+  if (buildPr?.merged && !paaMain.rapportFil)
+    events.push({ type: "build-pr-merged", sha: buildPr.mergeSha ?? mainSha });
+  if (buildPr?.klar && buildPr?.beslutningsSti)
+    events.push({ type: "build-pr-klar-beslutningssti", sha: buildPr.headSha ?? mainSha });
   for (const ord of gateOrd ?? []) {
     if (ord.author !== gateAuthor) continue;
     if (ord.tekst === "slut OK") events.push({ type: "slut-ok-registreret", sha: ord.id ?? mainSha });
-    if (ord.tekst.startsWith("qwers ")) events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+    if (ord.tekst.startsWith("qwers "))
+      events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
   }
   return events;
 }
@@ -139,7 +142,15 @@ function paaOriginMain(sti, cwd) {
 function laesBuildPr(pakke, cwd) {
   try {
     const raw = gh(
-      ["pr", "view", `claude/${pakke}-build`, "--json", "state,mergedAt,mergeCommit,headRefOid,statusCheckRollup,files", "--jq", "{state, mergedAt, mergeSha: .mergeCommit.oid, headSha: .headRefOid, checks: [.statusCheckRollup[]?.conclusion // .statusCheckRollup[]?.status], filer: [.files[].path]}"],
+      [
+        "pr",
+        "view",
+        `claude/${pakke}-build`,
+        "--json",
+        "state,mergedAt,mergeCommit,headRefOid,statusCheckRollup,files",
+        "--jq",
+        "{state, mergedAt, mergeSha: .mergeCommit.oid, headSha: .headRefOid, checks: [.statusCheckRollup[]?.conclusion // .statusCheckRollup[]?.status], filer: [.files[].path]}",
+      ],
       cwd,
     );
     const pr = JSON.parse(raw);
@@ -185,7 +196,8 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   //   <pakke>-status.md                → CODES leverance-bærer (§3.5: status
   //     opdateres sidst i hver leverance med →NÆSTE-deklaration som sidste
   //     linje — plan-V<n>/build-batch/slut-rapport routes via den)
-  const aktivPakke = (existsSync(aktivPlanSti) && parseAktivMarker(readFileSync(aktivPlanSti, "utf8"))?.pakke) || "ingen";
+  const aktivPakke =
+    (existsSync(aktivPlanSti) && parseAktivMarker(readFileSync(aktivPlanSti, "utf8"))?.pakke) || "ingen";
   const leveranceStier = [];
   for (const dir of ["codex-reviews", "plan-feedback", "rapport-historik"]) {
     const fuldDir = join(koordDir, dir);
@@ -198,15 +210,36 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     leveranceStier.push(`docs/coordination/${aktivPakke}-status.md`);
   }
 
+  // Artefakt-opslag (Codex runde 10-fund 1): status-filen er BÆRER, men
+  // verdiktet skal fryses til ARTEFAKTET. Pr. deklareret type slås artefaktets
+  // egen sidste commit op — den SHA bindes i dispatch-konteksten.
+  function artefaktSha(deklType) {
+    if (aktivPakke === "ingen" || !deklType) return null;
+    if (deklType === "plan-version") return filSha(`docs/coordination/${aktivPakke}-plan.md`, repoRod);
+    if (deklType === "build-batch") return git(["rev-parse", "HEAD"], repoRod); // batch = commit-flade
+    if (deklType === "slut-rapport") {
+      const dir = join(koordDir, "rapport-historik");
+      if (!existsSync(dir)) return null;
+      const fil = readdirSync(dir)
+        .filter((f) => f.endsWith(`-${aktivPakke}.md`))
+        .sort()
+        .at(-1);
+      return fil ? filSha(`docs/coordination/rapport-historik/${fil}`, repoRod) : null;
+    }
+    return null;
+  }
+
   const leverancer = [];
   for (const sti of leveranceStier) {
     const tekst = readFileSync(join(repoRod, sti), "utf8");
     const erUntracked = untracked.includes(sti);
+    const deklaration = parseDeklaration(tekst);
     leverancer.push({
       fil: sti,
       untracked: erUntracked,
-      sha: erUntracked ? null : filSha(sti, repoRod), // frossen-version-binding (Codex B1-fund 2)
-      deklaration: parseDeklaration(tekst),
+      // frossen version: artefaktets SHA vinder over bærerens (runde 10-fund 1)
+      sha: erUntracked ? null : (artefaktSha(deklaration?.type) ?? filSha(sti, repoRod)),
+      deklaration,
       markers: udtraekMarkers(tekst),
     });
   }
@@ -218,7 +251,15 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
       // NB: jq-filteret gives RÅT (Codex runde 9-fund 2: JSON.stringify gjorde
       // det til streng-literal → gh-fejl → catch → tomme gate-ord, stille).
       const raw = gh(
-        ["issue", "view", String(kaedeIssue), "--json", "comments", "--jq", ".comments[] | {id: .id, author: .author.login, body: .body}"],
+        [
+          "issue",
+          "view",
+          String(kaedeIssue),
+          "--json",
+          "comments",
+          "--jq",
+          ".comments[] | {id: .id, author: .author.login, body: .body}",
+        ],
         repoRod,
       );
       gateOrd = raw
@@ -252,7 +293,10 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     });
     // rapportFil: glob-opslag mod origin/main (dato-præfiks ukendt)
     try {
-      const rapportFiler = git(["ls-tree", "--name-only", "origin/main", "docs/coordination/rapport-historik/"], repoRod);
+      const rapportFiler = git(
+        ["ls-tree", "--name-only", "origin/main", "docs/coordination/rapport-historik/"],
+        repoRod,
+      );
       if (rapportFiler.split("\n").some((f) => f.endsWith(`-${pakke}.md`))) {
         events = events.filter((e) => e.type !== "build-pr-merged");
       }

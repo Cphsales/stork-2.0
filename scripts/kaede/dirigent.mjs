@@ -47,7 +47,9 @@ export function decide(tilstand, regler) {
 
   // 2. Gate-ord: author-verifikation FØR alt andet brug af ordet.
   for (const ord of tilstand.gateOrd ?? []) {
-    const erGateOrd = regler.gate_ord.some((g) => ord.tekst === g || ord.tekst.startsWith(`${g} `) || ord.tekst.startsWith(`${g}\n`));
+    const erGateOrd = regler.gate_ord.some(
+      (g) => ord.tekst === g || ord.tekst.startsWith(`${g} `) || ord.tekst.startsWith(`${g}\n`),
+    );
     if (!erGateOrd) continue;
     if (ord.author !== regler.identiteter.gate_author) {
       handlinger.push({ handling: "IGNORER-GATE-ORD", author: ord.author, tekst: ord.tekst, flag: true });
@@ -151,7 +153,12 @@ function transportCommit(fil) {
   execFileSync("git", ["add", fil], { cwd: REPO_ROD });
   execFileSync(
     "git",
-    ["commit", "--quiet", "-m", `kæde-transport: ${fil} (ordret aktør-leverance — dispatch-log: se scripts/kaede/.dispatch-log.jsonl)`],
+    [
+      "commit",
+      "--quiet",
+      "-m",
+      `kæde-transport: ${fil} (ordret aktør-leverance — dispatch-log: se scripts/kaede/.dispatch-log.jsonl)`,
+    ],
     { cwd: REPO_ROD },
   );
   execFileSync("git", ["push", "--quiet"], { cwd: REPO_ROD });
@@ -184,7 +191,13 @@ export function udfoer(handlinger, { dryRun = false } = {}) {
         const res = spawnSync("bash", [adapterSti], {
           cwd: REPO_ROD,
           encoding: "utf8",
-          env: { ...process.env, KAEDE_OPGAVE: h.opgave, KAEDE_FIL: h.kontekst.fil ?? "", KAEDE_SHA: h.kontekst.sha ?? "", KAEDE_SPOR: h.kontekst.spor },
+          env: {
+            ...process.env,
+            KAEDE_OPGAVE: h.opgave,
+            KAEDE_FIL: h.kontekst.fil ?? "",
+            KAEDE_SHA: h.kontekst.sha ?? "",
+            KAEDE_SPOR: h.kontekst.spor,
+          },
         });
         laase.pop();
         log({ handling: "KOERSEL-SLUT", aktoer: h.aktoer, exit: res.status, kontekst: h.kontekst });
@@ -219,7 +232,11 @@ export function behandletNoegler(logLinjer) {
     .filter(Boolean)
     .map((l) => JSON.parse(l))
     .filter((p) => p.handling === "KOERSEL-SLUT" && p.exit === 0 && p.kontekst)
-    .map((p) => (p.kontekst.fil ? `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}` : `event:${p.kontekst.event}@${p.kontekst.sha ?? "HEAD"}`));
+    .map((p) =>
+      p.kontekst.fil
+        ? `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}`
+        : `event:${p.kontekst.event}@${p.kontekst.sha ?? "HEAD"}`,
+    );
 }
 
 function laesBehandlede() {
@@ -245,7 +262,12 @@ async function main() {
 
   do {
     try {
-      const tilstand = laesTilstand({ repoRod: REPO_ROD, kaedeIssue: regler.kaede_issue ?? null, pakke: null, fetch: !offline });
+      const tilstand = laesTilstand({
+        repoRod: REPO_ROD,
+        kaedeIssue: regler.kaede_issue ?? null,
+        pakke: null,
+        fetch: !offline,
+      });
       tilstand.behandlede = laesBehandlede();
       const handlinger = decide(tilstand, regler);
       const resultat = udfoer(handlinger, { dryRun });
