@@ -87,6 +87,21 @@ const TOM = { divergens: [], gateOrd: [], leverancer: [], marker: { pakke: "gov-
     h.some((x) => x.handling === "TRANSPORT-COMMIT") && !h.some((x) => x.handling === "DISPATCH"),
   );
 }
+{
+  const h = decide(
+    {
+      ...TOM,
+      laase: [{ aktoer: "code", spor: "gov-6-arkiv-fold" }],
+      leverancer: [{ fil: "docs/coordination/codex-reviews/r.md", untracked: true, deklaration: null, markers: [] }],
+    },
+    REGLER,
+  );
+  check(
+    "untracked + aktiv kørsel på sporet → VENT, ALDRIG transport-commit (halvskrevet-værn, runde 15)",
+    h.some((x) => x.handling === "VENT" && x.grund === "koersel-paa-spor") &&
+      !h.some((x) => x.handling === "TRANSPORT-COMMIT"),
+  );
+}
 
 // ---------- 4. routing pr. leverance-type (vækningsmodellen) ----------
 const ROUTING_CASES = [
