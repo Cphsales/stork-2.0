@@ -50,6 +50,20 @@ jobs:
         id: deploy
         run: pnpm exec supabase db push --linked --include-all
 
+  types-regen:
+    name: Regenerate types if drift
+    needs: deploy
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HUSKY: "0"
+      TURBO_TELEMETRY_DISABLED: "1"
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:

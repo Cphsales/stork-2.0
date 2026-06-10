@@ -66,9 +66,6 @@ Fra repo-rod:
   Hook-konfiguration i `.husky/pre-commit`.
 - **CI:** GitHub Actions kører hele pipelinen på PRs
   (`.github/workflows/ci.yml`)
-- **Codex-notify:** GitHub Action poster comment på tracker-issue når
-  plan-/feedback-/rapport-filer pushes (`.github/workflows/codex-notify.yml`,
-  etableret i H010.7, udvidet med plan-paths i H021)
 - **Branch-protection:** Påkrævede checks + review + linear history.
   Konfiguration dokumenteret i `.github/BRANCH_PROTECTION.md`
 - **ESLint:** Delt config i `@stork/eslint-config` med Stork-regler
