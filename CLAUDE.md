@@ -7,6 +7,9 @@ Branch-bevidst git-sync før hver trigger (disciplin §13).
 
 - Commits/PR'er: forfattes som `stork-code-bot` (aktiv gh-konto, write — aldrig admin).
 - Approvals/code owner: `@mgrubak` (Mathias' personlige konto — kun browser/hans hånd).
+- Merge (konvention efter #112, Mathias-besluttet): mgrubak-approval er gaten;
+  Code merger derefter (rebase) — protection-kravene bærer kontrollen, ikke
+  merge-klikket. Merge må ALDRIG ske uden registreret approval.
 - Protection-/admin-API-kald: det fælles admin-login, KUN på eksplicit Mathias-mandat,
   switch tilbage til bot umiddelbart efter.
 - Tjek aktiv konto med `gh auth status` ved tvivl; antag bot som default.

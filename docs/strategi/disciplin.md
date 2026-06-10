@@ -45,7 +45,7 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 Tre gates kræver Mathias: `krav OK`, `qwerg`, `slut OK`. Trin 2 og 4 er hvor det meste arbejde sker.
 
-> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** `codex-notify` poster kun tracker-comment. Der er **ingen Codex-runner og ingen auto-merge-workflow endnu**, og plan-branchen er ikke dækket af triggeren (bygges i gov-5-automation). Indtil det bygges: Mathias merger PR'er, og Codex-review relæes manuelt. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
+> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** `codex-notify` poster kun tracker-comment. Der er **ingen Codex-runner og ingen auto-merge-workflow endnu**, og plan-branchen er ikke dækket af triggeren (bygges i gov-5-automation). Codex-review relæes manuelt. Merge-konvention (efter gov-4/PR #112, Mathias-besluttet): mgrubak-approval er gaten; Code merger derefter (rebase) — protection-kravene (required CI + code-owner-review) bærer kontrollen, ikke merge-klikket. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
 
 ### Step 0 — Pakke-åbning
 
