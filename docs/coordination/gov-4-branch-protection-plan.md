@@ -1,9 +1,9 @@
-# gov-4-branch-protection — Plan V1
+# gov-4-branch-protection — Plan V2
 
 **Branch:** claude/gov-4-branch-protection-plan
 **Krav-dok:** docs/coordination/gov-4-branch-protection-krav-og-data.md (ekstrakt; fælles dok: governance-vagt-krav-og-data.md pkt 4 + D2)
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 1)
+**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 2)
 
 ## Formål
 
@@ -11,10 +11,20 @@
 > code-owner-review — så intet kan merges uden om processen, med
 > approval-mekanikken (H026) løst før required review aktiveres.
 
+## V1 → V2: Codex-fund runde 1 (alle ADRESSERET)
+
+| #    | Fund                                                              | Severity | Code-svar                                                                                                                                                                                                                                                                                                |
+| ---- | ----------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1-1 | Bot-PAT (write) kan ikke PATCH'e branch protection (kræver admin) | KRITISK  | **ACCEPT.** To-credential-design: bot-PAT til commits/PR'er (ny default); Mathias' eksisterende admin-auth bevares KUN til de to konkrete protection-kald, udført af Code på eksplicit qwerg-mandat. Botten får ALDRIG admin. Se H026-afsnit                                                             |
+| R1-2 | `CodeQL`-context ubevist — kan give hul eller brick               | KRITISK  | **ACCEPT.** Empirisk check-run-dump på main HEAD viser INTET `CodeQL`-aggregat (kun `Analyze (...)`-jobs fra default setup, matrix-navne der kan skifte). Required = KUN `Lint, typecheck, test, build` (= A8-designet i BRANCH_PROTECTION.md). CodeQL forbliver ikke-required — bevidst valg, ikke gæld |
+| R1-3 | G061 har deadline "før gov-4" men planen ignorerede den           | MELLEM   | **ACCEPT.** G061-opsamlings-migrationen (2 `comment on`-mål) tages MED i builden (batch 1) — lukker gælden frem for rebaseline. Skitsen er nu 1 migration                                                                                                                                                |
+| R1-4 | `.github/BRANCH_PROTECTION.md` efterlades stale                   | MELLEM   | **ACCEPT.** Patch-først-sektion tilføjet (fil 4). Bonus-fund: doc'en kræver ci-checken som required, live har TOM contexts-liste — endnu et docs↔virkelighed-gab som pakken lukker                                                                                                                       |
+
 ## Step 2.0 — Skitse + størrelses-tjek
 
-**0 migrations.** Leverancen er: GitHub-indstillinger (API), én CODEOWNERS-fil,
-docs-opdateringer, H026-luk. Under §3.8-grænsen → fuld V1.
+**1 migration** (G061-opsamling: 2 `comment on`-statements — ikke-destruktiv,
+§3.9 N/A). Derudover: GitHub-indstillinger (API), CODEOWNERS,
+BRANCH_PROTECTION.md, docs-opdateringer, H026-luk. Under §3.8-grænsen → fuld V2.
 
 ## Verificerede repo-objekter (state-dump, 2026-06-10)
 
@@ -45,12 +55,23 @@ commits/PR'er til dato) er en **User**. Det giver to fund:
    være code owner (kun bruger eller `@org/team`) → `require_code_owner_reviews`
    ville i dag pege på ingen gyldig owner.
 
-**CI-check-navne (fra workflows + PR #108/#109-checks):** ci.yml har ét job
-`ci` med display-navn `Lint, typecheck, test, build` (indeholder prettier,
-eslint, typecheck, test, build, `governance:check` linje 67,
-`governance:selftest` linje 70, fitness). CodeQL kører via GitHub default
-setup (check-navn `CodeQL`). `codex-notify` og `pr-drift-warning` er
-notify-only og skal IKKE være required.
+**CI-check-navne (empirisk check-run-dump på main HEAD `d71c447`, fund R1-2):**
+
+```
+Analyze (actions) · Analyze (javascript-typescript) · Lint, typecheck, test, build
+· Post comment to Codex review queue · drift-check
+```
+
+ci.yml har ét job med display-navn `Lint, typecheck, test, build` (prettier,
+eslint, typecheck, test, build, `governance:check` ci.yml:67,
+`governance:selftest` ci.yml:70, fitness). Der findes INTET `CodeQL`-aggregat
+som check-run på main — kun `Analyze (...)`-jobs fra GitHub default setup,
+hvis matrix-navne kan ændre sig. Required context = KUN
+`Lint, typecheck, test, build`. CodeQL-analyserne forbliver ikke-required
+(bevidst valg: default-setup-checks med ustabile navne som required = brick-
+risiko; matcher A8-designet i BRANCH_PROTECTION.md). `codex-notify`,
+`pr-drift-warning` og `migrations-deploy` er notify/deploy og skal IKKE være
+required.
 
 ## H026-løsning (kravets pkt 3 — afgøres her, bekræftes ved qwerg)
 
@@ -74,6 +95,15 @@ historikken er ærlig (Code er afsender; Mathias er beslutningstager via
 review). Flagget her som bevidst ændring af commit-konvention (åbent spørgsmål
 2 ved qwerg).
 
+**To-credential-design (fund R1-1):** botten får write, ALDRIG admin.
+Protection-PATCH-kaldene (step 3-4) kræver repo-admin og udføres derfor af
+Code under Mathias' EKSISTERENDE admin-auth (den nuværende gh-session —
+admin-adgang verificeret ved at protection-endpointet kunne læses). Mandatet
+er qwerg + de to konkrete kald citeret 1:1 i planen — ingen andre
+admin-operationer. Efter gov-4 er bot-auth default for alt commit/PR-arbejde;
+Mathias-admin-auth bruges kun til governance-API-operationer på eksplicit
+ordre (noteres i CLAUDE.md).
+
 ## Patch-først pr. ændret fil (§3.1)
 
 ### 1. `.github/CODEOWNERS`
@@ -94,14 +124,42 @@ owner). Kommenterede lag-B-linjer bevares uændret.
 
 ### 2. Branch protection (API-kald, ikke fil)
 
+Udføres under Mathias' admin-auth på qwerg-mandat (fund R1-1), 1:1:
+
 ```
 gh api -X PATCH repos/Cphsales/stork-2.0/branches/main/protection/required_status_checks \
-  -f strict=true -f "contexts[]=Lint, typecheck, test, build" -f "contexts[]=CodeQL"
+  -f strict=true -f "contexts[]=Lint, typecheck, test, build"
 gh api -X PATCH repos/Cphsales/stork-2.0/branches/main/protection/required_pull_request_reviews \
   -F required_approving_review_count=1 -F require_code_owner_reviews=true -F dismiss_stale_reviews=true
 ```
 
+(CodeQL er IKKE i contexts — fund R1-2, begrundet i state-dump.)
 Rollback: samme endpoints med nuværende værdier (dumpet ovenfor).
+
+### 2b. G061-opsamlings-migration (fund R1-3)
+
+Én migration (§E default-mønster), ikke-destruktiv: `comment on constraint
+client_node_placements_client_id_fkey ...` + `comment on table
+permission_actions ...`. Kommentar-TEKSTERNE tages 1:1 fra de eksisterende
+repo-migrationsfiler der definerede dem (patch-først — verificeres i build mod
+`grep -rn "comment on" supabase/migrations/`). Deploy: auto via
+migrations-deploy.yml ved merge → repo↔live comment-paritet 100% → G061 lukkes
+i teknisk-gaeld.md.
+
+### 2c. `.github/BRANCH_PROTECTION.md` (fund R1-4)
+
+Nuværende nøglelinjer (1:1): `Required approving reviews | 0 (solo — Mathias
+reviewer egen kode)` · `Require review from Code Owners (lad være indtil flere
+udviklere)` · PUT-eksemplets `"required_approving_review_count": 0,
+"require_code_owner_reviews": false` · "Hvornår strammer vi op?"-sektionen
+("Når 2. udvikler kommer ind: sæt ... 1 og aktivér ...").
+
+Diff: tabel + PUT-eksempel opdateres til gov-4-slutstate (reviews=1,
+code-owner=true, contexts=[ci-checken]); "Hvornår strammer vi op?" omskrives
+— "2. udvikler"-præmissen er overhalet af bot-designet (Code som bot ER den
+anden identitet); verifikations-sektionen udvides med protokollens case (c)+(d).
+Bonus-fund dokumenteret: doc'en har hele tiden krævet ci-checken som required,
+men live havde TOM contexts-liste — gabet lukkes af step 3.
 
 ### 3. Docs
 
@@ -115,7 +173,7 @@ Rollback: samme endpoints med nuværende værdier (dumpet ovenfor).
 
 ## Implementations-rækkefølge (rækkefølgen ER risiko-styringen)
 
-| Step | Hvad                                                                                   | Gate                                                                           |
+| Step | Hvad (0 = G061-migration: batch 1, kan køre når som helst før step 3)                  | Gate                                                                           |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | 1    | Mathias: bot-konto + org-invite + PAT; Code: auth-skift                                | Verifikation: test-PR fra bot, Mathias kan trykke Approve (selve H026-beviset) |
 | 2    | CODEOWNERS-fix (PR fra bot)                                                            | governance:check grøn; Mathias-merge                                           |
@@ -151,7 +209,7 @@ Verificeret current pr. main @ `d71c447`.
 | aktiv-plan.md              | ja      | markør + Aktuel (build) → senest-merged + rest-sekvens (gov-5 næste) |
 | seneste-rapport.md         | ja      | ny rapport ved Step 5                                                |
 | master-plan §4.1           | nej     | gov-spor; aktiv-plan bærer status                                    |
-| teknisk-gaeld.md           | nej     | medmindre build finder noget                                         |
+| teknisk-gaeld.md           | ja      | G061 lukkes (opsamlings-migration, fund R1-3)                        |
 | huskeliste.md              | ja      | H026 lukkes                                                          |
 | disciplin "Forudsætninger" | ja      | gov-4 → Gjort (§8.1-gate)                                            |
 
