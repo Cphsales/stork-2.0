@@ -118,12 +118,14 @@ export function decide(tilstand, regler) {
 
   // 5. Kalender-poll-events (eksterne tilstande: merges, checks, åbnings-ord).
   for (const ev of tilstand.events ?? []) {
-    if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}`)) continue; // event-idempotens
     const modtagere = regler.events[ev.type];
     if (!modtagere) {
       return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-event", event: ev.type }];
     }
     for (const m of modtagere) {
+      // Event-idempotens PR. MODTAGER (Codex runde 11-fund): multi-modtager-
+      // events må aldrig droppe én aktørs kørsel fordi en andens lykkedes.
+      if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}#${m.aktoer}`)) continue;
       if (laase.some((l) => l.aktoer === m.aktoer && l.spor === spor)) {
         handlinger.push({ handling: "VENT", event: ev.type, modtager: m.aktoer, grund: "laas" });
         continue;
@@ -235,7 +237,7 @@ export function behandletNoegler(logLinjer) {
     .map((p) =>
       p.kontekst.fil
         ? `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}`
-        : `event:${p.kontekst.event}@${p.kontekst.sha ?? "HEAD"}`,
+        : `event:${p.kontekst.event}@${p.kontekst.sha ?? "HEAD"}#${p.aktoer}`,
     );
 }
 
