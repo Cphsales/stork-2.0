@@ -1,7 +1,7 @@
 # gov-docs-renhed — Slut-rapport
 
 **Dato:** 2026-06-10 · **Branch:** claude/gov-docs-renhed-build · **Merge-commit:** _(udfyldes ved merge)_
-**Krav-dok:** docs/coordination/gov-docs-renhed-krav-og-data.md · **Plan:** docs/coordination/gov-docs-renhed-plan.md (V4, Codex-approved runde 4)
+**Krav-dok:** docs/coordination/arkiv/gov-docs-renhed-krav-og-data.md · **Plan:** docs/coordination/arkiv/gov-docs-renhed-plan.md (V4, Codex-approved runde 4)
 
 ## Formål (genfremlagt fra krav-dok)
 
@@ -77,6 +77,10 @@ Ingen. (G063 forbliver åben → gov-6, som planlagt.)
 - **Styrkelser:** dobbelt-lags-værnet beviste sig selv under pakken — Codex fangede 7 reelle KRITISK i Codes eget arbejde (inkl. at pakken selv fejl-committede gov-6-filer og at status-filen modsagde virkeligheden — præcis den klasse pakken bekæmper).
 - **Lærepunkt (Code):** D4-løftet krævede konsistens 7 steder; batch 2 fangede 5. En fuld begrebs-grep burde være batch-disciplin fra start ved status-løft af en doc — taget med som arbejdsform fremover.
 - **Konklusion:** forsvarligt. Ingen kompromiser, ingen drift; 0 G-numre.
+
+## Step 5-gate
+
+Claude.ai-review: **APPROVAL** (2026-06-10, relæet af Mathias) — formåls-kæden 1:1, alle 11 leverancer sporbare, afvigelser vurderet lovlige §3.0-bevægelser. Mathias: **slut OK** 2026-06-10.
 
 ## Mathias-handlinger ved/efter merge
 
