@@ -224,6 +224,56 @@ for (const marker of ["NEEDS-MATHIAS", "ESCALATE", "STOP-FOR-CLARIFICATION"]) {
   const h = decide(
     {
       ...TOM,
+      aabneGates: ["docs/coordination/mathias-gate/g.md"],
+      events: [{ type: "gate-godkendt", sha: "c9" }],
+      leverancer: [{ fil: "f.md", sha: "s", deklaration: { naeste: "codex", type: "plan-version" }, markers: [] }],
+    },
+    REGLER,
+  );
+  check(
+    "GODKENDT-afgørelse løfter pausen: GATE-AFGJORT + Code-dispatch, øvrig routing venter (runde 16)",
+    h.some((x) => x.handling === "GATE-AFGJORT") &&
+      h.filter((x) => x.handling === "DISPATCH").length === 1 &&
+      h.find((x) => x.handling === "DISPATCH")?.opgave === "gate-afgjort-fortsaet" &&
+      !h.some((x) => x.handling === "SPOR-PAUSET"),
+  );
+}
+{
+  const h = decide(
+    {
+      ...TOM,
+      aabneGates: ["docs/coordination/mathias-gate/g.md"],
+      events: [{ type: "gate-godkendt", sha: "c9" }],
+      behandlede: ["event:gate-godkendt@c9#code"],
+    },
+    REGLER,
+  );
+  check(
+    "allerede behandlet afgørelse → SPOR-PAUSET igen (ingen dobbelt-genoptag)",
+    h.at(-1).handling === "SPOR-PAUSET",
+  );
+}
+{
+  const e = afledEvents({
+    pakke: "p",
+    paaMain: { kravDok: true, planFil: true },
+    buildPr: null,
+    gateOrd: [
+      { id: "c9", author: "mgrubak", tekst: "GODKENDT" },
+      { id: "c10", author: "anden", tekst: "GODKENDT" },
+    ],
+    gateAuthor: "mgrubak",
+    mainSha: "m",
+  });
+  check(
+    "GODKENDT-ord fra mgrubak → gate-godkendt-event; fra anden author → intet",
+    e.filter((x) => x.type === "gate-godkendt").length === 1 && e[0].sha === "c9",
+  );
+}
+{
+  const h = decide(
+    {
+      ...TOM,
       leverancer: [
         { fil: "rev.md", sha: "s5", deklaration: { naeste: "code", type: "review-feedback" }, markers: ["KRITISK"] },
       ],
