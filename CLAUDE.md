@@ -1,7 +1,7 @@
 # Stork 2.0
 
 Læs `docs/LÆSEFØLGE.md` ved hver af de fem triggere defineret deri.
-Git pull før hver trigger.
+Branch-bevidst git-sync før hver trigger (disciplin §13).
 
 ## Kig ikke i (medmindre eksplicit autoriseret af Mathias)
 

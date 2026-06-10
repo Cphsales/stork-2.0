@@ -37,3 +37,10 @@ Hele rolle-definitionen lever i `docs/strategi/disciplin.md` §9.1 (versioneret 
 - Ændringer til rolle/cadence/protokol skal kun laves ét sted (filen)
 - Skill'en arver automatisk forbedringer fra fremtidige pakker
 - Du behøver ikke re-opdatere skill'en når workflow-spec udvikler sig
+
+## Kanonisk kilde
+
+Denne fil er DEN kanoniske skill. Platform-skill'en i claude.ai er en kopi
+af denne fil — ved drift vinder repo-versionen. Sync: Mathias kopierer
+fil-indholdet til platform-skill'en når denne fil ændres (flagges i
+slut-rapport som Mathias-handling).
