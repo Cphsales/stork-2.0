@@ -1,10 +1,16 @@
-# gov-5-automation — Plan V5
+# gov-5-automation — Plan V6
 
 **Branch:** claude/gov-5-automation-plan
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V5 · konvergens-counter: 5 (§3.4-auto-pause udløst mekanisk; genåbnet af Mathias-input 2026-06-10/11: "qwerg afventer ny version" — Claude.ai-gate-FEEDBACK skal indarbejdes. Verdikter altid på frossen version: hver review-fil bærer plan-SHA, codex-review.sh gør det allerede)
+**Plan-version:** V6 · konvergens-counter: 6 (§3.4-auto-STOP-grænse — V6 eksplicit Mathias-tilladt 2026-06-11: "V6: tilladelse givet". Verdikter altid på frossen version: hver review-fil bærer plan-SHA)
+
+## Kode-fund-håndtering (fra Codex V5)
+
+- **KRITISK (13a-dump manglede): LUKKET VED HANDLING.** Mathias-mandat givet 2026-06-11; admin READ udført (switch-back til bot straks efter, verificeret). Rå dump + eksakt diff står nu i step 13a-sektionen nedenfor.
+- **MANGLENDE-EKSISTERENDE-BEVARELSE (4 governance-owned teknisk-docs uden gate i P3): ACCEPT.** `/docs/teknisk/` tilføjet P3-snittet (dækker teknisk-gaeld, huskeliste, permission-matrix, cutover-checklist — alle governance-owns). Konservativt: hele mappen, ved tvivl er det hans.
+- **MELLEM (prefix-state stale): ACCEPT.** Krav-dok-prefixet ER fornyet (verificeret på disk + i historik); Formål-blokken nedenfor er synket 1:1, format-punktet fjernet fra åbne punkter. Proces-note: fornyelsen røg med i V5-commit'en via bredt `git add` uden egen ordret-deklaration — rapporteret til Mathias som levende argument for transport-commit-designet (ordret + deklareret).
 
 ## Fund-håndtering (fra Claude.ai-gate-FEEDBACK på V4, leveret via Mathias)
 
@@ -30,9 +36,9 @@
 
 ## Formål
 
-> Workflowet kører automatisk fra start til slut: Mathias åbner, og Mathias lukker. Undervejs har han én fast kontrolpost — krav-dokket, forretningen, som kun han kan validere. Plan og byg valideres af rollerne; Mathias kaldes kun ind når der findes en afgørelse der er hans. Det vi bygger er grundstenen under alle fremtidige Stork 2.0-pakker, og målet er klart: sammen kan vi opnå greatness.
+> Denne pakke leverer: workflowet kørende automatisk fra start til slut — Mathias åbner, og Mathias lukker. Undervejs har han én fast kontrolpost — krav-dokket, forretningen, som kun han kan validere. Plan og byg valideres af rollerne; Mathias kaldes kun ind når der findes en afgørelse der er hans. Det vi bygger er grundstenen under alle fremtidige Stork 2.0-pakker, og målet er klart: sammen kan vi opnå greatness.
 
-(1:1 fra krav-dok §Formål. Format-punkt fortsat åbent: `> Denne pakke leverer:`-prefix fornys i krav-dok før merge.)
+(1:1 fra krav-dok §Formål — prefix-fornyet version, synket i V6.)
 
 ## Mathias-flade-modellen (formåls-tro — KRITISK 1-leverancen)
 
@@ -168,24 +174,24 @@
 
 ## Implementations-rækkefølge
 
-| Step | Type             | Hvad                                                                                                                                                                             | Eksakt indhold                                                                                                                                                    | Afh.                | Risiko                                           |
-| ---- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
-| 1    | Node             | `scripts/kaede/tilstand.mjs`                                                                                                                                                     | Tilstandslæser (read-only) inkl. kilde-par til divergens-tjek + leverance-deklarations-læsning (`→NÆSTE:`-linje + fil-type)                                       | gh bot              | Lav                                              |
-| 2    | JSON+Node        | `kaede-regler.json` + `dirigent.mjs`                                                                                                                                             | Leverance-type→modtager-routing (vækningsmodellen) + kalender-poll-events + multi-kørsel m. lås pr. aktør/spor + transport-commit + dispatch-log + divergens-STOP | 1                   | Mellem — kernen; fixtures (3)                    |
-| 3    | Tests            | `dirigent.test.mjs`                                                                                                                                                              | Fixtures: alle leverance-typer + routing + mid-fase-tråde + author-tjek + divergens + STOP-ruter + lås-semantik + frossen-SHA-binding                             | 2                   | Lav                                              |
-| 4    | Shell            | codex-review.sh `--phase=docs`                                                                                                                                                   | P4 (uændret fra V2)                                                                                                                                               | —                   | Lav                                              |
-| 5    | Adapter          | `adapters/codex.sh`                                                                                                                                                              | Fase-/type-valg → codex-review.sh → output m. deklaration → transport-commit → exit-kode                                                                          | 2,4                 | Lav                                              |
-| 6    | Adapter          | `adapters/code.sh`                                                                                                                                                               | `claude -p` headless m. qwerr-ækvivalent + §5-replik-opgaver; deklarations-pligt i output                                                                         | 2                   | Mellem — STOP-dækning; dry-run før tillid        |
-| 7    | Adapter          | `adapters/claude-ai-rolle.sh` + `scripts/kaede/claude-ai-rolle-instruks.md`                                                                                                      | `claude -p` m. §9.1-instruks: slut-rapport-review + fund-gate-pakker; untracked → transport-commit                                                                | 2                   | Mellem — rolle-renhed i instruks + Codex tjekker |
-| 8    | Adapter          | `adapters/mathias.mjs`                                                                                                                                                           | Kæde-issue: gate-anmodninger, author-verifikation, review-re-request på beslutnings-stier                                                                         | 1                   | Lav                                              |
-| 9    | Integration      | `--dry-run` + ét live led (Codex --quick på test-branch) + headless-auth-bevis                                                                                                   | Dispatch-log mod forventet; verificér-før-tillid (MELLEM 2)                                                                                                       | 1–8                 | Lav                                              |
-| 10   | systemd          | `stork-kaede.service` + preflight (linger-tjek, `loginctl enable-linger`, env-krav)                                                                                              | Begrundet mod alternativer (Design-valg); Restart=on-failure; stop = manuelt flow                                                                                 | 9                   | Mellem                                           |
-| 11   | CODEOWNERS       | P3-inversion                                                                                                                                                                     | Beslutnings-stier ejes eksplicit (eksakt diff i P3)                                                                                                               | —                   | Mellem — 11b beviser                             |
-| 11b  | Bevis            | TO test-PR'er: (a) rører beslutnings-sti → forvent review-krav; (b) rører kun rolle-valideret sti → forvent merge på grøn CI                                                     | gov-4 #111-mønster; fejl → P3-rollback + STOP-gate                                                                                                                | 11,13               | Lav                                              |
-| 12   | Docs             | Dokument-currency-leverancen (P1+P2+P5 + grep-fejning inkl. "qwerg")                                                                                                             | §8.1-gate; eksakte diffs i Patch-først                                                                                                                            | build               | Lav                                              |
-| 13a  | Protection-dump  | **MATHIAS-MANDAT (afventer): admin READ** → rå JSON i plan FØR godkendelse; diff skrives derefter mod FORVENTNINGER fra gov-4-docs (IKKE verificeret state); afvigelse → rapport | —                                                                                                                                                                 | mandat              | Lav                                              |
-| 13b  | Protection-apply | 13a-diff: approvals→0; code-owner-review BESTÅR (bærer beslutnings-stierne); required CI BESTÅR; admin kun på mandat, switch-back straks; verificeret af 11b                     | 13a + plan-godkendelse                                                                                                                                            | Mellem — gate-flade |
-| 14   | Docs             | aktiv-plan markør-flip + status                                                                                                                                                  | Doc-currency B                                                                                                                                                    | godkendelse         | Lav                                              |
+| Step | Type             | Hvad                                                                                                                                                         | Eksakt indhold                                                                                                                                                    | Afh.                | Risiko                                           |
+| ---- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| 1    | Node             | `scripts/kaede/tilstand.mjs`                                                                                                                                 | Tilstandslæser (read-only) inkl. kilde-par til divergens-tjek + leverance-deklarations-læsning (`→NÆSTE:`-linje + fil-type)                                       | gh bot              | Lav                                              |
+| 2    | JSON+Node        | `kaede-regler.json` + `dirigent.mjs`                                                                                                                         | Leverance-type→modtager-routing (vækningsmodellen) + kalender-poll-events + multi-kørsel m. lås pr. aktør/spor + transport-commit + dispatch-log + divergens-STOP | 1                   | Mellem — kernen; fixtures (3)                    |
+| 3    | Tests            | `dirigent.test.mjs`                                                                                                                                          | Fixtures: alle leverance-typer + routing + mid-fase-tråde + author-tjek + divergens + STOP-ruter + lås-semantik + frossen-SHA-binding                             | 2                   | Lav                                              |
+| 4    | Shell            | codex-review.sh `--phase=docs`                                                                                                                               | P4 (uændret fra V2)                                                                                                                                               | —                   | Lav                                              |
+| 5    | Adapter          | `adapters/codex.sh`                                                                                                                                          | Fase-/type-valg → codex-review.sh → output m. deklaration → transport-commit → exit-kode                                                                          | 2,4                 | Lav                                              |
+| 6    | Adapter          | `adapters/code.sh`                                                                                                                                           | `claude -p` headless m. qwerr-ækvivalent + §5-replik-opgaver; deklarations-pligt i output                                                                         | 2                   | Mellem — STOP-dækning; dry-run før tillid        |
+| 7    | Adapter          | `adapters/claude-ai-rolle.sh` + `scripts/kaede/claude-ai-rolle-instruks.md`                                                                                  | `claude -p` m. §9.1-instruks: slut-rapport-review + fund-gate-pakker; untracked → transport-commit                                                                | 2                   | Mellem — rolle-renhed i instruks + Codex tjekker |
+| 8    | Adapter          | `adapters/mathias.mjs`                                                                                                                                       | Kæde-issue: gate-anmodninger, author-verifikation, review-re-request på beslutnings-stier                                                                         | 1                   | Lav                                              |
+| 9    | Integration      | `--dry-run` + ét live led (Codex --quick på test-branch) + headless-auth-bevis                                                                               | Dispatch-log mod forventet; verificér-før-tillid (MELLEM 2)                                                                                                       | 1–8                 | Lav                                              |
+| 10   | systemd          | `stork-kaede.service` + preflight (linger-tjek, `loginctl enable-linger`, env-krav)                                                                          | Begrundet mod alternativer (Design-valg); Restart=on-failure; stop = manuelt flow                                                                                 | 9                   | Mellem                                           |
+| 11   | CODEOWNERS       | P3-inversion                                                                                                                                                 | Beslutnings-stier ejes eksplicit (eksakt diff i P3)                                                                                                               | —                   | Mellem — 11b beviser                             |
+| 11b  | Bevis            | TO test-PR'er: (a) rører beslutnings-sti → forvent review-krav; (b) rører kun rolle-valideret sti → forvent merge på grøn CI                                 | gov-4 #111-mønster; fejl → P3-rollback + STOP-gate                                                                                                                | 11,13               | Lav                                              |
+| 12   | Docs             | Dokument-currency-leverancen (P1+P2+P5 + grep-fejning inkl. "qwerg")                                                                                         | §8.1-gate; eksakte diffs i Patch-først                                                                                                                            | build               | Lav                                              |
+| 13a  | Protection-dump  | **UDFØRT 2026-06-11 (Mathias-mandat)** — rå dump + verifikation + eksakt diff: se "Step 13a"-sektionen; alle gov-4-forventninger verificeret sande           | —                                                                                                                                                                 | mandat              | Lav                                              |
+| 13b  | Protection-apply | 13a-diff: approvals→0; code-owner-review BESTÅR (bærer beslutnings-stierne); required CI BESTÅR; admin kun på mandat, switch-back straks; verificeret af 11b | 13a + plan-godkendelse                                                                                                                                            | Mellem — gate-flade |
+| 14   | Docs             | aktiv-plan markør-flip + status                                                                                                                              | Doc-currency B                                                                                                                                                    | godkendelse         | Lav                                              |
 
 **Skitse-størrelse:** 0 migrations. Batches: B1=1–3 · B2=4–7 · B3=8–9 · B4=10–11+13 · B5=12+14+11b. Per-batch Codex-review.
 
@@ -223,6 +229,7 @@
 /CLAUDE.md                                 @mgrubak
 docs/coordination/*-krav-og-data.md        @mgrubak
 /docs/coordination/mathias-gate/           @mgrubak
+/docs/teknisk/                             @mgrubak
 /supabase/migrations/                      @mgrubak
 /packages/                                 @mgrubak
 /apps/                                     @mgrubak
@@ -236,6 +243,45 @@ docs/coordination/*-krav-og-data.md        @mgrubak
 
 **P6 — CLAUDE.md (NY i V5).** Nuværende merge-konvention-afsnit 1:1 (CLAUDE.md "Identiteter"-sektion, citeret i Verificerede afhængigheder). DIFF: konventionen præciseres: mgrubak-approval er gaten **på beslutnings-sti-PR'er**; rolle-validerede PR'er merger på grøn CI + Codex (gov-5-gate-model, jf. disciplin §2). **BEVARES:** tre-konto-strukturen, aldrig-admin-reglen, alt andet.
 
+## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
+
+Admin READ via fælles admin-login; switch-back til bot straks efter (verificeret: `gh auth status` → stork-code-bot aktiv). Rå dump (`gh api repos/Cphsales/stork-2.0/branches/main/protection`, felter ordret — URL-felter udeladt for læsbarhed, intet andet ændret):
+
+```json
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Lint, typecheck, test, build"],
+    "checks": [{ "context": "Lint, typecheck, test, build", "app_id": 15368 }]
+  },
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true,
+    "require_last_push_approval": false,
+    "required_approving_review_count": 1
+  },
+  "required_signatures": { "enabled": false },
+  "enforce_admins": { "enabled": true },
+  "required_linear_history": { "enabled": true },
+  "allow_force_pushes": { "enabled": false },
+  "allow_deletions": { "enabled": false },
+  "block_creations": { "enabled": false },
+  "required_conversation_resolution": { "enabled": true },
+  "lock_branch": { "enabled": false },
+  "allow_fork_syncing": { "enabled": false }
+}
+```
+
+**Verifikation mod gov-4-forventningerne:** required CI-check "Lint, typecheck, test, build" ✓ · require_code_owner_reviews=true ✓ · dismiss_stale_reviews=true ✓ — alle forventninger SANDE (ingen afvigelses-rapport nødvendig). Strict=true forklarer i øvrigt merge-kø-friktionen (recon E.2): branch skal være ajour + stale-dismiss ved rebase.
+
+**Eksakt 13b-diff (én felt-ændring, alt andet bevares ordret):**
+
+| Felt                                                            | Nu  | Efter 13b |
+| --------------------------------------------------------------- | --- | --------- |
+| `required_pull_request_reviews.required_approving_review_count` | 1   | **0**     |
+
+Konsekvens: PR der rører CODEOWNERS-ejede stier kræver fortsat code-owner-approval (mgrubak); PR der kun rører rolle-validerede stier kræver 0 menneske-approvals → merger på grøn CI (+ kædens Codex-discipliner). `enforce_admins=true` bevares — ingen bypass-vej, heller ikke for admin. `required_conversation_resolution=true` bevares (note: drift-warning-kommentarer er issue-comments, ikke review-tråde — blokerer ikke).
+
 ## End-to-end-test-design (§3.6 + krav 8)
 
 - **Komponent:** routing-fixtures (alle leverance-typer + mid-fase-tråde + lås + SHA-binding) · `--parse-test` udvidet.
@@ -248,10 +294,10 @@ docs/coordination/*-krav-og-data.md        @mgrubak
 
 **B. Status-opdatering (med merge):** aktiv-plan ✓ (flip, step 14) · seneste-rapport n/a · master-plan §4.1 n/a (proces-pakke) · teknisk-gaeld ✓ (G062 noteret) · huskeliste ✓ (H028 noteret) · disciplin Forudsætninger ✓ (P5).
 
-## Åbne punkter (Codex V5-review + Mathias-læsning)
+## Åbne punkter (Codex V6-review + Mathias-læsning)
 
 1. **P3-snittets forretnings-linjer** (supabase/packages/apps beholder Mathias-gate indtil forretnings-trinnets egen afgørelse) — Mathias bekræfter ved qwerg.
 2. Step 6 headless-Code STOP-dækning — Codex: blind-vinkler.
 3. Headless-auth (step 9-bevis før tillid).
-4. Format-punkt: krav-dok-Formål-prefix (fornys før merge).
-5. **BLOCKER: 13a-mandat afventer** (admin READ af protection).
+
+(V5-punkt 4 lukket: prefix fornyet + synket. V5-punkt 5 lukket: 13a udført på mandat.)
