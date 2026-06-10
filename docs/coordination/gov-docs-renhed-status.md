@@ -1,7 +1,7 @@
 # gov-docs-renhed — Pakke-status
 
-**Sidste handling:** Codex runde 8: **APPROVAL + §8.1-SVAR: INGEN-MODSIGELSE** på batch 6. Batch 7 (Code-eget fund 6): scriptets parser scannede hele codex-transcriptet i stedet for finalt svar — false-positive exit 2 på APPROVAL; final-answer-ekstraktion tilføjet + verificeret (APPROVAL→0, KRITISK→2). 2026-06-10.
-**Næste forventet:** Codex runde 9 (--quick, kun batch 7) → grøn → slut-rapport → Claude.ai-review FØR merge (Step 5) → Mathias "slut OK" + merge.
+**Sidste handling:** Codex runde 9 (--quick): **APPROVAL + INGEN-MODSIGELSE, routing exit 0** — build lukket. Step 5: slut-rapport skrevet → `rapport-historik/2026-06-10-gov-docs-renhed.md`. PR oprettet. 2026-06-10.
+**Næste forventet:** Claude.ai reviewer slut-rapporten FØR merge → Mathias "slut OK" → Mathias merger (CODEOWNERS på vision-ændringen) → doc-currency ved merge (aktiv-plan → ingen, seneste-rapport-pointer, §4-oprydning).
 **Konvergens-counter:** 4 (plan-fase, afsluttet ved runde 4-APPROVAL). Build-reviews: runde 5 (3 KRITISK → batch 4/4b) · runde 6 (2 KRITISK → batch 5) · runde 7 (2 KRITISK → batch 6) · runde 8 (APPROVAL; transcript-støj i routing → batch 7) · runde 9 afventes.
 **Aktuel blocker:** ingen.
 
