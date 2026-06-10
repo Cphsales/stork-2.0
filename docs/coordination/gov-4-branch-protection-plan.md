@@ -1,9 +1,9 @@
-# gov-4-branch-protection — Plan V3
+# gov-4-branch-protection — Plan V4
 
 **Branch:** claude/gov-4-branch-protection-plan
 **Krav-dok:** docs/coordination/gov-4-branch-protection-krav-og-data.md (ekstrakt; fælles dok: governance-vagt-krav-og-data.md pkt 4 + D2)
 **Dato:** 2026-06-10
-**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 3)
+**Status-fil:** docs/coordination/gov-4-branch-protection-status.md (konvergens-counter: 4 — §3.4-alert rejst, se status-fil)
 
 ## Formål
 
@@ -26,6 +26,12 @@
 | ---- | ---------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | R2-1 | §3.2-dump forkert markeret N/A — G061-migrationen er en DB-mutation          | KRITISK  | **ACCEPT.** Frisk live-dump af begge mål via Supabase MCP indsat i state-dump-sektionen: begge live-comments er `null`; repo-tekster 1:1 |
 | R2-2 | `gh api -f strict=true` sender string, API kræver boolean — step 3 kan fejle | KRITISK  | **ACCEPT.** `-f` → `-F` (typed felt) i kaldet                                                                                            |
+
+## V3 → V4: Codex-fund runde 3 (ADRESSERET)
+
+| #    | Fund                                                                                        | Severity | Code-svar                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-1 | CODEOWNERS-fix ikke pin'et til eksakt handle + ingen gyldigheds-verifikation før aktivering | KRITISK  | **ACCEPT.** Handle pin'et deterministisk (se CODEOWNERS-sektionen — definitionen er bindende; selve strengen kan ikke stå i denne fil pga. Mathias' stork1-lås-hook, rejst som åbent spørgsmål 3). Codex' API-tjek bekræftede 5 "Unknown owner"-fejl på nuværende fil. Ny gate: `codeowners/errors` SKAL være tom efter CODEOWNERS-PR og FØR `require_code_owner_reviews=true` (step 2-gate + verifikations-case e) |
 
 ## Step 2.0 — Skitse + størrelses-tjek
 
@@ -146,9 +152,18 @@ Nuværende (1:1, alle aktive regler):
 /docs/strategi/stork-2-0-master-plan.md    @Cphsales
 ```
 
-Ny: `@Cphsales` → Mathias' personlige bruger (den gh-auth'ede User-konto) på
-alle 5 linjer + kommentar-blok opdateret med hvorfor (org kan ikke være code
-owner). Kommenterede lag-B-linjer bevares uændret.
+Ny: `@Cphsales` → `@<ADMIN-HANDLE>` på alle 5 linjer, hvor **ADMIN-HANDLE :=
+output af `gh api user --jq .login` på Codes maskine** — det verificerede
+Mathias-admin-handle (User-type, dokumenteret 1:1 i Codex' runde 3-review).
+Definitionen er bindende og deterministisk; selve strengen kan ikke skrives i
+denne plan-fil, fordi Mathias' stork1-lås-hook blokerer Code-writes der
+indeholder den (åbent spørgsmål 3). Kommentar-blok opdateres med hvorfor (org
+kan ikke være code owner — GitHubs codeowners-errors viser 5 "Unknown owner"
+på nuværende fil). Kommenterede lag-B-linjer bevares uændret.
+
+**Gyldigheds-gate (fund R3-1):** efter CODEOWNERS-PR'en er merget og FØR step
+4 aktiveres: `gh api repos/Cphsales/stork-2.0/codeowners/errors` SKAL
+returnere `errors: []`.
 
 ### 2. Branch protection (API-kald, ikke fil)
 
@@ -202,7 +217,7 @@ men live havde TOM contexts-liste — gabet lukkes af step 3.
 | Step | Hvad (0 = G061-migration: batch 1, kan køre når som helst før step 3)                  | Gate                                                                           |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | 1    | Mathias: bot-konto + org-invite + PAT; Code: auth-skift                                | Verifikation: test-PR fra bot, Mathias kan trykke Approve (selve H026-beviset) |
-| 2    | CODEOWNERS-fix (PR fra bot)                                                            | governance:check grøn; Mathias-merge                                           |
+| 2    | CODEOWNERS-fix (PR fra bot)                                                            | governance:check grøn; Mathias-merge; `codeowners/errors` == [] (fund R3-1)    |
 | 3    | required_status_checks.contexts udfyldes (API)                                         | Verifikation: PR med rød CI kan ikke merges                                    |
 | 4    | require_code_owner_reviews + count=1 (API) — **SIDST, kun efter step 1-2 verificeret** | Verifikation: PR uden approval blokeret; med Mathias-approval mergeable        |
 | 5    | Docs-opdateringer + H026-luk + banner-koordinering (Claude.ai-forfattet)               | §8.1-gate (governance-docs berørt)                                             |
@@ -220,6 +235,8 @@ indefra). Erstattes af verifikations-protokol med rå outputs i slut-rapporten:
 - (b) PR med rød CI → merge blokeret
 - (c) PR uden Mathias-approval → blokeret (efter step 4)
 - (d) PR med approval + grøn CI → mergeable
+- (e) `gh api .../codeowners/errors` → `errors: []` (fund R3-1 — nuværende
+  fil har 5 "Unknown owner"; skal være 0 før step 4)
 
 ## Doc-currency
 
@@ -244,3 +261,8 @@ Verificeret current pr. main @ `d71c447`.
 1. Bot-konto-navn (forslag: `stork-code-bot`) + accept af machine-user-valget.
 2. Accept af commit-konventions-skiftet (commits forfattes som bot, ikke som
    Mathias) — det er forudsætningen for at hans approval overhovedet er mulig.
+3. **Hook-lås vs CODEOWNERS-write (fund R3-1):** stork1-lås-hooken blokerer
+   Code fra at skrive Mathias-handlet i filer. Build step 2 kræver enten (a)
+   midlertidig unlock (`rm ~/.claude/stork1-locked`) under CODEOWNERS-committen,
+   eller (b) at hook-regexen præciseres til kun at matche repo-stier (handlet
+   efterfulgt af `/`). Mathias vælger; (b) fjerner false-positive-fladen varigt.
