@@ -45,7 +45,7 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 Tre gates kræver Mathias: `krav OK`, `qwerg`, `slut OK`. Trin 2 og 4 er hvor det meste arbejde sker.
 
-> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** `codex-notify` poster kun tracker-comment. Der er **ingen Codex-runner og ingen auto-merge-workflow endnu**, og plan-branchen er ikke dækket af triggeren (bygges i gov-5-automation). Codex-review relæes manuelt. Merge-konvention (efter gov-4/PR #112, Mathias-besluttet): mgrubak-approval er gaten; Code merger derefter (rebase) — protection-kravene (required CI + code-owner-review) bærer kontrollen, ikke merge-klikket. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
+> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** Der er **ingen notify-automation, ingen Codex-runner og intet auto-merge-workflow** (codex-notify + tracker-issue #12 nedlagt 2026-06-10 som død kanal — trigger-flade-arven ligger i git-history som gov-5-input). Codex-review dispatches via `scripts/codex-review.sh`. Merge-konvention (efter gov-4/PR #112, Mathias-besluttet): mgrubak-approval er gaten; Code merger derefter (rebase) — protection-kravene (required CI + code-owner-review) bærer kontrollen, ikke merge-klikket. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
 
 ### Step 0 — Pakke-åbning
 
@@ -177,7 +177,7 @@ Hver severity bærer funktion — de kollapses ikke. (MANGLENDE-EKSISTERENDE-BEV
 
 ### 6.2 Automation (Codes bord — tilstand: notify-only)
 
-`codex-notify.yml` poster tracker-comments på push til aktiv-plan/seneste-rapport/build-branch og på slut-rapport-PR. **Den kører ikke Codex, og der er ingen auto-merge.** Mål-tilstand (skal bygges, Codes bord — samlet i gov-5-automation): plan-branch-trigger, Codex-runner, auto-merge ved grøn CI + godkendelse. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations — verificér mod Codes kortlægning før den antages aktiv.
+Ingen notify-automation: `codex-notify.yml` + tracker-issue #12 er nedlagt (2026-06-10, GitHub-flade-renhed — kanalen havde ingen modtager; trigger-fladerne aktiv-plan/seneste-rapport/build-branch/slut-rapport-PR er gov-5-input, bevaret i git-history). Codex dispatches via `scripts/codex-review.sh`. Mål-tilstand (skal bygges, Codes bord — samlet i gov-5-automation): plan-branch-trigger, Codex-runner, auto-merge-flow ved grøn CI + godkendelse. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations (tracker-kvitterings-steps fjernet med kanalen; deploy-status ses i Actions).
 
 ### 6.3 Mathias-gate to-fil-flow
 
@@ -467,7 +467,7 @@ Master-plan-konflikt (men master-plan er overblik — se §8) · vision-modsigel
 
 ## §13 Git-sync-disciplin
 
-Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex (auto): frisk på commit-trigger. Codex (manuel): sync før review. Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse; før gate-læsninger (§9.1 gate-hjælp) bekræfter Mathias frisk pull. Uventede commits ved sync → STOP, rapportér.
+Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex: sync før review (dispatched via codex-review.sh — kører i frisk checkout). Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse; før gate-læsninger (§9.1 gate-hjælp) bekræfter Mathias frisk pull. Uventede commits ved sync → STOP, rapportér.
 
 ---
 
