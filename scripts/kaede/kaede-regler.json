@@ -2,6 +2,8 @@
   "version": 1,
   "kommentar": "Kædens deklarative routing (gov-5, plan V7 step 2). Kuréren læser KUN denne tabel + aktørernes deklarationer — den har ingen egen dagsorden. Ændringer til denne fil er en Mathias-beslutning (CODEOWNERS default-own).",
   "poll_interval_sekunder": 60,
+  "kaede_issue": null,
+  "kaede_issue_kommentar": "Sættes pr. pakke ved åbning (B3 mathias-adapter opretter issuet). null = ingen gate-ord-flade endnu; kæden venter fail-closed på chat-gates.",
   "identiteter": {
     "gate_author": "mgrubak",
     "bot": "stork-code-bot"
