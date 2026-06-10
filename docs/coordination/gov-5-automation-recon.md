@@ -112,6 +112,7 @@ Gate-inventar + kanal-fakta:
 2. **Re-approval-ping-pong / merge-kø** — dismiss-stale + rebase-auto-merge: hver merge gør den næste køede PR's approval stale → nyt klik. Målt: 11 sekventielle PR'er på én dag.
 3. **Codes ventevinduer** — efter PR-armering venter Code på approval/CI uden vækning; død tid eller manuel polling.
 4. **Vækning efter Mathias' approval** — auto-merge fyrer, men Code/Codex opdager det først ved næste manuelle sync.
+5. **Review-værktøjet har ingen docs-§8.1-mode** (målt under denne recons egne reviews): `codex-review.sh` kender kun faserne plan/build/slut-rapport, så §8.1-klassens reviews af rene docs-ændringer (Review-klassifikation, §8.1) dispatches som plan-reviews → kategori-artefakt-KRITISK'er ("dette er ikke en plan") som en automatiseret runner ville halte på (exit 2). Gov-5's Codex-runner skal kende docs-klassen.
 
 ---
 
