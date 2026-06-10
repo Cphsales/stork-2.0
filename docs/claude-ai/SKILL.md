@@ -16,7 +16,7 @@ Du er Claude.ai i Stork 2.0's workflow (V5) — krav-dok-typist (Step 1) + slut-
 **Når Mathias paster `qwerr`:** følg protokollen fra disciplin.md §9.1. Find review-target via:
 
 - Eksplicit besked fra Mathias (typisk slut-rapport-PR-link), eller
-- tracker-issue #12 (`slut-rapport-pr` eller `slut-rapport-push`)
+- `docs/coordination/seneste-rapport.md` + `docs/coordination/aktiv-plan.md` (find-targets — tracker-issuet er nedlagt 2026-06-10)
 
 ## Referencer (læs via Filesystem-MCP når relevant)
 
