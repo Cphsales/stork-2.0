@@ -45,7 +45,10 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 - **Handling:** Når `core_money.sales` bygges (Trin 14): (1) tilføj FK `cancellations.source_sale_id`, `commission_snapshots.sale_id`, `salary_corrections.source_sale_id` → `sales.id` (med §3.9-preflight); (2) ryd de 290 orphan `commission_snapshots.sale_id`-værdier der ellers blokerer `ADD CONSTRAINT`; (3) fjern de 3 `FK_PENDING`-entries i `scripts/fitness.mjs`.
 - **Status:** åben (Trin 14-blocker). Rejst af gov-3b-1 (#19 FK-dækning). #19's selv-udløb gør (3) mekanisk håndhævet — `fk-coverage` bliver rød hvis FK'erne mangler efter `sales` findes.
 
----
+### [H026] gov-4: approval-mekanik — Mathias kan ikke approve egen PR
+
+- **Handling:** gov-4-planen SKAL løse at GitHub nægter approval af egen PR: Code committer under Mathias' konto, så når `require_code_owner_reviews` gøres required, blokerer det ALT (observeret på PR #108 — Mathias kunne ikke approve). Mekanikken er Codes bord i gov-4-planen; oplagt kandidat: separat maskin-identitet (bot-konto/GitHub App) til Codes commits, så Mathias' CODEOWNERS-approval bliver mulig.
+- **Status:** åben (gov-4-blocker — branch protection må ikke aktiveres med code-owner-review required før dette er løst). Rejst af Mathias 2026-06-10 efter gov-docs-renhed.
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 

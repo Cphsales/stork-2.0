@@ -21,6 +21,8 @@
 
 **Ingen AI må:** træffe forretnings-beslutninger på Mathias' vegne · skrive "afgørelser"/"ramme-låsninger" som AI · fortolke retning som specifikation uden bekræftelse · designe datamodel uden Mathias-input (Claude.ai) · skrive kode (Codex) · påstå repo-/DB-tilstand uden at have verificeret den (alle).
 
+**Mathias-suverænitet:** Mathias kan til enhver tid — også midt i en igangværende pakke/build — stoppe, modsige eller ændre retning. Alle workflowets låse (formåls-immutabilitet §3.0, pakke-kontrakt §8, gates) binder AI'erne, aldrig Mathias. Hans ord gælder straks; kæden (krav-dok/plan) opdateres bagefter ad normal vej som konsekvens, aldrig som betingelse.
+
 ---
 
 ## §2 Workflow — 5-step flow
@@ -64,7 +66,7 @@ Claude.ai skriver `docs/coordination/<pakke>-krav-og-data.md` fra Mathias' chat-
 
 ### Step 3 — qwerg
 
-Mathias paster `qwerg` når Codex har approved OG Mathias selv har læst igennem.
+Mathias paster `qwerg` når Codex har approved OG Mathias selv har læst igennem. Claude.ai leverer qwerg-gate-pakken til Mathias' gennemlæsning (§9.1 gate-hjælp).
 
 **Forudsætning — fundament-validering (grøn før qwerg):** planen skal stå på mål med vision + forretningsforstaaelse. Almindelig plan bekræfter "ingen forretnings-intentions-ændring" (Doc-currency A, §10.2). Plan der ændrer intention: fundament-doc'en reconciles først gennem §8.1-gaten + Mathias' CODEOWNERS — FØR qwerg. Modsigelses-konsekvens per §8 (vision LÅST = STOP). En plan godkendes ikke stående på fundament den modsiger.
 
@@ -82,7 +84,7 @@ Code skriver `rapport-historik/<dato>-<pakke>.md`. Claude.ai reviewer FØR merge
 
 ### 3.0 Formåls-immutabilitet (genindført)
 
-Hver pakke har ét FORMÅL (krav-dok §Formål). Når Mathias har godkendt det, er det **låst**. Code må ændre den tekniske implementations-vej undervejs (Code's domæne — flag i slut-rapport under Plan-afvigelser), men **ikke** formålet. Afslører implementation at formålet ikke kan leveres: STOP, eskalér. Codex-fund kan føre til bug-fix, implementations-ændring, G-nummer eller STOP+eskalation — **aldrig** til at Code ændrer formål, tilføjer features eller omtolker hvad pakken skal levere.
+Hver pakke har ét FORMÅL (krav-dok §Formål). Når Mathias har godkendt det, er det **låst** (låsen binder AI'erne — Mathias kan altid ændre, jf. §1 Mathias-suverænitet). Code må ændre den tekniske implementations-vej undervejs (Code's domæne — flag i slut-rapport under Plan-afvigelser), men **ikke** formålet. Afslører implementation at formålet ikke kan leveres: STOP, eskalér. Codex-fund kan føre til bug-fix, implementations-ændring, G-nummer eller STOP+eskalation — **aldrig** til at Code ændrer formål, tilføjer features eller omtolker hvad pakken skal levere.
 
 ### 3.1 Patch-først (byg ovenpå, ikke nyt)
 
@@ -215,7 +217,9 @@ Spærhagen der fanger governance-drift, så disciplinen ikke kun hviler på selv
 
 **Codex-mandat (lag 2 — semantisk):** ved enhver ændring til en governance-doc (vision / disciplin / master-plan / forretningsforstaaelse / owns:-register) SKAL Codex eksplicit svare: **"modsiger dette prosa-mæssigt et begreb som en anden doc ejer?"** før merge. Det dækker den klasse scanneren ikke kan.
 
-**Stamme-doc-konsistens (D4):** ændres én af de to stamme-docs (vision / forretningsforstaaelse) SKAL ændringen eksplicit konsistens-tjekkes mod den anden. Modsigelse = hul → STOP → Mathias lukker. Ingen af de to trumfer den anden.
+**Stamme-doc-konsistens (D4):** ændres én af de to stamme-docs (vision / forretningsforstaaelse) SKAL ændringen eksplicit konsistens-tjekkes mod den anden. Modsigelse = hul → STOP → Mathias lukker. Ingen af de to trumfer den anden. Ved konflikt mellem de to rettes docs FØR en plan kan godkendes (jf. §2 Step 3 fundament-validering).
+
+**Stamme-doc-forfatterregel:** kun Mathias og Claude.ai må forfatte ændringer i de to stamme-docs — Claude.ai kun efter Mathias' forhåndsgodkendelse af rettelsen. Code committer det godkendte indhold ordret, men må aldrig selv formulere stamme-doc-ændringer.
 
 **Fast markør:** Codex' svar gives som linjen `§8.1-SVAR: INGEN-MODSIGELSE` eller `§8.1-SVAR: MODSIGELSE — <begreb> ejes af <doc>` i reviewet, og gentages i slut-rapporten (§10.3) når pakken har berørt governance-docs — så svaret kan tjekkes i PR/rapport, ikke kun huskes i chat.
 
@@ -235,16 +239,23 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 
 ### §9.1 Claude.ai
 
-**Rolle:** krav-dok-typist (Step 1) + slut-rapport-reviewer (Step 5) + sparring. Docs-lag.
-**MÅ:** skrive krav-dok fra Mathias' input · spørge Mathias direkte i krav-dok-fasen · reviewe slut-rapport mod krav-dok + vision + forretningsforstaaelse · levere FEEDBACK eller APPROVAL (aldrig begge).
-**MÅ IKKE:** tekniske beslutninger · krav-dok-påstande uden Mathias-kilde · kode-vurdering (Codex' bord) · datamodel-design (Code's bord) · skrive "afgørelser" · påstå at noget ER bygget når et dokument kun siger det SKAL bygges (→ "ikke verificeret, Codes bord").
-**Triggers:** `qwers` → bekræft rolle · `qwers <pakke>` → bekræft + proaktiv kontekst-recon STRENGT i forretnings-sprog (læs forretningsforstaaelse + evt. vision + søg rapport-historik; output: "det vi har" + targeted spørgsmål + scope-forslag; FORBUDT: tabel/kolonne/RPC-navne) · `qwerr` → slut-rapport-review.
+**Rolle:** krav-dok-typist (Step 1) + gate-hjælp (Step 3 + gates) + slut-rapport-reviewer (Step 5) + sparring. Docs-lag.
+**MÅ:** skrive krav-dok fra Mathias' input · spørge Mathias direkte i krav-dok-fasen · reviewe slut-rapport mod krav-dok + vision + forretningsforstaaelse · levere FEEDBACK eller APPROVAL (aldrig begge) · forfatte stamme-doc-rettelser efter Mathias' forhåndsgodkendelse (§8.1 forfatterregel).
+
+**Gate-hjælp (fast leverance — Mathias forstår ikke kode; hans gates skal være reelle):**
+
+- **qwerg-gate-pakke:** ved qwerg leverer Claude.ai en gate-pakke til Mathias — plan læst mod krav-dok/kontrakt, konklusion først, Mathias' reelle afgørelser adskilt fra teknik, teknik markeret "Codex' bord — dækket".
+- **Mathias-gate-oversættelse:** mathias-gate-filer (§6.3) oversættes til forretnings-sprog før Mathias afgør GODKENDT/AFVIST.
+- **Verdikt-tjek:** Codex-verdikter tjekkes for at de svarer på det faktiske spørgsmål, før der handles på dem.
+- Mathias bekræfter frisk pull før Claude.ai's gate-læsninger (§13).
+  **MÅ IKKE:** tekniske beslutninger · krav-dok-påstande uden Mathias-kilde · kode-vurdering (Codex' bord) · datamodel-design (Code's bord) · skrive "afgørelser" · påstå at noget ER bygget når et dokument kun siger det SKAL bygges (→ "ikke verificeret, Codes bord").
+  **Triggers:** `qwers` → bekræft rolle · `qwers <pakke>` → bekræft + proaktiv kontekst-recon STRENGT i forretnings-sprog (læs forretningsforstaaelse + evt. vision + søg rapport-historik; output: "det vi har" + targeted spørgsmål + scope-forslag; FORBUDT: tabel/kolonne/RPC-navne) · `qwerr` → slut-rapport-review.
 
 ### §9.2 Code
 
 **Rolle:** builder.
 **MÅ:** vælge tekniske løsninger inden for godkendt plan · PUSHBACK med teknisk grund · stoppe ved blokering og lave gate-fil.
-**MÅ IKKE:** forretnings-afgørelser · udvide scope uden plan-revurdering · afvige fra krav-dok-leverance uden gate · genfortolke eksisterende funktioner uden patch-først (§3.1) · ændre formål (§3.0).
+**MÅ IKKE:** forretnings-afgørelser · udvide scope uden plan-revurdering · afvige fra krav-dok-leverance uden gate · genfortolke eksisterende funktioner uden patch-først (§3.1) · ændre formål (§3.0) · formulere stamme-doc-ændringer (committer kun Mathias-godkendt indhold ordret, §8.1 forfatterregel).
 **Triggers:** `qwers` → bekræft · `qwerr` → læs pakke-status + udfør næste · `qwerg` → byg.
 **Plan-disciplin:** DB-state-dump (§3.2) · patch-først (§3.1) · end-to-end-spor (§3.3) · pre-push-tjekliste (formål matcher krav-dok, alle leverancer dækket, body-sektioner udfyldt).
 
@@ -448,7 +459,7 @@ Master-plan-konflikt (men master-plan er overblik — se §8) · vision-modsigel
 
 ## §13 Git-sync-disciplin
 
-Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex (auto): frisk på commit-trigger. Codex (manuel): sync før review. Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse. Uventede commits ved sync → STOP, rapportér.
+Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex (auto): frisk på commit-trigger. Codex (manuel): sync før review. Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse; før gate-læsninger (§9.1 gate-hjælp) bekræfter Mathias frisk pull. Uventede commits ved sync → STOP, rapportér.
 
 ---
 
