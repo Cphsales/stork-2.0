@@ -18,13 +18,14 @@
 
 ### [G066] MELLEM — Supabase klik-flade uden versionering/baseline-værn
 
-- **Beskrivelse:** Sandhedskilder uden for migrations (DEL 5-recon, 2026-06-10): (1) **Auth-config** er ren Dashboard-klik uden versionering eller værn — konkret: leaked-password-protection er disabled (advisor WARN); (2) **advisor-fladen** havde 95 fund hvoraf 92 er bevidste designvalg (SECDEF-eksponering per gov-3b + RPC-only-tabeller) men accepten var udokumenteret, så nye reelle fund druknede; (3) **API-eksponerede schemas** (PostgREST-config) har listen i types-gen.sh men intet check af faktisk deployet config (G040). OBS: baselinen afslørede mulige pre-T9-legacy-dubletter i public.\* (client_upsert m.fl. i to versioner) — oprydnings-kandidat.
+- **Beskrivelse:** Sandhedskilder uden for migrations (DEL 5-recon, 2026-06-10): (1) **Auth-config** er ren Dashboard-klik uden versionering eller mekanisk værn; (2) **advisor-fladen** havde 95 fund hvoraf 92 er bevidste designvalg (SECDEF-eksponering per gov-3b + RPC-only-tabeller) men accepten var udokumenteret; (3) **API-eksponerede schemas** (PostgREST-config) har listen i types-gen.sh men intet check af faktisk deployet config (G040). OBS: baselinen afslørede mulige pre-T9-legacy-dubletter i public.\* (client_upsert m.fl. i to versioner) — oprydnings-kandidat.
+- **Faktisk auth-tilstand (verificeret 2026-06-10):** 2 brugere, begge `email`-provider; 0 SSO-providers; 0 MFA-factors. **Microsoft/Entra-login er bevidst UDSKUDT — intet bygget.** Email/Password-provideren ER den levende auth-flade i hele mellemperioden; **leaked password protection er slået TIL** (Mathias' Dashboard-klik 2026-06-10; advisor-advarslen verificeret væk — 95→94 fund, alle resterende baseline-dokumenteret). Togglen er det rigtige værn nu, ikke en overflødighed.
 - **Vision-svækkelse:** Princip 1 (én sandhed) — klik-konfiguration kan drifte usynligt.
 - **Introduceret:** Synliggjort ved DEL 5-recon 2026-06-10.
-- **Delvist løst (samme dag):** `advisor-baseline`-fitness-check (live SQL-dump af SECDEF-eksponering + RLS-uden-policy mod committet `supabase/advisor-baseline.json` m. begrundelser; bider begge veje; selftest-dækket). Auth-config: Mathias slår leaked-password-protection til (Dashboard-klik, flagget). Rest: API-config-check (G040) + evt. management-API-tjek af auth-settings.
-- **Skal løses:** Resten i supabase-flade-vagt (gov-5-nabo-mikropakke): G040-API-config-check + auth-config-mekanik + public.\*-legacy-oprydningsverdikt.
-- **Risiko hvis glemt:** Mellem. Klik-drift opdages først når noget knækker; nye advisor-fund uden baseline = støjdød.
-- **Løses-i:** supabase-flade-vagt (gov-5-nabo); leaked-password-klik = Mathias NU
+- **Delvist løst (samme dag):** `advisor-baseline`-fitness-check (live SQL-dump mod committet baseline m. begrundelser; bider begge veje; selftest-dækket) + leaked-password-toggle aktiveret.
+- **Skal løses (slutbillede, master-plan-låst):** **Entra ID som eneste auth-provider, ingen backdoor** — ved auth-trinnet deaktiveres Email-provideren helt; DET er lukke-handlingen for denne G. Undervejs: API-config-check (G040) + public.\*-legacy-oprydningsverdikt i supabase-flade-vagt.
+- **Risiko hvis glemt:** Mellem. Klik-drift opdages først når noget knækker.
+- **Løses-i:** Lag F/auth-trinnet (lukke-handling: Entra eneste provider + Email-provider deaktiveret); delmål undervejs i supabase-flade-vagt (gov-5-nabo)
 
 ### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
 
