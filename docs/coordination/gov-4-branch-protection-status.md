@@ -1,9 +1,9 @@
 # gov-4-branch-protection — Pakke-status
 
-**Sidste handling:** Codex runde 5: **APPROVAL + §8.1-SVAR: INGEN-MODSIGELSE** (routing exit 0). Plan V5 er Codex-approved. 2026-06-10.
-**Næste forventet:** (1) Claude.ai leverer qwerg-gate-pakken (§9.1 — Mathias relæer; HUSK frisk-pull-bekræftelse per §13); (2) Mathias læser + svarer de tre qwerg-spørgsmål (bot-navn/accept · commit-konvention · hook-valg a/b); (3) `qwerg` → build (step 1: ADMIN_HANDLE-capture + Mathias' bot-setup).
+**Sidste handling:** qwerg 2026-06-10 → build batch 1: (i) ADMIN_HANDLE capturet FØR alt auth-arbejde (R4-1-protokol; gemt udenfor repo i ~/.stork-gov4-admin-handle — kan ikke stå her pga. hook-låsen); (ii) G061-migration `20260610190000_gov4_g061_comment_paritet.sql` + G061 → LØST; (iii) step 3 udført på qwerg-mandat: required check `Lint, typecheck, test, build` (strict) aktiv — verificeret via API. Codex batch-review dispatched.
+**Næste forventet:** BLOKERET PÅ MATHIAS (step 1-handlinger): (1) opret bot-GitHub-bruger (default ved tavshed: `stork-code-bot`); (2) invitér den til Cphsales-org'en med WRITE på stork-2.0 (ikke admin); (3) generér fine-grained PAT (contents RW + pull-requests RW) og udlevér; (4) hook-valg: (a) midlertidig unlock eller (b) regex-præcisering (handle+`/`). Derefter: Code auth-skift + assert → CODEOWNERS-PR (step 2, m. dobbelt gyldigheds-gate) → step 4 (required review) → step 5 (docs + H026-luk + Claude.ai-forfattet banner).
 **Konvergens-counter:** 5 (afsluttet — konvergeret ved runde 5-APPROVAL; pause ophævet af Mathias, valg a). Fund-kæde: 4 → 2 → 1 → 1 → 0.
-**Aktuel blocker:** afventer Claude.ai qwerg-gate-pakke + Mathias' qwerg (med svar på de tre spørgsmål).
+**Aktuel blocker:** Mathias' bot-setup + hook-valg (step 2/4/5 venter; intet mere Code kan bygge).
 
 Noter:
 

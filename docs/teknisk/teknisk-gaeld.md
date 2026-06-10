@@ -32,13 +32,14 @@
 - **Skal løses:** Når **gov-6** folder `docs/coordination/v4-slettede-docs/` til git-history → **fjern allowlist-entryen igen**. Ejer: Code (i gov-6). Gov-6-krav-dok §6 dækker selve foldningen; denne G sporer allowlist-oprydningen.
 - **Risiko hvis glemt:** Lav. Entryen er eksplicit dokumenteret med grund + gov-6-trigger.
 
-### [G061] LAV — comment-parity-residual efter gov-1 registry-reconciliation
+### [G061] LØST i gov-4 — comment-parity-residual efter gov-1 registry-reconciliation
 
 - **Beskrivelse:** 2 `comment on`-labels fra PR-polish nåede aldrig live (deploy fyrede ikke, H020): `client_node_placements_client_id_fkey`-constraint + `permission_actions`-tabel. Repo-filerne definerer dem; live mangler dem.
 - **Vision-svækkelse:** Marginal — princip 1 (repo↔live 100% paritet) ikke helt opfyldt på comment-niveau. Ingen skema-/CI-/data-effekt.
 - **Introduceret:** Synliggjort ved gov-1-paritet-groen (2026-06-04). Selve glippet er fra t10/t9_supplement_2-PR-polish.
 - **Skal løses:** Opsamlings-migration (§E default) der `comment on` de 2 mål. Ejer: Code. **Deadline: før gov-4 (branch protection)** — så paritet er 100% når den håndhæves.
 - **Risiko hvis glemt:** Lav. Rent kosmetisk; fremtidig rebuild fra repo ville have dem.
+- **LØST:** gov-4 batch 1 (2026-06-10) — migration `20260610190000_gov4_g061_comment_paritet.sql` genudfører begge statements 1:1 (live-dump bekræftede `null` på begge før). Live ved merge-deploy (migrations-deploy.yml).
 
 ### [G062] LAV — recurring types-drift fra månedlige audit-partitioner
 
