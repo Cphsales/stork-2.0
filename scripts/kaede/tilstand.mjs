@@ -183,6 +183,16 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   const aktivPlanSti = join(repoRod, "docs/coordination/aktiv-plan.md");
   const marker = existsSync(aktivPlanSti) ? parseAktivMarker(readFileSync(aktivPlanSti, "utf8")) : null;
 
+  // Åbne Mathias-gates (§6.3-to-fil-flow): gate-fil m. "AFVENTER MATHIAS"
+  // pauser sporet (decide regel 1b) indtil Mathias afgør.
+  const gateDir = join(repoRod, "docs/coordination/mathias-gate");
+  const aabneGates = existsSync(gateDir)
+    ? readdirSync(gateDir)
+        .filter((f) => f.endsWith(".md"))
+        .filter((f) => /AFVENTER MATHIAS/.test(readFileSync(join(gateDir, f), "utf8")))
+        .map((f) => `docs/coordination/mathias-gate/${f}`)
+    : [];
+
   // Leverance-filer: coordination-fladen (untracked = afventer transport-commit)
   const koordDir = join(repoRod, "docs/coordination");
   const porcelain = git(["status", "--porcelain", "docs/coordination/"], repoRod).split("\n").filter(Boolean);
@@ -318,5 +328,5 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     },
   ]);
 
-  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, divergens };
+  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, aabneGates, divergens };
 }

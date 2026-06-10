@@ -7,7 +7,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decide, behandletNoegler, udfoer } from "./dirigent.mjs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { mkdtempSync } from "node:fs";
+import { decide, behandletNoegler, udfoer, transportCommit } from "./dirigent.mjs";
 import { parseDeklaration, udtraekMarkers, findDivergens, afledEvents, erBogfoeringsSti } from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
@@ -165,20 +168,41 @@ for (const [type, forventet] of ROUTING_CASES) {
   );
 }
 
-// ---------- 9. fund-gate-markers → Mathias-gate + ingen modtager-dispatch ----------
+// ---------- 9. fund-gate-markers → Mathias-dispatch + spor-pause (runde 14) ----------
 for (const marker of ["NEEDS-MATHIAS", "ESCALATE", "STOP-FOR-CLARIFICATION"]) {
   const h = decide(
     {
       ...TOM,
       leverancer: [
         { fil: "rev.md", sha: "s4", deklaration: { naeste: "code", type: "review-feedback" }, markers: [marker] },
+        { fil: "anden.md", sha: "s4b", deklaration: { naeste: "codex", type: "plan-version" }, markers: [] },
       ],
+      events: [{ type: "build-pr-merged", sha: "m4" }],
+    },
+    REGLER,
+  );
+  const d = h.filter((x) => x.handling === "DISPATCH");
+  check(
+    `${marker} → FUND-GATE + KUN mathias-dispatch; øvrige leverancer/events pauses`,
+    h.some((x) => x.handling === "FUND-GATE") &&
+      d.length === 1 &&
+      d[0].aktoer === "mathias" &&
+      d[0].opgave === "gate-anmodning",
+  );
+}
+{
+  const h = decide(
+    {
+      ...TOM,
+      aabneGates: ["docs/coordination/mathias-gate/g.md"],
+      leverancer: [{ fil: "f.md", sha: "s", deklaration: { naeste: "codex", type: "plan-version" }, markers: [] }],
+      events: [{ type: "build-pr-merged", sha: "m" }],
     },
     REGLER,
   );
   check(
-    `${marker} i leverance → FUND-GATE, ingen dispatch`,
-    h.some((x) => x.handling === "FUND-GATE") && !h.some((x) => x.handling === "DISPATCH"),
+    "åben Mathias-gate → SPOR-PAUSET som eneste handling (pausen varer til afgørelse)",
+    h.length === 1 && h[0].handling === "SPOR-PAUSET",
   );
 }
 {
@@ -552,6 +576,29 @@ check(
   rmSync(TMP, { recursive: true, force: true });
   if (logBackup === null) rmSync(LOG, { force: true });
   else writeFileSync(LOG, logBackup);
+}
+
+// ---------- 21. transport-commit-isolation (Codex runde 14: BEVIS i tmp-repo) ----------
+{
+  const repo = mkdtempSync(join(tmpdir(), "kaede-tc-"));
+  const g = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
+  g("init", "--quiet");
+  g("config", "user.email", "selftest@kaede");
+  g("config", "user.name", "kaede-selftest");
+  writeFileSync(join(repo, "fremmed.md"), "v1");
+  g("add", "fremmed.md");
+  g("commit", "--quiet", "-m", "init");
+  writeFileSync(join(repo, "fremmed.md"), "v2-staged-men-IKKE-kædens");
+  g("add", "fremmed.md"); // fremmed ændring ligger staged i index
+  writeFileSync(join(repo, "leverance.md"), "aktør-leverance");
+  transportCommit("leverance.md", { cwd: repo, push: false });
+  const sidsteCommitFiler = g("show", "--name-only", "--format=", "HEAD");
+  check("transport-commit indeholder KUN leverancen", sidsteCommitFiler === "leverance.md");
+  check(
+    "fremmed staged ændring følger IKKE med (forbliver staged)",
+    g("status", "--porcelain").includes("M  fremmed.md"),
+  );
+  rmSync(repo, { recursive: true, force: true });
 }
 
 // ---------- resultat ----------

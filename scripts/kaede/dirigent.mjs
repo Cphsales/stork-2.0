@@ -45,6 +45,13 @@ export function decide(tilstand, regler) {
     return [{ handling: "KAEDE-STOP", grund: "divergens", detalje: tilstand.divergens }];
   }
 
+  // 1b. Åben Mathias-gate (Codex runde 14-fund 1): findes en gate-fil med
+  // "AFVENTER MATHIAS", er sporet PAUSET — intet dispatches før Mathias har
+  // afgjort (gate-ord/gate-fil-opdatering). Kun observation logges.
+  if (tilstand.aabneGates?.length) {
+    return [{ handling: "SPOR-PAUSET", gates: tilstand.aabneGates, spor }];
+  }
+
   // 2. Gate-ord: author-verifikation FØR alt andet brug af ordet.
   for (const ord of tilstand.gateOrd ?? []) {
     const erGateOrd = regler.gate_ord.some(
@@ -79,11 +86,21 @@ export function decide(tilstand, regler) {
     const noegle = `${lev.fil}@${lev.sha ?? "HEAD"}`;
     if (behandlede.has(noegle)) continue;
 
-    // 4a. Fund-gate-markers → Mathias-gate + spor-pause; modtager dispatches IKKE.
+    // 4a. Fund-gate-markers → Mathias-gate + spor-pause (runde 14-fund 1):
+    // fund-gaten DISPATCHES til mathias-adapteren (gate-anmodning + gate-fil,
+    // B3) og ALT efterfølgende på sporet pauses i denne cyklus. Fra næste
+    // cyklus bærer gate-filen pausen (regel 1b) til Mathias afgør.
     const gateMarkers = (lev.markers ?? []).filter((m) => regler.fund_gate_markers.includes(m));
     if (gateMarkers.length) {
       handlinger.push({ handling: "FUND-GATE", fil: lev.fil, markers: gateMarkers, spor });
-      continue;
+      handlinger.push({
+        handling: "DISPATCH",
+        aktoer: "mathias",
+        opgave: "gate-anmodning",
+        adapter: regler.aktoerer.mathias.adapter,
+        kontekst: { fil: lev.fil, sha: lev.sha ?? null, spor },
+      });
+      return handlinger; // spor-pause: intet andet routes i denne cyklus
     }
 
     // 4b. Type: deklaration vinder over filnavns-inferens. Committed fil HELT
@@ -157,20 +174,26 @@ function log(post) {
   appendFileSync(LOG_STI, `${JSON.stringify({ tid: new Date().toISOString(), ...post })}\n`);
 }
 
-function transportCommit(fil) {
-  // Ordret commit af aktør-leverance — kuréren rører ALDRIG indholdet.
-  execFileSync("git", ["add", fil], { cwd: REPO_ROD });
+// Ordret commit af PRÆCIS én aktør-leverance — kuréren rører ALDRIG indholdet,
+// og fremmede staged ændringer følger ALDRIG med (runde 14-fund 2: --only +
+// pathspec committer kun den navngivne fil uanset index-tilstand).
+// Eksporteret m. cwd-parameter så selftesten kan bevise isolationen i tmp-repo.
+export function transportCommit(fil, { cwd = REPO_ROD, push = true } = {}) {
+  execFileSync("git", ["add", "--", fil], { cwd });
   execFileSync(
     "git",
     [
       "commit",
       "--quiet",
+      "--only",
       "-m",
       `kæde-transport: ${fil} (ordret aktør-leverance — dispatch-log: se scripts/kaede/.dispatch-log.jsonl)`,
+      "--",
+      fil,
     ],
-    { cwd: REPO_ROD },
+    { cwd },
   );
-  execFileSync("git", ["push", "--quiet"], { cwd: REPO_ROD });
+  if (push) execFileSync("git", ["push", "--quiet"], { cwd });
 }
 
 // Parallel eksekvering (Codex runde 12-fund): DISPATCH spawner ASYNKRONT —
