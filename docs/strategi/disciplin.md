@@ -43,7 +43,7 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 Tre gates kræver Mathias: `krav OK`, `qwerg`, `slut OK`. Trin 2 og 4 er hvor det meste arbejde sker.
 
-> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** `codex-notify` poster kun tracker-comment. Der er **ingen Codex-runner og ingen auto-merge-workflow endnu**, og plan-branchen er ikke dækket af triggeren (H020). Indtil det bygges: Mathias merger PR'er, og Codex-review relæes manuelt. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
+> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** `codex-notify` poster kun tracker-comment. Der er **ingen Codex-runner og ingen auto-merge-workflow endnu**, og plan-branchen er ikke dækket af triggeren (bygges i gov-5-automation). Indtil det bygges: Mathias merger PR'er, og Codex-review relæes manuelt. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
 
 ### Step 0 — Pakke-åbning
 
@@ -171,7 +171,7 @@ Hver severity bærer funktion — de kollapses ikke. (MANGLENDE-EKSISTERENDE-BEV
 
 ### 6.2 Automation (Codes bord — tilstand: notify-only)
 
-`codex-notify.yml` poster tracker-comments på push til aktiv-plan/seneste-rapport/build-branch og på slut-rapport-PR. **Den kører ikke Codex, og der er ingen auto-merge.** Mål-tilstand (skal bygges, Codes bord): plan-branch-trigger (H020), Codex-runner, auto-merge ved grøn CI + godkendelse. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations — verificér mod Codes kortlægning før den antages aktiv.
+`codex-notify.yml` poster tracker-comments på push til aktiv-plan/seneste-rapport/build-branch og på slut-rapport-PR. **Den kører ikke Codex, og der er ingen auto-merge.** Mål-tilstand (skal bygges, Codes bord — samlet i gov-5-automation): plan-branch-trigger, Codex-runner, auto-merge ved grøn CI + godkendelse. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations — verificér mod Codes kortlægning før den antages aktiv.
 
 ### 6.3 Mathias-gate to-fil-flow
 
@@ -181,14 +181,14 @@ For WORKAROUND-INTRODUCERET, STOP-FOR-CLARIFICATION, dobbelt-ESCALATE og iter > 
 
 ## §7 Stork-invariant-tjek pr. pakke (verificeres i slut-rapport)
 
-| #   | Invariant                    | Test                                                        |
-| --- | ---------------------------- | ----------------------------------------------------------- |
-| 1   | Vision-overholdelse          | Vision-tjek-sektion (ja/nej + evidens pr. princip)          |
-| 2   | Permission-matrix-konsistens | RPC→tab/page-mapping opdateret + RLS dækker alle write-veje |
-| 3   | Audit-trigger-dækning        | Alle nye tabeller har audit-trigger (fitness)               |
-| 4   | Konfiguration-i-data         | Ingen hardkodede satser/lønarter (lint)                     |
-| 5   | End-to-end-flow virker       | Smoke-test passerer (ikke schema-only)                      |
-| 6   | Anonymisering-bevaring       | UPDATE, ikke DELETE; FK'er intakt                           |
+| #   | Invariant                    | Test                                                                                  |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | Vision-overholdelse          | Vision-tjek-sektion (ja/nej + evidens pr. princip)                                    |
+| 2   | Permission-matrix-konsistens | RPC→tab/page-mapping opdateret + RLS dækker alle write-veje                           |
+| 3   | Audit-trigger-dækning        | Alle nye tabeller har audit-trigger (fitness)                                         |
+| 4   | Konfiguration-i-data         | Ingen hardkodede satser/lønarter (Codex + Claude.ai-tjek — lint bygges i senere spor) |
+| 5   | End-to-end-flow virker       | Smoke-test passerer (ikke schema-only)                                                |
+| 6   | Anonymisering-bevaring       | UPDATE, ikke DELETE; FK'er intakt                                                     |
 
 Tabel med ja/nej + evidens. Manglende eller "nej" uden begrundelse → KRITISK fra Claude.ai-reviewer.
 
@@ -198,11 +198,12 @@ Tabel med ja/nej + evidens. Manglende eller "nej" uden begrundelse → KRITISK f
 
 Hvad en modsigelse udløser afhænger af hvilket dokument den rammer. Det forhindrer at arbejdet stopper på master-plan (som er overblik, ikke kontrakt).
 
-| Dokument                                | Status              | Modsigelse udløser                                                                                                                                           |
-| --------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `vision-og-principper.md`               | **LÅST**            | STOP. KRITISK. Vinder over alt. Dokumentér i blokker-fil, argumentér ikke videre                                                                             |
-| `stork-2-0-master-plan.md` + afgørelser | **RETNINGSGIVENDE** | Rapport til Mathias — IKKE auto-blokering. Han afgør: er rammen forældet (rettes) eller skal pakken justeres? Arbejdet stopper ikke, det venter på afgørelse |
-| krav-dok + plan (efter approval)        | **PAKKE-KONTRAKT**  | STOP. KRITISK indtil Mathias afgør re-godkendelse eller justering                                                                                            |
+| Dokument                                | Status              | Modsigelse udløser                                                                                                                                                                   |
+| --------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `vision-og-principper.md`               | **LÅST**            | STOP. KRITISK. Vinder over alt undtagen forretningsforstaaelse (D4: indbyrdes stamme-doc-modsigelse = hul → STOP → Mathias lukker). Dokumentér i blokker-fil, argumentér ikke videre |
+| `forretningsforstaaelse.md`             | **LÅST**            | STOP. KRITISK. Stamme-doc med vision (D4): modsigelse mellem de to er et hul Mathias lukker — ingen trumf                                                                            |
+| `stork-2-0-master-plan.md` + afgørelser | **RETNINGSGIVENDE** | Rapport til Mathias — IKKE auto-blokering. Han afgør: er rammen forældet (rettes) eller skal pakken justeres? Arbejdet stopper ikke, det venter på afgørelse                         |
+| krav-dok + plan (efter approval)        | **PAKKE-KONTRAKT**  | STOP. KRITISK indtil Mathias afgør re-godkendelse eller justering                                                                                                                    |
 
 Pointe: kun vision og pakke-kontrakten stopper automatisk. Master-plan-modsigelse er en trigger for en afgørelse, ikke en blokering.
 
@@ -213,6 +214,10 @@ Spærhagen der fanger governance-drift, så disciplinen ikke kun hviler på selv
 **Mekanisk (lag 1 — `scripts/governance-check.mjs`, `pnpm governance:check`, CI-step):** døde doc-stier (docs + scripts), junk/lock-filer, brudte LÆSEFØLGE-/pointer-mål, **owns-unikhed** (ét begreb, ét hjem), nummer-hjem-unikhed (G/H kanonisk entry ét sted), H-ref-integritet (hver H-ref → åben entry eller historisk-kode i `huskeliste.md`). Princip: **owner = definitionshjem, ikke mention-hjem.** Hver governance-doc deklarerer sit ejerskab via en `<!-- governance-owns: … -->`-markør; scanneren fejler ved dobbelt-ejerskab. **Ærlig grænse:** fanger _deklareret_ dobbelt-ejerskab + nummer-dubletter mekanisk; _udeklareret prosa-overlap_ fanges ikke mekanisk → lag 2.
 
 **Codex-mandat (lag 2 — semantisk):** ved enhver ændring til en governance-doc (vision / disciplin / master-plan / forretningsforstaaelse / owns:-register) SKAL Codex eksplicit svare: **"modsiger dette prosa-mæssigt et begreb som en anden doc ejer?"** før merge. Det dækker den klasse scanneren ikke kan.
+
+**Stamme-doc-konsistens (D4):** ændres én af de to stamme-docs (vision / forretningsforstaaelse) SKAL ændringen eksplicit konsistens-tjekkes mod den anden. Modsigelse = hul → STOP → Mathias lukker. Ingen af de to trumfer den anden.
+
+**Fast markør:** Codex' svar gives som linjen `§8.1-SVAR: INGEN-MODSIGELSE` eller `§8.1-SVAR: MODSIGELSE — <begreb> ejes af <doc>` i reviewet, og gentages i slut-rapporten (§10.3) når pakken har berørt governance-docs — så svaret kan tjekkes i PR/rapport, ikke kun huskes i chat.
 
 **Governance-ændringer er review-artefakter:** en ændring til vision/disciplin/master-plan går gennem samme gate som kode — `governance:check` grøn + Codex' prosa-modsigelses-svar. Fraværet af netop dette gav V5's rolle-modsigelse (vision↔disciplin); §8.1 lukker den klasse.
 
@@ -375,6 +380,8 @@ Eksplicit verdikt pr. række — ingen tom:
 
 [Reference til teknisk-gaeld.md]
 
+## §8.1-svar (hvis governance-docs berørt)
+
 ## Konvergens-historie
 
 | V<n> | Codex-fund | Code-svar | Outcome |
@@ -394,7 +401,7 @@ Du er Codex i Stork 2.0 — uafhængig kode-reviewer.
 Læs FØR review:
 
 - docs/strategi/vision-og-principper.md
-- docs/strategi/forretningsforstaaelse.md (tanke-data, ikke kontrakt)
+- docs/strategi/forretningsforstaaelse.md (LÅST stamme-doc, D4)
 - docs/strategi/disciplin.md §9.3 (din rolle)
 - docs/coordination/<pakke>-krav-og-data.md (pakke-kontrakt)
 - docs/coordination/<pakke>-plan.md (det du reviewer)
@@ -413,6 +420,10 @@ Format pr. fund:
 [SEVERITY] Kort beskrivelse
 Konkret afvigelse: ...
 Anbefalet handling: [V<n+1>-rettelse / G-nummer / kosmetisk note]
+
+Berører ændringen en governance-doc (vision / disciplin / master-plan /
+forretningsforstaaelse / owns-register): afslut med
+`§8.1-SVAR: INGEN-MODSIGELSE` eller `§8.1-SVAR: MODSIGELSE — <hvad>`.
 ```
 
 ### §10.5 Pakke-status-skabelon
@@ -437,7 +448,7 @@ Master-plan-konflikt (men master-plan er overblik — se §8) · vision-modsigel
 
 ## §13 Git-sync-disciplin
 
-`git pull origin main` før enhver session-start/review-runde. Påstande baseret på cached/forældet kopi = fabrikation. Code: pull ved hver trigger. Codex (auto): frisk på commit-trigger. Codex (manuel): pull før review. Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse. Uventede commits ved pull → STOP, rapportér.
+Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex (auto): frisk på commit-trigger. Codex (manuel): sync før review. Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse. Uventede commits ved sync → STOP, rapportér.
 
 ---
 
@@ -447,9 +458,9 @@ Adoption af denne fil er første skridt, ikke hele V5. Udestår:
 
 - **Docs-oprydning (Claude.ai's bord):** fold arkivet til git-history (gov-6).
 - **Master-plan (Claude.ai's bord):** afklar om Appendix C's rettelses-historik hører i planen eller i historik.
-- **Fundament + spærhager (Codes bord):** resterende CI-blocker (gov-3b-2: #10 SECDEF + #18 app-write) · branch protection (gov-4) · Codex-runner + auto-merge + plan-branch-trigger (gov-5).
+- **Fundament + spærhager (Codes bord):** branch protection (gov-4) · Codex-runner + auto-merge + plan-branch-trigger (gov-5). (gov-3 CI-blockers fuldt færdig — G065 lukket i gov-3b-3b.)
 
-Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)** · **gov-docs-housekeeping (krav-dok-familie, PR #94 merged)** · **gov-3a (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95 merged)** · **gov-3b-1 (#19 FK-dækning + #6 indeks-pr-policy, PR #96 merged)**.
+Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)** · **gov-docs-housekeeping (krav-dok-familie, PR #94 merged)** · **gov-3a (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95 merged)** · **gov-3b-1 (#19 FK-dækning + #6 indeks-pr-policy, PR #96 merged)** · **gov-3b-2 (#10 SECDEF-markør-disciplin, PR #101 merged)** · **gov-3b-3a (#18 del 1: 9 INVOKER→SECDEF, PR #103 merged)** · **gov-3b-3b (#18 del 2 + REVOKE + G065 LØST, PR #105 merged)**.
 
 V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ikke ved siden af.
 
