@@ -10,11 +10,21 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 10. juni 2026 (revision: alle LØST-entries flyttet til arkiv; G061/G064/G065 lukket i gov-forløbet; Løses-i-felt på alle åbne entries)
+**Sidste opdatering:** 10. juni 2026 (revision + DEL 5: G066 rejst m. advisor-baseline-check leveret; G001/G039/G040 Løses-i præciseret)
 
 ---
 
 ## Åben gæld
+
+### [G066] MELLEM — Supabase klik-flade uden versionering/baseline-værn
+
+- **Beskrivelse:** Sandhedskilder uden for migrations (DEL 5-recon, 2026-06-10): (1) **Auth-config** er ren Dashboard-klik uden versionering eller værn — konkret: leaked-password-protection er disabled (advisor WARN); (2) **advisor-fladen** havde 95 fund hvoraf 92 er bevidste designvalg (SECDEF-eksponering per gov-3b + RPC-only-tabeller) men accepten var udokumenteret, så nye reelle fund druknede; (3) **API-eksponerede schemas** (PostgREST-config) har listen i types-gen.sh men intet check af faktisk deployet config (G040). OBS: baselinen afslørede mulige pre-T9-legacy-dubletter i public.\* (client_upsert m.fl. i to versioner) — oprydnings-kandidat.
+- **Vision-svækkelse:** Princip 1 (én sandhed) — klik-konfiguration kan drifte usynligt.
+- **Introduceret:** Synliggjort ved DEL 5-recon 2026-06-10.
+- **Delvist løst (samme dag):** `advisor-baseline`-fitness-check (live SQL-dump af SECDEF-eksponering + RLS-uden-policy mod committet `supabase/advisor-baseline.json` m. begrundelser; bider begge veje; selftest-dækket). Auth-config: Mathias slår leaked-password-protection til (Dashboard-klik, flagget). Rest: API-config-check (G040) + evt. management-API-tjek af auth-settings.
+- **Skal løses:** Resten i supabase-flade-vagt (gov-5-nabo-mikropakke): G040-API-config-check + auth-config-mekanik + public.\*-legacy-oprydningsverdikt.
+- **Risiko hvis glemt:** Mellem. Klik-drift opdages først når noget knækker; nye advisor-fund uden baseline = støjdød.
+- **Løses-i:** supabase-flade-vagt (gov-5-nabo); leaked-password-klik = Mathias NU
 
 ### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
 
@@ -52,7 +62,7 @@
 - **Skal løses:** Før første produktions-data
 - **Risiko hvis glemt:** Høj. Ny tabel uden klassifikation → PII læk i audit-log.
 - **Plan:** Migration der flipper default til strict + verificerer ingen eksisterende migration genererer warnings. Migration-gate fanger normalt det, men kun for migration-FILER — runtime-skrivninger er sårbare.
-- **Løses-i:** før cutover (første produktions-data)
+- **Løses-i:** forretnings-trinnet/Trin 9+ — SKAL være løst FØR trinnet åbner for første reelle data (DEL 5-præcisering)
 
 ### [G002] LAV — `source_type`-enum udvidet inline med 'migration'
 
@@ -315,7 +325,7 @@
 - **Opdaget:** Codex v2-validering Fund #6 MELLEM
 - **Skal løses:** Mathias kører HTTP-test efter implementation med begge auth-modes.
 - **Plan (G039):** V1 curl-instruks udvides med to kald — anon + authenticated JWT — begge mod `/rest/v1/rpc/set_config`. Forventet output: 404 fra begge. Hvis ikke: stop-protokol.
-- **Løses-i:** REST-eksponeringstest (Mathias, post-implementation; H012 sporer deadline)
+- **Løses-i:** supabase-flade-vagt (gov-5-nabo, sammen m. G040/G066); H012 sporer deadline
 
 ### [G040] LAV — Option D PostgREST-schema-isolation skal verificere faktisk deployed API config
 
@@ -325,7 +335,7 @@
 - **Opdaget:** Codex v2-validering Fund #7 MELLEM
 - **Skal løses:** Vurder i Option D-aktivering. Verificér Supabase API-config via management API: `GET /v1/projects/<ref>/api`.
 - **Plan (G040):** Hvis V1 afslører eksponering OG Option D aktiveres: tilføj fitness-check der scanner deployed API-config + alerter hvis pg_catalog tilføjes til db-schemas.
-- **Løses-i:** Option D-aktivering
+- **Løses-i:** supabase-flade-vagt (gov-5-nabo, API-config-check — sammen m. G039/G066)
 
 ### [G042] MELLEM — Replay-shape mismatch: nested (P1b) vs flat (`_anonymize_employee_apply`)
 
