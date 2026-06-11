@@ -1,10 +1,15 @@
-# gov-5-automation — Plan V17
+# gov-5-automation — Plan V18
 
 **Branch:** claude/gov-5-automation-build (plan-iteration V8+ sker på build-branchen — V14-stale-fix, runde 22)
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V17 · konvergens-counter: 17 (V17 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+**Plan-version:** V18 · konvergens-counter: 18 (V18 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V17/runde 26)
+
+- **M-E-B (leverance_typer-blokken ikke citeret 1:1): ACCEPT — mekanisk.** P7(a) udvidet med den ordrette `leverance_typer`-blok (kaede-regler.json:18–30, maskinelt udtrukket).
+- **MELLEM (status-stale igen — præcis selvtjek-klassen): ACCEPT — synket.** 'Næste forventet'-linjen opdateres nu maskinelt sammen med de øvrige i HVER status-skrivning (alle tre linjer i samme operation).
 
 ## Kode-fund-håndtering (fra Codex V16/runde 25)
 
@@ -344,6 +349,26 @@ docs/coordination/*-krav-og-data.md
 ```
 
 DIFF: `qwers-aabning` → `[{code, recon-kode}, {codex, recon-research}]` (kvittering består som mathias-adapter-bihandling) · NYE events: `recon-kode-klar` (→ claude-ai-rolle: recon-syntese), `recon-klar` (→ mathias: notifikation), `krav-ok-hash-registreret` (→ krav-dok-merge) · NYT felt `betingelser` pr. dispatch-regel (design pkt. 11): build-start kræver `codex-approval@plan-sha` + `troskabs-pass@plan-sha` + `ingen-aabne-gates` · krav-dok-merge kræver `krav-ok-hash == fil-hash` · claude-ai-syntese kræver begge recon-docs · slut-merge kræver claude-ai-approval + slut-ok. **BEVARES:** alle 7 eksisterende events (krav-dok-merged er fortsat væknings-punkt — blot ikke kæde-START), leverance_typer (+ `recon-kode-doc`, `recon-research-doc`, `recon-oplaeg`, `troskabs-verdikt` tilføjes), gate_ord, identiteter, fund_gate_markers. **V13-tilføjelse:** `kaede_issue`-feltets semantik ændres fra pr.-pakke (null) til STÅENDE dirigent-issue-nummer (sættes i B3; null = fail-closed åbningsflade); kommentar-feltet opdateres tilsvarende. **V15-tilføjelse:** `selvtjek`-felt pr. leverance-type (deklarativ liste af mekaniske tjek: ordret-diff/tal-mod-virkelighed/konsistens-grep) — betingelse for transport-commit (design pkt. 12); minimal liste i gov-5, udvides i partnerskabs-runden. **V17-tilføjelser (runde 25):** (1) `review-approval` → `{claude-ai-rolle, krav-troskabs-tjek}` (var `{code, build-start}` — TILLÆG 3-modellen ført ind i tabellen); `troskabs-verdikt` routes pr. marker: PASS → `{code, build-start}` · FEEDBACK → `{code, naeste-version}`. (2) `afsender`-felt pr. leverance-type (SELVTJEK-FEJL-routing); `krav-dok-udkast`: afsender `dialog` → fejl = Mathias-notifikation, ingen aktør-genkørsel.
+
+**`scripts/kaede/kaede-regler.json:18–30` (`leverance_typer`) — nuværende body 1:1 (maskinelt udtrukket ved V18):**
+
+```json
+  "leverance_typer": {
+    "plan-version": { "modtager": "codex", "opgave": "plan-review" },
+    "build-batch": { "modtager": "codex", "opgave": "batch-review" },
+    "slut-rapport": { "modtager": "claude-ai-rolle", "opgave": "slut-rapport-review" },
+    "review-feedback": { "modtager": "code", "opgave": "naeste-version" },
+    "review-approval": { "modtager": "code", "opgave": "build-start" },
+    "sparring-oenske": { "modtager": "codex", "opgave": "sparring-svar" },
+    "sparring-svar": { "modtager": "code", "opgave": "fortsaet" },
+    "kode-fund": { "modtager": "code", "opgave": "fund-haandtering" },
+    "optimering-forslag": { "modtager": "code", "opgave": "adopt-defer-dismiss" },
+    "loes-replik": { "modtager": "codex", "opgave": "agree-refine-escalate" },
+    "fund-gate-pakke": { "modtager": "mathias", "opgave": "gate-anmodning" }
+  },
+```
+
+DIFF (samlet for V8-V17-tilføjelserne): `review-approval`: `{"modtager": "code", "opgave": "build-start"}` → `{"modtager": "claude-ai-rolle", "opgave": "krav-troskabs-tjek"}` · NYE typer: `recon-kode-doc`, `recon-research-doc`, `recon-oplaeg`, `krav-dok-udkast`, `troskabs-verdikt` (PASS/FEEDBACK-routing pr. marker) · NYE felter pr. type: `afsender` + `selvtjek`. **BEVARES:** alle øvrige 10 typer ordret (plan-version, build-batch, slut-rapport, review-feedback, sparring-oenske/-svar, kode-fund, optimering-forslag, loes-replik, fund-gate-pakke).
 
 (b) **`scripts/kaede/tilstand.mjs:92–112` (`afledEvents`) — nuværende body 1:1:**
 
