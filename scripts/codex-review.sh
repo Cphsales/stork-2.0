@@ -375,6 +375,13 @@ esac
 RERUN_CMD="$0 $PLAN_FILE $ROUND_N $REASONING_FLAG --phase=$PHASE"
 
 CODEX_MODEL=$(grep -m1 '^model ' ~/.codex/config.toml 2>/dev/null | cut -d'"' -f2)
+# Indholds-binding (runde 10-fund): SHA alene binder ikke ved dirty fil — header
+# bærer content-hash af det FAKTISK reviewede + dirty-markør (fail-soft: kæden
+# reviewer også untracked leverancer, så vi nægter ikke — vi bogfører sandheden).
+FIL_HASH=$(git hash-object "$PLAN_FILE" 2>/dev/null || echo "n/a")
+FIL_TILSTAND="ren"
+git diff --quiet -- "$PLAN_FILE" 2>/dev/null || FIL_TILSTAND="DIRTY (reviewet indhold ≠ HEAD-version)"
+git ls-files --error-unmatch "$PLAN_FILE" >/dev/null 2>&1 || FIL_TILSTAND="untracked (binding = fil-hash alene)"
 cat > "$OUTPUT_FILE" <<EOF
 # Codex review — $PAKKE_NAME runde $ROUND_N
 
@@ -382,6 +389,8 @@ cat > "$OUTPUT_FILE" <<EOF
 **Fase:** $PHASE
 **Plan-fil:** $PLAN_FILE
 **Plan-SHA:** $PLAN_SHA
+**Fil-hash (reviewet indhold):** $FIL_HASH
+**Fil-tilstand:** $FIL_TILSTAND
 **Dato:** $DATE
 **Reasoning:** $REASONING
 **Model:** ${CODEX_MODEL:-ukendt}
