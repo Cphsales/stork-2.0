@@ -9,7 +9,8 @@ Branch-bevidst git-sync før hver trigger (disciplin §13).
 - Approvals/code owner: `@mgrubak` (Mathias' personlige konto — kun browser/hans hånd).
 - Merge (gov-5-gate-model, Mathias-ratificeret 2026-06-11): mgrubak-approval er
   gaten på BESLUTNINGS-STI-PR'er (CODEOWNERS default-own); rolle-validerede
-  PR'er (de ni bogførings-mønstre) merger på grøn CI + kædens discipliner —
+  PR'er (de ni bogførings-mønstre + tre recon-mønstre, rette-til punkt 1)
+  merger på grøn CI + kædens discipliner —
   Mathias' gates er ORDENE (krav OK <hash>/slut OK, author-verificeret), ikke
   klikkene; kæden merger aldrig før ordet er registreret. Protection: required
   CI + code-owner-review (gov-4) består; approvals-count 0 (gov-5/13b).
