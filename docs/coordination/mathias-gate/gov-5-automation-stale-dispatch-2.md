@@ -99,3 +99,20 @@ Observationer fra instans 3:
   samme transport-skrøbelighed som leverance-tabet i gate 1-addendum).
 - Ingen yderligere gate-fil/PR oprettet (repo-renhed: én gate pr. rod-årsag);
   instans 3 bogføres med dette addendum.
+
+---
+
+## Addendum 2 (instans 2) — rod-årsag + storm-omfang, verificeret
+
+- **Sandsynlig årsag til det forsvundne pause-anker:** repo-renheds-fejning
+  (PR #146/arkiv-prune-sporet) rensede untracked filer i træet;
+  `stork-kaede.service` blev genstartet 00:32:34 CEST (ExecMainStartTimestamp,
+  verificeret) — **bursten fyrede 4 sekunder senere** (22:32:38Z = 00:32:38
+  lokal). "Årsag ukendt" i punkt 1 ovenfor er hermed indsnævret.
+- **Storm-omfang verificeret:** dispatch-loggen indeholder **27 DISPATCH-poster**
+  i selve storm-pollet (22:32:3xZ) — de 12+ nævnt ovenfor var kun de sidst
+  loggede.
+- Gate -1-kopierne er genoprettet ordret i træet af parallel-instanser; fire
+  AFVENTER-filer holder nu pausen. Denne fil er desuden committet på
+  `gate/gov-5-stale-dispatch-2` (PR #147) — robust mod en ny træ-rensning,
+  modsat de untracked kopier.
