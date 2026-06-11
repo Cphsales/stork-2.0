@@ -37,6 +37,12 @@ const nyeLinjer = diff
   .split("\n")
   .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
   .map((l) => l.slice(1));
+// Runde 16-fund (ACCEPT): minus-linjernes tokens er de GAMLE værdier — søskende
+// der stadig bærer dem, er selve stale-klassen (42→43-eksemplet).
+const gamleLinjer = diff
+  .split("\n")
+  .filter((l) => l.startsWith("-") && !l.startsWith("---"))
+  .map((l) => l.slice(1));
 
 // 2) Token-klasser der historisk drifter (bid 1-evidensen + runde 47-52-klassen).
 //    BEVIDST UDELADT: nøgne runde-numre ("runde 46") og nøgne issue-/pakke-navne
@@ -53,12 +59,19 @@ const KLASSER = [
   { navn: "pakke-anker", re: /gov-\d+-[a-zæøå][a-zæøå-]+/gi },
 ];
 
-const tokens = new Map(); // token -> klasse
+const tokens = new Map(); // token -> klasse (tilføjede værdier: "stadig sand?")
 for (const linje of nyeLinjer)
   for (const k of KLASSER)
     for (const m of linje.matchAll(k.re)) tokens.set(m[0], k.navn);
+// Udgåede værdier (fjernet uden at samme token blev gen-tilføjet): overlevende
+// forekomster er STALE-KANDIDATER og rapporteres skarpere.
+const udgaaede = new Map();
+for (const linje of gamleLinjer)
+  for (const k of KLASSER)
+    for (const m of linje.matchAll(k.re))
+      if (!tokens.has(m[0])) udgaaede.set(m[0], k.navn);
 
-if (tokens.size === 0) {
+if (tokens.size === 0 && udgaaede.size === 0) {
   console.log("selvtjek-docs: ingen fakta-tokens i diffen — intet at holde.");
   process.exit(0);
 }
@@ -84,6 +97,24 @@ const mdFiler = [];
 
 // 4) Pr. token: vis alle forekomster på tværs — divergens ses med det samme
 let fundISøskende = 0;
+let staleKandidater = 0;
+for (const [token, klasse] of [...udgaaede.entries()].sort()) {
+  const hits = [];
+  for (const fil of mdFiler) {
+    const indhold = readFileSync(fil, "utf8");
+    let i = indhold.indexOf(token);
+    while (i !== -1) {
+      hits.push(`${fil}:${indhold.slice(0, i).split("\n").length}`);
+      i = indhold.indexOf(token, i + 1);
+    }
+  }
+  if (hits.length > 0) {
+    staleKandidater++;
+    console.log(`\n▲ STALE-KANDIDAT [${klasse}] "${token}" (UDGÅET af diffen) lever stadig i:`);
+    for (const h of hits)
+      console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
+  }
+}
 for (const [token, klasse] of [...tokens.entries()].sort()) {
   const hits = [];
   for (const fil of mdFiler) {
@@ -110,6 +141,8 @@ function iDiffFil(hit) {
   return diff.includes(`+++ b/${fil}`) || diff.includes(`--- a/${fil}`);
 }
 
+if (staleKandidater > 0)
+  console.log(`\nselvtjek-docs: ${staleKandidater} UDGÅET værdi(er) lever videre — ret eller begrund (runde 47-52-klassen).`);
 console.log(
   fundISøskende === 0
     ? "\nselvtjek-docs: ingen søskende-forekomster uden for diffen."
