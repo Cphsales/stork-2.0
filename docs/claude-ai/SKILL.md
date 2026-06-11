@@ -38,9 +38,22 @@ Hele rolle-definitionen lever i `docs/strategi/disciplin.md` §9.1 (versioneret 
 - Skill'en arver automatisk forbedringer fra fremtidige pakker
 - Du behøver ikke re-opdatere skill'en når workflow-spec udvikler sig
 
-## Kanonisk kilde
+## Kanonisk kilde (pointer-model — Mathias-beslutning 2026-06-11)
 
-Denne fil er DEN kanoniske skill. Platform-skill'en i claude.ai er en kopi
-af denne fil — ved drift vinder repo-versionen. Sync: Mathias kopierer
-fil-indholdet til platform-skill'en når denne fil ændres (flagges i
-slut-rapport som Mathias-handling).
+Denne fil er DET ENESTE indholds-hjem. Platform-skill'en i appen er en
+ultra-kort POINTER (engangs-opsætning, bærer ALDRIG indhold) der ved
+aktivering henter og følger denne fil via GitHub-connectoren — dermed kan de
+to ikke ryge ud af takt: der findes kun ét indhold. Kopi-sync-reglen er
+afløst (den var et plaster for manglende repo-adgang, lukket ved
+connector-valget 2026-06-11).
+
+Platform-pointerens kanoniske tekst (genskabes herfra ved drift):
+
+```
+Stork 2.0-rolle — POINTER, intet indhold. Ved `qwers`/`qwerr` eller
+Stork-kontekst: hent docs/claude-ai/SKILL.md fra Cphsales/stork-2.0 via
+GitHub-connectoren og følg DEN. Selve skill-filen læses altid fra main;
+hvilke filer/branches rollen derefter læser, styrer skill'en + disciplin
+§13 (fx PR-branchen ved slut-rapport-review). Er filen utilgængelig: sig
+det — gæt aldrig rollen fra hukommelse.
+```
