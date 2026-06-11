@@ -248,3 +248,5 @@ main().catch((err) => {
   console.error("Migration-gate fatal:", err);
   process.exit(1);
 });
+
+// 11b-bevis-case (b): test-PR per gov-4 #111-moenster — merges ALDRIG, lukkes efter read-back
