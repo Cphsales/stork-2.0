@@ -130,6 +130,21 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
   return events;
 }
 
+// Type-inferens fra filnavns-mønster + markers (runde 31-fund 3): kædens
+// leverance-bærere uden →NÆSTE-deklaration. REN og selftest-dækket.
+// NB: aktivering kræver baseline-seeding (step 10-preflight) — eksisterende
+// filer skrives som REGISTRERET i dispatch-loggen, ellers flyder historikken ind.
+export function infererType(sti, markers = []) {
+  if (/-krav-og-data\.md$/.test(sti)) return "krav-dok-udkast";
+  if (/-recon-kode\.md$/.test(sti)) return "recon-kode-doc";
+  if (/-recon-research\.md$/.test(sti)) return "recon-research-doc";
+  if (/-recon-oplaeg\.md$/.test(sti)) return "recon-oplaeg";
+  if (/codex-reviews\/.*-troskab-/.test(sti)) return "troskabs-verdikt";
+  if (/codex-reviews\/.*-claude-ai\.md$/.test(sti)) return null; // claude-ai-review: bæres af betingelsesFakta (claudeAiApproval), ikke routing
+  if (/codex-reviews\//.test(sti)) return markers.includes("APPROVAL") ? "review-approval" : "review-feedback";
+  return null;
+}
+
 // Bogførings-sti-tjek (de 9 P3-mønstre — V9 rest-klik-afgørelser: arkiv +
 // krav-og-data un-ownet, gated af ord/hash). NB: CODEOWNERS er det HÅNDHÆVENDE
 // værn (GitHub) — denne helper afgør kun om kuréren skal re-requeste Mathias-
@@ -248,12 +263,15 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-status.md`))) {
     leveranceStier.push(`docs/coordination/${aktivPakke}-status.md`);
   }
-  // krav-dok-udkast (V19/V21, runde 27+29): bærer i BEGGE tilstande —
-  // untracked (dialogens output → transport-commit) OG committed-indtil-
-  // behandlet (→ hash-post via normal type-routing). Type infereres af
-  // filnavnet; dialogen skriver ingen →NÆSTE-deklaration.
-  if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-krav-og-data.md`))) {
-    leveranceStier.push(`docs/coordination/${aktivPakke}-krav-og-data.md`);
+  // krav-dok-udkast (V19/V21) + recon-leverancer (runde 31-fund 1): bærere i
+  // BEGGE tilstande — untracked (→ transport-commit/frys) OG committed-indtil-
+  // behandlet. Typer infereres af filnavne; ingen →NÆSTE-deklaration krævet.
+  if (aktivPakke !== "ingen") {
+    for (const suffix of ["-krav-og-data.md", "-recon-kode.md", "-recon-research.md", "-recon-oplaeg.md"]) {
+      if (existsSync(join(koordDir, `${aktivPakke}${suffix}`))) {
+        leveranceStier.push(`docs/coordination/${aktivPakke}${suffix}`);
+      }
+    }
   }
 
   // Artefakt-opslag (Codex runde 10-fund 1): status-filen er BÆRER, men
@@ -280,8 +298,9 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     const tekst = readFileSync(join(repoRod, sti), "utf8");
     const erUntracked = untracked.includes(sti);
     const deklaration = parseDeklaration(tekst);
-    // Type-inferens fra filnavns-mønster (V19): krav-og-data → krav-dok-udkast
-    const inferreretType = /-krav-og-data\.md$/.test(sti) ? "krav-dok-udkast" : null;
+    // Type-inferens (V19 + runde 31): filnavns-mønster + markers
+    const markersForSti = udtraekMarkers(tekst);
+    const inferreretType = infererType(sti, markersForSti);
     leverancer.push({
       fil: sti,
       untracked: erUntracked,
@@ -290,21 +309,29 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
       // frossen version: artefaktets SHA vinder over bærerens (runde 10-fund 1)
       sha: erUntracked ? null : (artefaktSha(deklaration?.type) ?? filSha(sti, repoRod)),
       deklaration,
-      markers: udtraekMarkers(tekst),
+      markers: markersForSti,
     });
   }
 
-  // Gate-ord fra kæde-issue (author + kommentar-id følger med — verifikation i decide())
-  let gateOrd = [];
-  if (kaedeIssue) {
+  // Pr.-pakke kæde-issue (runde 31-fund 2): status-filens 'Kæde-issue: #N'
+  // bærer pakkens gate-ord (krav OK-hash, slut OK, GODKENDT/AFVIST, stop);
+  // stående issue (kaedeIssue) bærer qwers-åbninger. Begge læses.
+  let pakkeIssue = null;
+  if (aktivPakke !== "ingen") {
+    const statusSti = join(koordDir, `${aktivPakke}-status.md`);
+    if (existsSync(statusSti)) {
+      pakkeIssue = readFileSync(statusSti, "utf8").match(/Kæde-issue:\s*#(\d+)/)?.[1] ?? null;
+    }
+  }
+
+  // Gate-ord fra issues (author + kommentar-id følger med — verifikation i decide())
+  const laesIssueOrd = (issueNr) => {
     try {
-      // NB: jq-filteret gives RÅT (Codex runde 9-fund 2: JSON.stringify gjorde
-      // det til streng-literal → gh-fejl → catch → tomme gate-ord, stille).
       const raw = gh(
         [
           "issue",
           "view",
-          String(kaedeIssue),
+          String(issueNr),
           "--json",
           "comments",
           "--jq",
@@ -312,15 +339,18 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
         ],
         repoRod,
       );
-      gateOrd = raw
+      return raw
         .split("\n")
         .filter(Boolean)
         .map((l) => JSON.parse(l))
         .map((k) => ({ id: k.id, author: k.author, tekst: k.body.trim() }));
     } catch {
-      gateOrd = []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
+      return []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
     }
-  }
+  };
+  let gateOrd = [];
+  if (fetch && pakkeIssue) gateOrd = gateOrd.concat(laesIssueOrd(pakkeIssue));
+  if (fetch && kaedeIssue) gateOrd = gateOrd.concat(laesIssueOrd(kaedeIssue));
 
   // Events: afledte tilstande (V13/runde 21: qwers-afledning kører ALTID —
   // åbning sker netop ved aktiv-pakke: ingen; pakke-events kun m. aktiv pakke)
@@ -331,13 +361,15 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
 
   // Recon-fakta (V8-kædestart): leverance-eksistens pr. konvention i regler.recon_filer
   const reconSti = (slags) => regler.recon_filer[slags].replace("<pakke>", pakke);
+  // KUN committede recon-filer tæller (runde 31-fund 1: untracked må aldrig
+  // drive næste led før frys) — filSha er null for aldrig-committede filer.
   const recon =
     pakke === "ingen"
       ? {}
       : {
-          kode: existsSync(join(repoRod, reconSti("kode"))),
-          research: existsSync(join(repoRod, reconSti("research"))),
-          oplaeg: existsSync(join(repoRod, reconSti("oplaeg"))),
+          kode: !!filSha(reconSti("kode"), repoRod),
+          research: !!filSha(reconSti("research"), repoRod),
+          oplaeg: !!filSha(reconSti("oplaeg"), repoRod),
           kodeSha: filSha(reconSti("kode"), repoRod),
           oplaegSha: filSha(reconSti("oplaeg"), repoRod),
         };
