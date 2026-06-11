@@ -10,6 +10,13 @@ bevidst slettes.
 
 ## 1 · Forslag til pakkens form (afgøres i krav-dok-dialogen)
 
+- [Mathias-retning 2026-06-11 — repo-renhed, gennemgangens målestok pr.
+  dokument] Repoet holdes RENT: hvert dokument skal altid have et formål ·
+  aldrig dublet tekst · holdes konstant opdateret · én sandhed · trimmet til
+  kun relevant info. Ingen ligegyldig fylde — fylde ender som afgørende
+  glid-kilde for AI-aktørerne (evidens samme aften: lag-blandet/stale
+  disciplin-tekst gav aktør-glid i drift).
+
 - [FORSLAG] Emne-lags-form: ét krav-dok m. mål-tegning som ramme, bidder under,
   hver bid = fuldt kæde-gennemløb (krav 8 bevises gentagne gange). Tidligere
   drøftet 12/6 som omdefinering — nu kun forslag.
