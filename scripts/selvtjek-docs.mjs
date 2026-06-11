@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // scripts/selvtjek-docs.mjs — 1a-selvtjek (rette-til 2026-06-11, Mathias-go).
 //
-// Mekanisk konsistens-grep FØR Codex-dispatch på docs-ændringer: udtrækker
+// Mekanisk konsistens-grep på docs-ændringer — MANUELT/CI advisory-lag (køres
+// af operatøren før review-dispatch: `pnpm selvtjek:docs`). Indkobling i kædens
+// automatiske dispatch-vej er kæde-kode og ligger i kæde-fix-leverancen
+// (byg-bestillingens punkt 10) — dette script er værktøjet, ikke koblingen.
+// Udtrækker
 // fakta-tokens (PR-numre, hashes, antal-fraser, sammensatte pakke-ankre) fra
 // diffen mod base og
 // viser ALLE forekomster af samme token-klasse i aktive docs — så stale
