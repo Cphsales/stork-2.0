@@ -1,10 +1,10 @@
-# gov-5-automation — Plan V9
+# gov-5-automation — Plan V10
 
 **Branch:** claude/gov-5-automation-plan
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V9 · konvergens-counter: 9 (V9 eksplicit Mathias-tilladt 2026-06-11 sammen med rest-klik-afgørelserne. Verdikter altid på frossen version)
+**Plan-version:** V10 · konvergens-counter: 10 (V10 Mathias-tilladt 2026-06-11 + RAMME-TILLADELSE: mekaniske kompletteringer uden design-/substans-/scope-ændringer er forhånds-tilladt frem til runde-APPROVAL — counter bogføres fortsat; HEGN: design/substans/scope/Mathias-flader kræver fortsat hans ord; ved tvivl spørges. Verdikter altid på frossen version)
 
 ## Kode-fund-håndtering (fra Codex V8/runde 17)
 
@@ -284,13 +284,56 @@ docs/coordination/*-krav-og-data.md
 
 **P6 — CLAUDE.md (NY i V5).** Nuværende merge-konvention-afsnit 1:1 (CLAUDE.md "Identiteter"-sektion, citeret i Verificerede afhængigheder). DIFF: konventionen præciseres: mgrubak-approval er gaten **på beslutnings-sti-PR'er**; rolle-validerede PR'er merger på grøn CI + Codex (gov-5-gate-model, jf. disciplin §2). **BEVARES:** tre-konto-strukturen, aldrig-admin-reglen, alt andet.
 
-**P7 — scripts/kaede/ eksisterende B1-kode (NY i V9, Codex runde 17-M-E-B).** Event-fladen reworkes mod V9-semantik; alt andet BEVARES. Nuværende bodies 1:1 der ændres:
+**P7 — scripts/kaede/ eksisterende B1-kode (NY i V9; ORDRETTE bodies i V10, Codex runde 18-M-E-B).** Event-fladen reworkes mod V9-semantik; alt andet BEVARES.
 
-(a) `kaede-regler.json` events-sektion (nuværende): `"qwers-aabning": [{ "aktoer": "mathias", "opgave": "kvittering" }]` · `"krav-dok-merged": [code:plan-start, codex:kode-research]` · `"build-pr-klar-beslutningssti": [mathias:review-request]` · `"build-pr-merged": [code:slut-rapport]` · `"slut-ok-registreret": [code:slut-merge]` · `"gate-godkendt"/"gate-afvist": [code:…]`. DIFF: `qwers-aabning` → recon-igangsætning `[code:recon-kode, codex:recon-research]` (kvittering består som mathias-adapter-bihandling); NYE events: `recon-kode-klar` (betingelse for claude-ai-syntese-dispatch), `recon-klar` (→ mathias-notifikation), `krav-ok-hash-registreret` (→ krav-dok-merge, hash-betinget); NYT `betingelser`-felt pr. dispatch-regel (build-start: codex-APPROVAL + troskabs-PASS @ aktuel plan-SHA + ingen åbne gates; krav-dok-merge: hash-match; m.fl. jf. design pkt. 11). **BEVARES:** krav-dok-merged-event (er fortsat væknings-punkt for plan-fasen — blot ikke kæde-START), alle øvrige events, leverance_typer-tabellen (+ recon-typer + troskabs-verdikt tilføjes), gate_ord, identiteter.
+(a) **`scripts/kaede/kaede-regler.json:31–42` — nuværende body 1:1:**
 
-(b) `afledEvents` (tilstand.mjs, nuværende): afleder krav-dok-merged af `paaMain.kravDok && !paaMain.planFil` — Codex runde 17: holder kun BETINGET (recon-docs ligger nu FØR krav-dok). DIFF: krav-dok-merged afledes af krav-dok på main + plan-fil IKKE på main + **recon-fase afsluttet** (recon-klar behandlet); recon-events afledes af recon-leverancernes eksistens; krav-ok-hash af gate-ord-parsing ("krav OK \<hash\>"). **BEVARES:** gate-godkendt/gate-afvist-afledning, author-filteret (forsvar i dybden), slut-ok/qwers-parsing, build-PR-afledningerne.
+```json
+"events": {
+  "qwers-aabning": [{ "aktoer": "mathias", "opgave": "kvittering" }],
+  "krav-dok-merged": [
+    { "aktoer": "code", "opgave": "plan-start" },
+    { "aktoer": "codex", "opgave": "kode-research" }
+  ],
+  "build-pr-klar-beslutningssti": [{ "aktoer": "mathias", "opgave": "review-request" }],
+  "build-pr-merged": [{ "aktoer": "code", "opgave": "slut-rapport" }],
+  "slut-ok-registreret": [{ "aktoer": "code", "opgave": "slut-merge" }],
+  "gate-godkendt": [{ "aktoer": "code", "opgave": "gate-afgjort-fortsaet" }],
+  "gate-afvist": [{ "aktoer": "code", "opgave": "gate-afvist-alternativ" }]
+},
+```
 
-(c) Event-fixtures (dirigent.selftest.mjs §11): omskrives m. V9-semantik (qwers → recon-dispatches; betingelses-cases: build blokeret uden PASS / uden SHA-match; krav-dok-merge blokeret uden hash-match). **BEVARES (Codex-verificeret runde 17):** alle øvrige B1-værn uændret — gate-deadlock-fixet (gate-ord før pause), transport-commit-isolation (--only, tmp-repo-bevist), exit-0-behandlet-semantik, event-idempotens pr. modtager, halvskrevet-værn, lås-semantik, divergens-STOP, ARV-IGNORERET, NUL-fixet. Tab af ét af disse uden begrundelse = M-E-B.
+DIFF: `qwers-aabning` → `[{code, recon-kode}, {codex, recon-research}]` (kvittering består som mathias-adapter-bihandling) · NYE events: `recon-kode-klar` (→ claude-ai-rolle: recon-syntese), `recon-klar` (→ mathias: notifikation), `krav-ok-hash-registreret` (→ krav-dok-merge) · NYT felt `betingelser` pr. dispatch-regel (design pkt. 11): build-start kræver `codex-approval@plan-sha` + `troskabs-pass@plan-sha` + `ingen-aabne-gates` · krav-dok-merge kræver `krav-ok-hash == fil-hash` · claude-ai-syntese kræver begge recon-docs · slut-merge kræver claude-ai-approval + slut-ok. **BEVARES:** alle 7 eksisterende events (krav-dok-merged er fortsat væknings-punkt — blot ikke kæde-START), leverance_typer (+ `recon-kode-doc`, `recon-research-doc`, `recon-oplaeg`, `troskabs-verdikt` tilføjes), gate_ord, identiteter, fund_gate_markers.
+
+(b) **`scripts/kaede/tilstand.mjs:92–112` (`afledEvents`) — nuværende body 1:1:**
+
+```js
+export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, mainSha }) {
+  if (!pakke || pakke === "ingen") return [];
+  const events = [];
+  if (paaMain.kravDok && !paaMain.planFil) events.push({ type: "krav-dok-merged", sha: mainSha });
+  if (buildPr?.merged && !paaMain.rapportFil)
+    events.push({ type: "build-pr-merged", sha: buildPr.mergeSha ?? mainSha });
+  if (buildPr?.klar && buildPr?.beslutningsSti)
+    events.push({ type: "build-pr-klar-beslutningssti", sha: buildPr.headSha ?? mainSha });
+  for (const ord of gateOrd ?? []) {
+    if (ord.author !== gateAuthor) continue;
+    if (ord.tekst === "slut OK") events.push({ type: "slut-ok-registreret", sha: ord.id ?? mainSha });
+    if (ord.tekst.startsWith("qwers "))
+      events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+    // Gate-afgørelser (runde 16): GODKENDT/AFVIST løfter åben Mathias-gate
+    if (ord.tekst === "GODKENDT" || ord.tekst.startsWith("GODKENDT "))
+      events.push({ type: "gate-godkendt", sha: ord.id ?? mainSha });
+    if (ord.tekst === "AFVIST" || ord.tekst.startsWith("AFVIST "))
+      events.push({ type: "gate-afvist", sha: ord.id ?? mainSha });
+  }
+  return events;
+}
+```
+
+DIFF: linje 95 (krav-dok-merged — Codex runde 17: holder kun betinget) → betinges af recon-fase afsluttet: nyt input-felt `reconKlar`, afledt af recon-leverancernes eksistens + behandlet recon-klar-event · NYE afledninger: recon-kode-klar (begge kode-recon-docs findes), recon-klar (+ oplæg findes), krav-ok-hash (parsing `/^krav OK ([0-9a-f]{7,64})$/`). **BEVARES ordret:** linje 96–99 (build-PR-afledninger), 100–101 (author-filter, forsvar i dybden), 102 (slut OK), 103–104 (qwers), 105–109 (gate-afgørelser).
+
+(c) **`scripts/kaede/dirigent.selftest.mjs:331 ff.` (sektion 11) — nuværende cases 1:1:** krav-dok-merged → Code OG Codex parallelt (§2.1) · build-pr-merged → Code (slut-rapport) · build-pr-klar-beslutningssti → Mathias review-request · slut OK → slut-merge · qwers → kvittering. DIFF: qwers-casen → recon-dispatches; krav-dok-merged-casen + reconKlar-forudsætning; NYE betingelses-cases: build uden PASS → BLOKERET · PASS m. forkert SHA → BLOKERET · krav-dok-merge uden hash-match → BLOKERET · syntese uden begge docs → BLOKERET. **BEVARES (Codex-verificeret runde 17):** alle øvrige B1-værn — gate-deadlock-fixet, transport-commit-isolation (tmp-repo-bevist), exit-0-behandlet-semantik, event-idempotens pr. modtager, halvskrevet-værn, lås-semantik, divergens-STOP, ARV-IGNORERET, NUL-fixet. Tab af ét uden begrundelse = M-E-B.
 
 ## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
 
@@ -349,20 +392,18 @@ Hvert led holdt mod formålet ("fra åbning til lukning kører alt selv; Mathias
 
 Fejnings-regel fremad (roden): enhver ny plan-version holder HVERT led mod formålet før Codex-review — checken er nu del af pre-push-tjeklisten for denne pakke.
 
-## B1-bevarings-verifikation (TILLÆG 2 — HYPOTESE til Codex' V8-review)
+## B1-bevarings-verifikation (TILLÆG 2 — verdikter leveret af Codex runde 17, indarbejdet i V10)
 
-Codes sikkert/frosset-snit er en hypotese, ikke et faktum. Codex SKAL i V8-reviewet eksplicit verificere hver række under qwers-starten, FØR den bevares:
-
-| B1-del                                                                                                                                      | Påstand: væknings-agnostisk?            | Codex-verdikt (V8-review) |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------- |
-| tilstandslæsning + parsere (deklaration/markers/divergens)                                                                                  | JA — læser tilstand uanset kæde-start   | afventer                  |
-| transport-commit-isolation (--only)                                                                                                         | JA                                      | afventer                  |
-| parallel-eksekvering + kørende-register + låse                                                                                              | JA                                      | afventer                  |
-| behandlet-semantik (kun exit 0) + idempotens-nøgler                                                                                         | JA                                      | afventer                  |
-| author-verifikation + gate-mekanik (fund-gate/SPOR-PAUSET/GATE-AFGJORT)                                                                     | JA                                      | afventer                  |
-| `kaede-regler.json` events-tabel (`qwers-aabning`: "kvittering" → SKAL ændres til recon-igangsætning; `krav-dok-merged`-events composition) | **NEJ — re-åbnes efter V8-godkendelse** | afventer                  |
-| `afledEvents` (krav-dok-merged-afledning: "kravDok && !planFil" — holder den når recon-docs ligger FØR krav-dok?)                           | **TVIVL — Codex afgør**                 | afventer                  |
-| event-fixtures (krav-dok-merged/qwers-cases)                                                                                                | **NEJ — omskrives m. V8-semantik**      | afventer                  |
+| B1-del                                                                                                                                      | Påstand: væknings-agnostisk?            | Codex-verdikt (V8-review)                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------ |
+| tilstandslæsning + parsere (deklaration/markers/divergens)                                                                                  | JA — læser tilstand uanset kæde-start   | **BEKRÆFTET — bevares** (runde 17)                     |
+| transport-commit-isolation (--only)                                                                                                         | JA                                      | **BEKRÆFTET — bevares**                                |
+| parallel-eksekvering + kørende-register + låse                                                                                              | JA                                      | **BEKRÆFTET — bevares**                                |
+| behandlet-semantik (kun exit 0) + idempotens-nøgler                                                                                         | JA                                      | **BEKRÆFTET — bevares**                                |
+| author-verifikation + gate-mekanik (fund-gate/SPOR-PAUSET/GATE-AFGJORT)                                                                     | JA                                      | **BEKRÆFTET — bevares**                                |
+| `kaede-regler.json` events-tabel (`qwers-aabning`: "kvittering" → SKAL ændres til recon-igangsætning; `krav-dok-merged`-events composition) | **NEJ — re-åbnes efter V8-godkendelse** | **BEKRÆFTET: re-åbnes** — P7(a)                        |
+| `afledEvents` (krav-dok-merged-afledning: "kravDok && !planFil" — holder den når recon-docs ligger FØR krav-dok?)                           | **TVIVL — Codex afgør**                 | **AFGJORT: holder kun betinget** — patch-først i P7(b) |
+| event-fixtures (krav-dok-merged/qwers-cases)                                                                                                | **NEJ — omskrives m. V8-semantik**      | **BEKRÆFTET: omskrives** — P7(c)                       |
 
 ## End-to-end-test-design (§3.6 + krav 8)
 
