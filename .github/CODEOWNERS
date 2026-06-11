@@ -9,6 +9,22 @@
 # "Unknown owner"). Rettet i gov-4; mgrubak er Mathias' personlige konto.
 *       @mgrubak
 
+# Rolle-valideret bogførings-flade (gov-5 P3, Mathias-ratificeret ved qwerg V21
+# + rest-klik-afgørelser 2026-06-11): ejer-løs linje fjerner code-owner-kravet
+# (sidst-matchende vinder). Mathias' gates er ORDENE (krav OK <indholds-hash> /
+# slut OK, author-verificeret i kæden), ikke PR-klikkene — kæden merger aldrig
+# før ordet er registreret; krav-dok kun ved hash-match (regelbogs-betingelse).
+# Konservativt: KUN disse ni mønstre; alt andet (inkl. alt nyt) ejes af default.
+/docs/coordination/aktiv-plan.md
+/docs/coordination/seneste-rapport.md
+/docs/coordination/codex-reviews/
+/docs/coordination/plan-feedback/
+/docs/coordination/rapport-historik/
+/docs/coordination/arkiv/
+docs/coordination/*-status.md
+docs/coordination/*-plan.md
+docs/coordination/*-krav-og-data.md
+
 # Låste autoritative dokumenter — eksplicit Mathias-approval (redundant ift. default, men signalværdi)
 /docs/strategi/vision-og-principper.md     @mgrubak
 /docs/strategi/forretningsforstaaelse.md   @mgrubak
