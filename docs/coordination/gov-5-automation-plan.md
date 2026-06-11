@@ -1,10 +1,15 @@
-# gov-5-automation — Plan V13
+# gov-5-automation — Plan V14
 
-**Branch:** claude/gov-5-automation-plan
+**Branch:** claude/gov-5-automation-build (plan-iteration V8+ sker på build-branchen — V14-stale-fix, runde 22)
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V13 · konvergens-counter: 13 (V13 under RAMME-TILLADELSEN — mekanisk klasse: eksisterende åbnings-design ført gennem guards, ingen design-ændring. Verdikter altid på frossen version)
+**Plan-version:** V14 · konvergens-counter: 14 (V14 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V13/runde 22)
+
+- **M-E-B (laesTilstand-body ikke citeret 1:1 for V13-berørt region): ACCEPT — mekanisk.** P7(f) tilføjet: hele `laesTilstand` maskinelt udtrukket 1:1 + diff + BEVARES.
+- **MELLEM (pakke-status stale: 'Næste forventet' pegede to runder bagud; plan-header-branch forkert): ACCEPT — mekanisk.** Status-sed ramte ikke linjen — begge synket; branch-linjen rettet til build-branchen (plan-iteration V8+ sker dér).
 
 ## Kode-fund-håndtering (fra Codex V12/runde 21)
 
@@ -538,6 +543,175 @@ export function decide(tilstand, regler) {
 ```
 
 DIFF (regelbogs-håndhævelsen, design pkt. 11): decide() udvides med ÉN ny regel-klasse: før hver DISPATCH (leverance- og event-vejen) evalueres reglens `betingelser`-felt fra kaede-regler.json mod tilstands-felter (leverance-eksistens m. SHA-binding, hash-match, åbne gates); en manglende betingelse → `{ handling: "BLOKERET", regel, betingelse }` i stedet for DISPATCH (logget, synligt i kæde-issue) — aldrig en advarsel der kan overhøres. Event-routingen får recon-/krav-ok-hash-events fra P7(a). **BEVARES (eksplicit, jf. runde 20-krav):** regel 1 divergens-STOP · regel 2 gate-ord-author-verifikation + Mathias-stop · regel 2b gate-deadlock-fixet (gate-ord FØR pause; GODKENDT/AFVIST løfter; idempotens pr. kommentar-id) · regel 3 transport-commit m. halvskrevet-værn (VENT v. kørsel på spor) · regel 4 AFVENTER-COMMIT (modificeret tracked) + behandlet-idempotens + FUND-GATE→mathias-dispatch m. tidlig retur + ARV-IGNORERET + fail-closed (ukendt type/modtager) + lås-VENT + frossen-SHA-kontekst · regel 5 event-idempotens PR. MODTAGER · INGEN-fallback. Tab af ét uden begrundelse = M-E-B.
+
+(f) **`scripts/kaede/tilstand.mjs:176–337` (`laesTilstand`) — nuværende body 1:1 (maskinelt udtrukket ved V14):**
+
+```js
+export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
+  if (fetch) git(["fetch", "--quiet"], repoRod);
+
+  const branch = git(["branch", "--show-current"], repoRod);
+  const lokalSha = git(["rev-parse", "HEAD"], repoRod);
+  let remoteSha = null;
+  try {
+    remoteSha = git(["rev-parse", `origin/${branch}`], repoRod);
+  } catch {
+    remoteSha = null; // branch endnu ikke pushet — ikke divergens, men observeret
+  }
+
+  const aktivPlanSti = join(repoRod, "docs/coordination/aktiv-plan.md");
+  const marker = existsSync(aktivPlanSti) ? parseAktivMarker(readFileSync(aktivPlanSti, "utf8")) : null;
+
+  // Åbne Mathias-gates (§6.3-to-fil-flow): gate-fil m. "AFVENTER MATHIAS"
+  // pauser sporet (decide regel 1b) indtil Mathias afgør.
+  const gateDir = join(repoRod, "docs/coordination/mathias-gate");
+  const aabneGates = existsSync(gateDir)
+    ? readdirSync(gateDir)
+        .filter((f) => f.endsWith(".md"))
+        .filter((f) => /AFVENTER MATHIAS/.test(readFileSync(join(gateDir, f), "utf8")))
+        .map((f) => `docs/coordination/mathias-gate/${f}`)
+    : [];
+
+  // Leverance-filer: coordination-fladen (untracked = afventer transport-commit)
+  const koordDir = join(repoRod, "docs/coordination");
+  const porcelain = git(["status", "--porcelain", "docs/coordination/"], repoRod).split("\n").filter(Boolean);
+  const untracked = porcelain.filter((l) => l.startsWith("??")).map((l) => l.slice(3).trim());
+  // Modificeret TRACKED fil (Codex runde 13-fund 1): en aktør m. commit-ret er
+  // midt i arbejdet — kuréren committer ALDRIG halvfærdigt arbejde og må ikke
+  // route filen (worktree-tekst + gammel filSha = forkert frossen version).
+  const aendrede = porcelain.filter((l) => !l.startsWith("??")).map((l) => l.slice(3).trim());
+
+  // Leverance-bærere (Codex B1-runde 9-fund 1 — fuld flade):
+  //   codex-reviews/ + plan-feedback/  → Codex'/Claude.ai-rollens leverancer
+  //   rapport-historik/                → slut-rapporter
+  //   <pakke>-status.md                → CODES leverance-bærer (§3.5: status
+  //     opdateres sidst i hver leverance med →NÆSTE-deklaration som sidste
+  //     linje — plan-V<n>/build-batch/slut-rapport routes via den)
+  const aktivPakke =
+    (existsSync(aktivPlanSti) && parseAktivMarker(readFileSync(aktivPlanSti, "utf8"))?.pakke) || "ingen";
+  const leveranceStier = [];
+  for (const dir of ["codex-reviews", "plan-feedback", "rapport-historik"]) {
+    const fuldDir = join(koordDir, dir);
+    if (!existsSync(fuldDir)) continue;
+    for (const fil of readdirSync(fuldDir)) {
+      if (fil.endsWith(".md")) leveranceStier.push(`docs/coordination/${dir}/${fil}`);
+    }
+  }
+  if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-status.md`))) {
+    leveranceStier.push(`docs/coordination/${aktivPakke}-status.md`);
+  }
+
+  // Artefakt-opslag (Codex runde 10-fund 1): status-filen er BÆRER, men
+  // verdiktet skal fryses til ARTEFAKTET. Pr. deklareret type slås artefaktets
+  // egen sidste commit op — den SHA bindes i dispatch-konteksten.
+  function artefaktSha(deklType) {
+    if (aktivPakke === "ingen" || !deklType) return null;
+    if (deklType === "plan-version") return filSha(`docs/coordination/${aktivPakke}-plan.md`, repoRod);
+    if (deklType === "build-batch") return git(["rev-parse", "HEAD"], repoRod); // batch = commit-flade
+    if (deklType === "slut-rapport") {
+      const dir = join(koordDir, "rapport-historik");
+      if (!existsSync(dir)) return null;
+      const fil = readdirSync(dir)
+        .filter((f) => f.endsWith(`-${aktivPakke}.md`))
+        .sort()
+        .at(-1);
+      return fil ? filSha(`docs/coordination/rapport-historik/${fil}`, repoRod) : null;
+    }
+    return null;
+  }
+
+  const leverancer = [];
+  for (const sti of leveranceStier) {
+    const tekst = readFileSync(join(repoRod, sti), "utf8");
+    const erUntracked = untracked.includes(sti);
+    const deklaration = parseDeklaration(tekst);
+    leverancer.push({
+      fil: sti,
+      untracked: erUntracked,
+      aendret: aendrede.includes(sti),
+      // frossen version: artefaktets SHA vinder over bærerens (runde 10-fund 1)
+      sha: erUntracked ? null : (artefaktSha(deklaration?.type) ?? filSha(sti, repoRod)),
+      deklaration,
+      markers: udtraekMarkers(tekst),
+    });
+  }
+
+  // Gate-ord fra kæde-issue (author + kommentar-id følger med — verifikation i decide())
+  let gateOrd = [];
+  if (kaedeIssue) {
+    try {
+      // NB: jq-filteret gives RÅT (Codex runde 9-fund 2: JSON.stringify gjorde
+      // det til streng-literal → gh-fejl → catch → tomme gate-ord, stille).
+      const raw = gh(
+        [
+          "issue",
+          "view",
+          String(kaedeIssue),
+          "--json",
+          "comments",
+          "--jq",
+          ".comments[] | {id: .id, author: .author.login, body: .body}",
+        ],
+        repoRod,
+      );
+      gateOrd = raw
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l))
+        .map((k) => ({ id: k.id, author: k.author, tekst: k.body.trim() }));
+    } catch {
+      gateOrd = []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
+    }
+  }
+
+  // Events: afledte tilstande for den aktive pakke (rå kilder: origin/main + build-PR)
+  const pakke = marker?.pakke ?? "ingen";
+  const reglerSti = join(repoRod, "scripts/kaede/kaede-regler.json");
+  const gateAuthor = JSON.parse(readFileSync(reglerSti, "utf8")).identiteter.gate_author;
+  let events = [];
+  if (pakke !== "ingen") {
+    const mainSha = git(["rev-parse", "origin/main"], repoRod);
+    events = afledEvents({
+      pakke,
+      paaMain: {
+        kravDok: paaOriginMain(`docs/coordination/${pakke}-krav-og-data.md`, repoRod),
+        planFil: paaOriginMain(`docs/coordination/${pakke}-plan.md`, repoRod),
+        rapportFil: false, // rapport-historik/<dato>-<pakke>.md — dato ukendt; afklares ved opslag
+      },
+      buildPr: fetch ? laesBuildPr(pakke, repoRod) : null,
+      gateOrd,
+      gateAuthor,
+      mainSha,
+    });
+    // rapportFil: glob-opslag mod origin/main (dato-præfiks ukendt)
+    try {
+      const rapportFiler = git(
+        ["ls-tree", "--name-only", "origin/main", "docs/coordination/rapport-historik/"],
+        repoRod,
+      );
+      if (rapportFiler.split("\n").some((f) => f.endsWith(`-${pakke}.md`))) {
+        events = events.filter((e) => e.type !== "build-pr-merged");
+      }
+    } catch {
+      /* rapport-historik findes ikke endnu — events står */
+    }
+  }
+
+  const divergens = findDivergens([
+    {
+      felt: `branch-sha (${branch})`,
+      kilder: [
+        { navn: "lokal", vaerdi: lokalSha },
+        { navn: "origin", vaerdi: remoteSha ?? lokalSha }, // upushet branch er ikke uenighed
+      ],
+    },
+  ]);
+
+  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, aabneGates, divergens };
+}
+```
+
+DIFF (V13-guards ført til body-niveau): events-blokkens guard `if (pakke !== "ingen")` → qwers-/åbnings-afledning kører ALTID (stående issue læses uanset markør); pakke-events + pr.-pakke-issue (fra status-filens `Kæde-issue:`-linje, ny parser) kun m. aktiv pakke · gateOrd-læsning: stående issue (kaede_issue) ALTID + pakke-issue når aktiv. **BEVARES:** fetch-flag (--offline), branch/SHA-læsning + divergens-par, aktiv-markør-parsing, åbne-gates-scan (AFVENTER MATHIAS), leverance-bærer-listen (codex-reviews/plan-feedback/rapport-historik/status-fil), untracked/aendrede-porcelain-split, artefaktSha-opslag pr. deklareret type, fail-closed tom gateOrd v. issue-fejl. Tab af ét uden begrundelse = M-E-B.
 
 ## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
 
