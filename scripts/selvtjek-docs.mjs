@@ -2,7 +2,8 @@
 // scripts/selvtjek-docs.mjs — 1a-selvtjek (rette-til 2026-06-11, Mathias-go).
 //
 // Mekanisk konsistens-grep FØR Codex-dispatch på docs-ændringer: udtrækker
-// fakta-tokens (runde-/PR-numre, hashes, tal-fraser) fra diffen mod base og
+// fakta-tokens (PR-numre, hashes, antal-fraser, sammensatte pakke-ankre) fra
+// diffen mod base og
 // viser ALLE forekomster af samme token-klasse i aktive docs — så stale
 // søskende-steder ses på sekunder i stedet for at koste en model-runde.
 //
@@ -33,7 +34,11 @@ const nyeLinjer = diff
   .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
   .map((l) => l.slice(1));
 
-// 2) Token-klasser der historisk drifter (bid 1-evidensen + runde 47-52-klassen)
+// 2) Token-klasser der historisk drifter (bid 1-evidensen + runde 47-52-klassen).
+//    BEVIDST UDELADT: nøgne runde-numre ("runde 46") og nøgne issue-/pakke-navne
+//    ("#126", "gov-5") — funktionel test 2026-06-11 viste at de matcher hundredvis
+//    af legitime historiske omtaler (støj æder signal). ANTAL-fraser ("42
+//    review-runder", "111 selftest") bærer den driftsfølsomme klasse i stedet.
 const KLASSER = [
   { navn: "PR-nr", re: /PR #\d+/g },
   { navn: "kort-hash", re: /\b[0-9a-f]{8,10}\b/g },
