@@ -14,7 +14,8 @@
 # (sidst-matchende vinder). Mathias' gates er ORDENE (krav OK <indholds-hash> /
 # slut OK, author-verificeret i kæden), ikke PR-klikkene — kæden merger aldrig
 # før ordet er registreret; krav-dok kun ved hash-match (regelbogs-betingelse).
-# Konservativt: KUN disse ni mønstre; alt andet (inkl. alt nyt) ejes af default.
+# Konservativt: KUN disse ni mønstre + de tre recon-mønstre i blokken nedenfor
+# (rette-til punkt 1); alt andet (inkl. alt nyt) ejes af default.
 /docs/coordination/aktiv-plan.md
 /docs/coordination/seneste-rapport.md
 /docs/coordination/codex-reviews/
@@ -24,6 +25,15 @@
 docs/coordination/*-status.md
 docs/coordination/*-plan.md
 docs/coordination/*-krav-og-data.md
+
+# Recon-leverancer (rette-til punkt 1, Mathias-go 2026-06-11): kædens
+# transport-PR'er af recon-filer skal kunne merge på grøn CI uden review-klik —
+# ellers falder krav 8's 0-bogførings-klik-kriterium ved første recon-transport
+# (fund 2026-06-11 sen aften: mønstrene matchede INGEN af de ni). Konservativt:
+# KUN disse tre mønstre; alt andet (inkl. alt nyt) ejes fortsat af default.
+docs/coordination/*-recon-kode.md
+docs/coordination/*-recon-research.md
+docs/coordination/*-recon-oplaeg.md
 
 # Låste autoritative dokumenter — eksplicit Mathias-approval (redundant ift. default, men signalværdi)
 /docs/strategi/vision-og-principper.md     @mgrubak
