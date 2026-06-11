@@ -476,7 +476,8 @@ async function main() {
   const argv = process.argv.slice(2);
   const dryRun = argv.includes("--dry-run");
   const offline = argv.includes("--offline"); // sandbox-verifikation: ingen fetch/gh
-  const once = argv.includes("--once") || dryRun;
+  const baseline = argv.includes("--baseline");
+  const once = argv.includes("--once") || dryRun || baseline;
 
   if (existsSync(LAAS_STI)) {
     console.error(`Dirigent kører allerede (${LAAS_STI}) — én instans ad gangen.`);
@@ -487,6 +488,42 @@ async function main() {
 
   const regler = JSON.parse(readFileSync(join(KAEDE_DIR, "kaede-regler.json"), "utf8"));
   mkdirSync(KAEDE_DIR, { recursive: true });
+
+  // Baseline-seeding (Codex runde 32): ved aktivering skrives ALLE eksisterende
+  // committede leverancer + aktuelle events som REGISTRERET/behandlet — ellers
+  // flyder historikken ind som live dispatches. Kør: dirigent.mjs --baseline
+  if (baseline) {
+    const tilstand = laesTilstand({ repoRod: REPO_ROD, kaedeIssue: regler.kaede_issue ?? null, fetch: !offline });
+    let antal = 0;
+    for (const lev of tilstand.leverancer ?? []) {
+      if (lev.untracked || lev.aendret) continue;
+      log({ handling: "REGISTRERET", grund: "baseline-seed", kontekst: { fil: lev.fil, sha: lev.sha ?? "HEAD" } });
+      antal++;
+    }
+    for (const ev of tilstand.events ?? []) {
+      for (const m of regler.events[ev.type] ?? []) {
+        log({
+          handling: "KOERSEL-SLUT",
+          exit: 0,
+          grund: "baseline-seed",
+          aktoer: m.aktoer,
+          kontekst: { event: ev.type, sha: ev.sha ?? "HEAD" },
+        });
+        antal++;
+      }
+    }
+    console.log(`Baseline seedet: ${antal} poster i dispatch-loggen. Kæden kan nu køre live.`);
+    process.exit(0);
+  }
+
+  // Fail-closed live-guard (runde 32): UDEN baseline-log er historikken
+  // u-skelnelig fra nye leverancer — live-kørsel nægtes, ikke advares.
+  if (!dryRun && !existsSync(LOG_STI)) {
+    console.error(
+      "KÆDE-STOP: ingen dispatch-log — kør 'node scripts/kaede/dirigent.mjs --baseline' ved aktivering (baseline-seeding, runde 32).",
+    );
+    process.exit(64);
+  }
 
   const koerende = new Map(); // aktive aktør-kørsler — kilden til decide()'s laase
   let stopSignal = false;
