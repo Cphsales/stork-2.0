@@ -27,3 +27,5 @@
 8. **Beviset:** Gov-6 kører hele kæden igennem som første fulde test, og gov-5's slut-rapport bærer gennemløbet som bevis — pakke-luk efter. Først da er gov-5 leveret.
 
 9. **Den rigtige løsning:** Mathias løser intet undervejs — det er aktørernes analyser der skal finde den rigtige løsning, aldrig den hurtige, nemme eller ligetil. Det gælder alt i pakken: hvordan kæden vækkes, hvordan aktørerne deler, hvordan en pakke åbnes, hvordan planer lægges og valideres. Tavlen viskes ren ved hvert valg: formålet afgør designet, ikke hvordan det kører i dag. Mathias' billeder af det (én prompt — alle i gang — ét samlet svar; ambitiøse planer; løbende validering) er retningen der tænkes mod, ikke en facitliste.
+
+<!-- 11b-bevis-case (d): test-PR per gov-4 #111-mønster — lukkes efter read-back -->
