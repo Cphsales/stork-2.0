@@ -94,7 +94,7 @@ for (const [token, klasse] of [...tokens.entries()].sort()) {
   // Runde 12-fund (ACCEPT): fil-niveau-ekskludering skjulte søskende i samme
   // fil uden for diff-hunks — vis ALLE hits, markér blot diff-filer.
   if (hits.length > 0) {
-    fundISøskende++;
+    if (hits.some((h) => !iDiffFil(h))) fundISøskende++;
     console.log(`\n■ [${klasse}] "${token}" forekommer i:`);
     for (const h of hits)
       console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
@@ -109,6 +109,6 @@ function iDiffFil(hit) {
 console.log(
   fundISøskende === 0
     ? "\nselvtjek-docs: ingen søskende-forekomster uden for diffen."
-    : `\nselvtjek-docs: ${fundISøskende} token(s) har forekomster UDEN FOR diffen — verificér at de stadig er sande (D4-læringen). Advisory: gaten er Codex.`,
+    : `\nselvtjek-docs: ${fundISøskende} token(s) har forekomster i filer UDEN FOR diffen — verificér at de stadig er sande (D4-læringen). Advisory: gaten er Codex.`,
 );
 process.exit(0);
