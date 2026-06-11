@@ -1,10 +1,15 @@
-# gov-5-automation — Plan V15
+# gov-5-automation — Plan V16
 
 **Branch:** claude/gov-5-automation-build (plan-iteration V8+ sker på build-branchen — V14-stale-fix, runde 22)
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V15 · konvergens-counter: 15 (V15 under RAMME-TILLADELSEN — mekanisk klasse: eksplicitering af praktiseret mønster + tabel-synk. Verdikter altid på frossen version)
+**Plan-version:** V16 · konvergens-counter: 16 (V16 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V15/runde 24)
+
+- **KRITISK (selvtjek ikke ført ind i P7(e)'s regel 3-diff): ACCEPT — mekanisk.** P7(e)-diffen udvidet: regel 3 (transport-commit-vejen) evaluerer typens selvtjek-liste FØR frys — PASS → TRANSPORT-COMMIT · FEJL → `{ handling: "SELVTJEK-FEJL", fil, tjek }` + dispatch af AFSENDER-aktøren m. fejl-kontekst (ny kørsel); ingen frys, ingen videre routing. Rækkefølge bevaret: halvskrevet-værnet (kørsel på spor → VENT) evalueres FØR selvtjek (en fil under skrivning selvtjekkes ikke).
+- **MELLEM (status 'Næste forventet' stale igen): ACCEPT — synket.** Klassen er nu selv et argument for selvtjekkets `tal-mod-virkelighed` (status-filen bliver selvtjek-omfattet leverance-type).
 
 ## Kode-fund-håndtering (fra Codex V14/runde 23)
 
@@ -553,7 +558,7 @@ export function decide(tilstand, regler) {
 }
 ```
 
-DIFF (regelbogs-håndhævelsen, design pkt. 11): decide() udvides med ÉN ny regel-klasse: før hver DISPATCH (leverance- og event-vejen) evalueres reglens `betingelser`-felt fra kaede-regler.json mod tilstands-felter (leverance-eksistens m. SHA-binding, hash-match, åbne gates); en manglende betingelse → `{ handling: "BLOKERET", regel, betingelse }` i stedet for DISPATCH (logget, synligt i kæde-issue) — aldrig en advarsel der kan overhøres. Event-routingen får recon-/krav-ok-hash-events fra P7(a). **BEVARES (eksplicit, jf. runde 20-krav):** regel 1 divergens-STOP · regel 2 gate-ord-author-verifikation + Mathias-stop · regel 2b gate-deadlock-fixet (gate-ord FØR pause; GODKENDT/AFVIST løfter; idempotens pr. kommentar-id) · regel 3 transport-commit m. halvskrevet-værn (VENT v. kørsel på spor) · regel 4 AFVENTER-COMMIT (modificeret tracked) + behandlet-idempotens + FUND-GATE→mathias-dispatch m. tidlig retur + ARV-IGNORERET + fail-closed (ukendt type/modtager) + lås-VENT + frossen-SHA-kontekst · regel 5 event-idempotens PR. MODTAGER · INGEN-fallback. Tab af ét uden begrundelse = M-E-B.
+DIFF (regelbogs-håndhævelsen, design pkt. 11): decide() udvides med ÉN ny regel-klasse: før hver DISPATCH (leverance- og event-vejen) evalueres reglens `betingelser`-felt fra kaede-regler.json mod tilstands-felter (leverance-eksistens m. SHA-binding, hash-match, åbne gates); en manglende betingelse → `{ handling: "BLOKERET", regel, betingelse }` i stedet for DISPATCH (logget, synligt i kæde-issue) — aldrig en advarsel der kan overhøres. **V16-udvidelse (runde 24):** regel 3 (untracked → TRANSPORT-COMMIT) udvides: typens `selvtjek`-liste evalueres FØR frys — PASS → TRANSPORT-COMMIT · FEJL → `{ handling: "SELVTJEK-FEJL", fil, tjek }` + DISPATCH af afsender-aktøren m. fejl-kontekst; ingen frys. Halvskrevet-værnet (VENT v. kørsel på spor) evalueres FØR selvtjek. Event-routingen får recon-/krav-ok-hash-events fra P7(a). **BEVARES (eksplicit, jf. runde 20-krav):** regel 1 divergens-STOP · regel 2 gate-ord-author-verifikation + Mathias-stop · regel 2b gate-deadlock-fixet (gate-ord FØR pause; GODKENDT/AFVIST løfter; idempotens pr. kommentar-id) · regel 3 transport-commit m. halvskrevet-værn (VENT v. kørsel på spor) · regel 4 AFVENTER-COMMIT (modificeret tracked) + behandlet-idempotens + FUND-GATE→mathias-dispatch m. tidlig retur + ARV-IGNORERET + fail-closed (ukendt type/modtager) + lås-VENT + frossen-SHA-kontekst · regel 5 event-idempotens PR. MODTAGER · INGEN-fallback. Tab af ét uden begrundelse = M-E-B.
 
 (f) **`scripts/kaede/tilstand.mjs:176–337` (`laesTilstand`) — nuværende body 1:1 (maskinelt udtrukket ved V14):**
 
