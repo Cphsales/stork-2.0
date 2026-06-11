@@ -279,8 +279,8 @@ FASE: $PHASE
 $FORMAAL_LINE
 
 Review-fokus (§9.3): patch-først (§3.1) · end-to-end-spor (§3.3) ·
-state-dump matcher faktisk state (§3.2) · krav-dok-konsistens uden
-scope-creep · vision/forretningsforstaaelse-modsigelse ·
+state-dump matcher faktisk state (§3.2) · FULDSTÆNDIGHED mod krav-dok (hver krav-sætning realiseret
+eller eksplicit begrundet afgrænset — undladelse er et fund, TILLÆG 5a); ingen scope-creep · vision/forretningsforstaaelse-modsigelse ·
 MANGLENDE-EKSISTERENDE-BEVARELSE.
 
 Format pr. fund:
