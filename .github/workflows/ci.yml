@@ -1,5 +1,14 @@
 name: CI
 
+# Rette-til 2026-06-11 (Mathias-go, 1b+1d): trappe + split.
+# - 1b CI-trappe: ren docs-diff (kun *.md under docs/) springer kode- og
+#   DB-jobs over — format/governance kører ALTID (kvalitets-hegnet: samme
+#   checks, anden orkestrering; klassifikationen er mekanisk afgørbar).
+# - 1d split: tre parallelle jobs (vægtid = max, ikke sum).
+# - Aggregatoren bærer det HISTORISKE check-navn "Lint, typecheck, test, build"
+#   så gov-4-branch-protection (required check) består URØRT — intet
+#   admin-indgreb (M2 i rette-til-oplægget).
+
 on:
   pull_request:
     branches: [main]
@@ -11,79 +20,146 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
-    name: Lint, typecheck, test, build
+  klassificer:
+    name: Klassificér diff (docs-only?)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.tjek.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: "Mekanisk docs-only-tjek (konservativ — tom/ukendt diff = IKKE docs-only)"
+        id: tjek
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --quiet origin "${{ github.base_ref }}"
+            BASE="origin/${{ github.base_ref }}"
+            FILER=$(git diff --name-only "$BASE"...HEAD)
+          else
+            FILER=$(git diff --name-only "${{ github.event.before }}" HEAD 2>/dev/null || echo "UKENDT")
+          fi
+          if [ -z "$FILER" ] || echo "$FILER" | grep -qvE '^docs/.*\.md$'; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Ændrede filer:"; echo "$FILER"
+
+  kode:
+    name: Kode (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: klassificer
+    if: needs.klassificer.outputs.docs_only != 'true'
+    env:
+      HUSKY: "0"
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: ESLint
+        run: pnpm lint
+      - name: TypeScript
+        run: pnpm typecheck
+      - name: Vitest
+        run: pnpm test
+      - name: Build
+        run: pnpm build
+
+  governance:
+    name: Governance (format, gates, selftests)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       HUSKY: "0"
       TURBO_TELEMETRY_DISABLED: "1"
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
+      - run: pnpm install --frozen-lockfile
       - name: Prettier check
         run: pnpm format:check
-
-      - name: ESLint
-        run: pnpm lint
-
-      - name: TypeScript
-        run: pnpm typecheck
-
-      - name: Vitest
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
-
       - name: Migration-gate (Phase 2 strict)
         env:
           MIGRATION_GATE_STRICT: "true"
         run: pnpm migration:check
-
       - name: Fitness functions
         run: pnpm fitness
-
       - name: Fitness selftest (§3-checks negativ-test)
         run: pnpm fitness:selftest
-
       - name: Governance check (lag-1 spærhage)
         run: pnpm governance:check
-
       - name: Governance selftest
         run: pnpm governance:selftest
-
       - name: Kæde selftest (gov-5 kurér-kerne)
         run: pnpm kaede:selftest
 
+  db:
+    name: DB (types, schema, db-tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: klassificer
+    if: needs.klassificer.outputs.docs_only != 'true'
+    env:
+      HUSKY: "0"
+      TURBO_TELEMETRY_DISABLED: "1"
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
-
       - name: Types drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm types:check
-
       - name: Schema drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm schema:check
-
       - name: DB tests
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm db:test
+
+  ci:
+    # Aggregator — bærer det required-check-navn gov-4-protection kræver.
+    # skipped (docs-only-trappen) tæller som OK; failure/cancelled gør ikke.
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [klassificer, kode, governance, db]
+    if: always()
+    steps:
+      - name: Saml verdikt
+        run: |
+          ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
+          echo "klassificer: ${{ needs.klassificer.result }}"
+          echo "kode:        ${{ needs.kode.result }}"
+          echo "governance:  ${{ needs.governance.result }}"
+          echo "db:          ${{ needs.db.result }}"
+          [ "${{ needs.klassificer.result }}" = "success" ] || { echo "klassificer fejlede"; exit 1; }
+          [ "${{ needs.governance.result }}" = "success" ] || { echo "governance fejlede"; exit 1; }
+          ok "${{ needs.kode.result }}" || { echo "kode fejlede"; exit 1; }
+          ok "${{ needs.db.result }}" || { echo "db fejlede"; exit 1; }
+          echo "CI grøn (docs_only=${{ needs.klassificer.outputs.docs_only }})"
