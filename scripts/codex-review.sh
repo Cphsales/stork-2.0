@@ -3,7 +3,7 @@
 # Wrapper for Codex CLI review-runder — V5 (disciplin.md §5 severities + §6.1 halt-markers).
 #
 # Brug:
-#   scripts/codex-review.sh <plan-fil> <runde-N> [--xhigh|--quick] [--phase=plan|build|slut-rapport]
+#   scripts/codex-review.sh <fil> <runde-N> [--xhigh|--quick] [--phase=plan|build|slut-rapport|docs]
 #   scripts/codex-review.sh --parse-test
 #
 # Defaults: xhigh + fast_mode + timeout 480s + file-reference prompt.
@@ -243,7 +243,8 @@ case "$PHASE" in
   plan)         OUTPUT_DIR="docs/coordination/codex-reviews" ;;
   build)        OUTPUT_DIR="docs/coordination/codex-reviews" ;;
   slut-rapport) OUTPUT_DIR="docs/coordination/codex-reviews" ;;
-  *) echo "❌ Ukendt --phase: $PHASE (forventet: plan|build|slut-rapport)" >&2; exit 64 ;;
+  docs)         OUTPUT_DIR="docs/coordination/codex-reviews" ;;
+  *) echo "❌ Ukendt --phase: $PHASE (forventet: plan|build|slut-rapport|docs)" >&2; exit 64 ;;
 esac
 
 mkdir -p "$OUTPUT_DIR"
@@ -260,6 +261,11 @@ case "$PHASE" in
     ;;
   slut-rapport)
     FORMAAL_LINE='FORMÅL (slut-rapport-fase): Verificér at slut-rapporten reflekterer faktisk leverance, plan-afvigelser ærligt, og leverance-tabel mod krav-dok + Stork-invariant-tjek (disciplin §10.3) korrekt.'
+    ;;
+  docs)
+    # Docs-§8.1-klassen (gov-5 P4, recon E.5): ren docs-ændring kræver §8.1-svar
+    # — IKKE plan-skabelon-tjek (kategori-artefakt-klassen elimineret).
+    FORMAAL_LINE='FORMÅL (docs-§8.1-klassen, Review-klassifikation 2026-06-10): Reviewet gælder en REN DOCS-ÆNDRING — IKKE en plan. Tjek IKKE plan-skabelon/§3.1-§3.3-sektioner. Tjek: (1) prosa-modsigelse mod begreber andre governance-docs ejer (owns-markører), (2) interne selvmodsigelser og stale påstande i diffen, (3) at evt. ordret-løfter i dokumentet holder mod kilderne. Afslut ALTID med §8.1-SVAR-markøren.'
     ;;
 esac
 

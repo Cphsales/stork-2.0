@@ -2,7 +2,7 @@
   "version": 2,
   "kommentar": "Kædens deklarative routing (gov-5, plan V21 — P7-event-rework). Kuréren læser KUN denne tabel + aktørernes deklarationer — den har ingen egen dagsorden. Ændringer til denne fil er en Mathias-beslutning (CODEOWNERS default-own).",
   "poll_interval_sekunder": 60,
-  "kaede_issue": null,
+  "kaede_issue": 126,
   "kaede_issue_kommentar": "STÅENDE dirigent-issue (V13): ét issue på tværs af pakker, bærer qwers-åbnings-ord; læses ALTID — også ved aktiv-pakke: ingen. Sættes ved B3-leverancen. null = åbningsflade ikke etableret → kæden kan ikke åbne pakker (fail-closed, manuelt flow). Pr.-pakke kæde-issue bæres af pakke-status-filens 'Kæde-issue: #N'-linje.",
   "identiteter": {
     "gate_author": "mgrubak",
