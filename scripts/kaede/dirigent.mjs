@@ -408,7 +408,10 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
         // DISPATCH-loggen er FORSØG — behandlet-status bæres ALENE af
         // KOERSEL-SLUT m. exit 0 (Codex B1-fund 1).
         const noegle = `${h.aktoer}::${h.kontekst.spor}`;
-        const child = spawn("bash", [adapterSti], {
+        // Dispatch pr. filtype (Codex runde 35: mathias.mjs er Node/ESM —
+        // bash-spawn gav syntaksfejl før mobilfladen overhovedet ramtes).
+        const fortolker = adapterSti.endsWith(".mjs") ? process.execPath : "bash";
+        const child = spawn(fortolker, [adapterSti], {
           cwd: REPO_ROD,
           stdio: ["ignore", "inherit", "inherit"],
           env: {

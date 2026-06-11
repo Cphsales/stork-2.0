@@ -667,6 +667,10 @@ check(
   stub("a.sh");
   stub("b.sh");
   writeFileSync(join(TMP, "fejl.sh"), "#!/bin/bash\nexit 7\n");
+  writeFileSync(
+    join(TMP, "node-adapter.mjs"),
+    `import { writeFileSync } from "node:fs";\nwriteFileSync("${TMP}/mjs-koerte", "ok");\n`,
+  );
 
   const koerende = new Map();
   const dispatches = [
@@ -707,6 +711,21 @@ check(
   );
   await Promise.all([...koerende.values()].map((k) => k.faerdig));
   check("adapter exit ≠ 0 → onStop kaldt (KAEDE-STOP, ingen stille videre)", stoppet);
+  // .mjs-adapter dispatches via node (Codex runde 35: mathias.mjs er ESM)
+  udfoer(
+    [
+      {
+        handling: "DISPATCH",
+        aktoer: "mathias",
+        opgave: "t",
+        adapter: "scripts/kaede/.selftest-tmp/node-adapter.mjs",
+        kontekst: { fil: "m", sha: "s", spor: "test" },
+      },
+    ],
+    { koerende },
+  );
+  await Promise.all([...koerende.values()].map((k) => k.faerdig));
+  check(".mjs-adapter eksekveres via node, ikke bash (runde 35)", existsSync(join(TMP, "mjs-koerte")));
   const logLinjer = readFileSync(LOG, "utf8")
     .split("\n")
     .filter(Boolean)

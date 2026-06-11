@@ -1,6 +1,6 @@
 # gov-5-automation — Pakke-status
 
-**Sidste handling:** B2-fixup (Codex runde 34, begge KRITISK ACCEPT): verdikt-exits (1-4) er leverancer, ikke runtime-fejl (koer_review-skel i codex.sh) · åbnings-anker: qwers-båret pakke fra stående issue ankrer recon-scan/fakta/pakke-issue FØR markør-flip (effectivePakke) + recon-events bærer pakke-feltet. Codex runde 35 dispatchet.
+**Sidste handling:** B2-fixup 2 (Codex runde 35 KRITISK ACCEPT + ærligheds-MELLEM): .mjs-adapters dispatches via node (mathias.mjs var u-eksekverbar — runde 34 havde TRE fund; min tail-12 klippede det tredje, rapporterings-fejl rettet: fuld output læses nu) + selftest-case for node-dispatch. Codex runde 36 dispatchet.
 **Næste forventet:** Codex runde 35 → B3 (stående issue + dry-run-gennemløb + live led) → B4 → B5 + slut-rapport v1.
 **Konvergens-counter:** 21 (afsluttet m. APPROVAL runde 30)
 **Blocker:** ingen — 13a udført, prefix synket.
