@@ -7,9 +7,12 @@ Branch-bevidst git-sync før hver trigger (disciplin §13).
 
 - Commits/PR'er: forfattes som `stork-code-bot` (aktiv gh-konto, write — aldrig admin).
 - Approvals/code owner: `@mgrubak` (Mathias' personlige konto — kun browser/hans hånd).
-- Merge (konvention efter #112, Mathias-besluttet): mgrubak-approval er gaten;
-  Code merger derefter (rebase) — protection-kravene bærer kontrollen, ikke
-  merge-klikket. Merge må ALDRIG ske uden registreret approval.
+- Merge (gov-5-gate-model, Mathias-ratificeret 2026-06-11): mgrubak-approval er
+  gaten på BESLUTNINGS-STI-PR'er (CODEOWNERS default-own); rolle-validerede
+  PR'er (de ni bogførings-mønstre) merger på grøn CI + kædens discipliner —
+  Mathias' gates er ORDENE (krav OK <hash>/slut OK, author-verificeret), ikke
+  klikkene; kæden merger aldrig før ordet er registreret. Protection: required
+  CI + code-owner-review (gov-4) består; approvals-count 0 (gov-5/13b).
 - Protection-/admin-API-kald: det fælles admin-login, KUN på eksplicit Mathias-mandat,
   switch tilbage til bot umiddelbart efter.
 - Tjek aktiv konto med `gh auth status` ved tvivl; antag bot som default.

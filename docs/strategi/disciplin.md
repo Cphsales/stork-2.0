@@ -30,22 +30,31 @@
 Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 ```
-0. Pakke-åbning (Mathias)
+0. Pakke-åbning (Mathias: qwers — kæden IGANGSÆTTES)
    ↓
-1. Krav-dok (Mathias → Claude.ai-typist, proaktiv recon; Mathias validerer)   ← gate: "krav OK"
+0.5 Recon (kæde-båret: Code + Codex parallelt på nuværende kode →
+    Claude.ai-rollens syntese-oplæg → Mathias notificeres)
+   ↓
+1. Krav-dok-DIALOG (Mathias ↔ Claude.ai — kontrolposten, automatiseres ALDRIG;
+   recon informerer dialogen, fodrer ikke krav-dok)            ← gate: "krav OK <indholds-hash>"
    ↓
 2. Plan (Code + Codex parallel; skitse → størrelses-tjek → fuld plan eller split)
    ↓
-3. qwerg approval (Mathias)                                                    ← gate: "qwerg"
+3. Rolle-godkendelse (Codex-APPROVAL → Claude.ai krav-troskabs-PASS — begge
+   SHA-bundet til frossen plan; fund-gates til Mathias når afgørelsen er hans)
    ↓
-4. Build (Code batches; Codex per-batch; end-to-end-konsistens per batch)
+4. Build (Code batches; Codex per-batch; selvtjek før frys; end-to-end-konsistens)
    ↓
-5. Slut-rapport (Code skriver; Claude.ai-review FØR merge)                     ← gate: "slut OK"
+5. Slut-rapport (Code skriver; Claude.ai-rolle-review FØR merge)               ← gate: "slut OK"
 ```
 
-Tre gates kræver Mathias: `krav OK`, `qwerg`, `slut OK`. Trin 2 og 4 er hvor det meste arbejde sker.
+To ubetingede Mathias-gates: `krav OK` (m. indholds-hash — kæden merger beviseligt
+det validerede) og `slut OK`. Betingede fund-gates + beslutnings-sti-review når
+afgørelsen er hans (Mathias-flade-modellen, gov-5). Trin 2 og 4 er hvor det meste
+arbejde sker. Gate-ord er author-verificerede (kun mgrubak); ordene er gaterne —
+klikkene er bogføring.
 
-> **Automation-tilstand (Codes kortlægning, juni 2026 — Codes bord):** Der er **ingen notify-automation, ingen Codex-runner og intet auto-merge-workflow** (codex-notify + tracker-issue #12 nedlagt 2026-06-10 som død kanal — trigger-flade-arven ligger i git-history som gov-5-input). Codex-review dispatches via `scripts/codex-review.sh`. Merge-konvention (efter gov-4/PR #112, Mathias-besluttet): mgrubak-approval er gaten; Code merger derefter (rebase) — protection-kravene (required CI + code-owner-review) bærer kontrollen, ikke merge-klikket. Flowet ovenfor er mål-tilstanden — gates der hviler på auto-merge er ikke aktive endnu. Denne fil påstår ikke en automation der ikke kører.
+> **Automation-tilstand (gov-5, 2026-06-11 — Codes bord):** Kæden kører via `scripts/kaede/` — kurér (dirigent), deklarativ regelbog (kaede-regler.json), fire aktør-adapters og Mathias' mobilflade (stående dirigent-issue #126 til qwers-åbning + pr.-pakke kæde-issue til gate-ord). Vækningsretten ligger hos aktørerne (→NÆSTE-deklarationer + type-inferens); kuréren er transport, aldrig dømmekraft; regelbogs-betingelser håndhæves mekanisk (BLOKERET, aldrig advarsel); selvtjek kører før hver frys. Merge-konvention: rolle-validerede PR'er (bogførings-stier) merger på grøn CI; PR'er der rører Mathias' beslutnings-stier kræver hans code-owner-review (gov-4-protection består: required CI + code-owner-review; approvals-count 0 pr. gov-5/13b). Manuelt flow består som dokumenteret fallback: stop kuréren (systemctl --user stop stork-kaede), og tilstanden ER det manuelle flow. Denne fil påstår ikke en automation der ikke kører — kæden bevises i gov-6 (krav 8).
 
 ### Step 0 — Pakke-åbning
 
@@ -64,9 +73,14 @@ Claude.ai skriver `docs/coordination/<pakke>-krav-og-data.md` fra Mathias' chat-
 **2.0 skitse + størrelse:** 1-5 migrations → fuld V1. 6+ → STOP, split-forslag (krav-dok forbliver ÉT dok, implementation splittes over pakker).
 **2.1 fuld plan (Code+Codex parallel fra V1):** Code skriver V<n>; Codex laver parallel kode-research. Code håndterer hvert KODE-FUND eksplicit i V<n+1> (ADRESSERET / AFVIST fordi Y). Stop: Codex APPROVAL + "INGEN NYE FUND".
 
-### Step 3 — qwerg
+### Step 3 — Rolle-godkendelse (qwerg udgået som ubetinget led, gov-5)
 
-Mathias paster `qwerg` når Codex har approved OG Mathias selv har læst igennem. Claude.ai leverer qwerg-gate-pakken til Mathias' gennemlæsning (§9.1 gate-hjælp).
+Planen er godkendt når Codex har leveret APPROVAL OG Claude.ai-rollen har leveret
+krav-troskabs-PASS (sætning-for-sætning mod krav-dok) — begge bundet til den frosne
+plan-SHA og håndhævet som regelbogs-betingelser for build-start. Fund der er
+Mathias' (NEEDS-MATHIAS, formåls-tvivl, plan-afvigelse) går til fund-gate på hans
+mobilflade; Claude.ai-rollen leverer gate-pakken (§9.1 gate-hjælp). Mathias kan
+altid gribe ind (suverænitet) — men kæden venter ikke ubetinget på ham.
 
 **Forudsætning — fundament-validering (grøn før qwerg):** planen skal stå på mål med vision + forretningsforstaaelse. Almindelig plan bekræfter "ingen forretnings-intentions-ændring" (Doc-currency A, §10.2). Plan der ændrer intention: fundament-doc'en reconciles først gennem §8.1-gaten + Mathias' CODEOWNERS — FØR qwerg. Modsigelses-konsekvens per §8 (vision LÅST = STOP). En plan godkendes ikke stående på fundament den modsiger.
 
@@ -175,9 +189,9 @@ Hver severity bærer funktion — de kollapses ikke. (MANGLENDE-EKSISTERENDE-BEV
 
 `BRUD-PAA-KRAV` → Step 1 · `TEKNISK-BLOKERING` → Step 2 / Mathias · `PLAN-AFVIGELSE` → Step 2 / Mathias · `KRITISK-SIKKERHEDSHUL` → fix samme batch / Mathias · `WORKAROUND-INTRODUCERET` → mathias-gate · `STOP-FOR-CLARIFICATION` → gate-fil.
 
-### 6.2 Automation (Codes bord — tilstand: notify-only)
+### 6.2 Automation (Codes bord — kæde-kurér, gov-5)
 
-Ingen notify-automation: `codex-notify.yml` + tracker-issue #12 er nedlagt (2026-06-10, GitHub-flade-renhed — kanalen havde ingen modtager; trigger-fladerne aktiv-plan/seneste-rapport/build-branch/slut-rapport-PR er gov-5-input, bevaret i git-history). Codex dispatches via `scripts/codex-review.sh`. Mål-tilstand (skal bygges, Codes bord — samlet i gov-5-automation): plan-branch-trigger, Codex-runner, auto-merge-flow ved grøn CI + godkendelse. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations (tracker-kvitterings-steps fjernet med kanalen; deploy-status ses i Actions).
+Kæden bor i `scripts/kaede/`: **kurér** (dirigent.mjs — poll-baseret tilstandslæsning, parallel dispatch m. lås pr. aktør/spor, transport-commit af aktør-leverancer ORDRET, dispatch-log) · **regelbog** (kaede-regler.json — leverance-typer m. afsender/modtager/selvtjek, events, tilstands-betingelser pr. opgave) · **adapters** (code/codex/claude-ai-rolle/mathias — rollernes egne §9-instrukser; dømmekraften bor i aktørerne) · **selvtjek** før hver frys (ordret-diff, tal-mod-virkelighed, konsistens-grep — fejl = ingen frys, SELVTJEK-FEJL til afsenderen). Mathias' mobilflade: stående dirigent-issue (qwers-åbning) + pr.-pakke kæde-issue (gate-ord, author-verificeret: krav OK \<hash\>, slut OK, GODKENDT/AFVIST, stop). Fail-closed hele vejen: divergens-STOP, baseline-guard, åben-gate-pause, ukendt type/modtager/event → KAEDE-STOP. Hosting: systemd-user-unit + preflight (verificér-før-tillid). Fallback (krav 7): stop kuréren — manuelt flow består. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations (deploy-status ses i Actions).
 
 ### 6.3 Mathias-gate to-fil-flow
 
@@ -257,12 +271,14 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
   **MÅ IKKE:** tekniske beslutninger · krav-dok-påstande uden Mathias-kilde · kode-vurdering (Codex' bord) · datamodel-design (Code's bord) · skrive "afgørelser" · påstå at noget ER bygget når et dokument kun siger det SKAL bygges (→ "ikke verificeret, Codes bord").
   **Triggers:** `qwers` → bekræft rolle · `qwers <pakke>` → bekræft + proaktiv kontekst-recon STRENGT i forretnings-sprog (læs forretningsforstaaelse + evt. vision + søg rapport-historik; output: "det vi har" + targeted spørgsmål + scope-forslag; FORBUDT: tabel/kolonne/RPC-navne) · `qwerr` → slut-rapport-review.
 
+**Kæde-leverancer (gov-5 — rollen vækkes headless via claude-ai-rolle-adapteren; Windows-appen består til dialogen med Mathias):** fire vækbare leverancer — recon-syntese (oplæg til Mathias efter begge kode-recon-docs) · **krav-troskabs-tjek** (obligatorisk plan-led efter Codex-APPROVAL: krav-dok SÆTNING FOR SÆTNING mod frossen plan → PASS/FEEDBACK, SHA-bundet build-betingelse) · slut-rapport-review · fund-gate-pakker. Instruksen (`scripts/kaede/claude-ai-rolle-instruks.md`) bærer gate-læringerne bindende: formålet læses FØRST; kravets MENING, ikke ord-match; grundlags-deklaration; aldrig fuldstændigheds-garantier; stikprøver flages. NB: dette OMGØR ærligt V2-beslutningen fra maj 2026 (Claude.ai ude af plan-fasen) — laget der fangede begge gov-5-afvigelser er genindsat, automatiseret (krav 6: rollernes validering uændret og altid fuld; kun hvornår Mathias' klik kræves ændres).
+
 ### §9.2 Code
 
 **Rolle:** builder.
 **MÅ:** vælge tekniske løsninger inden for godkendt plan · PUSHBACK med teknisk grund · stoppe ved blokering og lave gate-fil.
 **MÅ IKKE:** forretnings-afgørelser · udvide scope uden plan-revurdering · afvige fra krav-dok-leverance uden gate · genfortolke eksisterende funktioner uden patch-først (§3.1) · ændre formål (§3.0) · formulere stamme-doc-ændringer (committer kun Mathias-godkendt indhold ordret, §8.1 forfatterregel).
-**Triggers:** `qwers` → bekræft · `qwerr` → læs pakke-status + udfør næste · `qwerg` → byg.
+**Triggers:** `qwers` → bekræft · `qwerr` → læs pakke-status + udfør næste · `qwerg` (manuelt flow) → byg; i kæden starter build automatisk når Codex-APPROVAL + troskabs-PASS er SHA-bundet verificeret (regelbogs-betingelse).
 **Plan-disciplin:** DB-state-dump (§3.2) · patch-først (§3.1) · end-to-end-spor (§3.3) · pre-push-tjekliste (formål matcher krav-dok, alle leverancer dækket, body-sektioner udfyldt).
 
 ### §9.3 Codex
@@ -270,7 +286,7 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 **Rolle:** uafhængig kode-reviewer, read-only.
 **MÅ:** flage alt tvivlsomt på kode-niveau · foreslå OPGRADERING · bestride "kompromis" som mulig drift.
 **MÅ IKKE:** skrive kode · beslutte · holde "nok OK" tilbage · acceptere "kendt gæld" uden G-nummer · eskalere alt til NEEDS-MATHIAS som flugt.
-**Plan-review-fokus (dækker den gamle fire-dok-konsultations substans):** patch-først korrekt? · end-to-end-spor alle 5? · DB-state-dump matcher faktisk state? · G/H-opslag dækkende (åbne G/H med Løses-i i pakkens scope håndteret eksplicit, §3.2)? · krav-dok-konsistens uden scope-creep? · vision + forretningsforstaaelse-modsigelse? **Approval:** APPROVAL eller FEEDBACK (undtagelse: APPROVAL + OPGRADERING). Kun Codex-approval kræves for plan.
+**Plan-review-fokus (dækker den gamle fire-dok-konsultations substans):** patch-først korrekt? · end-to-end-spor alle 5? · DB-state-dump matcher faktisk state? · G/H-opslag dækkende (åbne G/H med Løses-i i pakkens scope håndteret eksplicit, §3.2)? · FULDSTÆNDIGHED mod krav-dok (hver krav-sætning realiseret eller eksplicit begrundet afgrænset — undladelse er et fund, TILLÆG 5a 2026-06-11)? Ingen scope-creep? · vision + forretningsforstaaelse-modsigelse? **Approval:** APPROVAL eller FEEDBACK (undtagelse: APPROVAL + OPGRADERING). Kun Codex-approval kræves for plan.
 
 ---
 
@@ -351,11 +367,11 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 
 ## Doc-currency
 
-**A. Fundament-validering (FØR qwerg — jf. §2 Step 3):**
+**A. Fundament-validering (FØR rolle-godkendelse — jf. §2 Step 3):**
 Står planen på mål med vision + forretningsforstaaelse?
 
 - Ingen intent-ændring: "verificeret current pr. <hash>".
-- Intent-ændring: hvilken fundament-doc reconciles gennem §8.1-gate FØR qwerg.
+- Intent-ændring: hvilken fundament-doc reconciles gennem §8.1-gate FØR rolle-godkendelse.
 
 **B. Status-opdatering (committes MED merge-commit, ikke ved Step 5-review):**
 Eksplicit verdikt pr. række — ingen tom:
@@ -479,9 +495,8 @@ Adoption af denne fil er første skridt, ikke hele V5. Udestår:
 
 - **Docs-oprydning (Claude.ai's bord):** fold arkivet til git-history (gov-6).
 - **Master-plan (Claude.ai's bord):** afklar om Appendix C's rettelses-historik hører i planen eller i historik.
-- **Fundament + spærhager (Codes bord):** Codex-runner + auto-merge + plan-branch-trigger (gov-5). (gov-3 CI-blockers fuldt færdig — G065 lukket i gov-3b-3b. gov-4 branch protection fuldt aktiv 2026-06-10: required CI-check + required code-owner-review.)
 
-Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)** · **gov-docs-housekeeping (krav-dok-familie, PR #94 merged)** · **gov-3a (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95 merged)** · **gov-3b-1 (#19 FK-dækning + #6 indeks-pr-policy, PR #96 merged)** · **gov-3b-2 (#10 SECDEF-markør-disciplin, PR #101 merged)** · **gov-3b-3a (#18 del 1: 9 INVOKER→SECDEF, PR #103 merged)** · **gov-3b-3b (#18 del 2 + REVOKE + G065 LØST, PR #105 merged)** · **gov-docs-renhed (docs-renhed + allowlist-split + structural-chain + §8.1-SVAR-markør, PR #108 merged)** · **gov-disciplin-3-regler (suverænitet + forfatterregel + gate-hjælp, PR #109 merged)** · **gov-4 (branch protection fuldt aktiv: required CI + code-owner-review; H026 løst m. tre-konto-struktur; G061 LØST, PR #110 merged)**.
+Gjort i V5-adoptionen: disciplin.md = V5 · vision renset for roller · seneste-rapport-pointer rettet · skill flyttet til docs/claude-ai/ (tombstone `git rm`'et) · Appendix A 4-dim markeret superseded · LÆSEFØLGE opdateret · `codex-notify.yml` handoff-refs rettet til §9.1/§9.3. · **gov-1 (repo↔DB-paritet, PR #92 merged)** · **gov-2 (mekanisk spærhage + owns-register + §8.1 Codex-mandat + H-hjem `huskeliste.md`, PR #93 merged)** · **gov-docs-housekeeping (krav-dok-familie, PR #94 merged)** · **gov-3a (4 §3-checks #4/#7/#16/#17 + zone-§3-fjernelse, PR #95 merged)** · **gov-3b-1 (#19 FK-dækning + #6 indeks-pr-policy, PR #96 merged)** · **gov-3b-2 (#10 SECDEF-markør-disciplin, PR #101 merged)** · **gov-3b-3a (#18 del 1: 9 INVOKER→SECDEF, PR #103 merged)** · **gov-3b-3b (#18 del 2 + REVOKE + G065 LØST, PR #105 merged)** · **gov-docs-renhed (docs-renhed + allowlist-split + structural-chain + §8.1-SVAR-markør, PR #108 merged)** · **gov-disciplin-3-regler (suverænitet + forfatterregel + gate-hjælp, PR #109 merged)** · **gov-4 (branch protection fuldt aktiv: required CI + code-owner-review; H026 løst m. tre-konto-struktur; G061 LØST, PR #110 merged)** · **gov-5-automation (kæde-kurér + regelbog + adapters + Mathias-mobilflade + gate-model: ord frem for klik; protection-justering 13b; build-PR — bevises i gov-6 per krav 8)**.
 
 V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ikke ved siden af.
 
