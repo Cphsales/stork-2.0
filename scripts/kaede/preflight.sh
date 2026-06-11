@@ -17,16 +17,28 @@ tjek "node ≥ 20"             "[ \"\$(node -e 'console.log(parseInt(process.ver
 tjek "kaede_issue sat (åbningsflade)" "node -e 'const r=require(\"./scripts/kaede/kaede-regler.json\"); process.exit(r.kaede_issue ? 0 : 1)'"
 tjek "linger aktiv (services overlever session-luk)" "loginctl show-user \$USER -p Linger | grep -q 'Linger=yes'"
 
+# Værts-krav SKAL være grønne FØR baseline (Codex runde 39: baseline-loggen er
+# live-guardens trust anchor — den må aldrig seedes på en fejlet vært).
+if [ "$FEJL" -ne 0 ]; then
+  echo "Preflight FEJLEDE før baseline — kæden starter ikke (fail-closed). Ret ✗-punkterne."
+  echo "Linger aktiveres med: loginctl enable-linger \$USER (kan kræve sudo på WSL2)."
+  exit 1
+fi
+
 # Baseline (runde 32-værnet): uden dispatch-log nægter dirigenten live-kørsel.
+# Fejler seeding, fjernes den delvise log — ingen delvist betroet state.
 if [ ! -f scripts/kaede/.dispatch-log.jsonl ]; then
   echo "  ▶ ingen dispatch-log — kører --baseline (seeder historikken som behandlet)"
-  node scripts/kaede/dirigent.mjs --baseline
+  if ! node scripts/kaede/dirigent.mjs --baseline; then
+    rm -f scripts/kaede/.dispatch-log.jsonl
+    echo "Preflight FEJLEDE: baseline-seeding fejlede — delvis log fjernet (fail-closed)."
+    exit 1
+  fi
 fi
 tjek "dispatch-log findes (baseline)" "[ -f scripts/kaede/.dispatch-log.jsonl ]"
 
 if [ "$FEJL" -ne 0 ]; then
-  echo "Preflight FEJLEDE — kæden starter ikke (fail-closed). Ret ✗-punkterne."
-  echo "Linger aktiveres med: loginctl enable-linger \$USER (kan kræve sudo på WSL2)."
+  echo "Preflight FEJLEDE — kæden starter ikke (fail-closed)."
   exit 1
 fi
 echo "Preflight OK — kæden kan hostes."
