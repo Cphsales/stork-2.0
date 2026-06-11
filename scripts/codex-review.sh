@@ -324,6 +324,7 @@ echo "  Plan: $PLAN_FILE" >&2
 echo "  Output: $OUTPUT_FILE" >&2
 echo "" >&2
 
+T_START=$(date +%s)
 set +e
 timeout --signal=KILL "$TIMEOUT_SEC" codex exec --skip-git-repo-check \
   -c "model_reasoning_effort=\"$REASONING\"" \
@@ -331,6 +332,7 @@ timeout --signal=KILL "$TIMEOUT_SEC" codex exec --skip-git-repo-check \
   "$PROMPT" > "$RAW_OUTPUT" 2>&1 < /dev/null
 CODEX_EXIT=$?
 set -e
+T_VARIGHED=$(( $(date +%s) - T_START ))
 
 if [ $CODEX_EXIT -eq 124 ] || [ $CODEX_EXIT -eq 137 ]; then
   echo "❌ codex timed out efter ${TIMEOUT_SEC}s." >&2
@@ -372,6 +374,7 @@ case "$REASONING" in
 esac
 RERUN_CMD="$0 $PLAN_FILE $ROUND_N $REASONING_FLAG --phase=$PHASE"
 
+CODEX_MODEL=$(grep -m1 '^model ' ~/.codex/config.toml 2>/dev/null | cut -d'"' -f2)
 cat > "$OUTPUT_FILE" <<EOF
 # Codex review — $PAKKE_NAME runde $ROUND_N
 
@@ -381,6 +384,8 @@ cat > "$OUTPUT_FILE" <<EOF
 **Plan-SHA:** $PLAN_SHA
 **Dato:** $DATE
 **Reasoning:** $REASONING
+**Model:** ${CODEX_MODEL:-ukendt}
+**Varighed:** ${T_VARIGHED}s
 **Max ord:** $MAX_WORDS
 **Command:** \`$RERUN_CMD\` (re-run via samme args inkl. flags)
 
