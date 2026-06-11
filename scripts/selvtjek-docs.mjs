@@ -60,16 +60,12 @@ const KLASSER = [
 ];
 
 const tokens = new Map(); // token -> klasse (tilføjede værdier: "stadig sand?")
-for (const linje of nyeLinjer)
-  for (const k of KLASSER)
-    for (const m of linje.matchAll(k.re)) tokens.set(m[0], k.navn);
+for (const linje of nyeLinjer) for (const k of KLASSER) for (const m of linje.matchAll(k.re)) tokens.set(m[0], k.navn);
 // Udgåede værdier (fjernet uden at samme token blev gen-tilføjet): overlevende
 // forekomster er STALE-KANDIDATER og rapporteres skarpere.
 const udgaaede = new Map();
 for (const linje of gamleLinjer)
-  for (const k of KLASSER)
-    for (const m of linje.matchAll(k.re))
-      if (!tokens.has(m[0])) udgaaede.set(m[0], k.navn);
+  for (const k of KLASSER) for (const m of linje.matchAll(k.re)) if (!tokens.has(m[0])) udgaaede.set(m[0], k.navn);
 
 if (tokens.size === 0 && udgaaede.size === 0) {
   console.log("selvtjek-docs: ingen fakta-tokens i diffen — intet at holde.");
@@ -85,11 +81,7 @@ const mdFiler = [];
   for (const navn of readdirSync(dir)) {
     const sti = join(dir, navn);
     if (statSync(sti).isDirectory()) {
-      if (
-        !sti.includes("coordination/arkiv") &&
-        !sti.includes("codex-reviews") &&
-        !sti.includes("rapport-historik")
-      )
+      if (!sti.includes("coordination/arkiv") && !sti.includes("codex-reviews") && !sti.includes("rapport-historik"))
         gaa(sti);
     } else if (navn.endsWith(".md")) mdFiler.push(sti);
   }
@@ -111,8 +103,7 @@ for (const [token, klasse] of [...udgaaede.entries()].sort()) {
   if (hits.length > 0) {
     staleKandidater++;
     console.log(`\n▲ STALE-KANDIDAT [${klasse}] "${token}" (UDGÅET af diffen) lever stadig i:`);
-    for (const h of hits)
-      console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
+    for (const h of hits) console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
   }
 }
 for (const [token, klasse] of [...tokens.entries()].sort()) {
@@ -131,8 +122,7 @@ for (const [token, klasse] of [...tokens.entries()].sort()) {
   if (hits.length > 0) {
     if (hits.some((h) => !iDiffFil(h))) fundISøskende++;
     console.log(`\n■ [${klasse}] "${token}" forekommer i:`);
-    for (const h of hits)
-      console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
+    for (const h of hits) console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
   }
 }
 
@@ -142,7 +132,9 @@ function iDiffFil(hit) {
 }
 
 if (staleKandidater > 0)
-  console.log(`\nselvtjek-docs: ${staleKandidater} UDGÅET værdi(er) lever videre — ret eller begrund (runde 47-52-klassen).`);
+  console.log(
+    `\nselvtjek-docs: ${staleKandidater} UDGÅET værdi(er) lever videre — ret eller begrund (runde 47-52-klassen).`,
+  );
 console.log(
   fundISøskende === 0
     ? "\nselvtjek-docs: ingen søskende-forekomster uden for diffen."
