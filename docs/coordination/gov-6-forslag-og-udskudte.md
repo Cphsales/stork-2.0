@@ -39,6 +39,16 @@ bevidst slettes.
   som recon-forspring til dialogen.
 - [FORSLAG] Pakkenavn afgøres i dialogen (åbningen 2026-06-11 brugte `gov-6`;
   ældre plan-tekst sagde `gov-6-arkiv-fold` — divergensen lukkes ved navnevalget).
+- [FORSLAG — Mathias-ord 2026-06-12] Mappestruktur efter indholdstype og
+  sandhedsstatus: pakke · workflow · forretning · gæld · ideer (ingen sandhed)
+  — sidstnævnte som strukturelt hjem for alt ikke-sandhed (forslag-kataloget,
+  1.0-reference-arkivet). I dag er workflow-stof spredt (strategi/,
+  coordination/, scripts/, codex/) og ikke-sandhed har intet mærket hjem.
+  Afgøres i gov-6's krav-dok-dialog. PRÆMIS-NOTE (samme ord): arkiv-prunen
+  2026-06-12 (PR #146) foregriber ikke strukturen — alt slettet er
+  git-history-klasse uanset strukturvalg, og flyt-bunken landede i
+  rapport-historik, som er historik-hjemmet i enhver struktur. Strid mod det:
+  STOP og rejs.
 - [ÅBENT] Krav-kandidat (Mathias): LØBENDE led-status til telefonen + TO-VEJS bred
   indgang mellem gates (spørgsmål/observation mid-spor). Hvad det konkret betyder,
   mærkes i gennemløbene.
