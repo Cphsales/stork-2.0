@@ -275,7 +275,10 @@ if [ "$PHASE" = "docs" ]; then
 begreber andre governance-docs ejer (owns-markører) · interne selvmodsigelser /
 stale påstande · ordret-løfter (citater m. kilde) holder mod kilderne."
 else
-  REVIEW_FOKUS="$REVIEW_FOKUS"
+  REVIEW_FOKUS="Review-fokus (§9.3): patch-først (§3.1) · end-to-end-spor (§3.3) ·
+state-dump matcher faktisk state (§3.2) · FULDSTÆNDIGHED mod krav-dok (hver krav-sætning realiseret
+eller eksplicit begrundet afgrænset — undladelse er et fund, TILLÆG 5a); ingen scope-creep · vision/forretningsforstaaelse-modsigelse ·
+MANGLENDE-EKSISTERENDE-BEVARELSE."
 fi
 
 PROMPT=$(cat <<EOF
@@ -293,10 +296,7 @@ RUNDE-NUMMER: $ROUND_N
 FASE: $PHASE
 $FORMAAL_LINE
 
-Review-fokus (§9.3): patch-først (§3.1) · end-to-end-spor (§3.3) ·
-state-dump matcher faktisk state (§3.2) · FULDSTÆNDIGHED mod krav-dok (hver krav-sætning realiseret
-eller eksplicit begrundet afgrænset — undladelse er et fund, TILLÆG 5a); ingen scope-creep · vision/forretningsforstaaelse-modsigelse ·
-MANGLENDE-EKSISTERENDE-BEVARELSE.
+$REVIEW_FOKUS
 
 Format pr. fund:
 [SEVERITY] Kort beskrivelse
