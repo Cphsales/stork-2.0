@@ -1,10 +1,20 @@
-# gov-5-automation — Plan V8
+# gov-5-automation — Plan V9
 
 **Branch:** claude/gov-5-automation-plan
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V8 · konvergens-counter: 8 (Mathias-genåbnet 2026-06-11: PLAN-AFVIGELSE-fund under build — qwerg var givet på V7; V8 kræver Codex-review + Mathias-re-godkendelse, §8 pakke-kontrakt. V6+V7+V8 hver eksplicit Mathias-tilladt. Verdikter altid på frossen version)
+**Plan-version:** V9 · konvergens-counter: 9 (V9 eksplicit Mathias-tilladt 2026-06-11 sammen med rest-klik-afgørelserne. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V8/runde 17)
+
+- **M-E-B (B1-kædekoden mangler patch-først): ACCEPT.** B1-koden ER eksisterende kode nu — ny P7: patch-først for `scripts/kaede/` (nuværende bodies 1:1 + diff + BEVARES-liste). Codex' B1-verdikt indarbejdet i hypotese-tabellen.
+- **KRITISK (recon-oplaeg-routing internt modstridende): ACCEPT.** Tabel-rækken rettet: recon-oplaeg dispatches EFTER begge kode-recon-docs (tilstands-betingelse, design pkt. 11) — ikke "parallel ved qwers".
+
+## Rest-klik-afgørelser (Mathias, 2026-06-11 — Formåls-fejningens to ⚠-rækker LUKKET)
+
+1. **Arkiv un-ownes:** `/docs/coordination/arkiv/` ind i P3's ejer-løse flade — bogføring efter slut OK.
+2. **Krav-dok-merge un-ownes PÅ BETINGELSE af versions-binding:** Mathias' "krav OK" bindes til konkret indholds-version (samme mekanik som PASS→plan-SHA). Mekanik (leverbar, regelbogs-håndhævet): når dialog-krav-dokket transport-committes, poster kæden på kæde-issuet: _"krav-dok klar @ \<indholds-hash\> — validér med 'krav OK \<hash\>'"_; Mathias svarer "krav OK \<hash\>" (mobil, ét paste); merge-dispatch har som TILSTANDS-BETINGELSE at author-verificeret krav OK-hash == filens aktuelle indholds-hash. Ændres filen efter hans ord → mismatch → BLOKERET + re-validering. Kæden merger beviseligt præcis det han validerede. (Kan bindingen mod forventning ikke leveres i build: hans klik består — STOP-gate, ikke selvbeslutning.)
 
 ## Plan-afvigelses-håndtering (Mathias-fund under build → V8)
 
@@ -69,11 +79,11 @@
 
 **Ubetingede Mathias-led (udtømmende, fra formål + krav 2):**
 
-| Led                 | Flade                                                            |
-| ------------------- | ---------------------------------------------------------------- |
-| Åbning              | qwers-udmelding (chat eller kæde-issue fra mobil)                |
-| Krav-dok-validering | krav OK i krav-dok-dialogen (Claude.ai-chatten — uden for kæden) |
-| Lukning             | slut OK efter Claude.ai-rolle-review af slut-rapport             |
+| Led                 | Flade                                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Åbning              | qwers-udmelding (chat eller kæde-issue fra mobil)                                                                                 |
+| Krav-dok-validering | krav OK i dialogen + "krav OK \<indholds-hash\>" på kæde-issuet (V9: versions-bindingen — kæden merger beviseligt det validerede) |
+| Lukning             | slut OK efter Claude.ai-rolle-review af slut-rapport                                                                              |
 
 **Betingede Mathias-led (kun når afgørelsen er hans):**
 
@@ -96,19 +106,19 @@
 
 **Leverance-typer med routing (alle §5-mekanismer bæres — mid-fase, ikke kun fase-skift):**
 
-| Type                                                                                                         | Afsender → modtager                             | Hvornår                                                      |
-| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------ |
-| plan-V\<n\> / build-batch / slut-rapport                                                                     | Code → Codex                                    | fase-arbejde (uændret)                                       |
-| review/feedback/APPROVAL                                                                                     | Codex → Code                                    | reviews (uændret)                                            |
-| SPARRING-OENSKE → CONFIRM/TIMING/AVOID                                                                       | Code ⇄ Codex                                    | **mid-fase**, når spørgsmålet opstår                         |
-| FLAG→LØS-replik (ACCEPT/PUSHBACK/PROPOSE-ALTERNATIVE ⇄ AGREE/REFINE/ESCALATE)                                | Code ⇄ Codex                                    | **pr. fund løbende** — max 3 iter, så fund-gate (§5 uændret) |
-| KODE-FUND-deling (research)                                                                                  | Codex → Code                                    | **når fundet gøres** — ikke ved runde-grænse                 |
-| OPTIMERING-FORSLAG → ADOPT/DEFER/DISMISS                                                                     | Codex ⇄ Code                                    | build, løbende                                               |
-| qwerg-gate-pakke → fund-gate-pakke (§9.1-rettelse i P1)                                                      | Claude.ai-rolle → Mathias                       | ved fund-gates + slut OK                                     |
-| **recon-kode-doc (V8)** — nuværende kodes forretningsside: rettigheder, PII, lifecycle som de reelt fungerer | Code → repo (transport-commit) → Mathias-flade  | **ved qwers** — kæde-start                                   |
-| **recon-research-doc (V8)** — uafhængig kode-recon (blind-vinkler, teknisk realiserbarhed)                   | Codex → repo (transport-commit) → Mathias-flade | **ved qwers** — parallel m. Codes                            |
-| **recon-oplaeg (V8)** — forretningsdata-oplæg TIL MATHIAS (informerer dialogen, fodrer ikke krav-dok)        | Claude.ai-rolle → Mathias                       | **ved qwers** — parallel                                     |
-| gate-ord / GODKENDT / AFVIST / stop                                                                          | Mathias → kæden                                 | author-verificeret, enhver tid                               |
+| Type                                                                                                         | Afsender → modtager                             | Hvornår                                                                   |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| plan-V\<n\> / build-batch / slut-rapport                                                                     | Code → Codex                                    | fase-arbejde (uændret)                                                    |
+| review/feedback/APPROVAL                                                                                     | Codex → Code                                    | reviews (uændret)                                                         |
+| SPARRING-OENSKE → CONFIRM/TIMING/AVOID                                                                       | Code ⇄ Codex                                    | **mid-fase**, når spørgsmålet opstår                                      |
+| FLAG→LØS-replik (ACCEPT/PUSHBACK/PROPOSE-ALTERNATIVE ⇄ AGREE/REFINE/ESCALATE)                                | Code ⇄ Codex                                    | **pr. fund løbende** — max 3 iter, så fund-gate (§5 uændret)              |
+| KODE-FUND-deling (research)                                                                                  | Codex → Code                                    | **når fundet gøres** — ikke ved runde-grænse                              |
+| OPTIMERING-FORSLAG → ADOPT/DEFER/DISMISS                                                                     | Codex ⇄ Code                                    | build, løbende                                                            |
+| qwerg-gate-pakke → fund-gate-pakke (§9.1-rettelse i P1)                                                      | Claude.ai-rolle → Mathias                       | ved fund-gates + slut OK                                                  |
+| **recon-kode-doc (V8)** — nuværende kodes forretningsside: rettigheder, PII, lifecycle som de reelt fungerer | Code → repo (transport-commit) → Mathias-flade  | **ved qwers** — kæde-start                                                |
+| **recon-research-doc (V8)** — uafhængig kode-recon (blind-vinkler, teknisk realiserbarhed)                   | Codex → repo (transport-commit) → Mathias-flade | **ved qwers** — parallel m. Codes                                         |
+| **recon-oplaeg (V8)** — forretningsdata-oplæg TIL MATHIAS (informerer dialogen, fodrer ikke krav-dok)        | Claude.ai-rolle → Mathias                       | **efter begge kode-recon-docs** (tilstands-betingelse — V9-konsistensfix) |
+| gate-ord / GODKENDT / AFVIST / stop                                                                          | Mathias → kæden                                 | author-verificeret, enhver tid                                            |
 
 | **troskabs-verdikt (V8, TILLÆG 3)** — krav-troskabs-tjek af Codex-approvet plan: PASS/FEEDBACK | Claude.ai-rolle → kæden (PASS → Code build-start · FEEDBACK → Code V\<n+1\>) | **obligatorisk efter Codex-APPROVAL**, før build |
 
@@ -172,7 +182,7 @@
 8. **Spille hinanden bedre (krav 5):** Vækningsmodellens mid-fase-typer + ventevindue-dispatch.
 9. **Suverænitet:** "stop" (enhver læst kanal) → øjeblikkelig pause; kæde-tilstand synlig i issuet.
 10. **Transport-commit:** al aktør-leverance-commit sker i kurérens transport-commit — ordret, logget, aldrig eget/redigeret indhold. Codex read-only; Claude.ai-rollen docs-lag (untracked → transport-commit); Code committer egne leverancer.
-11. **Regelbogs-håndhævelse (V8, TILLÆG 3-skærpelse):** hver kæde-regel der KAN udtrykkes som tilstands-betingelse i `kaede-regler.json`, SKAL — tekst-pligter er svageste lag. Dispatch-regler bærer `betingelser` (krævede leverancer/tilstande, SHA-bundne); decide() kan ikke dispatche når en betingelse mangler — den returnerer BLOKERET med den manglende betingelse navngivet (logget, synligt i kæde-issue). Betingelses-fejningen: **build-start** kræver Codex-APPROVAL + troskabs-PASS, begge bundet til plan-filens AKTUELLE SHA (mekaniseret diff-tom-tjek — V7-qwergs manuelle verifikation) + ingen åbne fund-gates · **slut-merge** kræver Claude.ai-APPROVAL-leverance + author-verificeret slut OK · **recon-klar** kræver alle tre recon-leverancer · **claude-ai-syntese-dispatch** kræver begge kode-recon-docs. Strukturelt håndhævet (ingen regel = ingen vej): krav-dok-skrivning kan ikke dispatches. GitHub-håndhævet: grøn CI, code-owner-review på beslutnings-stier.
+11. **Regelbogs-håndhævelse (V8, TILLÆG 3-skærpelse):** hver kæde-regel der KAN udtrykkes som tilstands-betingelse i `kaede-regler.json`, SKAL — tekst-pligter er svageste lag. Dispatch-regler bærer `betingelser` (krævede leverancer/tilstande, SHA-bundne); decide() kan ikke dispatche når en betingelse mangler — den returnerer BLOKERET med den manglende betingelse navngivet (logget, synligt i kæde-issue). Betingelses-fejningen: **build-start** kræver Codex-APPROVAL + troskabs-PASS, begge bundet til plan-filens AKTUELLE SHA (mekaniseret diff-tom-tjek — V7-qwergs manuelle verifikation) + ingen åbne fund-gates · **krav-dok-merge** kræver author-verificeret "krav OK \<hash\>" hvor hash == filens aktuelle indholds-hash (V9, rest-klik-afgørelse 2 — versions-bindingen) · **slut-merge** kræver Claude.ai-APPROVAL-leverance + author-verificeret slut OK · **recon-klar** kræver alle tre recon-leverancer · **claude-ai-syntese-dispatch** kræver begge kode-recon-docs. Strukturelt håndhævet (ingen regel = ingen vej): krav-dok-skrivning kan ikke dispatches. GitHub-håndhævet: grøn CI, code-owner-review på beslutnings-stier.
 
 **Claude.ai-rollen lokalt (krav 1):** `claude -p` m. §9.1-instruks for vækbare leverancer: slut-rapport-review + fund-gate-pakker (P1-rettelsen: gate-pakke-leverancen følger fund-gates + slut OK). Untracked output → transport-commit. Windows-appen urørt til Mathias-dialog.
 
@@ -197,7 +207,7 @@
 ## End-to-end-spor (§3.3-tilpasset: kæde-spor, gov-6 som case — NY GATE-MODEL)
 
 1. Mathias: "qwers gov-6-arkiv-fold" (mobil, author-verificeret) → **kæden IGANGSÆTTES (V8)**: Code + Codex recon-kørsler PARALLELT (kodens forretningsside → recon-kode-doc · uafhængig kode-recon → recon-research-doc; begge transport-committes)
-   1b. Begge kode-recon-docs klar → Claude.ai-rollen dispatches (forretningsdata + begge docs) → recon-oplaeg til Mathias → `recon-klar` → Mathias notificeres (mobil) → krav-dok-DIALOG Mathias↔Claude.ai (kontrolposten — ALDRIG automatiseret; recon informerer, fodrer ikke). Kæden venter på krav OK
+   1b. Begge kode-recon-docs klar → Claude.ai-rollen dispatches (forretningsdata + begge docs) → recon-oplaeg til Mathias → `recon-klar` → Mathias notificeres (mobil) → krav-dok-DIALOG Mathias↔Claude.ai (kontrolposten — ALDRIG automatiseret; recon informerer, fodrer ikke). Dialog-krav-dok transport-committes → kæden poster "krav-dok klar @ \<hash\>" → **Mathias: "krav OK \<hash\>" (mobil)** → hash-match som tilstands-betingelse → krav-dok merges (V9: versions-bindingen)
 2. Krav-dok merged → Code-plan + Codex-research dispatches parallelt; mid-fase: SPARRING/KODE-FUND-filer routes løbende begge veje
 3. Code committer plan-V\<n\> (`→NÆSTE: Codex [review]`) → Codex-review (frossen V\<n\>, plan-SHA i header)
 4. Codex APPROVAL (+ INGEN NYE FUND) → **Claude.ai-rollen: krav-troskabs-tjek (V8, TILLÆG 3 — sætning for sætning mod krav-dok)** → PASS → **build starter automatisk** (qwerg udgået, fangst-laget består) · FEEDBACK → Code-V\<n+1\>; åbne fund-gates blokerer fortsat (fund-gate-pakke → Mathias afgør fra mobil)
@@ -250,17 +260,20 @@
 **P3 — .github/CODEOWNERS (STRUKTURELT REDESIGNET i V7 efter Codex V6-M-E-B — Mathias-accepteret 2026-06-11).** Nuværende 1:1 (22 linjer, header + `* @mgrubak` + 4 strategi-linjer + 3 udkommenterede lag-B). DIFF: **`* @mgrubak` BESTÅR** (default-own: alt nyt og alt uopremset er hans — fund-klassen "glemt sti" kan strukturelt ikke opstå); KUN den rolle-validerede bogførings-flade enumereres som ejer-løse undtagelses-linjer, indsat EFTER `* @mgrubak`, FØR strategi-linjerne (sidst-matchende vinder; strategi-linjerne gen-ejer intet der er undtaget — de matcher andre stier):
 
 ```
-# Rolle-valideret bogførings-flade (gov-5, Mathias-accepteret 2026-06-11):
-# ejer-løs linje fjerner code-owner-kravet (GitHub-dokumenteret mekanik).
-# Mathias' gates er ORDENE (qwerg/slut OK, author-verificeret i kæden),
-# ikke PR-klikkene — kæden merger aldrig før ordet er registreret.
+# Rolle-valideret bogførings-flade (gov-5, Mathias-accepteret 2026-06-11;
+# udvidet m. rest-klik-afgørelserne — V9): ejer-løs linje fjerner code-owner-
+# kravet (GitHub-dokumenteret mekanik). Mathias' gates er ORDENE (krav OK
+# m. indholds-hash / slut OK, author-verificeret i kæden), ikke PR-klikkene —
+# kæden merger aldrig før ordet er registreret; krav-dok kun ved hash-match.
 /docs/coordination/aktiv-plan.md
 /docs/coordination/seneste-rapport.md
 /docs/coordination/codex-reviews/
 /docs/coordination/plan-feedback/
 /docs/coordination/rapport-historik/
+/docs/coordination/arkiv/
 docs/coordination/*-status.md
 docs/coordination/*-plan.md
+docs/coordination/*-krav-og-data.md
 ```
 
 **Snittet (ved tvivl er det hans — strukturelt håndhævet af defaulten):** ALT beholder hans gate undtagen de syv bogførings-mønstre — dvs. supabase/ (hele, inkl. config/baseline/schema/tests), scripts/ (alle værn), packages/, apps/, .github/, docs/strategi/, docs/teknisk/, CLAUDE.md, krav-dok-kontrakter, mathias-gate/, README, rod-configs og alt fremtidigt. Codex V6-fundets flader (config.toml, advisor-baseline.json, schema.sql, supabase/tests, migration-gate.mjs, run-db-tests.mjs, schema-check.sh, types-gen.sh, selftests) er dækket af defaulten — ingen inventory nødvendig, klassen er elimineret. Rapport-historik + plan-filer er ejer-løse fordi gaterne er Mathias' ORD: kæden merger slut-rapport først når slut OK er author-verificeret registreret, og plan-merges følger rolle-godkendelse (gov-5-gate-model). **NB:** forretnings-builds (migrations/packages/apps) kræver fortsat hans klik — forretnings-trinnets klik-model er en NY afgørelse til den tid. **BEVARES:** hele den eksisterende fil ordret (header-historik, `* @mgrubak`, 4 strategi-linjer, lag-B-kommentarer) — diffen er RENT ADDITIV. Bevis: 11b (tre cases).
@@ -270,6 +283,14 @@ docs/coordination/*-plan.md
 **P5 — disciplin Forudsætninger (476–484).** Uændret fra V2 (punkt → Gjort-listen).
 
 **P6 — CLAUDE.md (NY i V5).** Nuværende merge-konvention-afsnit 1:1 (CLAUDE.md "Identiteter"-sektion, citeret i Verificerede afhængigheder). DIFF: konventionen præciseres: mgrubak-approval er gaten **på beslutnings-sti-PR'er**; rolle-validerede PR'er merger på grøn CI + Codex (gov-5-gate-model, jf. disciplin §2). **BEVARES:** tre-konto-strukturen, aldrig-admin-reglen, alt andet.
+
+**P7 — scripts/kaede/ eksisterende B1-kode (NY i V9, Codex runde 17-M-E-B).** Event-fladen reworkes mod V9-semantik; alt andet BEVARES. Nuværende bodies 1:1 der ændres:
+
+(a) `kaede-regler.json` events-sektion (nuværende): `"qwers-aabning": [{ "aktoer": "mathias", "opgave": "kvittering" }]` · `"krav-dok-merged": [code:plan-start, codex:kode-research]` · `"build-pr-klar-beslutningssti": [mathias:review-request]` · `"build-pr-merged": [code:slut-rapport]` · `"slut-ok-registreret": [code:slut-merge]` · `"gate-godkendt"/"gate-afvist": [code:…]`. DIFF: `qwers-aabning` → recon-igangsætning `[code:recon-kode, codex:recon-research]` (kvittering består som mathias-adapter-bihandling); NYE events: `recon-kode-klar` (betingelse for claude-ai-syntese-dispatch), `recon-klar` (→ mathias-notifikation), `krav-ok-hash-registreret` (→ krav-dok-merge, hash-betinget); NYT `betingelser`-felt pr. dispatch-regel (build-start: codex-APPROVAL + troskabs-PASS @ aktuel plan-SHA + ingen åbne gates; krav-dok-merge: hash-match; m.fl. jf. design pkt. 11). **BEVARES:** krav-dok-merged-event (er fortsat væknings-punkt for plan-fasen — blot ikke kæde-START), alle øvrige events, leverance_typer-tabellen (+ recon-typer + troskabs-verdikt tilføjes), gate_ord, identiteter.
+
+(b) `afledEvents` (tilstand.mjs, nuværende): afleder krav-dok-merged af `paaMain.kravDok && !paaMain.planFil` — Codex runde 17: holder kun BETINGET (recon-docs ligger nu FØR krav-dok). DIFF: krav-dok-merged afledes af krav-dok på main + plan-fil IKKE på main + **recon-fase afsluttet** (recon-klar behandlet); recon-events afledes af recon-leverancernes eksistens; krav-ok-hash af gate-ord-parsing ("krav OK \<hash\>"). **BEVARES:** gate-godkendt/gate-afvist-afledning, author-filteret (forsvar i dybden), slut-ok/qwers-parsing, build-PR-afledningerne.
+
+(c) Event-fixtures (dirigent.selftest.mjs §11): omskrives m. V9-semantik (qwers → recon-dispatches; betingelses-cases: build blokeret uden PASS / uden SHA-match; krav-dok-merge blokeret uden hash-match). **BEVARES (Codex-verificeret runde 17):** alle øvrige B1-værn uændret — gate-deadlock-fixet (gate-ord før pause), transport-commit-isolation (--only, tmp-repo-bevist), exit-0-behandlet-semantik, event-idempotens pr. modtager, halvskrevet-værn, lås-semantik, divergens-STOP, ARV-IGNORERET, NUL-fixet. Tab af ét af disse uden begrundelse = M-E-B.
 
 ## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
 
@@ -314,17 +335,17 @@ Konsekvens: PR der rører CODEOWNERS-ejede stier kræver fortsat code-owner-appr
 
 Hvert led holdt mod formålet ("fra åbning til lukning kører alt selv; Mathias kaldes kun ind når afgørelsen er hans"), IKKE mod dagens flow:
 
-| Led                                                    | Formåls-status                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Åbning (qwers, mobil)                                  | ✓ kæde-båret                                                                                                                                                                                                                                                                                                                                                                                          |
-| Recon (qwers → recon-klar)                             | ✓ **V8-fixet** — var udenfor kæden (fundets instans)                                                                                                                                                                                                                                                                                                                                                  |
-| Krav-dok-dialog                                        | ✓ bevidst manuel — KONTROLPOSTEN (formålets egen undtagelse)                                                                                                                                                                                                                                                                                                                                          |
-| **Krav-dok-commit/merge efter krav OK**                | ⚠ REST-KLIK: `*-krav-og-data.md` er ejet (P3) → PR-klik EFTER hans eget krav OK-ord. Bogføring af afgjort ord — samme klasse som fundet. **[FORSLAG]** un-own krav-og-data; gaten bæres af author-verificeret "krav OK" (kæden merger aldrig før ordet — Mathias' egen ratificerings-model). Konservativt alternativ: klik består som del af kontrolpost-fladen. **Mathias afgør ved re-godkendelse** |
-| Plan-fase (rolle-valideret)                            | ✓                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Build + build-merge                                    | ✓ (rolle-valideret; beslutnings-stier → hans klik = afgørelsen)                                                                                                                                                                                                                                                                                                                                       |
-| Slut-rapport + slut OK                                 | ✓ (lukning — formålets ord)                                                                                                                                                                                                                                                                                                                                                                           |
-| **Pakke-luk-bogføring (arkiv-flytning, doc-currency)** | ⚠ REST-KLIK: `arkiv/` er ejet → klik EFTER slut OK. Samme klasse. **[FORSLAG]** un-own `/docs/coordination/arkiv/` (flytning af allerede-lukkede artefakter, gated af slut OK-ordet). Konservativt alternativ: klik består. **Mathias afgør ved re-godkendelse**                                                                                                                                      |
-| gov-6-bevis                                            | ✓ (krav 8)                                                                                                                                                                                                                                                                                                                                                                                            |
+| Led                                                    | Formåls-status                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Åbning (qwers, mobil)                                  | ✓ kæde-båret                                                                                                                                                                                                                                                                                  |
+| Recon (qwers → recon-klar)                             | ✓ **V8-fixet** — var udenfor kæden (fundets instans)                                                                                                                                                                                                                                          |
+| Krav-dok-dialog                                        | ✓ bevidst manuel — KONTROLPOSTEN (formålets egen undtagelse)                                                                                                                                                                                                                                  |
+| **Krav-dok-commit/merge efter krav OK**                | ✓ **AFGJORT (Mathias 2026-06-11):** un-ownet PÅ BETINGELSE af versions-binding — "krav OK \<indholds-hash\>" (author-verificeret) skal matche filens aktuelle hash som tilstands-betingelse for merge-dispatch (se Rest-klik-afgørelser). Kan bindingen ikke leveres: klik består (STOP-gate) |
+| Plan-fase (rolle-valideret)                            | ✓                                                                                                                                                                                                                                                                                             |
+| Build + build-merge                                    | ✓ (rolle-valideret; beslutnings-stier → hans klik = afgørelsen)                                                                                                                                                                                                                               |
+| Slut-rapport + slut OK                                 | ✓ (lukning — formålets ord)                                                                                                                                                                                                                                                                   |
+| **Pakke-luk-bogføring (arkiv-flytning, doc-currency)** | ✓ **AFGJORT (Mathias 2026-06-11):** `/docs/coordination/arkiv/` un-ownet — bogføring efter slut OK (P3 udvidet)                                                                                                                                                                               |
+| gov-6-bevis                                            | ✓ (krav 8)                                                                                                                                                                                                                                                                                    |
 
 Fejnings-regel fremad (roden): enhver ny plan-version holder HVERT led mod formålet før Codex-review — checken er nu del af pre-push-tjeklisten for denne pakke.
 
@@ -355,12 +376,10 @@ Codes sikkert/frosset-snit er en hypotese, ikke et faktum. Codex SKAL i V8-revie
 
 **B. Status-opdatering (med merge):** aktiv-plan ✓ (flip, step 14) · seneste-rapport n/a · master-plan §4.1 n/a (proces-pakke) · teknisk-gaeld ✓ (G062 noteret) · huskeliste ✓ (H028 noteret) · disciplin Forudsætninger ✓ (P5).
 
-## Åbne punkter (Codex V8-review/runde 17 + Mathias-re-godkendelse)
+## Åbne punkter (Codex runde 18 + Mathias-re-godkendelse)
 
-1. **Rest-klik-afgørelser (Formåls-fejningen):** krav-dok-merge-klik + pakke-luk-arkiv-klik — [FORSLAG] un-own begge (gates bæres af author-verificerede ord); konservativt alternativ: klik består. **Mathias afgør ved re-godkendelse.**
-2. **B1-bevarings-verifikation:** Codex verificerer hypotese-tabellen eksplicit (TILLÆG 2) — hvilke B1-dele består under qwers-start.
-3. Step 6 headless-Code STOP-dækning — Codex: blind-vinkler (uændret fra V7).
-4. Headless-auth (step 9-bevis før tillid, uændret).
-5. **P3-snittets forretnings-linjer** bekræftet ved V7-qwerg; står ved magt medmindre Mathias siger andet ved re-godkendelse.
+1. Step 6 headless-Code STOP-dækning — Codex: blind-vinkler (uændret fra V7).
+2. Headless-auth (step 9-bevis før tillid, uændret).
+3. **P3-snittets forretnings-linjer** bekræftet ved V7-qwerg; står ved magt medmindre Mathias siger andet ved re-godkendelse.
 
-(Lukket: V5-prefix · 13a-dump · V7-qwerg givet 2026-06-11 — V8 kræver re-godkendelse pga. plan-afvigelses-fundet, §8 pakke-kontrakt.)
+(Lukket i V9: rest-klik AFGJORT (arkiv un-ownet; krav-dok-merge un-ownet m. versions-binding) · B1-verdikt leveret runde 17 og indarbejdet i P7. Tidligere lukket: V5-prefix · 13a-dump · V7-qwerg. Efter runde 18-APPROVAL: Claude.ai gate-pakke på frossen version → Mathias-re-godkendelse.)
