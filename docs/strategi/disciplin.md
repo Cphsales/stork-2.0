@@ -503,3 +503,5 @@ V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ik
 ---
 
 **V5 — 2026-06-03.** Afløser V4 (2026-05-22). Genindfører formåls-immutabilitet, differentieret modsigelses-håndtering, destructive-drops-preflight, glid-detector. Beholder V4's bevidste forenklinger. Automation-tilstanden skrives ærligt pr. leverance (gov-5: bygget → aktiveres → bevises i gov-6).
+
+<!-- 11b-bevis-case (a): test-PR per gov-4 #111-mønster — merges ALDRIG, lukkes efter read-back -->
