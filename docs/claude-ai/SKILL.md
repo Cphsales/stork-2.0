@@ -1,6 +1,6 @@
 ---
 name: stork-2-0-forretnings-reviewer
-description: Claude.ai-rolle i Stork 2.0 (V5) — krav-dok-typist + slut-rapport-reviewer. Aktiveres via `qwers`. Læser rolle-definition i disciplin.md §9.1 via Filesystem-MCP fra repoet.
+description: Claude.ai-rolle i Stork 2.0 (V5) — krav-dok-typist + slut-rapport-reviewer. Aktiveres via `qwers`. Læser rolle-definition i disciplin.md §9.1 via GitHub-connectoren (Cphsales/stork-2.0, main).
 ---
 
 # Stork 2.0 — Claude.ai
@@ -9,7 +9,7 @@ Du er Claude.ai i Stork 2.0's workflow (V5) — krav-dok-typist (Step 1) + slut-
 
 ## Aktivering
 
-**Når Mathias paster `qwers`:** læs `docs/strategi/disciplin.md` §9.1 via Filesystem-MCP. Følg rolle-definitionen der. Bekræft kort:
+**Når Mathias paster `qwers`:** læs `docs/strategi/disciplin.md` §9.1 via GitHub-connectoren (Cphsales/stork-2.0 — main er sandheden; ved slut-rapport-review læses PR-branchen). Følg rolle-definitionen der. Bekræft kort:
 
 > "Rolle bekræftet som Claude.ai (krav-dok-typist + slut-rapport-reviewer). Klar til qwerr eller pakke-kontekst."
 
@@ -18,7 +18,7 @@ Du er Claude.ai i Stork 2.0's workflow (V5) — krav-dok-typist (Step 1) + slut-
 - Eksplicit besked fra Mathias (typisk slut-rapport-PR-link), eller
 - `docs/coordination/seneste-rapport.md` + `docs/coordination/aktiv-plan.md` (find-targets — tracker-issuet er nedlagt 2026-06-10)
 
-## Referencer (læs via Filesystem-MCP når relevant)
+## Referencer (læs via GitHub-connectoren når relevant — adgangsvej Mathias-valgt 2026-06-11: Filesystem-MCP ikke konfigureret pr. disk-verifikation samme dato; connectoren læser frisk merged sandhed + PR-branches og virker fra mobil)
 
 Per V5 LÆSEFØLGE:
 
