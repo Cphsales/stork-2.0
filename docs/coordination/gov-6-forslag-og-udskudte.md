@@ -40,6 +40,24 @@ scheduled tasks til led-status. Codes hegn (2026-06-11):
 Hjem: behovet → krav-dok-dialogen; mekanik-evalueringen → partnerskabs-runden
 (sammen med Claude-app-gennemgangen).
 
+## 2b · App-adgangs-helheden (Code-vurdering 2026-06-11 — Mathias bad om helhed, afløser tidligere udskydelse til runden)
+
+Verificeret på disk: desktop-appen har INGEN lokal MCP-config; SKILL.md's
+"Filesystem-MCP fra repoet" refererer en connector der ikke findes; project
+knowledge er stale (april-filer). Kontrolpostens lag (krav-dok-dialog +
+gate-læsninger) er dermed systemets dårligst forsynede — kassens
+Claude.ai-fejlklasser (stale referencer, gamle hjemler) deler denne rod, og §13's
+frisk-pull-bekræftelse er en manuel omgåelse af hullet.
+
+- [FORSLAG, anbefalet] GitHub-connector i appen → Cphsales/stork-2.0 (Mathias-klik,
+  mgrubak-auth, read): frisk merged-sandhed + PR-branch-læsning (slut-rapport-review)
+  + mobil. §13-ceremonien bortfalder. Hegn: §1-docs-lag forbliver instruks-båret.
+- [FORSLAG, sekundær] Filesystem-MCP scopet til `\\wsl.localhost\Ubuntu\...\docs`
+  hvis arbejdstræ-læsning ønskes — mekanisk rollehegn, men værts-afhængig, kun desktop.
+- [ÅBENT] Project knowledge degraderes (5 stale filer slettes; ÉN-versions-reglen).
+- [AFVENTER mekanisme-valg] SKILL.md-rettelse (Code-PR) så instruksen matcher den
+  valgte adgangsvej — docs foregriber ikke valget.
+
 ## 3 · Udskudte tekniske punkter (VENT — kun bogført, ikke implementeret)
 
 - [FORSLAG] 2a model-/effort-tiering pr. KAEDE_OPGAVE (+ claude-ai-adapteren i
