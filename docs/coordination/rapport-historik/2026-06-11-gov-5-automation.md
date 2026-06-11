@@ -53,6 +53,16 @@ Disciplin + CLAUDE.md-diff: runde 41 `§8.1-SVAR: MODSIGELSE` (notify-only-rest 
 
 Plan: V1–V7 (runde 1–7, qwerg) → plan-afvigelses-fund under build (Mathias) → V8–V21 (runde 17–30, re-qwerg; 5 TILLÆG; counter 21, V11+ under ramme-tilladelse). Build: B1 runde 8–16 + 31–33 (kerne, 9+3 fund) · B2 runde 34–36 (adapters, 3 fund inkl. klippet-rapporterings-lektion) · B3 runde 38 (live led fangede manglende docs-fase) · B4 runde 39–40 (preflight-trust-anchor) · B5 runde 41–42 (§8.1-MODSIGELSE → APPROVAL). Hvert fund: ACCEPT m. mekanisk værn frem for tekst-pligt.
 
+## Drifts-evidens: ukontrolleret værts-nedlukning (nat 11/6)
+
+Værten lukkede ukontrolleret ned efter natbyggets sidste commit+push (2d5158a, 05:13). Morgen-recon i ny session (= manuelt flow, krav 7) fandt:
+
+- **0 tab:** arbejdstræ rent, HEAD = origin, ingen halvskrevne filer (0 filskrivninger i repoet efter sidste commit), ingen efterladte git-locks/merge-state, `git fsck` ren. Commit+push-pr.-led-disciplinen betød at værts-tabet hverken kostede arbejde eller efterlod tvetydig state (krav 4: ingen delvist betroet state).
+- **Fail-closed bekræftet på reel hændelse:** dispatch-loggen (runtime-state, gitignored) findes ikke efter reboot → live-guarden (runde 32-værnet) nægter kørsel indtil frisk `--baseline` via preflight (runde 39-rækkefølgen). Loggen er IKKE re-seedet under recon — aktivering er morgen-tjeklistens punkt 3 (Mathias' flade).
+- **Ærlig grænse:** kæden var ikke aktiveret (systemd afventer aktivering); evidensen gælder artefakt-disciplinen og guard-mekanikken under en reel afbrydelse — ikke daemon-drift (det er gov-6, krav 8).
+
+_(Tilføjet under morgen-recon 2026-06-11 på Mathias-forslag — en afbrudt kørsel er relevant data for kædens fail-closed-adfærd.)_
+
 ## gov-6-gennemløbet (krav 8 — UDFYLDES FØR PAKKE-LUK)
 
 ⌛ Afventer. Målekriterier (plan V21, TILLÆG 4): qwers → recon automatisk · recon-klar-notifikation uden relæ · krav-dok-dialog manuel (0 automatiserede krav-dok-skrivninger i dispatch-log) · Codex-APPROVAL → troskabs-tjek → build uden Mathias-klik · alle vækninger automatiske · Mathias' handlinger = åbning, krav OK \<hash\>, slut OK + evt. fund-gates ALENE · 0 relæ · 0 bogførings-klik. Dispatch-loggen vedlægges led-for-led.
