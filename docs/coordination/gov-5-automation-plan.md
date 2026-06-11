@@ -1,10 +1,14 @@
-# gov-5-automation — Plan V18
+# gov-5-automation — Plan V19
 
 **Branch:** claude/gov-5-automation-build (plan-iteration V8+ sker på build-branchen — V14-stale-fix, runde 22)
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V18 · konvergens-counter: 18 (V18 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+**Plan-version:** V19 · konvergens-counter: 19 (V19 under RAMME-TILLADELSEN — mekanisk klasse. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V18/runde 27)
+
+- **KRITISK (krav-dok-udkast mangler transportvej i læseren): ACCEPT — mekanisk.** P7(f)-diffen udvidet: leverance-bærer-listen får untracked `docs/coordination/<pakke>-krav-og-data.md` (kun untracked — committet krav-dok er kontrakt, ikke leverance-i-transit) med TYPE-INFERENS fra filnavns-mønstret (`*-krav-og-data.md` → `krav-dok-udkast`; dialogen skriver ingen →NÆSTE-deklaration — det er præcis pointen) · efter transport-commit: dispatch mathias-adapter m. opgave `hash-post` (poster "krav-dok klar @ <indholds-hash>" på pakke-issuet) — dermed kører end-to-end-leddet "dialog-fil → transport-commit → hash-post → krav OK <hash> → hash-match-betinget merge" mekanisk hele vejen.
 
 ## Kode-fund-håndtering (fra Codex V17/runde 26)
 
@@ -757,7 +761,7 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
 }
 ```
 
-DIFF (V13-guards ført til body-niveau): events-blokkens guard `if (pakke !== "ingen")` → qwers-/åbnings-afledning kører ALTID (stående issue læses uanset markør); pakke-events + pr.-pakke-issue (fra status-filens `Kæde-issue:`-linje, ny parser) kun m. aktiv pakke · gateOrd-læsning: stående issue (kaede_issue) ALTID + pakke-issue når aktiv. **BEVARES:** fetch-flag (--offline), branch/SHA-læsning + divergens-par, aktiv-markør-parsing, åbne-gates-scan (AFVENTER MATHIAS), leverance-bærer-listen (codex-reviews/plan-feedback/rapport-historik/status-fil), untracked/aendrede-porcelain-split, artefaktSha-opslag pr. deklareret type, fail-closed tom gateOrd v. issue-fejl. Tab af ét uden begrundelse = M-E-B.
+DIFF (V13-guards ført til body-niveau): events-blokkens guard `if (pakke !== "ingen")` → qwers-/åbnings-afledning kører ALTID (stående issue læses uanset markør); pakke-events + pr.-pakke-issue (fra status-filens `Kæde-issue:`-linje, ny parser) kun m. aktiv pakke · gateOrd-læsning: stående issue (kaede_issue) ALTID + pakke-issue når aktiv. **V19-tilføjelse (runde 27):** leveranceStier udvides m. untracked `docs/coordination/<aktivPakke>-krav-og-data.md` (kun untracked; type-infereres af filnavns-mønster → `krav-dok-udkast`, ingen deklaration krævet — dialogens output bærer ingen →NÆSTE); routing efter transport-commit: mathias-adapter `hash-post` (indholds-hash på pakke-issuet) jf. Rest-klik-afgørelse 2. **BEVARES:** fetch-flag (--offline), branch/SHA-læsning + divergens-par, aktiv-markør-parsing, åbne-gates-scan (AFVENTER MATHIAS), leverance-bærer-listen (codex-reviews/plan-feedback/rapport-historik/status-fil), untracked/aendrede-porcelain-split, artefaktSha-opslag pr. deklareret type, fail-closed tom gateOrd v. issue-fejl. Tab af ét uden begrundelse = M-E-B.
 
 ## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
 
