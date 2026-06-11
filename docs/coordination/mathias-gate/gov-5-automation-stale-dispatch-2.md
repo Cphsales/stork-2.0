@@ -75,3 +75,27 @@ sammen med dem.
 **G/H-nummer:** foreslås rejst ved GODKENDT (hjem: huskeliste/teknisk-gæld).
 **Deadline:** før næste kæde-poll (gate-filen håndhæver mekanisk — forudsat den
 bliver stående i træet).
+
+---
+
+## Addendum 2026-06-12 — instans 3 (selvtjek-docs runde-15), bogført her
+
+Endnu en parallel Code-instans fra samme burst (dispatch: opgave
+`naeste-version`, spor `ingen`, fil
+`codex-reviews/2026-06-11-selvtjek-docs.mjs-runde-15.md`, "frossen" @
+`bd75da6` — selve commiten hvor runde 15-fundet blev håndteret ACCEPT).
+Samme verifikation, samme konklusion: cyklus konvergeret (runde 16 @
+`dd07699`, runde 17 APPROVAL @ `2b706ea`) → ingen ny version skrevet, ingen
+`ingen-status.md` oprettet, servicen urørt.
+
+Observationer fra instans 3:
+
+- Instans 2 og 3 genetablerede **uafhængigt og samtidigt** pause-ankrene i
+  træet (00:39) — instans 3's gate 2-skrivning blev kun forhindret i dublet
+  af et fil-eksistens-værn. Konkret bevis på punkt 3 (parallelle instanser →
+  dublet-risiko).
+- claude-ai-rollen leverede parallelt tre premisse-fejls-rapporter
+  (`codex-reviews/2026-06-12-ingen-troskab-1/2/3.md`, untracked i træet —
+  samme transport-skrøbelighed som leverance-tabet i gate 1-addendum).
+- Ingen yderligere gate-fil/PR oprettet (repo-renhed: én gate pr. rod-årsag);
+  instans 3 bogføres med dette addendum.
