@@ -130,6 +130,8 @@ For hver write-RPC der ændres/tilføjes: (1) GRANT + policy + session-var som t
 
 Counter i pakke-status, incrementerer pr. V<n>. Runde 1-3 normalt · 4 Mathias-alert ("er krav-dok præcist nok?") · 5 auto-pause · 6+ auto-STOP (krav-dok genåbnes eller pakken splittes). Konvergerer vi ikke i 3-4 runder er problemet rammen, ikke "prøv igen".
 
+**Mekanik/substans-skel (rette-til 2026-06-11):** counteren skelner mekanik-runder (format, paste, bogførings-synk — bogføres men tæller ikke mod alert/STOP-trinene) fra substans-runder (fund i design, krav, indhold). Alert-spørgsmålet gælder rammen, og kun substans-runder siger noget om rammen. Konservativ klassifikation: ved tvivl tæller runden som substans.
+
 ### 3.5 Pakke-status.md — kontekst mellem sessioner
 
 Hver aktiv pakke har én lille fil: sidste handling · næste forventet · konvergens-counter · aktuel blocker. AI'er læser den FØRST.
@@ -156,6 +158,15 @@ Skitse > 5 migrations → STOP, foreslå split.
 - **Rollback-plan:** hvordan operationen rulles tilbage
 
 Pre-cutover (ingen rigtige data): tom-check + audit-spor er minimum. Post-cutover: alle fire er CI-blocker; manglende preflight = review-rejection. Dette er den dyreste fejl-klasse i systemet.
+
+### 3.10 Ressource-fordeling (rette-til 2026-06-11 — IKKE et kvalitets-kompromis)
+
+Fuld dømmekrafts-pris hvor dømmekraft kræves; mekanik hvor mekanik beviseligt dækker. Gov-5-evidensen: kvalitetsfejlene (stale tal, komprimeret-hvor-ordret) var selv symptomer på ressourcespild. Codex-gaten er urørt af alle fire regler; konservativ klassifikation ved tvivl.
+
+- **Akkumulering:** bogførings-/docs-rettelser samles pr. arbejdsblok i én PR — fragmenteret review ser ikke sammenhængen (D4-læringen), og hver PR koster en fuld pipeline.
+- **Session-skift slår kompression:** ved fase-nulpunkter (alt committet) afsluttes leddet og ny session åbnes med pakke-status som bro (§3.5) — frem for at presse én session forbi kontekst-budgettet (96%-fundet: dyb kontekst giver stale tal og vane-træk).
+- **Ordret-arbejde går aldrig gennem model-kontekst:** flyt/kopiér med fil-operationer (cp, git mv, transport-commit) — en model der "genskriver ordret" er en fejlkilde, ikke en transport.
+- **Docs-§8.1-runder kører quick-niveau** (kædens ratificerede docs-review-niveau); eskalation til fuld xhigh ved MODSIGELSE eller tvivl. Verdikt-laget (markører, §8.1-svar) er identisk — kun reasoning-prisen skifter.
 
 ---
 
