@@ -8,6 +8,21 @@ Kataloget sikrer at intet kun lever i chat eller hukommelse. Code fører katalog
 på Mathias-ord; punkter forlader det når de afgøres (ind i krav-dok/plan) eller
 bevidst slettes.
 
+**Læse-regler (Mathias-ord 2026-06-12 — gælder HELE kataloget):**
+
+- Kataloget rammer BREDT OG ÅBENT: punkterne er kandidater, fund og ideer —
+  ikke en dagsorden og ikke designs. Krav-dialogen må forkaste, omforme eller
+  overhale alt her.
+- Et forslag bliver ALDRIG automatisk en løsning — heller ikke når det er
+  detaljeret formuleret. Detaljegrad er ikke autoritet; kun Mathias' afgørelse
+  i dialogen flytter status.
+- Én-sandhed gælder repoets SANDHEDER — ikke søgningen. Ideer uden
+  sandhedsstatus er legitime og lever her mærket [IDÉ]; at lede efter det, der
+  ikke er sandhed endnu, er en del af formålet, ikke et brud på princippet.
+- Mærkning: [FORSLAG] = kandidat til afgørelse · [IDÉ] = retning/spørgsmål
+  uden løsningsform · [ÅBENT]/[FUND] = observation uden hjem/afgørelse ·
+  [Mathias-retning/-ord] = hans input til dialogen (heller ikke låst før den).
+
 ## 1 · Forslag til pakkens form (afgøres i krav-dok-dialogen)
 
 - [Mathias-retning 2026-06-11 — repo-renhed, gennemgangens målestok pr.
@@ -27,6 +42,42 @@ bevidst slettes.
 - [ÅBENT] Krav-kandidat (Mathias): LØBENDE led-status til telefonen + TO-VEJS bred
   indgang mellem gates (spørgsmål/observation mid-spor). Hvad det konkret betyder,
   mærkes i gennemløbene.
+
+## 1b · Idé-tråde fra 2026-06-11/12-samtalen (mål-tegnings-input — alt er [IDÉ], intet er løsning)
+
+- [IDÉ] **Rammen som produkt:** vision/forretning = krav = plan = slut. Hver
+  krav-sætning sporbar ned gennem plan → leverance → bevis; dækning kan tjekkes
+  mekanisk (forældreløse plan-punkter = scope-creep), MENINGEN i hvert led
+  dømmes (sætning-for-sætning-metoden). Slut-rapportens leverance-tabel er den
+  manuelle kim.
+- [IDÉ] **Evidens bor i GitHub:** bogføring (merge-states, hashes, verdikter)
+  genereres fra eller opslås i GitHub — afskrives aldrig i hånden; håndafskrift
+  af GitHub-state var rette-til-dagens største målte fejlkilde. Rest der IKKE
+  bor der: dømmekrafts-ræsonnementer, udløbende logs, tvær-PR-fortælling.
+- [IDÉ] **Form følger læser:** Mathias ejer tre prosa-dokumenter (krav, vision,
+  forretning) og læser i øvrigt kun BESKEDER; alle andre dokumenter er
+  AI-interne og kan kodificeres (regelbogs-mønstret: deklarativ data + kode +
+  selftest). Prosa på AI-flader har ingen læser.
+- [IDÉ] **Én-bevægelses-migration (Mathias-indsigt):** hvert dokument dømmes ÉN
+  gang og lander direkte i sin slutform (væk · genereret · kodificeret ·
+  instruks · Mathias-prosa) — aldrig "opdatér til sandhed, byg så ny sandhed";
+  dobbeltarbejde er forbudt som metode.
+- [IDÉ] **Tråd-til-vision som målestok for ALT** — også systemets egne tests og
+  mekanismer: hvad kræver dig, og hvad beviser løbende at det stadig gør?
+  Fangst-rate som trådens bevis; kanariefugle (plantede kendte fejl) som test
+  af testene; ingen tråd → væk.
+- [IDÉ] **Tænke-flader i flowet:** eksplicit skel mellem hurtig-klasse og
+  tænke-klasse i opgaver; verifikation-før-konklusion som regel; leverancer må
+  ende i et spørgsmål eller "her er hvad vi ikke ved endnu" (modtræk til
+  svar-refleksen — selve samarbejdsformen er runde-stof, de strukturelle
+  flader er gov-6-stof).
+- [FUND] **Lag-blanding i disciplinen:** manuel-flow og kæde-flow står flettet
+  som ligeværdige tekster (aktør-glid målt samme aften); trigger-ord har
+  aktør-afhængige dobbeltbetydninger (qwerr); dagens "mandat-arbejdsform"
+  (oplæg→go m. enkelt-værn) er udokumenteret. Alle tre er V5-gennemgangs-stof.
+- [FUND] **Adapter-asymmetri:** app-adapteren er slanket til ren glue;
+  kæde-instruksen bærer fortsat metode-indhold som rolle-hjemmet også
+  beskriver (to-hjem-rest).
 
 ## 2 · Cowork som kandidat-mekanisme til to-vejs-kanalen [FORSLAG]
 
