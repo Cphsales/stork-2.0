@@ -2,7 +2,7 @@
 
 Peger på sidste leverede slut-rapport (Code → Mathias).
 
-**Aktuel:** `docs/coordination/rapport-historik/2026-06-10-gov-4-branch-protection.md` (PR #110 + #112, main @ `996d0d4`)
+**Aktuel:** `docs/coordination/rapport-historik/2026-06-11-gov-5-automation.md` (v1, slut OK givet (Mathias, 2026-06-11) efter dobbelt review-lag: runde 46 headless-APPROVAL + kontinuitets-linse-APPROVAL; PR #125 — merge-hash udfyldes sammen m. gov-6-gennemløbet før pakke-luk, krav 8)
 
 Når ny rapport leveres:
 
