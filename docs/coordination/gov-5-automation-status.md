@@ -1,6 +1,6 @@
 # gov-5-automation — Pakke-status
 
-**Sidste handling:** Build-batch P7-event-rework committet (B1-final): kaede-regler v2 (qwers→recon-start, recon-/troskabs-/krav-dok-udkast-typer m. afsender+selvtjek, betingelser pr. opgave, stående kaede_issue) · afledEvents (qwers altid, recon-afledninger, krav OK-hash, krav-dok-merged betinget af recon-klar) · laesTilstand (krav-dok-bærer begge tilstande m. type-inferens, recon-fakta, betingelsesFakta) · decide (marker-routing, REGISTRERET, betingelser→BLOKERET, eventSpor konsekvent) · selvtjek-motor (counter-sync/ordret-diff/konsistens-grep) før frys · BOGFOERING_RES 9 mønstre · selftest ~90 cases grønne. Codex batch-review runde 31 dispatchet.
+**Sidste handling:** B1-final fixup (Codex runde 31, alle tre KRITISK ACCEPT — mekanisk): recon-filer som leverance-bærere (begge tilstande) + recon-fakta KUN committede (frys før næste led) · pr.-pakke kæde-issue parses fra status ('Kæde-issue: #N') og begge issues læses (concat, ikke overskriv) · type-inferens for review-/troskab-/recon-filer m. baseline-seeding-krav noteret til aktivering. ~100 selftest-cases grønne. Codex runde 32 dispatchet.
 **Næste forventet:** Codex runde 31-verdikt på P7-reworken → B2 (adapters: codex.sh docs-fase, code.sh, claude-ai-rolle.sh m. TILLÆG 1-instruks, mathias.mjs) → B3-B5 → gov-6-bevis.
 **Konvergens-counter:** 21 (afsluttet m. APPROVAL runde 30)
 **Blocker:** ingen — 13a udført, prefix synket.

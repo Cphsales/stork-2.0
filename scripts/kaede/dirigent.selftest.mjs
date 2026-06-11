@@ -11,7 +11,14 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
 import { decide, behandletNoegler, udfoer, transportCommit, selvtjekKoer, betingelseOpfyldt } from "./dirigent.mjs";
-import { parseDeklaration, udtraekMarkers, findDivergens, afledEvents, erBogfoeringsSti } from "./tilstand.mjs";
+import {
+  parseDeklaration,
+  udtraekMarkers,
+  findDivergens,
+  afledEvents,
+  erBogfoeringsSti,
+  infererType,
+} from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
 
@@ -907,6 +914,56 @@ check(
 // ---------- 26. betingelseOpfyldt: fail-closed ----------
 check("ukendt betingelse → aldrig opfyldt (fail-closed)", !betingelseOpfyldt("fantasi-betingelse", {}));
 check("ingen-aabne-gates: udefineret fakta → IKKE opfyldt (fail-closed)", !betingelseOpfyldt("ingen-aabne-gates", {}));
+
+// ---------- 27. type-inferens (runde 31-fund 3) ----------
+check("recon-kode-fil → recon-kode-doc", infererType("docs/coordination/p-recon-kode.md") === "recon-kode-doc");
+check(
+  "recon-research-fil → recon-research-doc",
+  infererType("docs/coordination/p-recon-research.md") === "recon-research-doc",
+);
+check("recon-oplaeg-fil → recon-oplaeg", infererType("docs/coordination/p-recon-oplaeg.md") === "recon-oplaeg");
+check("krav-og-data → krav-dok-udkast", infererType("docs/coordination/p-krav-og-data.md") === "krav-dok-udkast");
+check(
+  "codex-review m. APPROVAL → review-approval",
+  infererType("docs/coordination/codex-reviews/2026-06-12-p-runde-1.md", ["APPROVAL"]) === "review-approval",
+);
+check(
+  "codex-review m. fund → review-feedback",
+  infererType("docs/coordination/codex-reviews/2026-06-12-p-runde-1.md", ["KRITISK"]) === "review-feedback",
+);
+check(
+  "troskab-fil → troskabs-verdikt",
+  infererType("docs/coordination/codex-reviews/2026-06-12-p-troskab-1.md", ["PASS"]) === "troskabs-verdikt",
+);
+check(
+  "claude-ai-review → null (bæres af betingelsesFakta, ikke routing)",
+  infererType("docs/coordination/codex-reviews/2026-06-12-p-runde-2-claude-ai.md", ["APPROVAL"]) === null,
+);
+check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller-andet.md") === null);
+
+// ---------- 28. inferreret review-approval routes til troskabs-tjek (runde 31 end-to-end) ----------
+{
+  const h = decide(
+    {
+      ...TOM,
+      leverancer: [
+        {
+          fil: "docs/coordination/codex-reviews/2026-06-12-p-runde-9.md",
+          untracked: false,
+          sha: "r9",
+          type: "review-approval",
+          deklaration: null,
+          markers: ["APPROVAL"],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "inferreret APPROVAL-review → DISPATCH claude-ai-rolle/krav-troskabs-tjek (fangst-laget vækkes)",
+    h.find((x) => x.handling === "DISPATCH")?.opgave === "krav-troskabs-tjek",
+  );
+}
 
 // ---------- resultat ----------
 if (failed) {
