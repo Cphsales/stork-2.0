@@ -1,7 +1,7 @@
 # gov-5-automation — Pakke-status
 
-**Sidste handling:** B3 committet: stående dirigent-issue OPRETTET (#126, kaede_issue sat) · live led GRØNT end-to-end (codex-adapter → docs-review → untracked leverance) — og det fangede et ægte hul først: docs-fasen manglede i codex-review.sh (P4 nu implementeret: §8.1-prompt, ingen plan-skabelon-tjek) · baseline 57 poster + online dry-run viser korrekt transport-commit-rute. Codex runde 38 dispatchet.
-**Næste forventet:** Codex runde 38-verdikt på B3 → B4 (systemd-preflight + CODEOWNERS P3 + 13b-apply på ratificeret grundlag) → B5 (docs-leverancen + slut-rapport v1 til morgenflowet).
+**Sidste handling:** B3-fixup (Codex runde 38): docs-prompten splittet pr. fase (docs arver IKKE plan-fokus) · baseline-PRÆCISION: dispatch-loggen er RUNTIME-state og ryddes mellem test-kørsler — mekanikken er verificeret (57 poster seedet, 0 falske dispatches), men AKTIVERING kræver frisk '--baseline' som step 10-preflight (live-guard håndhæver fail-closed). Status påstår ikke længere en stående log.
+**Næste forventet:** Codex runde 39 → B4 (systemd-preflight m. --baseline som step + CODEOWNERS P3 + 13b-apply) → B5 + slut-rapport v1.
 **Konvergens-counter:** 21 (afsluttet m. APPROVAL runde 30)
 **Blocker:** ingen — 13a udført, prefix synket.
 **Klik-design (krav 3+9):** hele plan-fasen bor på denne ene branch (krav-dok V2 + plan V1..Vn + status + reviews); draft-PR giver CI uden notifikation; merges i ét hug post-qwerg — 0 Mathias-klik under iterationen.

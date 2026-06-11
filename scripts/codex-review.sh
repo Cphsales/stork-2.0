@@ -269,6 +269,15 @@ case "$PHASE" in
     ;;
 esac
 
+# Review-fokus pr. fase (runde 38-MELLEM: docs-fasen må IKKE arve plan-fokus)
+if [ "$PHASE" = "docs" ]; then
+  REVIEW_FOKUS="Review-fokus (docs-§8.1-klassen — KUN disse): prosa-modsigelse mod
+begreber andre governance-docs ejer (owns-markører) · interne selvmodsigelser /
+stale påstande · ordret-løfter (citater m. kilde) holder mod kilderne."
+else
+  REVIEW_FOKUS="$REVIEW_FOKUS"
+fi
+
 PROMPT=$(cat <<EOF
 Du er Codex i Stork 2.0 — uafhængig kode-reviewer, read-only (disciplin §9.3).
 
