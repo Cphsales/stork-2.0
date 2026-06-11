@@ -75,3 +75,33 @@ tekstindhold ændret. Noteret for bogføringspræcision.
 **G/H-nummer:** foreslås rejst ved GODKENDT (hjemmet er huskeliste/teknisk-gæld —
 tildeles ikke her).
 **Deadline:** før næste kæde-dispatch (gaten håndhæver mekanisk).
+
+## Addendum (2026-06-12 00:38 lokal — pausen kollapsede; 34-dispatch-burst)
+
+Sætningen ovenfor "Gaten pauser kæden mekanisk (…) — ingen flere stale
+dispatches imens" holdt ikke. Åben-gate-scannen (`tilstand.mjs:252-261`) læser
+`mathias-gate/` i ARBEJDSTRÆET, og gate-filerne forsvandt fra træet (de er
+committet på branches; træ tilbage på main = kopierne væk). 22:32:38Z fyrede
+kuréren derfor en burst på 34 dispatches af den stale kø — heriblandt
+PARALLELLE Code-vækninger på samme arbejdstræ (selvtjek-docs runde-13/-14/-15/-16
+samtidigt) og claude-ai-troskabs-tjek mod ikke-eksisterende
+`ingen-krav-og-data.md` (leverancer untracked: `2026-06-12-ingen-troskab-1/-2.md`,
+afventer transport).
+
+Denne vækning (runde-16, "frossen" @ `dd07699`) er et rent stale-eksemplar af
+mønstret ovenfor: `dd07699` ER commiten hvor runde 16-fundet blev rettet
+(ACCEPT), og runde 17 gav APPROVAL (`2b706ea`, på main) — cyklussen var
+konvergeret FØR dispatchen. Code skrev derfor ingen V<n+1> og oprettede ikke
+`ingen-status.md` (ville fabrikere pakken + føde kuréren en ny
+→NÆSTE-deklaration).
+
+Gate-kopierne er genetableret untracked i træet (00:37-00:38; SPOR-PAUSET
+22:38:06Z bekræfter pausen bærer igen) — men mekanismen er skør: enhver
+branch-switch/clean løfter den uden afgørelse. Robust pause-kilde hører under
+rod-årsags-fix (a). Bi-observation: code-adapterens STOP-kontrakt ("exit 3")
+kan ikke produceres indefra sessionen — `code.sh:42` viderefører claudes egen
+exit-kode; gate-fil-scannen er det reelle STOP-signal.
+
+Afgørelses-strukturen ovenfor står uændret — addendum er evidens, ikke nye
+valgmuligheder; det dokumenterer at den mekaniske pause ikke kan bære alene
+mens gaten afventer.
