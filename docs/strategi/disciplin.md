@@ -30,7 +30,8 @@
 Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 ```
-0. Pakke-åbning (Mathias: qwers — kæden IGANGSÆTTES)
+0. Pakke-åbning (Mathias: "qwers <pakke>" som kommentar på dirigent-issuet —
+   kæden IGANGSÆTTES)
    ↓
 0.5 Recon (kæde-båret: Code + Codex parallelt på nuværende kode →
     Claude.ai-rollens syntese-oplæg → Mathias notificeres)
@@ -58,7 +59,18 @@ klikkene er bogføring.
 
 ### Step 0 — Pakke-åbning
 
-Mathias melder ny pakke ud i chat.
+Kæde-flow: Mathias kommenterer `qwers <pakke>` på det stående dirigent-issue
+(#126) fra mgrubak-kontoen. Formatet er bindende (driftserfaring 2026-06-11,
+gov-6-første-gennemløb):
+
+- Ordet + MELLEMRUM + pakkenavn (fx `qwers gov-6`) — pakkenavnet ankrer
+  recon-scan og recon-filer; `qwers` uden pakkenavn åbner ingen pakke, og
+  sammenskrivninger (fx `qwers17.05`) matcher slet ikke.
+- Kun mgrubak som author tæller (andre logges `IGNORER-GATE-ORD`).
+- `qwers` skrevet i en chat er rolle-bootstrap (§9) og starter ALDRIG kæden —
+  en manuelt åbnet chat er udenfor kæden; kuréren vækker selv rollerne headless.
+
+Manuelt flow (fallback, krav 7): Mathias melder ny pakke ud i chat.
 
 ### Step 1 — Krav-dok
 
@@ -191,7 +203,7 @@ Hver severity bærer funktion — de kollapses ikke. (MANGLENDE-EKSISTERENDE-BEV
 
 ### 6.2 Automation (Codes bord — kæde-kurér, gov-5)
 
-Kæden bor i `scripts/kaede/`: **kurér** (dirigent.mjs — poll-baseret tilstandslæsning, parallel dispatch m. lås pr. aktør/spor, transport-commit af aktør-leverancer ORDRET, dispatch-log) · **regelbog** (kaede-regler.json — leverance-typer m. afsender/modtager/selvtjek, events, tilstands-betingelser pr. opgave) · **adapters** (code/codex/claude-ai-rolle/mathias — rollernes egne §9-instrukser; dømmekraften bor i aktørerne) · **selvtjek** før hver frys (ordret-diff, tal-mod-virkelighed, konsistens-grep — fejl = ingen frys, SELVTJEK-FEJL til afsenderen). Mathias' mobilflade: stående dirigent-issue (qwers-åbning) + pr.-pakke kæde-issue (gate-ord, author-verificeret: krav OK \<hash\>, slut OK, GODKENDT/AFVIST, stop). Fail-closed hele vejen: divergens-STOP, baseline-guard, åben-gate-pause, ukendt type/modtager/event → KAEDE-STOP. Hosting: systemd-user-unit + preflight (verificér-før-tillid). Fallback (krav 7): stop kuréren — manuelt flow består. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations (deploy-status ses i Actions).
+Kæden bor i `scripts/kaede/`: **kurér** (dirigent.mjs — poll-baseret tilstandslæsning, parallel dispatch m. lås pr. aktør/spor, transport-commit af aktør-leverancer ORDRET, dispatch-log) · **regelbog** (kaede-regler.json — leverance-typer m. afsender/modtager/selvtjek, events, tilstands-betingelser pr. opgave) · **adapters** (code/codex/claude-ai-rolle/mathias — rollernes egne §9-instrukser; dømmekraften bor i aktørerne) · **selvtjek** før hver frys (ordret-diff, tal-mod-virkelighed, konsistens-grep — fejl = ingen frys, SELVTJEK-FEJL til afsenderen). Mathias' mobilflade: stående dirigent-issue (qwers-åbning: kommentar `qwers <pakke>`, mellemrum obligatorisk — Step 0) + pr.-pakke kæde-issue (gate-ord, author-verificeret: krav OK \<hash\>, slut OK, GODKENDT/AFVIST, stop). Fail-closed hele vejen: divergens-STOP, baseline-guard, åben-gate-pause, ukendt type/modtager/event → KAEDE-STOP. Hosting: systemd-user-unit + preflight (verificér-før-tillid). Fallback (krav 7): stop kuréren — manuelt flow består. `migrations-deploy.yml` deployer til live + regenererer types ved push til migrations (deploy-status ses i Actions).
 
 ### 6.3 Mathias-gate to-fil-flow
 
