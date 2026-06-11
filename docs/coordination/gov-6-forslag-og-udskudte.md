@@ -1,6 +1,6 @@
 # gov-6 — Forslag og udskudte punkter (katalog)
 
-**Status-ramme (Mathias-beslutning 2026-06-12 — det ENESTE låste):** gov-6 er
+**Status-ramme (Mathias-beslutning 2026-06-11 — det ENESTE låste):** gov-6 er
 UDSKUDT, ikke droppet. Åbnes igen når Mathias afgør det. Form: fuld gennemgang af
 V5 + implementering af mangler + rettelse af fejl. Alt i dette katalog er
 FORSLAG/ÅBENT og afgøres af Mathias i pakkens krav-dok-dialog — intet låses før.
@@ -24,7 +24,7 @@ bevidst slettes.
 ## 2 · Cowork som kandidat-mekanisme til to-vejs-kanalen [FORSLAG]
 
 Desktop-appens Cowork: fil-adgang (postkasse-mønster), mobil→desktop-opgaver,
-scheduled tasks til led-status. Codes hegn (2026-06-12):
+scheduled tasks til led-status. Codes hegn (2026-06-11):
 
 - Postkassen er INFORMATIONS-kanal (fakta/spørgsmål/observationer) — ALDRIG
   gate-flade: author-verifikation kan ikke flyttes til en lokal fil; gates bliver

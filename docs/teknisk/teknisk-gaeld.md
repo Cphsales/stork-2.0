@@ -34,7 +34,7 @@
 - **Introduceret:** gov-docs-housekeeping (2026-06-05).
 - **Skal løses:** Når **gov-6** folder `docs/coordination/v4-slettede-docs/` til git-history → **fjern allowlist-entryen igen**. Ejer: Code (i gov-6). Gov-6-krav-dok §6 dækker selve foldningen; denne G sporer allowlist-oprydningen.
 - **Risiko hvis glemt:** Lav. Entryen er eksplicit dokumenteret med grund + gov-6-trigger.
-- **Løses-i:** gov-6-arkiv-fold
+- **Løses-i:** gov-6 (UDSKUDT 2026-06-11; pakkenavn/form afgøres i krav-dok-dialog — se docs/coordination/gov-6-forslag-og-udskudte.md)
 
 ### [G062] LAV — recurring types-drift fra månedlige audit-partitioner
 
