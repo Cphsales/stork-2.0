@@ -1,10 +1,14 @@
-# gov-5-automation — Plan V11
+# gov-5-automation — Plan V12
 
 **Branch:** claude/gov-5-automation-plan
 **Krav-dok:** docs/coordination/gov-5-automation-krav-og-data.md (fornyet runde 1, Mathias-valideret 2026-06-10)
 **Pakke-status:** docs/coordination/gov-5-automation-status.md
 **Recon-grundlag:** docs/coordination/gov-5-automation-recon.md (PR #122)
-**Plan-version:** V11 · konvergens-counter: 11 (V11 under RAMME-TILLADELSEN — mekanisk klasse: konsistens-komplettering af Mathias' rest-klik-afgørelse, ingen design-/substans-/scope-ændring. Ramme: mekaniske kompletteringer forhånds-tilladt til runde-APPROVAL; hegn: design/substans/scope/Mathias-flader kræver hans ord. Verdikter altid på frossen version)
+**Plan-version:** V12 · konvergens-counter: 12 (V12 under RAMME-TILLADELSEN — mekanisk klasse: patch-først-komplettering, ingen design-/substans-/scope-ændring. Verdikter altid på frossen version)
+
+## Kode-fund-håndtering (fra Codex V11/runde 20)
+
+- **M-E-B (decide()-ændringen mangler patch-først): ACCEPT — mekanisk klasse.** Regelbogs-håndhævelsen (betingelser → BLOKERET) ændrer `decide()` i eksisterende `dirigent.mjs` — P7(e) tilføjet m. nuværende body 1:1 (maskinelt udtrukket, linje 37–200), eksplicit diff og BEVARES-liste.
 
 ## Kode-fund-håndtering (fra Codex V10/runde 19)
 
@@ -357,6 +361,177 @@ const BOGFOERING_RES = [
 ```
 
 DIFF (rest-klik-afgørelsen ført igennem): + `/^docs\/coordination\/arkiv\//` + `/^docs\/coordination\/[^/]+-krav-og-data\.md$/` (7 → 9 mønstre, 1:1 m. P3's ejer-løse liste); kommentaren → "de 9 P3-mønstre". Selftest-sektion 19: casen "krav-og-data er IKKE bogføring (kontrakt)" VENDES (er nu bogføring — gated af krav OK-hash, ikke af klik) og "arkiv-plan er IKKE bogføring" VENDES (arkiv/ er bogføring efter slut OK); scripts/kaede-casen består (værn = aldrig bogføring). **BEVARES:** de 7 eksisterende mønstre ordret + helperens transport-høfligheds-semantik (CODEOWNERS er fortsat det håndhævende værn).
+
+(e) **`scripts/kaede/dirigent.mjs:37–200` (`decide()`) — nuværende body 1:1 (maskinelt udtrukket ved V12):**
+
+```js
+export function decide(tilstand, regler) {
+  const handlinger = [];
+  const laase = tilstand.laase ?? [];
+  const behandlede = new Set(tilstand.behandlede ?? []);
+  const spor = tilstand.marker?.pakke ?? "ingen";
+
+  // 1. Divergens (én sandhed) — STOPPER alt; intet andet vurderes.
+  if (tilstand.divergens?.length) {
+    return [{ handling: "KAEDE-STOP", grund: "divergens", detalje: tilstand.divergens }];
+  }
+
+  // (Åben-gate-tjek flyttet til 2b — EFTER gate-ord-behandling, så Mathias'
+  // GODKENDT/AFVIST kan løfte pausen; Codex runde 16: deadlock ellers.)
+
+  // 2. Gate-ord: author-verifikation FØR alt andet brug af ordet.
+  for (const ord of tilstand.gateOrd ?? []) {
+    const erGateOrd = regler.gate_ord.some(
+      (g) => ord.tekst === g || ord.tekst.startsWith(`${g} `) || ord.tekst.startsWith(`${g}\n`),
+    );
+    if (!erGateOrd) continue;
+    if (ord.author !== regler.identiteter.gate_author) {
+      handlinger.push({ handling: "IGNORER-GATE-ORD", author: ord.author, tekst: ord.tekst, flag: true });
+      continue;
+    }
+    if (ord.tekst === "stop" || ord.tekst.startsWith("stop ")) {
+      return [...handlinger, { handling: "KAEDE-PAUSE", grund: "Mathias-stop (suverænitet)" }];
+    }
+    handlinger.push({ handling: "GATE-ORD-REGISTRERET", ord: ord.tekst });
+  }
+
+  // 2b. Åben Mathias-gate (runde 14 + 16): gate-fil m. "AFVENTER MATHIAS"
+  // pauser sporet — MEN en frisk, author-verificeret afgørelse (gate-godkendt/
+  // gate-afvist-event fra GODKENDT/AFVIST-ord) løfter den: gate-filen afgøres
+  // (ordret transport af Mathias' ord) og Code dispatches til genoptagelse.
+  // Alt andet på sporet forbliver pauset i denne cyklus.
+  if (tilstand.aabneGates?.length) {
+    const afgoerelser = (tilstand.events ?? []).filter(
+      (e) =>
+        (e.type === "gate-godkendt" || e.type === "gate-afvist") &&
+        !behandlede.has(`event:${e.type}@${e.sha ?? "HEAD"}#code`),
+    );
+    if (!afgoerelser.length) {
+      return [...handlinger, { handling: "SPOR-PAUSET", gates: tilstand.aabneGates, spor }];
+    }
+    for (const e of afgoerelser) {
+      handlinger.push({ handling: "GATE-AFGJORT", afgoerelse: e.type, gates: tilstand.aabneGates, sha: e.sha });
+      handlinger.push({
+        handling: "DISPATCH",
+        aktoer: "code",
+        opgave: regler.events[e.type][0].opgave,
+        adapter: regler.aktoerer.code.adapter,
+        kontekst: { event: e.type, sha: e.sha ?? null, spor },
+      });
+    }
+    return handlinger; // afgørelsen bærer cyklussen; øvrig routing fra næste cyklus
+  }
+
+  // 3. Untracked leverancer → transport-commit (ordret) før routing — men
+  // ALDRIG mens en kørsel er aktiv på sporet (Codex runde 15-fund): filen kan
+  // være halvskrevet indtil aktørens exit 0 har bevist at den er færdig.
+  // Konservativt: enhver aktiv kørsel på sporet → VENT.
+  for (const lev of tilstand.leverancer ?? []) {
+    if (!lev.untracked) continue;
+    if (laase.some((l) => l.spor === spor)) {
+      handlinger.push({ handling: "VENT", fil: lev.fil, grund: "koersel-paa-spor" });
+      continue;
+    }
+    handlinger.push({ handling: "TRANSPORT-COMMIT", fil: lev.fil });
+  }
+
+  // 4. Committede, ubehandlede leverancer → routing.
+  for (const lev of tilstand.leverancer ?? []) {
+    if (lev.untracked) continue; // routes i næste cyklus, efter transport-commit
+    if (lev.aendret) {
+      // Modificeret tracked bærer (runde 13-fund 1): aktør m. commit-ret er
+      // midt i arbejdet — ingen routing (stale filSha ≠ worktree-indhold),
+      // ingen transport-commit (aldrig halvfærdigt arbejde). Venter.
+      handlinger.push({ handling: "AFVENTER-COMMIT", fil: lev.fil });
+      continue;
+    }
+    const noegle = `${lev.fil}@${lev.sha ?? "HEAD"}`;
+    if (behandlede.has(noegle)) continue;
+
+    // 4a. Fund-gate-markers → Mathias-gate + spor-pause (runde 14-fund 1):
+    // fund-gaten DISPATCHES til mathias-adapteren (gate-anmodning + gate-fil,
+    // B3) og ALT efterfølgende på sporet pauses i denne cyklus. Fra næste
+    // cyklus bærer gate-filen pausen (regel 1b) til Mathias afgør.
+    const gateMarkers = (lev.markers ?? []).filter((m) => regler.fund_gate_markers.includes(m));
+    if (gateMarkers.length) {
+      handlinger.push({ handling: "FUND-GATE", fil: lev.fil, markers: gateMarkers, spor });
+      handlinger.push({
+        handling: "DISPATCH",
+        aktoer: "mathias",
+        opgave: "gate-anmodning",
+        adapter: regler.aktoerer.mathias.adapter,
+        kontekst: { fil: lev.fil, sha: lev.sha ?? null, spor },
+      });
+      return handlinger; // spor-pause: intet andet routes i denne cyklus
+    }
+
+    // 4b. Type: deklaration vinder over filnavns-inferens. Committed fil HELT
+    //     uden deklaration/type er pre-kæde-arv (menneske-committet) — kuréren
+    //     handler kun på eksplicitte deklarationer (transport-princippet); den
+    //     ignoreres logget. DEKLARERET men ukendt type → STOP (aktiv fejl).
+    const type = lev.deklaration?.type ?? lev.type ?? null;
+    if (type === null && lev.deklaration === null) {
+      handlinger.push({ handling: "ARV-IGNORERET", fil: lev.fil });
+      continue;
+    }
+    const regel = type ? regler.leverance_typer[type] : null;
+    if (!regel) {
+      return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-leverance-type", fil: lev.fil, type }];
+    }
+
+    // 4c. Modtager: aktør-deklaration kan override modtager (vækningsret hos
+    //     aktørerne) — men kun til kendte aktører; ukendt → STOP (fail-closed).
+    const modtager = lev.deklaration?.naeste ?? regel.modtager;
+    if (!regler.aktoerer[modtager]) {
+      return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-modtager", fil: lev.fil, modtager }];
+    }
+
+    // 4d. Lås pr. (aktør, spor): igangværende kørsel afbrydes ALDRIG
+    //     (verdikt på frossen version) — leverancen venter til næste cyklus.
+    if (laase.some((l) => l.aktoer === modtager && l.spor === spor)) {
+      handlinger.push({ handling: "VENT", fil: lev.fil, modtager, grund: "laas" });
+      continue;
+    }
+
+    handlinger.push({
+      handling: "DISPATCH",
+      aktoer: modtager,
+      opgave: regel.opgave,
+      adapter: regler.aktoerer[modtager].adapter,
+      kontekst: { fil: lev.fil, sha: lev.sha ?? null, spor },
+    });
+  }
+
+  // 5. Kalender-poll-events (eksterne tilstande: merges, checks, åbnings-ord).
+  for (const ev of tilstand.events ?? []) {
+    const modtagere = regler.events[ev.type];
+    if (!modtagere) {
+      return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-event", event: ev.type }];
+    }
+    for (const m of modtagere) {
+      // Event-idempotens PR. MODTAGER (Codex runde 11-fund): multi-modtager-
+      // events må aldrig droppe én aktørs kørsel fordi en andens lykkedes.
+      if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}#${m.aktoer}`)) continue;
+      if (laase.some((l) => l.aktoer === m.aktoer && l.spor === spor)) {
+        handlinger.push({ handling: "VENT", event: ev.type, modtager: m.aktoer, grund: "laas" });
+        continue;
+      }
+      handlinger.push({
+        handling: "DISPATCH",
+        aktoer: m.aktoer,
+        opgave: m.opgave,
+        adapter: regler.aktoerer[m.aktoer].adapter,
+        kontekst: { event: ev.type, sha: ev.sha ?? null, spor },
+      });
+    }
+  }
+
+  if (!handlinger.length) handlinger.push({ handling: "INGEN" });
+  return handlinger;
+}
+```
+
+DIFF (regelbogs-håndhævelsen, design pkt. 11): decide() udvides med ÉN ny regel-klasse: før hver DISPATCH (leverance- og event-vejen) evalueres reglens `betingelser`-felt fra kaede-regler.json mod tilstands-felter (leverance-eksistens m. SHA-binding, hash-match, åbne gates); en manglende betingelse → `{ handling: "BLOKERET", regel, betingelse }` i stedet for DISPATCH (logget, synligt i kæde-issue) — aldrig en advarsel der kan overhøres. Event-routingen får recon-/krav-ok-hash-events fra P7(a). **BEVARES (eksplicit, jf. runde 20-krav):** regel 1 divergens-STOP · regel 2 gate-ord-author-verifikation + Mathias-stop · regel 2b gate-deadlock-fixet (gate-ord FØR pause; GODKENDT/AFVIST løfter; idempotens pr. kommentar-id) · regel 3 transport-commit m. halvskrevet-værn (VENT v. kørsel på spor) · regel 4 AFVENTER-COMMIT (modificeret tracked) + behandlet-idempotens + FUND-GATE→mathias-dispatch m. tidlig retur + ARV-IGNORERET + fail-closed (ukendt type/modtager) + lås-VENT + frossen-SHA-kontekst · regel 5 event-idempotens PR. MODTAGER · INGEN-fallback. Tab af ét uden begrundelse = M-E-B.
 
 ## Step 13a — Protection-state-dump (udført 2026-06-11 på Mathias-mandat)
 
