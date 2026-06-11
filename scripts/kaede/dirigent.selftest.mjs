@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
-import { decide, behandletNoegler, udfoer, transportCommit } from "./dirigent.mjs";
+import { decide, behandletNoegler, udfoer, transportCommit, selvtjekKoer, betingelseOpfyldt } from "./dirigent.mjs";
 import { parseDeklaration, udtraekMarkers, findDivergens, afledEvents, erBogfoeringsSti } from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
@@ -109,7 +109,7 @@ const ROUTING_CASES = [
   ["build-batch", "codex"],
   ["slut-rapport", "claude-ai-rolle"],
   ["review-feedback", "code"],
-  ["review-approval", "code"],
+  ["review-approval", "claude-ai-rolle"],
   ["sparring-oenske", "codex"],
   ["sparring-svar", "code"],
   ["kode-fund", "code"],
@@ -346,17 +346,54 @@ for (const marker of ["NEEDS-MATHIAS", "ESCALATE", "STOP-FOR-CLARIFICATION"]) {
   );
 }
 {
-  const h = decide({ ...TOM, events: [{ type: "slut-ok-registreret" }] }, REGLER);
+  const fakta = { claudeAiApproval: true, slutOk: true };
+  const h = decide({ ...TOM, betingelsesFakta: fakta, events: [{ type: "slut-ok-registreret", sha: "m" }] }, REGLER);
   check(
-    "slut OK registreret → Code merger slut-rapport (ordet er gaten)",
+    "slut OK + Claude.ai-APPROVAL (betingelser opfyldt) → slut-merge dispatches",
     h.find((x) => x.handling === "DISPATCH")?.opgave === "slut-merge",
+  );
+  const h2 = decide(
+    {
+      ...TOM,
+      betingelsesFakta: { slutOk: true, claudeAiApproval: false },
+      events: [{ type: "slut-ok-registreret", sha: "m" }],
+    },
+    REGLER,
+  );
+  check(
+    "slut OK UDEN Claude.ai-APPROVAL → BLOKERET (regelbogs-håndhævelse)",
+    h2.some((x) => x.handling === "BLOKERET" && x.mangler.includes("claude-ai-approval-findes")),
   );
 }
 {
-  const h = decide({ ...TOM, events: [{ type: "qwers-aabning" }] }, REGLER);
+  const INGEN_PAKKE = { ...TOM, marker: { pakke: "ingen", fase: "plan" } };
+  const h = decide(
+    { ...INGEN_PAKKE, events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6-arkiv-fold" }] },
+    REGLER,
+  );
+  const d = h.filter((x) => x.handling === "DISPATCH");
   check(
-    "qwers-åbning → kvittering (Step 0/1 er dialog — ingen aktør-vækning)",
-    h.find((x) => x.handling === "DISPATCH")?.opgave === "kvittering",
+    "qwers-åbning → kæden IGANGSÆTTES (V8/V13): Code + Codex recon-dispatches",
+    d.length === 2 &&
+      d.some((x) => x.opgave === "recon-kode" && x.aktoer === "code") &&
+      d.some((x) => x.opgave === "recon-research" && x.aktoer === "codex"),
+  );
+  check(
+    "spor-anker (V20): dispatch-kontekst bærer det qwers-bårne pakkenavn, ikke markørens 'ingen'",
+    d.every((x) => x.kontekst.spor === "gov-6-arkiv-fold"),
+  );
+  const h2 = decide(
+    {
+      ...INGEN_PAKKE,
+      laase: [{ aktoer: "code", spor: "gov-6-arkiv-fold" }],
+      events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6-arkiv-fold" }],
+    },
+    REGLER,
+  );
+  check(
+    "lås på qwers-båret navn → VENT for den låste aktør (V21: eventSpor i lås-tjek)",
+    h2.some((x) => x.handling === "VENT" && x.modtager === "code") &&
+      h2.filter((x) => x.handling === "DISPATCH").every((x) => x.aktoer !== "code"),
   );
 }
 
@@ -468,10 +505,24 @@ check(
     gateOrd: [],
     gateAuthor: "mgrubak",
     mainSha: "m",
+    recon: { kode: true, research: true, oplaeg: true, klar: true },
   });
   check(
-    "krav-dok på main + ingen plan → krav-dok-merged",
+    "krav-dok på main + ingen plan + recon-fase afsluttet → krav-dok-merged (V9)",
     e.some((x) => x.type === "krav-dok-merged"),
+  );
+  const eUdenRecon = afledEvents({
+    pakke: "gov-6-arkiv-fold",
+    paaMain: { kravDok: true, planFil: false, rapportFil: false },
+    buildPr: null,
+    gateOrd: [],
+    gateAuthor: "mgrubak",
+    mainSha: "m",
+    recon: { klar: false },
+  });
+  check(
+    "krav-dok på main UDEN recon-klar → INGEN krav-dok-merged (runde 17-betingelsen)",
+    !eUdenRecon.some((x) => x.type === "krav-dok-merged"),
   );
 }
 {
@@ -524,11 +575,32 @@ check(
     pakke: "ingen",
     paaMain: { kravDok: true, planFil: false },
     buildPr: null,
-    gateOrd: [],
+    gateOrd: [
+      { id: "c1", author: "mgrubak", tekst: "qwers gov-6-arkiv-fold" },
+      { id: "c2", author: "anden", tekst: "qwers ond-pakke" },
+    ],
     gateAuthor: "mgrubak",
     mainSha: "m",
   });
-  check("ingen aktiv pakke → ingen events", e.length === 0);
+  check(
+    "ingen aktiv pakke → KUN author-verificeret qwers afleder åbnings-event (V13)",
+    e.length === 1 && e[0].type === "qwers-aabning" && e[0].pakke === "gov-6-arkiv-fold",
+  );
+}
+{
+  const e = afledEvents({
+    pakke: "p",
+    paaMain: { kravDok: false, planFil: false },
+    buildPr: null,
+    gateOrd: [{ id: "c9", author: "mgrubak", tekst: "krav OK abc1234" }],
+    gateAuthor: "mgrubak",
+    mainSha: "m",
+    recon: {},
+  });
+  check(
+    "'krav OK <hash>' → krav-ok-hash-registreret m. hash (V9 versions-binding)",
+    e.some((x) => x.type === "krav-ok-hash-registreret" && x.hash === "abc1234"),
+  );
 }
 
 // ---------- 19. erBogfoeringsSti (de 7 P3-mønstre) ----------
@@ -539,13 +611,13 @@ check(
   erBogfoeringsSti("docs/coordination/rapport-historik/2026-06-12-gov-5-automation.md"),
 );
 check(
-  "krav-og-data er IKKE bogføring (kontrakt)",
-  !erBogfoeringsSti("docs/coordination/gov-6-arkiv-fold-krav-og-data.md"),
+  "krav-og-data ER bogføring (V11: gated af krav OK-hash, ikke klik)",
+  erBogfoeringsSti("docs/coordination/gov-6-arkiv-fold-krav-og-data.md"),
 );
 check("scripts/kaede er IKKE bogføring (værn)", !erBogfoeringsSti("scripts/kaede/dirigent.mjs"));
 check(
-  "arkiv-plan er IKKE bogføring (anchored mønster)",
-  !erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"),
+  "arkiv ER bogføring (V11: efter slut OK)",
+  erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"),
 );
 
 // ---------- 19b. modificeret tracked bærer → AFVENTER-COMMIT (Codex runde 13) ----------
@@ -665,6 +737,176 @@ check(
   );
   rmSync(repo, { recursive: true, force: true });
 }
+
+// ---------- 22. regelbogs-håndhævelse: betingelser → BLOKERET (V8-V21) ----------
+{
+  const lev = { fil: "v.md", sha: "s", deklaration: null, type: "troskabs-verdikt", markers: ["PASS"] };
+  const h1 = decide({ ...TOM, leverancer: [lev], betingelsesFakta: {} }, REGLER);
+  check(
+    "troskabs-PASS uden Codex-APPROVAL@plan-SHA → BLOKERET, ingen build-dispatch",
+    h1.some((x) => x.handling === "BLOKERET" && x.opgave === "build-start") &&
+      !h1.some((x) => x.handling === "DISPATCH"),
+  );
+  const faktaOk = { codexApprovalSha: "abc1234", troskabsPassSha: "abc1234", planSha: "abc1234def", aabneGates: 0 };
+  const h2 = decide({ ...TOM, leverancer: [lev], betingelsesFakta: faktaOk }, REGLER);
+  check(
+    "troskabs-PASS m. alle build-betingelser (SHA-match, prefix-tolerant) → build-start dispatches",
+    h2.find((x) => x.handling === "DISPATCH")?.opgave === "build-start" &&
+      h2.find((x) => x.handling === "DISPATCH")?.aktoer === "code",
+  );
+  const faktaForkertSha = { ...faktaOk, troskabsPassSha: "fff9999" };
+  const h3 = decide({ ...TOM, leverancer: [lev], betingelsesFakta: faktaForkertSha }, REGLER);
+  check(
+    "PASS bundet til FORKERT plan-SHA → BLOKERET (mekaniseret diff-tom-tjek)",
+    h3.some((x) => x.handling === "BLOKERET" && x.mangler.includes("troskabs-pass-paa-aktuel-plan-sha")),
+  );
+  const hFeedback = decide({ ...TOM, leverancer: [{ ...lev, markers: ["FEEDBACK"] }] }, REGLER);
+  check(
+    "troskabs-FEEDBACK → Code næste version (marker-routing)",
+    hFeedback.find((x) => x.handling === "DISPATCH")?.opgave === "naeste-version",
+  );
+  const hUkendt = decide({ ...TOM, leverancer: [{ ...lev, markers: [] }] }, REGLER);
+  check(
+    "troskabs-verdikt uden PASS/FEEDBACK-marker → KAEDE-STOP (fail-closed)",
+    hUkendt.at(-1).handling === "KAEDE-STOP" && hUkendt.at(-1).grund === "ukendt-verdikt-marker",
+  );
+}
+{
+  const h = decide(
+    {
+      ...TOM,
+      betingelsesFakta: { kravOkHash: "aaa1111", kravDokHash: "bbb2222" },
+      events: [{ type: "krav-ok-hash-registreret", sha: "c1", hash: "aaa1111" }],
+    },
+    REGLER,
+  );
+  check(
+    "krav OK-hash ≠ fil-hash → krav-dok-merge BLOKERET (versions-bindingen)",
+    h.some((x) => x.handling === "BLOKERET" && x.mangler.includes("krav-ok-hash-matcher-fil-hash")),
+  );
+  const h2 = decide(
+    {
+      ...TOM,
+      betingelsesFakta: { kravOkHash: "aaa1111", kravDokHash: "aaa1111" },
+      events: [{ type: "krav-ok-hash-registreret", sha: "c1", hash: "aaa1111" }],
+    },
+    REGLER,
+  );
+  check(
+    "krav OK-hash == fil-hash → krav-dok-merge dispatches (kæden merger det validerede)",
+    h2.find((x) => x.handling === "DISPATCH")?.opgave === "krav-dok-merge",
+  );
+}
+{
+  const h = decide(
+    {
+      ...TOM,
+      betingelsesFakta: { reconKode: true, reconResearch: false },
+      events: [{ type: "recon-kode-klar", sha: "r1" }],
+    },
+    REGLER,
+  );
+  check(
+    "recon-syntese uden begge kode-docs → BLOKERET",
+    h.some((x) => x.handling === "BLOKERET" && x.opgave === "recon-syntese"),
+  );
+}
+
+// ---------- 23. krav-dok-udkast to-cyklus-flow (V19/V21) ----------
+{
+  const untracked = {
+    fil: "docs/coordination/p-krav-og-data.md",
+    untracked: true,
+    type: "krav-dok-udkast",
+    deklaration: null,
+    markers: [],
+  };
+  const h1 = decide({ ...TOM, leverancer: [untracked] }, REGLER);
+  const tc = h1.find((x) => x.handling === "TRANSPORT-COMMIT");
+  check("untracked krav-dok-udkast → TRANSPORT-COMMIT m. afsender 'dialog'", tc?.afsender === "dialog");
+  const committed = {
+    fil: "docs/coordination/p-krav-og-data.md",
+    untracked: false,
+    sha: "k1",
+    type: "krav-dok-udkast",
+    deklaration: null,
+    markers: [],
+  };
+  const h2 = decide({ ...TOM, leverancer: [committed] }, REGLER);
+  check(
+    "committed krav-dok-udkast → DISPATCH mathias/hash-post (næste cyklus)",
+    h2.find((x) => x.handling === "DISPATCH")?.opgave === "hash-post" &&
+      h2.find((x) => x.handling === "DISPATCH")?.aktoer === "mathias",
+  );
+}
+
+// ---------- 24. REGISTRERET: modtager-løse recon-typer (V21) ----------
+{
+  const h = decide(
+    {
+      ...TOM,
+      leverancer: [
+        {
+          fil: "docs/coordination/p-recon-kode.md",
+          untracked: false,
+          sha: "r1",
+          type: "recon-kode-doc",
+          deklaration: null,
+          markers: [],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "recon-doc (modtager null) → REGISTRERET, ingen dispatch (events bærer videre vej)",
+    h.some((x) => x.handling === "REGISTRERET") && !h.some((x) => x.handling === "DISPATCH"),
+  );
+  const noegler = behandletNoegler([
+    JSON.stringify({ handling: "REGISTRERET", kontekst: { fil: "docs/coordination/p-recon-kode.md", sha: "r1" } }),
+  ]);
+  check(
+    "REGISTRERET tæller som behandlet (idempotens uden kørsel)",
+    noegler.includes("docs/coordination/p-recon-kode.md@r1"),
+  );
+}
+
+// ---------- 25. selvtjek-motoren (design pkt. 12 — de tre målte klasser) ----------
+{
+  const TMP2 = join(dirname(fileURLToPath(import.meta.url)), ".selftest-tmp");
+  rmSync(TMP2, { recursive: true, force: true });
+  mkdirSync(join(TMP2, "docs/coordination"), { recursive: true });
+  const rod = TMP2;
+  writeFileSync(join(rod, "docs/coordination/p-status.md"), "# status\nKonvergens-counter: 7\n");
+  writeFileSync(join(rod, "docs/coordination/p-plan.md"), "**Plan-version:** V9 · konvergens-counter: 9\n");
+  const r1 = selvtjekKoer([{ tjek: "counter-sync" }], "docs/coordination/p-status.md", { repoRod: rod });
+  check("counter-sync: status 7 ≠ plan 9 → FEJL (runde 18b-klassen fanges)", !r1.ok);
+  writeFileSync(join(rod, "docs/coordination/p-status.md"), "# status\nKonvergens-counter: 9\n");
+  const r2 = selvtjekKoer([{ tjek: "counter-sync" }], "docs/coordination/p-status.md", { repoRod: rod });
+  check("counter-sync: 9 == 9 → OK", r2.ok);
+  writeFileSync(join(rod, "kilde.txt"), "linje1\nlinje2\nlinje3\n");
+  writeFileSync(join(rod, "lev.md"), "Løfte:\n\nKILDE: kilde.txt:1-2\n\n```\nlinje1\nlinje2\n```\n");
+  check("ordret-diff: korrekt citat → OK", selvtjekKoer([{ tjek: "ordret-diff" }], "lev.md", { repoRod: rod }).ok);
+  writeFileSync(join(rod, "lev2.md"), "Løfte:\n\nKILDE: kilde.txt:1-2\n\n```\nlinje1\nFORKERT\n```\n");
+  check(
+    "ordret-diff: afvigende citat → FEJL (runde 18a-klassen fanges)",
+    !selvtjekKoer([{ tjek: "ordret-diff" }], "lev2.md", { repoRod: rod }).ok,
+  );
+  writeFileSync(join(rod, "lev3.md"), "tabellen siger afventer\n");
+  check(
+    "konsistens-grep: forbudt mønster → FEJL",
+    !selvtjekKoer([{ tjek: "konsistens-grep", forbudt: "afventer" }], "lev3.md", { repoRod: rod }).ok,
+  );
+  check(
+    "ukendt selvtjek-type → FEJL (fail-closed)",
+    !selvtjekKoer([{ tjek: "magisk-tjek" }], "lev3.md", { repoRod: rod }).ok,
+  );
+  rmSync(TMP2, { recursive: true, force: true });
+}
+
+// ---------- 26. betingelseOpfyldt: fail-closed ----------
+check("ukendt betingelse → aldrig opfyldt (fail-closed)", !betingelseOpfyldt("fantasi-betingelse", {}));
+check("ingen-aabne-gates: udefineret fakta → IKKE opfyldt (fail-closed)", !betingelseOpfyldt("ingen-aabne-gates", {}));
 
 // ---------- resultat ----------
 if (failed) {

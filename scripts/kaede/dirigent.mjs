@@ -34,11 +34,41 @@ const LAAS_STI = join(KAEDE_DIR, ".dirigent.lock");
 // Returnerer ordnet liste af handlinger. Første STOP-klasse-handling gør listen
 // endelig — fejl transporteres aldrig videre (krav 4).
 
+// Betingelses-evaluator (design pkt. 11, TILLÆG 3-skærpelsen): REN opslags-
+// funktion over tilstand.betingelsesFakta. Ukendt betingelse = fail-closed.
+// SHA-match er prefix-tolerant (reviews bærer kort SHA, filSha er fuld).
+function shaMatch(a, b) {
+  return !!a && !!b && (String(a).startsWith(String(b)) || String(b).startsWith(String(a)));
+}
+export function betingelseOpfyldt(navn, fakta = {}) {
+  switch (navn) {
+    case "codex-approval-paa-aktuel-plan-sha":
+      return shaMatch(fakta.codexApprovalSha, fakta.planSha);
+    case "troskabs-pass-paa-aktuel-plan-sha":
+      return shaMatch(fakta.troskabsPassSha, fakta.planSha);
+    case "ingen-aabne-gates":
+      return (fakta.aabneGates ?? 1) === 0;
+    case "krav-ok-hash-matcher-fil-hash":
+      return shaMatch(fakta.kravOkHash, fakta.kravDokHash);
+    case "begge-kode-recon-docs-findes":
+      return !!fakta.reconKode && !!fakta.reconResearch;
+    case "claude-ai-approval-findes":
+      return !!fakta.claudeAiApproval;
+    case "slut-ok-registreret":
+      return !!fakta.slutOk;
+    default:
+      return false; // fail-closed: ukendt betingelse kan aldrig være opfyldt
+  }
+}
+
 export function decide(tilstand, regler) {
   const handlinger = [];
   const laase = tilstand.laase ?? [];
   const behandlede = new Set(tilstand.behandlede ?? []);
   const spor = tilstand.marker?.pakke ?? "ingen";
+  // Betingelses-tjek pr. OPGAVE (regelbogs-håndhævelse): mangler → liste af navne
+  const manglendeBetingelser = (opgave) =>
+    (regler.betingelser?.[opgave] ?? []).filter((navn) => !betingelseOpfyldt(navn, tilstand.betingelsesFakta));
 
   // 1. Divergens (én sandhed) — STOPPER alt; intet andet vurderes.
   if (tilstand.divergens?.length) {
@@ -101,7 +131,17 @@ export function decide(tilstand, regler) {
       handlinger.push({ handling: "VENT", fil: lev.fil, grund: "koersel-paa-spor" });
       continue;
     }
-    handlinger.push({ handling: "TRANSPORT-COMMIT", fil: lev.fil });
+    // Selv-validering før frys (design pkt. 12, V15/V16): typens selvtjek-
+    // liste vedhæftes — udfoer() kører den FØR commit; fejl = ingen frys.
+    const tcType = lev.deklaration?.type ?? lev.type ?? null;
+    const tcRegel = tcType ? regler.leverance_typer[tcType] : null;
+    handlinger.push({
+      handling: "TRANSPORT-COMMIT",
+      fil: lev.fil,
+      selvtjek: tcRegel?.selvtjek ?? [],
+      afsender: tcRegel?.afsender ?? null,
+      spor,
+    });
   }
 
   // 4. Committede, ubehandlede leverancer → routing.
@@ -143,9 +183,27 @@ export function decide(tilstand, regler) {
       handlinger.push({ handling: "ARV-IGNORERET", fil: lev.fil });
       continue;
     }
-    const regel = type ? regler.leverance_typer[type] : null;
+    let regel = type ? regler.leverance_typer[type] : null;
     if (!regel) {
       return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-leverance-type", fil: lev.fil, type }];
+    }
+
+    // 4b2. Marker-routing (V17/runde 25): troskabs-verdikt routes pr. PASS/FEEDBACK
+    if (regel.routing_pr_marker) {
+      const markerNavn = Object.keys(regel.routing_pr_marker).find((m) => (lev.markers ?? []).includes(m));
+      if (!markerNavn) {
+        return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-verdikt-marker", fil: lev.fil, type }];
+      }
+      regel = { ...regel, ...regel.routing_pr_marker[markerNavn] };
+    }
+
+    // 4b3. Modtager-løse typer (recon-docs): REGISTRERET — behandlet, ingen
+    //     dispatch; events afleder den videre vej (recon-kode-klar m.v.).
+    if (regel.modtager === null || regel.modtager === undefined) {
+      if (!lev.deklaration?.naeste) {
+        handlinger.push({ handling: "REGISTRERET", kontekst: { fil: lev.fil, sha: lev.sha ?? null, spor } });
+        continue;
+      }
     }
 
     // 4c. Modtager: aktør-deklaration kan override modtager (vækningsret hos
@@ -159,6 +217,13 @@ export function decide(tilstand, regler) {
     //     (verdikt på frossen version) — leverancen venter til næste cyklus.
     if (laase.some((l) => l.aktoer === modtager && l.spor === spor)) {
       handlinger.push({ handling: "VENT", fil: lev.fil, modtager, grund: "laas" });
+      continue;
+    }
+
+    // 4e. Betingelser (design pkt. 11): mangler én, KAN der ikke dispatches.
+    const mangler = manglendeBetingelser(regel.opgave);
+    if (mangler.length) {
+      handlinger.push({ handling: "BLOKERET", opgave: regel.opgave, fil: lev.fil, mangler });
       continue;
     }
 
@@ -177,12 +242,21 @@ export function decide(tilstand, regler) {
     if (!modtagere) {
       return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-event", event: ev.type }];
     }
+    // eventSpor (V20/V21, runde 28+29): qwers-båret pakkenavn vinder over
+    // markørens "ingen" og bruges KONSEKVENT — lås, betingelser, dispatch.
+    const eventSpor = ev.pakke ?? spor;
     for (const m of modtagere) {
       // Event-idempotens PR. MODTAGER (Codex runde 11-fund): multi-modtager-
       // events må aldrig droppe én aktørs kørsel fordi en andens lykkedes.
       if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}#${m.aktoer}`)) continue;
-      if (laase.some((l) => l.aktoer === m.aktoer && l.spor === spor)) {
+      if (laase.some((l) => l.aktoer === m.aktoer && l.spor === eventSpor)) {
         handlinger.push({ handling: "VENT", event: ev.type, modtager: m.aktoer, grund: "laas" });
+        continue;
+      }
+      // Betingelser (design pkt. 11) — også på event-vejen.
+      const mangler = manglendeBetingelser(m.opgave);
+      if (mangler.length) {
+        handlinger.push({ handling: "BLOKERET", opgave: m.opgave, event: ev.type, mangler });
         continue;
       }
       handlinger.push({
@@ -190,7 +264,7 @@ export function decide(tilstand, regler) {
         aktoer: m.aktoer,
         opgave: m.opgave,
         adapter: regler.aktoerer[m.aktoer].adapter,
-        kontekst: { event: ev.type, sha: ev.sha ?? null, spor },
+        kontekst: { event: ev.type, sha: ev.sha ?? null, spor: eventSpor },
       });
     }
   }
@@ -227,12 +301,54 @@ export function transportCommit(fil, { cwd = REPO_ROD, push = true } = {}) {
   if (push) execFileSync("git", ["push", "--quiet"], { cwd });
 }
 
+// Selvtjek-motor (design pkt. 12, V15/V16 — Mathias-forslag): MEKANISKE tjek
+// før frys, ingen dømmekraft. Returnerer { ok, fejl: [beskrivelser] }.
+export function selvtjekKoer(tjekListe, filSti, { repoRod = REPO_ROD } = {}) {
+  const fejl = [];
+  const tekst = readFileSync(join(repoRod, filSti), "utf8");
+  for (const tjek of tjekListe ?? []) {
+    if (tjek.tjek === "konsistens-grep" && tjek.forbudt) {
+      if (new RegExp(tjek.forbudt, "m").test(tekst))
+        fejl.push(`konsistens-grep: forbudt mønster '${tjek.forbudt}' fundet`);
+    } else if (tjek.tjek === "counter-sync") {
+      // Målte klasse (runde 18b/22/26): status-counter vs. plan-header-counter
+      const spor = filSti.match(/coordination\/(.+)-status\.md$/)?.[1];
+      const planSti = join(repoRod, `docs/coordination/${spor}-plan.md`);
+      const statusTal = tekst.match(/[Kk]onvergens-counter:\*{0,2}\s*(\d+)/)?.[1];
+      if (spor && existsSync(planSti) && statusTal) {
+        const planTal = readFileSync(planSti, "utf8").match(/konvergens-counter:\s*(\d+)/)?.[1];
+        if (planTal && planTal !== statusTal) fejl.push(`counter-sync: status ${statusTal} ≠ plan ${planTal}`);
+      }
+    } else if (tjek.tjek === "ordret-diff") {
+      // Målte klasse (runde 18a): "body 1:1"-løfter m. KILDE-markør diffes mod kilden
+      const blokRe = /KILDE:\s*(\S+?):(\d+)[–-](\d+)\s*\n+```[a-z]*\n([\s\S]*?)```/g;
+      let m;
+      while ((m = blokRe.exec(tekst))) {
+        const [, kilde, fra, til, citeret] = m;
+        const kildeSti = join(repoRod, kilde);
+        if (!existsSync(kildeSti)) {
+          fejl.push(`ordret-diff: kilde ${kilde} findes ikke`);
+          continue;
+        }
+        const kildeLinjer = readFileSync(kildeSti, "utf8")
+          .split("\n")
+          .slice(Number(fra) - 1, Number(til))
+          .join("\n");
+        if (kildeLinjer.trim() !== citeret.trim()) fejl.push(`ordret-diff: ${kilde}:${fra}-${til} afviger fra citatet`);
+      }
+    } else {
+      fejl.push(`ukendt selvtjek-type: ${tjek.tjek}`); // fail-closed
+    }
+  }
+  return { ok: fejl.length === 0, fejl };
+}
+
 // Parallel eksekvering (Codex runde 12-fund): DISPATCH spawner ASYNKRONT —
 // Code og Codex kører samtidig (krav 5, §2.1). `koerende` er kurérens register
 // over aktive kørsler: nøgle "<aktoer>::<spor>" → { aktoer, spor, faerdig }.
 // Registret bliver til decide()'s `laase` næste cyklus — låsen holdes på tværs
 // af poll-cyklusser, ikke kun inden for én udfoer().
-export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onStop = null } = {}) {
+export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onStop = null, regler = null } = {}) {
   for (const h of handlinger) {
     if (dryRun) {
       console.log(`[dry-run] ${JSON.stringify(h)}`);
@@ -240,9 +356,35 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
     }
     log(h);
     switch (h.handling) {
-      case "TRANSPORT-COMMIT":
+      case "TRANSPORT-COMMIT": {
+        // Selv-validering før frys (design pkt. 12): fejl = INGEN frys,
+        // INGEN videre dispatch — SELVTJEK-FEJL routes til afsenderen
+        // (afsender "dialog" → Mathias-notifikation, ingen genkørsel).
+        const resultat = selvtjekKoer(h.selvtjek ?? [], h.fil);
+        if (!resultat.ok) {
+          log({ handling: "SELVTJEK-FEJL", fil: h.fil, fejl: resultat.fejl, afsender: h.afsender });
+          console.error(`SELVTJEK-FEJL: ${h.fil} — ${resultat.fejl.join(" · ")}`);
+          if (h.afsender && h.afsender !== "dialog" && regler?.aktoerer?.[h.afsender]) {
+            udfoer(
+              [
+                {
+                  handling: "DISPATCH",
+                  aktoer: h.afsender,
+                  opgave: "selvtjek-fejl-rettelse",
+                  adapter: regler.aktoerer[h.afsender].adapter,
+                  kontekst: { fil: h.fil, sha: null, spor: h.spor ?? "ingen" },
+                },
+              ],
+              { dryRun, koerende, onStop, regler },
+            );
+          } else {
+            log({ handling: "MATHIAS-NOTIFIKATION", grund: "selvtjek-fejl-i-dialog-output", fil: h.fil });
+          }
+          break;
+        }
         transportCommit(h.fil);
         break;
+      }
       case "GATE-AFGJORT": {
         // Ordret transport af Mathias' afgørelses-ord ind i gate-filen
         // (§6.3-status-skift) — templated indsættelse, ingen vurdering.
@@ -314,7 +456,10 @@ export function behandletNoegler(logLinjer) {
   return logLinjer
     .filter(Boolean)
     .map((l) => JSON.parse(l))
-    .filter((p) => p.handling === "KOERSEL-SLUT" && p.exit === 0 && p.kontekst)
+    .filter(
+      (p) =>
+        (p.handling === "KOERSEL-SLUT" && p.exit === 0 && p.kontekst) || (p.handling === "REGISTRERET" && p.kontekst), // modtager-løse typer (V21): behandlet uden kørsel
+    )
     .map((p) =>
       p.kontekst.fil
         ? `${p.kontekst.fil}@${p.kontekst.sha ?? "HEAD"}`
@@ -359,7 +504,7 @@ async function main() {
       tilstand.behandlede = laesBehandlede();
       tilstand.laase = [...koerende.values()].map((k) => ({ aktoer: k.aktoer, spor: k.spor }));
       const handlinger = decide(tilstand, regler);
-      const resultat = udfoer(handlinger, { dryRun, koerende, onStop });
+      const resultat = udfoer(handlinger, { dryRun, koerende, onStop, regler });
       if (resultat.stoppet || stopSignal) {
         await Promise.all([...koerende.values()].map((k) => k.faerdig)); // kørende afsluttes, intet nyt startes
         process.exit(2);

@@ -1,14 +1,20 @@
 {
-  "version": 1,
-  "kommentar": "Kædens deklarative routing (gov-5, plan V7 step 2). Kuréren læser KUN denne tabel + aktørernes deklarationer — den har ingen egen dagsorden. Ændringer til denne fil er en Mathias-beslutning (CODEOWNERS default-own).",
+  "version": 2,
+  "kommentar": "Kædens deklarative routing (gov-5, plan V21 — P7-event-rework). Kuréren læser KUN denne tabel + aktørernes deklarationer — den har ingen egen dagsorden. Ændringer til denne fil er en Mathias-beslutning (CODEOWNERS default-own).",
   "poll_interval_sekunder": 60,
   "kaede_issue": null,
-  "kaede_issue_kommentar": "Sættes pr. pakke ved åbning (B3 mathias-adapter opretter issuet). null = ingen gate-ord-flade endnu; kæden venter fail-closed på chat-gates.",
+  "kaede_issue_kommentar": "STÅENDE dirigent-issue (V13): ét issue på tværs af pakker, bærer qwers-åbnings-ord; læses ALTID — også ved aktiv-pakke: ingen. Sættes ved B3-leverancen. null = åbningsflade ikke etableret → kæden kan ikke åbne pakker (fail-closed, manuelt flow). Pr.-pakke kæde-issue bæres af pakke-status-filens 'Kæde-issue: #N'-linje.",
   "identiteter": {
     "gate_author": "mgrubak",
     "bot": "stork-code-bot"
   },
   "gate_ord": ["qwers", "krav OK", "qwerg", "slut OK", "GODKENDT", "AFVIST", "stop"],
+  "recon_filer": {
+    "kommentar": "Filnavns-konvention for kædens recon-leverancer pr. pakke (V8-kædestart)",
+    "kode": "docs/coordination/<pakke>-recon-kode.md",
+    "research": "docs/coordination/<pakke>-recon-research.md",
+    "oplaeg": "docs/coordination/<pakke>-recon-oplaeg.md"
+  },
   "aktoerer": {
     "code": { "adapter": "scripts/kaede/adapters/code.sh" },
     "codex": { "adapter": "scripts/kaede/adapters/codex.sh" },
@@ -16,20 +22,63 @@
     "mathias": { "adapter": "scripts/kaede/adapters/mathias.mjs" }
   },
   "leverance_typer": {
-    "plan-version": { "modtager": "codex", "opgave": "plan-review" },
-    "build-batch": { "modtager": "codex", "opgave": "batch-review" },
-    "slut-rapport": { "modtager": "claude-ai-rolle", "opgave": "slut-rapport-review" },
-    "review-feedback": { "modtager": "code", "opgave": "naeste-version" },
-    "review-approval": { "modtager": "code", "opgave": "build-start" },
-    "sparring-oenske": { "modtager": "codex", "opgave": "sparring-svar" },
-    "sparring-svar": { "modtager": "code", "opgave": "fortsaet" },
-    "kode-fund": { "modtager": "code", "opgave": "fund-haandtering" },
-    "optimering-forslag": { "modtager": "code", "opgave": "adopt-defer-dismiss" },
-    "loes-replik": { "modtager": "codex", "opgave": "agree-refine-escalate" },
-    "fund-gate-pakke": { "modtager": "mathias", "opgave": "gate-anmodning" }
+    "plan-version": {
+      "afsender": "code",
+      "modtager": "codex",
+      "opgave": "plan-review",
+      "selvtjek": [{ "tjek": "counter-sync" }, { "tjek": "ordret-diff" }]
+    },
+    "build-batch": { "afsender": "code", "modtager": "codex", "opgave": "batch-review", "selvtjek": [] },
+    "slut-rapport": {
+      "afsender": "code",
+      "modtager": "claude-ai-rolle",
+      "opgave": "slut-rapport-review",
+      "selvtjek": [{ "tjek": "ordret-diff" }]
+    },
+    "review-feedback": { "afsender": "codex", "modtager": "code", "opgave": "naeste-version", "selvtjek": [] },
+    "review-approval": {
+      "afsender": "codex",
+      "modtager": "claude-ai-rolle",
+      "opgave": "krav-troskabs-tjek",
+      "selvtjek": []
+    },
+    "troskabs-verdikt": {
+      "afsender": "claude-ai-rolle",
+      "routing_pr_marker": {
+        "PASS": { "modtager": "code", "opgave": "build-start" },
+        "FEEDBACK": { "modtager": "code", "opgave": "naeste-version" }
+      },
+      "selvtjek": []
+    },
+    "sparring-oenske": { "afsender": "code", "modtager": "codex", "opgave": "sparring-svar", "selvtjek": [] },
+    "sparring-svar": { "afsender": "codex", "modtager": "code", "opgave": "fortsaet", "selvtjek": [] },
+    "kode-fund": { "afsender": "codex", "modtager": "code", "opgave": "fund-haandtering", "selvtjek": [] },
+    "optimering-forslag": {
+      "afsender": "codex",
+      "modtager": "code",
+      "opgave": "adopt-defer-dismiss",
+      "selvtjek": []
+    },
+    "loes-replik": { "afsender": "code", "modtager": "codex", "opgave": "agree-refine-escalate", "selvtjek": [] },
+    "fund-gate-pakke": {
+      "afsender": "claude-ai-rolle",
+      "modtager": "mathias",
+      "opgave": "gate-anmodning",
+      "selvtjek": []
+    },
+    "recon-kode-doc": { "afsender": "code", "modtager": null, "selvtjek": [] },
+    "recon-research-doc": { "afsender": "codex", "modtager": null, "selvtjek": [] },
+    "recon-oplaeg": { "afsender": "claude-ai-rolle", "modtager": null, "selvtjek": [] },
+    "krav-dok-udkast": { "afsender": "dialog", "modtager": "mathias", "opgave": "hash-post", "selvtjek": [] }
   },
   "events": {
-    "qwers-aabning": [{ "aktoer": "mathias", "opgave": "kvittering" }],
+    "qwers-aabning": [
+      { "aktoer": "code", "opgave": "recon-kode" },
+      { "aktoer": "codex", "opgave": "recon-research" }
+    ],
+    "recon-kode-klar": [{ "aktoer": "claude-ai-rolle", "opgave": "recon-syntese" }],
+    "recon-klar": [{ "aktoer": "mathias", "opgave": "notifikation" }],
+    "krav-ok-hash-registreret": [{ "aktoer": "code", "opgave": "krav-dok-merge" }],
     "krav-dok-merged": [
       { "aktoer": "code", "opgave": "plan-start" },
       { "aktoer": "codex", "opgave": "kode-research" }
@@ -39,6 +88,13 @@
     "slut-ok-registreret": [{ "aktoer": "code", "opgave": "slut-merge" }],
     "gate-godkendt": [{ "aktoer": "code", "opgave": "gate-afgjort-fortsaet" }],
     "gate-afvist": [{ "aktoer": "code", "opgave": "gate-afvist-alternativ" }]
+  },
+  "betingelser": {
+    "kommentar": "Tilstands-betingelser pr. OPGAVE (design pkt. 11, TILLÆG 3-skærpelsen): mangler én, returnerer decide() BLOKERET — aldrig en advarsel. Evalueres mod tilstand.betingelsesFakta.",
+    "build-start": ["codex-approval-paa-aktuel-plan-sha", "troskabs-pass-paa-aktuel-plan-sha", "ingen-aabne-gates"],
+    "krav-dok-merge": ["krav-ok-hash-matcher-fil-hash"],
+    "recon-syntese": ["begge-kode-recon-docs-findes"],
+    "slut-merge": ["claude-ai-approval-findes", "slut-ok-registreret"]
   },
   "fund_gate_markers": [
     "NEEDS-MATHIAS",
