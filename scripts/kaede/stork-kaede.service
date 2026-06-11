@@ -1,0 +1,23 @@
+# Stork 2.0 kæde-kurér (gov-5, plan V21 step 10) — systemd USER-unit.
+# Install (manuelt, del af aktiverings-tjeklisten — IKKE auto-aktiveret):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/kaede/stork-kaede.service ~/.config/systemd/user/
+#   loginctl enable-linger $USER   # services overlever session-luk (preflight tjekker)
+#   systemctl --user daemon-reload && systemctl --user enable --now stork-kaede
+# Stop = manuelt flow (krav 7): systemctl --user stop stork-kaede
+[Unit]
+Description=Stork 2.0 kaede-kurer (gov-5 dirigent)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/stork-2.0
+# PATH eksplicit: user-units arver ikke shell-PATH (claude/codex/gh/node)
+Environment=PATH=%h/.local/bin:%h/.nvm/versions/node/v24.15.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/bin/bash scripts/kaede/preflight.sh
+ExecStart=/usr/bin/env node scripts/kaede/dirigent.mjs
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target
