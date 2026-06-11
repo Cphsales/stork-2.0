@@ -43,6 +43,8 @@ const MARKER_RES = {
   "KRITISK-SIKKERHEDSHUL": /^\[?KRITISK-SIKKERHEDSHUL\]?(\b|:)/m,
   "WORKAROUND-INTRODUCERET": /^\[?WORKAROUND-INTRODUCERET\]?(\b|:)/m,
   APPROVAL: /^APPROVAL\b/m,
+  PASS: /^PASS\b/m,
+  FEEDBACK: /^FEEDBACK\b/m,
 };
 
 export function udtraekMarkers(tekst) {
@@ -89,10 +91,26 @@ function parseAktivMarker(aktivPlanTekst) {
 // Events er AFLEDTE TILSTANDE (ikke besked-strøm): genberegnes hver cyklus af
 // rå kilder; idempotens bæres af behandlede-nøgler (event:<type>@<sha>).
 // gateOrd filtreres på gateAuthor OGSÅ her (forsvar i dybden — decide() gør det igen).
-export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, mainSha }) {
-  if (!pakke || pakke === "ingen") return [];
+export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, mainSha, recon = {} }) {
   const events = [];
-  if (paaMain.kravDok && !paaMain.planFil) events.push({ type: "krav-dok-merged", sha: mainSha });
+  // Åbnings- og gate-ord-afledning kører ALTID (V13/runde 21: åbning sker
+  // netop ved aktiv-pakke: ingen). Author-filter også her (forsvar i dybden).
+  for (const ord of gateOrd ?? []) {
+    if (ord.author !== gateAuthor) continue;
+    if (ord.tekst.startsWith("qwers "))
+      events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+  }
+  if (!pakke || pakke === "ingen") return events;
+
+  // Recon-afledninger (V8-kædestart): afledte tilstande af leverance-eksistens
+  if (recon.kode && recon.research && !recon.oplaeg)
+    events.push({ type: "recon-kode-klar", sha: recon.kodeSha ?? mainSha });
+  if (recon.kode && recon.research && recon.oplaeg)
+    events.push({ type: "recon-klar", sha: recon.oplaegSha ?? mainSha });
+
+  // krav-dok-merged betinget af recon-fase afsluttet (Codex runde 17/V9)
+  if (paaMain.kravDok && !paaMain.planFil && (recon.klar ?? false))
+    events.push({ type: "krav-dok-merged", sha: mainSha });
   if (buildPr?.merged && !paaMain.rapportFil)
     events.push({ type: "build-pr-merged", sha: buildPr.mergeSha ?? mainSha });
   if (buildPr?.klar && buildPr?.beslutningsSti)
@@ -100,8 +118,9 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
   for (const ord of gateOrd ?? []) {
     if (ord.author !== gateAuthor) continue;
     if (ord.tekst === "slut OK") events.push({ type: "slut-ok-registreret", sha: ord.id ?? mainSha });
-    if (ord.tekst.startsWith("qwers "))
-      events.push({ type: "qwers-aabning", sha: ord.id ?? mainSha, pakke: ord.tekst.slice(6).trim() });
+    // Versions-bindingen (V9, rest-klik-afgørelse 2): "krav OK <hash>"
+    const kravOk = ord.tekst.match(/^krav OK ([0-9a-f]{7,64})$/);
+    if (kravOk) events.push({ type: "krav-ok-hash-registreret", sha: ord.id ?? mainSha, hash: kravOk[1] });
     // Gate-afgørelser (runde 16): GODKENDT/AFVIST løfter åben Mathias-gate
     if (ord.tekst === "GODKENDT" || ord.tekst.startsWith("GODKENDT "))
       events.push({ type: "gate-godkendt", sha: ord.id ?? mainSha });
@@ -111,7 +130,8 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
   return events;
 }
 
-// Bogførings-sti-tjek (de 7 P3-mønstre). NB: CODEOWNERS er det HÅNDHÆVENDE
+// Bogførings-sti-tjek (de 9 P3-mønstre — V9 rest-klik-afgørelser: arkiv +
+// krav-og-data un-ownet, gated af ord/hash). NB: CODEOWNERS er det HÅNDHÆVENDE
 // værn (GitHub) — denne helper afgør kun om kuréren skal re-requeste Mathias-
 // review (transport-høflighed); GitHub kræver det uanset hvad denne siger.
 const BOGFOERING_RES = [
@@ -120,8 +140,10 @@ const BOGFOERING_RES = [
   /^docs\/coordination\/codex-reviews\//,
   /^docs\/coordination\/plan-feedback\//,
   /^docs\/coordination\/rapport-historik\//,
+  /^docs\/coordination\/arkiv\//,
   /^docs\/coordination\/[^/]+-status\.md$/,
   /^docs\/coordination\/[^/]+-plan\.md$/,
+  /^docs\/coordination\/[^/]+-krav-og-data\.md$/,
 ];
 export function erBogfoeringsSti(fil) {
   return BOGFOERING_RES.some((re) => re.test(fil));
@@ -226,6 +248,13 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-status.md`))) {
     leveranceStier.push(`docs/coordination/${aktivPakke}-status.md`);
   }
+  // krav-dok-udkast (V19/V21, runde 27+29): bærer i BEGGE tilstande —
+  // untracked (dialogens output → transport-commit) OG committed-indtil-
+  // behandlet (→ hash-post via normal type-routing). Type infereres af
+  // filnavnet; dialogen skriver ingen →NÆSTE-deklaration.
+  if (aktivPakke !== "ingen" && existsSync(join(koordDir, `${aktivPakke}-krav-og-data.md`))) {
+    leveranceStier.push(`docs/coordination/${aktivPakke}-krav-og-data.md`);
+  }
 
   // Artefakt-opslag (Codex runde 10-fund 1): status-filen er BÆRER, men
   // verdiktet skal fryses til ARTEFAKTET. Pr. deklareret type slås artefaktets
@@ -251,10 +280,13 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     const tekst = readFileSync(join(repoRod, sti), "utf8");
     const erUntracked = untracked.includes(sti);
     const deklaration = parseDeklaration(tekst);
+    // Type-inferens fra filnavns-mønster (V19): krav-og-data → krav-dok-udkast
+    const inferreretType = /-krav-og-data\.md$/.test(sti) ? "krav-dok-udkast" : null;
     leverancer.push({
       fil: sti,
       untracked: erUntracked,
       aendret: aendrede.includes(sti),
+      type: inferreretType,
       // frossen version: artefaktets SHA vinder over bærerens (runde 10-fund 1)
       sha: erUntracked ? null : (artefaktSha(deklaration?.type) ?? filSha(sti, repoRod)),
       deklaration,
@@ -290,25 +322,44 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     }
   }
 
-  // Events: afledte tilstande for den aktive pakke (rå kilder: origin/main + build-PR)
+  // Events: afledte tilstande (V13/runde 21: qwers-afledning kører ALTID —
+  // åbning sker netop ved aktiv-pakke: ingen; pakke-events kun m. aktiv pakke)
   const pakke = marker?.pakke ?? "ingen";
-  const reglerSti = join(repoRod, "scripts/kaede/kaede-regler.json");
-  const gateAuthor = JSON.parse(readFileSync(reglerSti, "utf8")).identiteter.gate_author;
-  let events = [];
+  const regler = JSON.parse(readFileSync(join(repoRod, "scripts/kaede/kaede-regler.json"), "utf8"));
+  const gateAuthor = regler.identiteter.gate_author;
+  const mainSha = git(["rev-parse", "origin/main"], repoRod);
+
+  // Recon-fakta (V8-kædestart): leverance-eksistens pr. konvention i regler.recon_filer
+  const reconSti = (slags) => regler.recon_filer[slags].replace("<pakke>", pakke);
+  const recon =
+    pakke === "ingen"
+      ? {}
+      : {
+          kode: existsSync(join(repoRod, reconSti("kode"))),
+          research: existsSync(join(repoRod, reconSti("research"))),
+          oplaeg: existsSync(join(repoRod, reconSti("oplaeg"))),
+          kodeSha: filSha(reconSti("kode"), repoRod),
+          oplaegSha: filSha(reconSti("oplaeg"), repoRod),
+        };
+  if (pakke !== "ingen") recon.klar = recon.kode && recon.research && recon.oplaeg;
+
+  let events = afledEvents({
+    pakke,
+    paaMain:
+      pakke === "ingen"
+        ? {}
+        : {
+            kravDok: paaOriginMain(`docs/coordination/${pakke}-krav-og-data.md`, repoRod),
+            planFil: paaOriginMain(`docs/coordination/${pakke}-plan.md`, repoRod),
+            rapportFil: false, // glob-opslag nedenfor
+          },
+    buildPr: fetch && pakke !== "ingen" ? laesBuildPr(pakke, repoRod) : null,
+    gateOrd,
+    gateAuthor,
+    mainSha,
+    recon,
+  });
   if (pakke !== "ingen") {
-    const mainSha = git(["rev-parse", "origin/main"], repoRod);
-    events = afledEvents({
-      pakke,
-      paaMain: {
-        kravDok: paaOriginMain(`docs/coordination/${pakke}-krav-og-data.md`, repoRod),
-        planFil: paaOriginMain(`docs/coordination/${pakke}-plan.md`, repoRod),
-        rapportFil: false, // rapport-historik/<dato>-<pakke>.md — dato ukendt; afklares ved opslag
-      },
-      buildPr: fetch ? laesBuildPr(pakke, repoRod) : null,
-      gateOrd,
-      gateAuthor,
-      mainSha,
-    });
     // rapportFil: glob-opslag mod origin/main (dato-præfiks ukendt)
     try {
       const rapportFiler = git(
@@ -323,6 +374,40 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     }
   }
 
+  // Betingelses-fakta (design pkt. 11, TILLÆG 3-skærpelsen): rå tilstande som
+  // decide() evaluerer regler.betingelser imod. Kilde-disciplin: reviews/verdikter
+  // bærer "Plan-SHA: <sha>"-header (codex-review.sh); fil-hash er git blob-hash.
+  function nyesteLeveranceSha(typeNavn, markerKraevet) {
+    const kandidater = leverancer.filter(
+      (l) =>
+        !l.untracked &&
+        (l.deklaration?.type === typeNavn || l.type === typeNavn) &&
+        (l.markers ?? []).includes(markerKraevet),
+    );
+    if (!kandidater.length) return null;
+    const fil = kandidater.at(-1).fil;
+    const m = readFileSync(join(repoRod, fil), "utf8").match(/Plan-SHA:\s*([0-9a-f]{7,40})/i);
+    return m ? m[1] : null;
+  }
+  const kravFil = `docs/coordination/${pakke}-krav-og-data.md`;
+  const betingelsesFakta =
+    pakke === "ingen"
+      ? {}
+      : {
+          planSha: filSha(`docs/coordination/${pakke}-plan.md`, repoRod),
+          codexApprovalSha: nyesteLeveranceSha("review-approval", "APPROVAL"),
+          troskabsPassSha: nyesteLeveranceSha("troskabs-verdikt", "PASS"),
+          kravDokHash: existsSync(join(repoRod, kravFil)) ? git(["hash-object", kravFil], repoRod) : null,
+          kravOkHash: events.find((e) => e.type === "krav-ok-hash-registreret")?.hash ?? null,
+          claudeAiApproval: leverancer.some(
+            (l) => !l.untracked && (l.markers ?? []).includes("APPROVAL") && /-claude-ai\.md$/.test(l.fil),
+          ),
+          slutOk: events.some((e) => e.type === "slut-ok-registreret"),
+          reconKode: recon.kode ?? false,
+          reconResearch: recon.research ?? false,
+          aabneGates: aabneGates.length,
+        };
+
   const divergens = findDivergens([
     {
       felt: `branch-sha (${branch})`,
@@ -333,5 +418,5 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     },
   ]);
 
-  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, aabneGates, divergens };
+  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, aabneGates, betingelsesFakta, divergens };
 }
