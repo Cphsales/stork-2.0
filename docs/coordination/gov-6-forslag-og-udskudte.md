@@ -60,8 +60,13 @@ Hjem: behovet → krav-dok-dialogen; mekanik-evalueringen → partnerskabs-runde
 - [ÅBENT] `docs/claude-ai/SKILL.md` bærer før-gov-5-rolle.
 - [ÅBENT] aktiv-plan.md er vokset til log — sanering.
 - [ÅBENT] plan-feedback/ er tom — afklaring.
-- [FORSLAG] 1.0-reference (storks-logikker, frontend-sider-oversigt) → mærket
-  repo-arkiv så kædens recon når dem; destillering pr. emne når emnet åbner.
+- [FORSLAG] 1.0-reference-arkiv (mærket HISTORISK, aldrig krav): samler både
+  1.0-repo-materiale OG projekt-fladens fakta-dokumenter (storks-logikker,
+  frontend-sider-oversigt, code-løsninger) ét sted i repoet, så kædens recon
+  når dem; destillering pr. emne når emnet åbner. Afløste forståelses-udkast
+  (dokument-1-forstaaelse, gammel CLAUDE.md) arkiveres IKKE — de er git-history;
+  to versioner af forståelsen i repoet er præcis den drift én-sandhed forbyder.
+  Afgøres i gov-6's krav-dok-dialog. _(Mathias-ord 2026-06-11.)_
 
 ## 5 · Punkter med hjem i partnerskabs-runden (pointer — substansen bor i kassen)
 
