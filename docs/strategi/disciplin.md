@@ -6,7 +6,7 @@
 
 > **Dette er det eneste rolle- og proces-hjem.** Vision-og-principper.md definerer ikke længere aktører eller roller — det er proces, og det bor her. Ved konflikt om systemets vision vinder vision-dokumentet; ved spørgsmål om hvordan vi arbejder vinder denne fil.
 
-> **V5-ændringer fra V4 (afgørelser, kan omgøres):** Genindført fire discipliner V4 tabte uden beslutning, fordi de er bærende — formåls-immutabilitet (§3.0), differentieret modsigelses-håndtering (§8), destructive-drops-preflight (§3.9), glid-detector (§9). Ikke genindført det V4 bevidst droppede (footer): 3-AI forretningsgang-triangulering og fire-dok-konsultations-tabel — substansen ligger i §9.1 proaktiv recon og §9.3 Codex-review-fokus, og V4 havde ret i at skære ceremonien. Automation skrevet ærligt som notify-only (§2, §6.2).
+> **V5-ændringer fra V4 (afgørelser, kan omgøres):** Genindført fire discipliner V4 tabte uden beslutning, fordi de er bærende — formåls-immutabilitet (§3.0), differentieret modsigelses-håndtering (§8), destructive-drops-preflight (§3.9), glid-detector (§9). Ikke genindført det V4 bevidst droppede (footer): 3-AI forretningsgang-triangulering og fire-dok-konsultations-tabel — substansen ligger i §9.1 proaktiv recon og §9.3 Codex-review-fokus, og V4 havde ret i at skære ceremonien. Automation-tilstand skrives ærligt og opdateres ved leverance (§2, §6.2) — pr. gov-5: kæden er BYGGET og committet; systemd-aktivering er aktiverings-tjekliste; BEVIST først ved gov-6-gennemløbet (krav 8).
 
 ---
 
@@ -502,4 +502,4 @@ V5 virker kun hvis erstatning faktisk sker — denne fil afløser V4, lægges ik
 
 ---
 
-**V5 — 2026-06-03.** Afløser V4 (2026-05-22). Genindfører formåls-immutabilitet, differentieret modsigelses-håndtering, destructive-drops-preflight, glid-detector. Beholder V4's bevidste forenklinger. Skriver automation ærligt som notify-only.
+**V5 — 2026-06-03.** Afløser V4 (2026-05-22). Genindfører formåls-immutabilitet, differentieret modsigelses-håndtering, destructive-drops-preflight, glid-detector. Beholder V4's bevidste forenklinger. Automation-tilstanden skrives ærligt pr. leverance (gov-5: bygget → aktiveres → bevises i gov-6).
