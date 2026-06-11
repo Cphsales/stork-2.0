@@ -51,6 +51,29 @@ pakken "ingen") — FORBUDT per §3.7. Ingen filer ud over denne gate-fil er
 - **GODKENDT m. præcisering:** hvis et NYT/andet review faktisk skal
   håndteres, angiv korrekt review-fil + frossen ref → Code genoptager derfra.
 
+## Addendum (18:50–19:00Z, opdaget under STOP-skrivningen) — kæden er AKTIV og fejlen er live
+
+- `stork-kaede.service` kører (systemd: active/running) — denne Code-vækning
+  kom fra kuréren, ikke fra Mathias manuelt.
+- Samme fejl-vækning ramte claude-ai-rollen: dens leverance
+  `codex-reviews/2026-06-11-ingen-troskab-1.md` (untracked i arbejdstræet,
+  afventer transport) konkluderer det samme — troskabs-tjek IKKE udført,
+  kurér-fejlvækning, pakke-navn afledt af `aktiv-pakke: ingen`-sentinellen.
+- Dispatch-loggen (`scripts/kaede/.dispatch-log.jsonl`): spor = "ingen" ·
+  køede dispatches mod code på de allerede håndterede runde 2-/runde 3-reviews
+  (VENT, grund "laas" — re-dispatch-risiko når Code-låsen slipper) og mod
+  claude-ai-rolle på slut-rapport-review (allerede leveret: runde 44→46).
+- **`qwers gov-6` ER registreret** (GATE-ORD-REGISTRERET, gentaget hvert poll
+  siden 18:51:36Z) uden at gov-6-åbningen dispatch'es — ordet sidder fast bag
+  "ingen"-sporets kørsel. Gov-6 åbner ikke før denne gate er afgjort og
+  dirigentens pakke-resolution er guardet for sentinel-værdien `ingen`
+  (Codes bord — kræver Mathias-mandat, evt. som første gov-6-punkt).
+- Gate-mekanikken selv VIRKER: kl. 18:53:46Z pausede kuréren sporet på denne
+  fil (SPOR-PAUSET). Pausen er arbejdstræ-baseret (`tilstand.mjs:252-259`),
+  derfor ligger en kopi af denne fil i arbejdstræet på main-checkoutet så
+  åben-gate-pausen holder; kuréren stempler den selv AFGJORT ved gate-ord
+  (`dirigent.mjs:395`). PR #136 bærer samme fil som bogføring.
+
 ## Verifikations-spor
 
 - `git log --oneline -- docs/coordination/codex-reviews/2026-06-11-gov-5-automation-runde-2.md` → kun `eba5466` (review tilføjet + fund håndteret i samme commit)
