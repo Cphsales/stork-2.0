@@ -18,15 +18,29 @@ naeste_runde() {
     | awk '{print $1 + 1}' || echo 1
 }
 
+# Review-kald (runde 34-fund 1): codex-review.sh's exit 1-4 er LEGITIME
+# verdikter (markers bæres af FILEN — kuréren router på indholdet); kun
+# usage/timeout/ukendt er runtime-fejl. "Leveret med fund" → exit 0.
+koer_review() {
+  set +e
+  scripts/codex-review.sh "$@"
+  local rc=$?
+  set -e
+  case "$rc" in
+    0 | 1 | 2 | 3 | 4) return 0 ;; # verdikt leveret — filen bærer fundene
+    *) return "$rc" ;;             # 64 usage / 124+137 timeout / andet = fejl
+  esac
+}
+
 case "$OPGAVE" in
   plan-review)
-    scripts/codex-review.sh "docs/coordination/${SPOR}-plan.md" "$(naeste_runde)" --phase=plan
+    koer_review "docs/coordination/${SPOR}-plan.md" "$(naeste_runde)" --phase=plan
     ;;
   batch-review)
-    scripts/codex-review.sh "docs/coordination/${SPOR}-plan.md" "$(naeste_runde)" --phase=build
+    koer_review "docs/coordination/${SPOR}-plan.md" "$(naeste_runde)" --phase=build
     ;;
   docs-review)
-    scripts/codex-review.sh "${FIL:-docs/coordination/${SPOR}-plan.md}" "$(naeste_runde)" --phase=docs --quick
+    koer_review "${FIL:-docs/coordination/${SPOR}-plan.md}" "$(naeste_runde)" --phase=docs --quick
     ;;
   kode-research | recon-research)
     # Uafhængig kode-recon (V8-kædestart / §2.1-parallel): producerer recon-doc,

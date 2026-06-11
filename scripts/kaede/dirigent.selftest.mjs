@@ -965,6 +965,23 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   );
 }
 
+// ---------- 29. recon-events bærer pakken (runde 34: spor-anker hele vejen) ----------
+{
+  const e = afledEvents({
+    pakke: "gov-6-arkiv-fold",
+    paaMain: { kravDok: false, planFil: false },
+    buildPr: null,
+    gateOrd: [],
+    gateAuthor: "mgrubak",
+    mainSha: "m",
+    recon: { kode: true, research: true, oplaeg: false, kodeSha: "rk" },
+  });
+  check(
+    "recon-kode-klar bærer pakke-feltet (eventSpor-anker)",
+    e.find((x) => x.type === "recon-kode-klar")?.pakke === "gov-6-arkiv-fold",
+  );
+}
+
 // ---------- resultat ----------
 if (failed) {
   console.error(`\nKæde-selftest FEJLEDE (${failed})`);

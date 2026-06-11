@@ -104,9 +104,9 @@ export function afledEvents({ pakke, paaMain, buildPr, gateOrd, gateAuthor, main
 
   // Recon-afledninger (V8-kædestart): afledte tilstande af leverance-eksistens
   if (recon.kode && recon.research && !recon.oplaeg)
-    events.push({ type: "recon-kode-klar", sha: recon.kodeSha ?? mainSha });
+    events.push({ type: "recon-kode-klar", sha: recon.kodeSha ?? mainSha, pakke });
   if (recon.kode && recon.research && recon.oplaeg)
-    events.push({ type: "recon-klar", sha: recon.oplaegSha ?? mainSha });
+    events.push({ type: "recon-klar", sha: recon.oplaegSha ?? mainSha, pakke });
 
   // krav-dok-merged betinget af recon-fase afsluttet (Codex runde 17/V9)
   if (paaMain.kravDok && !paaMain.planFil && (recon.klar ?? false))
@@ -181,6 +181,30 @@ function paaOriginMain(sti, cwd) {
   }
 }
 
+function laesIssueOrdHelper(issueNr, cwd) {
+  try {
+    const raw = gh(
+      [
+        "issue",
+        "view",
+        String(issueNr),
+        "--json",
+        "comments",
+        "--jq",
+        ".comments[] | {id: .id, author: .author.login, body: .body}",
+      ],
+      cwd,
+    );
+    return raw
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l))
+      .map((k) => ({ id: k.id, author: k.author, tekst: k.body.trim() }));
+  } catch {
+    return []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
+  }
+}
+
 function laesBuildPr(pakke, cwd) {
   try {
     const raw = gh(
@@ -250,8 +274,21 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   //   <pakke>-status.md                → CODES leverance-bærer (§3.5: status
   //     opdateres sidst i hver leverance med →NÆSTE-deklaration som sidste
   //     linje — plan-V<n>/build-batch/slut-rapport routes via den)
-  const aktivPakke =
+  const markerPakke =
     (existsSync(aktivPlanSti) && parseAktivMarker(readFileSync(aktivPlanSti, "utf8"))?.pakke) || "ingen";
+  // Åbnings-anker (runde 34-fund 2): under åbning er markøren "ingen", men
+  // qwers-ordet (stående issue, author-verificeret) bærer pakken — den ankrer
+  // recon-scan, recon-fakta og pakke-issue FØR markøren flipper ved plan-fasen.
+  const reglerTidlig = JSON.parse(readFileSync(join(repoRod, "scripts/kaede/kaede-regler.json"), "utf8"));
+  let aabningsPakke = null;
+  if (fetch && markerPakke === "ingen" && reglerTidlig.kaede_issue) {
+    const ord = laesIssueOrdHelper(reglerTidlig.kaede_issue, repoRod);
+    const qwers = ord
+      .filter((o) => o.author === reglerTidlig.identiteter.gate_author && o.tekst.startsWith("qwers "))
+      .at(-1);
+    aabningsPakke = qwers ? qwers.tekst.slice(6).trim() : null;
+  }
+  const aktivPakke = markerPakke !== "ingen" ? markerPakke : (aabningsPakke ?? "ingen");
   const leveranceStier = [];
   for (const dir of ["codex-reviews", "plan-feedback", "rapport-historik"]) {
     const fuldDir = join(koordDir, dir);
@@ -325,37 +362,15 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
   }
 
   // Gate-ord fra issues (author + kommentar-id følger med — verifikation i decide())
-  const laesIssueOrd = (issueNr) => {
-    try {
-      const raw = gh(
-        [
-          "issue",
-          "view",
-          String(issueNr),
-          "--json",
-          "comments",
-          "--jq",
-          ".comments[] | {id: .id, author: .author.login, body: .body}",
-        ],
-        repoRod,
-      );
-      return raw
-        .split("\n")
-        .filter(Boolean)
-        .map((l) => JSON.parse(l))
-        .map((k) => ({ id: k.id, author: k.author, tekst: k.body.trim() }));
-    } catch {
-      return []; // issue utilgængeligt → ingen gate-ord; kæden venter (fail-closed)
-    }
-  };
+  const laesIssueOrd = (issueNr) => laesIssueOrdHelper(issueNr, repoRod);
   let gateOrd = [];
   if (fetch && pakkeIssue) gateOrd = gateOrd.concat(laesIssueOrd(pakkeIssue));
   if (fetch && kaedeIssue) gateOrd = gateOrd.concat(laesIssueOrd(kaedeIssue));
 
   // Events: afledte tilstande (V13/runde 21: qwers-afledning kører ALTID —
   // åbning sker netop ved aktiv-pakke: ingen; pakke-events kun m. aktiv pakke)
-  const pakke = marker?.pakke ?? "ingen";
-  const regler = JSON.parse(readFileSync(join(repoRod, "scripts/kaede/kaede-regler.json"), "utf8"));
+  const pakke = aktivPakke; // effektiv pakke: markør ELLER qwers-åbnings-anker (runde 34)
+  const regler = reglerTidlig;
   const gateAuthor = regler.identiteter.gate_author;
   const mainSha = git(["rev-parse", "origin/main"], repoRod);
 
