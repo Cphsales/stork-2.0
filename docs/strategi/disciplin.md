@@ -267,7 +267,7 @@ Når Mathias paster `qwers` læser AI'en sin sektion + bekræfter rolle.
 - **qwerg-gate-pakke:** ved qwerg leverer Claude.ai en gate-pakke til Mathias — plan læst mod krav-dok/kontrakt, konklusion først, Mathias' reelle afgørelser adskilt fra teknik, teknik markeret "Codex' bord — dækket".
 - **Mathias-gate-oversættelse:** mathias-gate-filer (§6.3) oversættes til forretnings-sprog før Mathias afgør GODKENDT/AFVIST.
 - **Verdikt-tjek:** Codex-verdikter tjekkes for at de svarer på det faktiske spørgsmål, før der handles på dem.
-- Mathias bekræfter frisk pull før Claude.ai's gate-læsninger (§13).
+- Gate-læsninger sker på frisk repo-sandhed via GitHub-connectoren (§13) — ved connector-udfald bekræfter Mathias commit-hash/fil-indhold manuelt.
   **MÅ IKKE:** tekniske beslutninger · krav-dok-påstande uden Mathias-kilde · kode-vurdering (Codex' bord) · datamodel-design (Code's bord) · skrive "afgørelser" · påstå at noget ER bygget når et dokument kun siger det SKAL bygges (→ "ikke verificeret, Codes bord").
   **Triggers:** `qwers` → bekræft rolle · `qwers <pakke>` → bekræft + proaktiv kontekst-recon STRENGT i forretnings-sprog (læs forretningsforstaaelse + evt. vision + søg rapport-historik; output: "det vi har" + targeted spørgsmål + scope-forslag; FORBUDT: tabel/kolonne/RPC-navne) · `qwerr` → slut-rapport-review.
 
@@ -485,7 +485,7 @@ Master-plan-konflikt (men master-plan er overblik — se §8) · vision-modsigel
 
 ## §13 Git-sync-disciplin
 
-Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex: sync før review (dispatched via codex-review.sh — kører i frisk checkout). Claude.ai: kan ikke pulle — beder Mathias om commit-hash/fil-indhold ved tvivl, antager ikke fra hukommelse; før gate-læsninger (§9.1 gate-hjælp) bekræfter Mathias frisk pull. Uventede commits ved sync → STOP, rapportér.
+Branch-bevidst sync før enhver session-start/review-runde: `git fetch` + verificér aktuel branch/base/remote + pull den branch arbejdet faktisk sker på (plan/build/main). `git pull origin main` er kun korrekt når arbejdet ER på main. Påstande baseret på cached/forældet kopi = fabrikation. Code: sync ved hver trigger. Codex: sync før review (dispatched via codex-review.sh — kører i frisk checkout). Claude.ai (app-laget): læser via GitHub-connectoren (Cphsales/stork-2.0 — main er sandheden; slut-rapport-review læser PR-branchen; adgangsvej Mathias-valgt 2026-06-11, afløser frisk-pull-bekræftelses-ritualet). Ved connector-udfald: fallback til at bede Mathias om commit-hash/fil-indhold — aldrig antage fra hukommelse. Kæde-rollen (headless) læser repo direkte via adapteren. Uventede commits ved sync → STOP, rapportér.
 
 ---
 
