@@ -57,7 +57,6 @@ Hjem: behovet → krav-dok-dialogen; mekanik-evalueringen → partnerskabs-runde
 
 - [ÅBENT] permission-matrix dateret 2026-05-15 = FØR gov-3b's SECDEF-konverteringer
   (regenerering uverificeret).
-- [ÅBENT] `docs/claude-ai/SKILL.md` bærer før-gov-5-rolle.
 - [ÅBENT] aktiv-plan.md er vokset til log — sanering.
 - [ÅBENT] plan-feedback/ er tom — afklaring.
 - [FORSLAG] 1.0-reference-arkiv (mærket HISTORISK, aldrig krav): samler både
