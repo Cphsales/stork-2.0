@@ -86,15 +86,17 @@ for (const [token, klasse] of [...tokens.entries()].sort()) {
       i = indhold.indexOf(token, i + 1);
     }
   }
-  const eksterne = hits.filter((h) => !diffBerørt(h));
-  if (eksterne.length > 0) {
+  // Runde 12-fund (ACCEPT): fil-niveau-ekskludering skjulte søskende i samme
+  // fil uden for diff-hunks — vis ALLE hits, markér blot diff-filer.
+  if (hits.length > 0) {
     fundISøskende++;
-    console.log(`\n■ [${klasse}] "${token}" findes også i:`);
-    for (const h of eksterne) console.log(`    ${h}`);
+    console.log(`\n■ [${klasse}] "${token}" forekommer i:`);
+    for (const h of hits)
+      console.log(`    ${h}${iDiffFil(h) ? "  (fil er i diffen)" : ""}`);
   }
 }
 
-function diffBerørt(hit) {
+function iDiffFil(hit) {
   const fil = hit.split(":")[0];
   return diff.includes(`+++ b/${fil}`) || diff.includes(`--- a/${fil}`);
 }
