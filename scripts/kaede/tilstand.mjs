@@ -73,7 +73,12 @@ export function findDivergens(kildePar) {
 // — timeout → throw → KAEDE-STOP logges (fail-closed, synligt).
 function git(args, cwd) {
   // stderr pipes (ikke arves): upushet branch giver forventelig rev-parse-fejl
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000 }).trim();
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 120_000,
+  }).trim();
 }
 
 function gh(args, cwd) {

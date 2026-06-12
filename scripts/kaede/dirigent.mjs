@@ -14,7 +14,16 @@
 //   node scripts/kaede/dirigent.mjs               poll-løkke (systemd-service)
 
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -612,7 +621,12 @@ export function udfoer(
             );
             return { stoppet: true };
           }
-          log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren, status: gateTransport.status });
+          log({
+            handling: "TRANSPORT-GATE-AFGJORT",
+            fil: gateFil,
+            gren: gateTransport.gren,
+            status: gateTransport.status,
+          });
         }
         break;
       }
