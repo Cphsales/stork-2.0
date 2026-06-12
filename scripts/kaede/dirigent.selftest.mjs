@@ -18,6 +18,8 @@ import {
   selvtjekKoer,
   betingelseOpfyldt,
   syncFremad,
+  stopFilSkriv,
+  stopFilLaes,
 } from "./dirigent.mjs";
 import {
   parseDeklaration,
@@ -1273,6 +1275,234 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   check(
     "recon-kode-klar bærer pakke-feltet (eventSpor-anker)",
     e.find((x) => x.type === "recon-kode-klar")?.pakke === "gov-6-arkiv-fold",
+  );
+}
+
+// ---------- 30. spor-anker på transport-vejen (rette-til punkt 4) ----------
+// Rodårsag (KAEDE-STOP 2026-06-11): laesTilstand beregnede qwers-ankeret
+// (aktivPakke) men returnerede det ikke — decide() faldt tilbage til markørens
+// "ingen", så transport-commit løb m. spor "ingen" og (aktør, spor)-låsen
+// matchede aldrig transport-værnet.
+{
+  const AABNING = { ...TOM, marker: { pakke: "ingen", fase: "plan" }, pakke: "gov-6" };
+  const h = decide(
+    {
+      ...AABNING,
+      leverancer: [{ fil: "docs/coordination/gov-6-recon-kode.md", untracked: true, deklaration: null, markers: [] }],
+    },
+    REGLER,
+  );
+  check(
+    "tilstand.pakke (qwers-anker) vinder over markørens 'ingen': transport-commit bærer spor 'gov-6'",
+    h.find((x) => x.handling === "TRANSPORT-COMMIT")?.spor === "gov-6",
+  );
+  const h2 = decide(
+    {
+      ...AABNING,
+      laase: [{ aktoer: "code", spor: "gov-6" }],
+      leverancer: [{ fil: "docs/coordination/gov-6-recon-kode.md", untracked: true, deklaration: null, markers: [] }],
+    },
+    REGLER,
+  );
+  check(
+    "lås på qwers-båret spor matcher nu transport-værnet → VENT (racen fra 2026-06-11 lukket)",
+    h2.some((x) => x.handling === "VENT" && x.grund === "koersel-paa-spor") &&
+      !h2.some((x) => x.handling === "TRANSPORT-COMMIT"),
+  );
+}
+{
+  // laesTilstand SKAL returnere pakke-feltet (integrations-tjek på det rigtige
+  // repo, offline): markøren er "ingen" og fetch=false → pakke === "ingen".
+  const { laesTilstand } = await import("./tilstand.mjs");
+  const t = laesTilstand({ repoRod: join(dirname(fileURLToPath(import.meta.url)), "..", ".."), fetch: false });
+  check("laesTilstand returnerer 'pakke'-feltet (spor-ankeret eksporteres)", "pakke" in t);
+}
+
+// ---------- 31. spor 'ingen'-dispatch-værn (rette-til punkt 11b) ----------
+// Replay af stale-floden 2026-06-11 22:32Z: gamle committede review-filer +
+// aktiv-pakke "ingen" → kuréren dispatchede naeste-version/krav-troskabs-tjek
+// m. spor "ingen". Pakke-bundne opgaver dispatches ALDRIG uden pakke.
+{
+  const INGEN = { ...TOM, marker: { pakke: "ingen", fase: "plan" } };
+  const h = decide(
+    {
+      ...INGEN,
+      leverancer: [
+        {
+          fil: "docs/coordination/codex-reviews/2026-06-11-disciplin-runde-21.md",
+          untracked: false,
+          sha: "267aa91",
+          type: "review-feedback",
+          deklaration: null,
+          markers: ["KRITISK"],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "committed leverance + spor 'ingen' → BLOKERET, ALDRIG dispatch (stale-flod-replay)",
+    h.some((x) => x.handling === "BLOKERET" && (x.mangler ?? []).includes("spor-ikke-ingen")) &&
+      !h.some((x) => x.handling === "DISPATCH"),
+  );
+  const h2 = decide(
+    {
+      ...INGEN,
+      leverancer: [
+        {
+          fil: "docs/coordination/codex-reviews/2026-06-12-x-troskab-9.md",
+          untracked: true,
+          type: "troskabs-verdikt",
+          deklaration: null,
+          markers: ["FEEDBACK"],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "untracked leverance + spor 'ingen' → BLOKERET, ALDRIG transport-commit (stale artefakter fryses ikke)",
+    h2.some((x) => x.handling === "BLOKERET" && (x.mangler ?? []).includes("spor-ikke-ingen")) &&
+      !h2.some((x) => x.handling === "TRANSPORT-COMMIT"),
+  );
+  const h3 = decide({ ...INGEN, events: [{ type: "krav-dok-merged", sha: "m1" }] }, REGLER);
+  check(
+    "event uden pakke + spor 'ingen' → BLOKERET på event-vejen",
+    h3.some((x) => x.handling === "BLOKERET" && (x.mangler ?? []).includes("spor-ikke-ingen")) &&
+      !h3.some((x) => x.handling === "DISPATCH"),
+  );
+  const h4 = decide(
+    { ...INGEN, events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6" }] },
+    REGLER,
+  );
+  check(
+    "qwers-åbning bærer egen pakke → dispatches stadig (værnet rammer kun ægte 'ingen')",
+    h4.filter((x) => x.handling === "DISPATCH").length === 2,
+  );
+}
+
+// ---------- 32. persistent KAEDE-STOP (rette-til punkt 11a) ----------
+// Rodårsag (nat til 12/6, #147): systemd Restart=on-failure genoplivede
+// processen hvert 30s efter verdikt-exit 2 — stop skal være PERSISTENT.
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const TMP = join(KAEDE, ".selftest-tmp");
+  const LOG = join(KAEDE, ".dispatch-log.jsonl");
+  const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
+  check("stopFilLaes: ingen stop-fil → null", stopFilLaes({ dir: TMP }) === null);
+  stopFilSkriv("test-grund", { x: 1 }, { dir: TMP });
+  check(
+    "stopFilSkriv/stopFilLaes: round-trip m. grund + tid",
+    stopFilLaes({ dir: TMP })?.grund === "test-grund" && !!stopFilLaes({ dir: TMP })?.tid,
+  );
+  rmSync(join(TMP, ".kaede-stop"), { force: true });
+  const res = udfoer([{ handling: "KAEDE-STOP", grund: "divergens", detalje: [] }], { stopDir: TMP });
+  check(
+    "udfoer KAEDE-STOP → stop-fil skrevet (stoppet kæde forbliver stoppet gennem genstart)",
+    res.stoppet === true && stopFilLaes({ dir: TMP })?.grund === "divergens",
+  );
+  rmSync(join(TMP, ".kaede-stop"), { force: true });
+  udfoer([{ handling: "KAEDE-PAUSE", grund: "Mathias-stop (suverænitet)" }], { stopDir: TMP });
+  check(
+    "udfoer KAEDE-PAUSE (Mathias-stop) → stop-fil skrevet (suverænitet består gennem genstart)",
+    stopFilLaes({ dir: TMP })?.grund === "Mathias-stop (suverænitet)",
+  );
+  rmSync(join(TMP, ".kaede-stop"), { force: true });
+  writeFileSync(join(TMP, "fejl.sh"), "#!/bin/bash\nexit 7\n");
+  const koerende = new Map();
+  udfoer(
+    [
+      {
+        handling: "DISPATCH",
+        aktoer: "code",
+        opgave: "t",
+        adapter: "scripts/kaede/.selftest-tmp/fejl.sh",
+        kontekst: { fil: "c", sha: "s", spor: "test" },
+      },
+    ],
+    { koerende, stopDir: TMP },
+  );
+  await Promise.all([...koerende.values()].map((k) => k.faerdig));
+  check(
+    "adapter-fejl (exit ≠ 0) → stop-fil skrevet (restart-loop kan ikke genoplive)",
+    stopFilLaes({ dir: TMP })?.grund === "adapter-fejl",
+  );
+  rmSync(TMP, { recursive: true, force: true });
+  if (logBackup === null) rmSync(LOG, { force: true });
+  else writeFileSync(LOG, logBackup);
+}
+{
+  // Mekaniske tekst-kontrakter (samme klasse som punkt 3-kontrakten):
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const preflight = readFileSync(join(KAEDE, "preflight.sh"), "utf8");
+  check(
+    "preflight.sh nægter at køre forbi stop-filen (punkt 11a: fail-closed før baseline)",
+    preflight.includes(".kaede-stop"),
+  );
+  const unit = readFileSync(join(KAEDE, "stork-kaede.service"), "utf8");
+  check(
+    "stork-kaede.service: verdikt-exits genopliver ikke (RestartPreventExitStatus) + start-loft (StartLimit)",
+    /RestartPreventExitStatus=.*\b2\b/.test(unit) && /StartLimitBurst=/.test(unit) && /StartLimitIntervalSec=/.test(unit),
+  );
+  const dirigent = readFileSync(join(KAEDE, "dirigent.mjs"), "utf8");
+  check(
+    "dirigent.mjs nægter live-/once-/baseline-kørsel når stop-filen findes (punkt 11a)",
+    dirigent.includes("stopFilLaes()") || /stopFilLaes\(\)/.test(dirigent),
+  );
+  const tilstandSrc = readFileSync(join(KAEDE, "tilstand.mjs"), "utf8");
+  check(
+    "tilstand.mjs: git/gh-kald bærer timeout (punkt 11c: en hængende cyklus efterlader aldrig en log-løs instans)",
+    /timeout:\s*\d+/.test(tilstandSrc),
+  );
+}
+
+// ---------- 33. behandlet åbnings-ord genfyrer ALDRIG efter genstart (punkt 11, eksplicit) ----------
+{
+  // Genstarts-scenariet bevist mekanisk: dispatch-loggen bærer KOERSEL-SLUT
+  // exit 0 for begge recon-modtagere af qwers-eventet (kommentar-id c1) —
+  // efter genstart genlæses loggen og eventet må IKKE dispatche igen.
+  const logLinjer = [
+    JSON.stringify({
+      handling: "KOERSEL-SLUT",
+      exit: 0,
+      aktoer: "code",
+      kontekst: { event: "qwers-aabning", sha: "c1", spor: "gov-6" },
+    }),
+    JSON.stringify({
+      handling: "KOERSEL-SLUT",
+      exit: 0,
+      aktoer: "codex",
+      kontekst: { event: "qwers-aabning", sha: "c1", spor: "gov-6" },
+    }),
+  ];
+  const h = decide(
+    {
+      ...TOM,
+      marker: { pakke: "ingen", fase: "plan" },
+      behandlede: behandletNoegler(logLinjer),
+      events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6" }],
+    },
+    REGLER,
+  );
+  check(
+    "stående 'qwers gov-6' (#126) m. behandlet-state i loggen → INGEN gen-dispatch efter dirigent-genstart",
+    !h.some((x) => x.handling === "DISPATCH"),
+  );
+  // …og et NYT qwers-ord (nyt kommentar-id) åbner stadig:
+  const h2 = decide(
+    {
+      ...TOM,
+      marker: { pakke: "ingen", fase: "plan" },
+      behandlede: behandletNoegler(logLinjer),
+      events: [{ type: "qwers-aabning", sha: "c2-nyt-ord", pakke: "gov-6" }],
+    },
+    REGLER,
+  );
+  check(
+    "nyt qwers-ord (nyt kommentar-id) → åbner stadig (idempotens rammer kun det behandlede id)",
+    h2.filter((x) => x.handling === "DISPATCH").length === 2,
   );
 }
 
