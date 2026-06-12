@@ -160,3 +160,14 @@ referencer · strøm-/sleep-opsætning på værten (krævet før natlig kædedri
 telefon-push/GitHub Mobile-modtagesiden (preflight-punktet i rette-til-pakken
 verificerer opsætningen) · ÉN-versions-reglen i app-projektet · skill-klik
 (venter til repo-SKILL.md er løst).
+
+## 7 · Claude Code-egenskabs-katalog [Mathias-ord 2026-06-12]
+
+- Fuld gennemgang af Claude Code-egenskaber ift. Stork 2.0 er ført som dokument:
+  `docs/teknisk/claude-code-egenskaber.md` (tre kolonner: egenskab — hvad det er ·
+  fordel — hvad det gør · udbytte — hvad vi får ud af det; grundlag: officiel
+  docs-gennemgang v2.1.157, fire artikler, Codex-plugin-repoet). Indgår som
+  recon-forspring til krav-dok-dialogen — supplerer afsnit 2 (Cowork) og
+  Claude-app-gennemgangen i afsnit 5.
+- Code laver INGEN recon i koden før pakkens krav-dok — kataloget er læsestof
+  til dialogen, ikke startskud for kode-arbejde.
