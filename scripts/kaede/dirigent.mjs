@@ -296,9 +296,46 @@ export function transportCommit(fil, { cwd = REPO_ROD, remote = "origin", base =
   const g = (args, dir = cwd) => execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
   const blob = g(["hash-object", "--", fil]);
   const gren = `kaede/transport/${fil.replace(/[^a-zA-Z0-9._/-]+/g, "-").replaceAll("/", "--")}-${blob.slice(0, 7)}`;
-  // Idempotens: gren m. samme indholds-hash findes allerede på remote →
-  // transporten er i flight (auto-merge afventer CI) — ingen dublet-PR.
-  if (g(["ls-remote", "--heads", remote, gren])) return { status: "afventer-merge", gren };
+  const opretOgArmerPr = () => {
+    gh(
+      [
+        "pr",
+        "create",
+        "--base",
+        base,
+        "--head",
+        gren,
+        "--title",
+        `kæde-transport: ${fil}`,
+        "--body",
+        "Ordret aktør-leverance (kæde-transport, gov-5). Rolle-valideret bogførings-sti: merger på grøn CI " +
+          "(gate-model: Mathias' gates er ordene, ikke klikkene). Beslutnings-sti-filer afventer code-owner-review.",
+      ],
+      cwd,
+    );
+    gh(["pr", "merge", gren, "--auto", "--rebase"], cwd);
+  };
+  // Gren m. samme indholds-hash findes på remote → transporten er i flight,
+  // MEN gren-eksistens er ikke bevis for PR + auto-merge (Codex runde 1-fund 1):
+  // PR-tilstanden BEVISES — mangler PR genoprettes den; mangler armering
+  // re-armeres; lukket u-merged PR er transport-fejl (fail-closed).
+  if (g(["ls-remote", "--heads", remote, gren])) {
+    let pr = null;
+    try {
+      pr = JSON.parse(gh(["pr", "view", gren, "--json", "state,autoMergeRequest"], cwd));
+    } catch {
+      pr = null; // ingen PR for grenen (create fejlede i en tidligere cyklus)
+    }
+    if (pr?.state === "MERGED") return { status: "afventer-merge", gren }; // ff-synk samler op næste cyklus
+    if (pr?.state === "OPEN" && pr.autoMergeRequest) return { status: "afventer-merge", gren };
+    if (pr?.state === "OPEN") {
+      gh(["pr", "merge", gren, "--auto", "--rebase"], cwd); // re-armér auto-merge
+      return { status: "afventer-merge", gren };
+    }
+    if (pr) return { status: "transport-fejl", gren, grund: `PR ${pr.state} uden merge` };
+    opretOgArmerPr();
+    return { status: "pr-oprettet", gren };
+  }
   const tmp = mkdtempSync(join(tmpdir(), "kaede-transport-"));
   try {
     g(["worktree", "add", "--quiet", "--detach", tmp, `${remote}/${base}`]);
@@ -325,23 +362,7 @@ export function transportCommit(fil, { cwd = REPO_ROD, remote = "origin", base =
       rmSync(tmp, { recursive: true, force: true });
     }
   }
-  gh(
-    [
-      "pr",
-      "create",
-      "--base",
-      base,
-      "--head",
-      gren,
-      "--title",
-      `kæde-transport: ${fil}`,
-      "--body",
-      "Ordret aktør-leverance (kæde-transport, gov-5). Rolle-valideret bogførings-sti: merger på grøn CI " +
-        "(gate-model: Mathias' gates er ordene, ikke klikkene). Beslutnings-sti-filer afventer code-owner-review.",
-    ],
-    cwd,
-  );
-  gh(["pr", "merge", gren, "--auto", "--rebase"], cwd);
+  opretOgArmerPr();
   return { status: "pr-oprettet", gren };
 }
 
@@ -394,6 +415,7 @@ export function syncFremad({ cwd = REPO_ROD, fetch = true } = {}) {
 // før frys, ingen dømmekraft. Returnerer { ok, fejl: [beskrivelser] }.
 export function selvtjekKoer(tjekListe, filSti, { repoRod = REPO_ROD } = {}) {
   const fejl = [];
+  if (!(tjekListe ?? []).length) return { ok: true, fejl }; // tom liste: intet at læse/tjekke
   const tekst = readFileSync(join(repoRod, filSti), "utf8");
   for (const tjek of tjekListe ?? []) {
     if (tjek.tjek === "konsistens-grep" && tjek.forbudt) {
@@ -437,7 +459,10 @@ export function selvtjekKoer(tjekListe, filSti, { repoRod = REPO_ROD } = {}) {
 // over aktive kørsler: nøgle "<aktoer>::<spor>" → { aktoer, spor, faerdig }.
 // Registret bliver til decide()'s `laase` næste cyklus — låsen holdes på tværs
 // af poll-cyklusser, ikke kun inden for én udfoer().
-export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onStop = null, regler = null } = {}) {
+export function udfoer(
+  handlinger,
+  { dryRun = false, koerende = new Map(), onStop = null, regler = null, transportFn = transportCommit } = {},
+) {
   for (const h of handlinger) {
     if (dryRun) {
       console.log(`[dry-run] ${JSON.stringify(h)}`);
@@ -471,7 +496,14 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
           }
           break;
         }
-        const transport = transportCommit(h.fil);
+        const transport = transportFn(h.fil);
+        if (transport.status === "transport-fejl") {
+          // Codex runde 1-fund 1: u-beviselig PR-tilstand er fejl, aldrig
+          // stille afventen — STOP (manuelt flow, krav 7).
+          log({ handling: "KAEDE-STOP", grund: "transport-fejl", fil: h.fil, detalje: transport.grund });
+          console.error(`KÆDE-STOP: transport-fejl for ${h.fil} — ${transport.grund} (manuelt flow, krav 7)`);
+          return { stoppet: true };
+        }
         log({
           handling: transport.status === "pr-oprettet" ? "TRANSPORT-PR-OPRETTET" : "TRANSPORT-AFVENTER-MERGE",
           fil: h.fil,
@@ -488,7 +520,7 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
           const sti = join(REPO_ROD, gateFil);
           const tekst = readFileSync(sti, "utf8");
           writeFileSync(sti, tekst.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
-          const gateTransport = transportCommit(gateFil);
+          const gateTransport = transportFn(gateFil);
           log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren });
         }
         break;
