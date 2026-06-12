@@ -283,11 +283,20 @@ for (const marker of ["NEEDS-MATHIAS", "ESCALATE", "STOP-FOR-CLARIFICATION"]) {
     REGLER,
   );
   check(
-    "GODKENDT-afgørelse løfter pausen: GATE-AFGJORT + Code-dispatch, øvrig routing venter (runde 16)",
+    "GODKENDT-afgørelse → GATE-AFGJORT uden Code-dispatch i SAMME cyklus (runde 3/4-KRITISK: afgørelsen skal fryses på main først)",
     h.some((x) => x.handling === "GATE-AFGJORT") &&
-      h.filter((x) => x.handling === "DISPATCH").length === 1 &&
-      h.find((x) => x.handling === "DISPATCH")?.opgave === "gate-afgjort-fortsaet" &&
+      !h.some((x) => x.handling === "DISPATCH") &&
       !h.some((x) => x.handling === "SPOR-PAUSET"),
+  );
+}
+{
+  // Efter merge + ff-synk er gaten lukket (fil bærer AFGJORT) — Code-dispatchen
+  // kommer ad event-vejen (regelbogens gate-godkendt) i en SENERE cyklus.
+  const h = decide({ ...TOM, aabneGates: [], events: [{ type: "gate-godkendt", sha: "c9" }] }, REGLER);
+  check(
+    "gate lukket (merged + ff-synket) + ubehandlet GODKENDT-event → Code-dispatch ad event-vejen",
+    h.find((x) => x.handling === "DISPATCH")?.opgave === "gate-afgjort-fortsaet" &&
+      h.find((x) => x.handling === "DISPATCH")?.aktoer === "code",
   );
 }
 {
@@ -966,7 +975,8 @@ function nytTestRepoMedOrigin() {
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
   const gateFil = "scripts/kaede/.selftest-tmp/gate.md";
-  writeFileSync(join(KAEDE, "..", "..", gateFil), "Status: AFVENTER MATHIAS\n");
+  const gateFuldSti = join(KAEDE, "..", "..", gateFil);
+  writeFileSync(gateFuldSti, "Status: AFVENTER MATHIAS\n");
   writeFileSync(join(TMP, "adapter.sh"), `#!/bin/bash\ntouch "${TMP}/dispatch-koerte"\n`);
   const res = udfoer(
     [
@@ -990,6 +1000,39 @@ function nytTestRepoMedOrigin() {
     res.stoppet === true &&
       logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl") &&
       !existsSync(join(TMP, "dispatch-koerte")),
+  );
+  check(
+    "GATE-AFGJORT: lokal gate-fil rullet tilbage til AFVENTER MATHIAS også ved transport-fejl (pausesporet består)",
+    readFileSync(gateFuldSti, "utf8").includes("AFVENTER MATHIAS"),
+  );
+  rmSync(TMP, { recursive: true, force: true });
+  if (logBackup === null) rmSync(LOG, { force: true });
+  else writeFileSync(LOG, logBackup);
+}
+
+// ---------- 21e. GATE-AFGJORT pending PR: lokal rollback + ingen dispatch (Codex runde 3/4-KRITISK) ----------
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const LOG = join(KAEDE, ".dispatch-log.jsonl");
+  const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  const TMP = join(KAEDE, ".selftest-tmp");
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
+  const gateFil = "scripts/kaede/.selftest-tmp/gate.md";
+  const gateFuldSti = join(KAEDE, "..", "..", gateFil);
+  writeFileSync(gateFuldSti, "Status: AFVENTER MATHIAS\n");
+  let transporteretIndhold = null;
+  const res = udfoer([{ handling: "GATE-AFGJORT", afgoerelse: "gate-godkendt", gates: [gateFil], sha: "c9" }], {
+    transportFn: (fil) => {
+      transporteretIndhold = readFileSync(join(KAEDE, "..", "..", fil), "utf8");
+      return { status: "pr-oprettet", gren: "kaede/transport/gate-x" };
+    },
+  });
+  check(
+    "GATE-AFGJORT m. pending PR: AFGJORT-indhold transporteres, men lokal fil bevarer AFVENTER MATHIAS indtil merge+ff-synk",
+    res.stoppet === false &&
+      transporteretIndhold?.includes("AFGJORT: GODKENDT") &&
+      readFileSync(gateFuldSti, "utf8").includes("AFVENTER MATHIAS"),
   );
   rmSync(TMP, { recursive: true, force: true });
   if (logBackup === null) rmSync(LOG, { force: true });
