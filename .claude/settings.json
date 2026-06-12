@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": ["Bash(*)"]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'PORTEN (.claude/porten.md — konstant; nedtagning KUN ved Mathias ordrette ord). ÉT spørgsmål: er det et GODT svar, eller VIRKER det bare godt? Dybde kan ikke greppes — dommen er en tænkende dommers. DYBDE-REDEGØRELSE pr. substantielt svar: (1) hvilke af de 10 kilder afsøgt + hvilke ikke, hvorfor · (2) søgekriterier ordret · (3) resultater · (4) afdækningsgrad (undersøgt vs fundet) · (5) RØD TRÅD-LÆNGDE: fulgt til bunds eller stoppet ved første fund? MINIMUM 2 MODSTANDS-FUND der udfordrer eget svar. Metode: aldrig svar før datagrundlag · aldrig første fund · redegør for BREDDEN før du spørger Mathias · ingen antagelse uden validering · kun forretnings-spørgsmål til Mathias.'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/port-vagt.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ ! -e \"$HOME/.claude/port-aabning\" ]; then input=$(cat); if echo \"$input\" | grep -qE 'porten\\.md|\\.claude/settings\\.json'; then echo 'BLOKERET: Porten er KONSTANT AKTIV — ændring/nedtagning kræver Mathias ORDRETTE godkendelse, citeret i porten.md. Først derefter: touch ~/.claude/port-aabning, udfør ændringen, slet oplåsningen igen.' >&2; exit 2; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

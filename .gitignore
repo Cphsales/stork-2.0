@@ -42,7 +42,7 @@ supabase/.branches/
 *:Zone.Identifier
 
 # Claude Code lokal arbejds-mappe
-.claude/
+.claude/*
 
 # MS Office lock-filer (utilsigtet åbnet i Word/Excel)
 ~$*
@@ -58,3 +58,8 @@ scripts/kaede/.selftest-tmp/
 scripts/kaede/.kaede-stop
 docs/coordination/*.tmp
 docs/coordination/codex-reviews/*.tmp
+
+# Porten: konstant aktiv, versioneret - nedtagning kun paa Mathias ordrette ord
+!.claude/settings.json
+!.claude/porten.md
+!.claude/port-vagt.sh

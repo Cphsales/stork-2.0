@@ -1,28 +1,18 @@
 # Stork 2.0
 
-Læs `docs/LÆSEFØLGE.md` ved hver af de fem triggere defineret deri.
-Branch-bevidst git-sync før hver trigger (disciplin §13).
+RAMMEN: `docs/coordination/v6-krav-og-data.md` (godkendt af Mathias
+2026-06-13 — det eneste lukkede dokument). Læses ved HVER session-start
+og igen FØR hvert svar — og efterleves, ikke kun læses.
 
-## Identiteter (gov-4, 2026-06-10)
+Hvor er vi: `docs/coordination/v6-bro.md`.
 
-- Commits/PR'er: forfattes som `stork-code-bot` (aktiv gh-konto, write — aldrig admin).
-- Approvals/code owner: `@mgrubak` (Mathias' personlige konto — kun browser/hans hånd).
-- Merge (gov-5-gate-model, Mathias-ratificeret 2026-06-11): mgrubak-approval er
-  gaten på BESLUTNINGS-STI-PR'er (CODEOWNERS default-own); rolle-validerede
-  PR'er (de ni bogførings-mønstre + tre recon-mønstre, rette-til punkt 1)
-  merger på grøn CI + kædens discipliner —
-  Mathias' gates er ORDENE (krav OK <hash>/slut OK, author-verificeret), ikke
-  klikkene; kæden merger aldrig før ordet er registreret. Protection: required
-  CI + code-owner-review (gov-4) består; approvals-count 0 (gov-5/13b).
-- Protection-/admin-API-kald: det fælles admin-login, KUN på eksplicit Mathias-mandat,
-  switch tilbage til bot umiddelbart efter.
-- Tjek aktiv konto med `gh auth status` ved tvivl; antag bot som default.
+V5-strukturen (LÆSEFØLGE, disciplin, kæde-flowet) er lukket som
+mislykket 2026-06-13 og er ÅBEN til analyse — følg den ikke som default.
 
-## Kig ikke i (medmindre eksplicit autoriseret af Mathias)
+Git-sync (fetch + pull) før arbejde består: forældet repo-kopi er
+fabrikation.
 
-- `/home/mathias/sales-commission-hub/` (stork 1.0 — anti-mønstre, jf. forretningsforstaaelse §15)
-- `copenhagensales/*` GitHub-repos (samme grund)
-- `docs/coordination/arkiv/` (lukkede pakke-artefakter — kun læsbar reference, ikke aktiv kilde)
-- `docs/coordination/rapport-historik/<dato>-<pakke>.md` (historisk; konsulter kun hvis krav-dok refererer)
+## Identiteter (uændret drift)
 
-Hooks i `~/.claude/settings.json` håndhæver de første to + arkiv/. Toggle via lock-filer hvis Mathias autoriserer adgang.
+- Commits/PR'er forfattes som `stork-code-bot`; approvals er @mgrubak.
+- Tjek aktiv konto med `gh auth status`; antag bot som default.
