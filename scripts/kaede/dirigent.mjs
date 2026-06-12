@@ -521,6 +521,15 @@ export function udfoer(
           const tekst = readFileSync(sti, "utf8");
           writeFileSync(sti, tekst.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
           const gateTransport = transportFn(gateFil);
+          if (gateTransport.status === "transport-fejl") {
+            // Codex runde 2-fund: gate-sporet er fail-closed som al anden
+            // transport — fejlet gate-transport må ALDRIG lade kæden genoptage.
+            log({ handling: "KAEDE-STOP", grund: "transport-fejl", fil: gateFil, detalje: gateTransport.grund });
+            console.error(
+              `KÆDE-STOP: transport-fejl for gate-fil ${gateFil} — ${gateTransport.grund} (manuelt flow, krav 7)`,
+            );
+            return { stoppet: true };
+          }
           log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren });
         }
         break;
