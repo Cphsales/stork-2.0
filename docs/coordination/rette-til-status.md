@@ -26,19 +26,29 @@ exit-0-binding + atomisk codex-skrivning. Punkt 10 UDGÅET (Mathias-ord
 KRITISK) lukket: GATE-AFGJORT dispatcher aldrig i samme cyklus; lokal
 gate-fil bevarer AFVENTER MATHIAS indtil merge+ff-synk.
 
+**Runde 7-KRITISK (ACCEPT) lukket:** qwers-ankeret var stateless — det stående
+`qwers gov-6` på #126 gav stale leverancer fra ANDRE spor et gyldigt spor
+efter genstart. Fix: under åbnings-anker (markør "ingen") flyder KUN pakkens
+egne leverancer (`hoererTilPakke`, kendte bærer-suffikser så præfiks-pakker
+ikke kolliderer: gov-6 ≠ gov-6-forslag-og-udskudte); fremmede filer →
+BLOKERET ["leverance-uden-for-aabnings-pakken"], også FØR fund-gate-dispatch.
+Codex' repro er selftest-case; legitimt åbnings-flow (egen recon/krav-dok)
+bevist ubrudt.
+
 **Disciplin-justering (runde 6-KRITISK, ACCEPT — klassen ramt to gange):**
 status-filen opdateres som DEL af hvert batch-luk, FØR Codex-review kaldes —
-ikke bagefter. Denne opdatering er første anvendelse.
+ikke bagefter.
 
 Codex-runder: 1 (2× KRITISK) · 2 (1× KRITISK) · 3 (1× KRITISK + 1× MELLEM) ·
 4 (2× KRITISK: gentaget gate-fund + status-usandhed) · 5 (APPROVAL — gate-
-klassen bekræftet lukket) · 6 (1× KRITISK: status-fil bagud → denne synk).
-Alle fund ACCEPT + fixet. §8.1-SVAR runde 2-6: INGEN-MODSIGELSE.
+klassen bekræftet lukket) · 6 (1× KRITISK: status-fil bagud) · 7 (1× KRITISK:
+stateless qwers-anker → lukket ovenfor). Alle fund ACCEPT + fixet.
+§8.1-SVAR runde 2-7: INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Re-review (runde 7) bekræfter batch 3 + status-synk, derefter batch 4
-(punkt 5+6+9): systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse
+Re-review (runde 8) bekræfter runde 7-fixet, derefter batch 4 (punkt 5+6+9):
+systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse
 (mobil-MODTAGE-tjekliste + issue-write-probe).
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
@@ -60,13 +70,14 @@ Re-review (runde 7) bekræfter batch 3 + status-synk, derefter batch 4
 
 ## Konvergens-counter
 
-6 — substans-runder: 1 (2 KRITISK, transport-idempotens + CODEOWNERS-state) ·
+7 — substans-runder: 1 (2 KRITISK, transport-idempotens + CODEOWNERS-state) ·
 2-4 (gate-transport-klassen, lukket og APPROVAL-bekræftet i runde 5) · 6
-(status-synk-klassen, anden gang → disciplin-justering ovenfor). §3.4-alert
-blev vurderet ved 4: fundene konvergerede (én klasse ad gangen, hver lukket
-før næste batch); runde 5-APPROVAL bekræftede vurderingen. Mekanik/substans-
-skel (§3.4): runde 6's fund er bogførings-synk — klassificeret konservativt
-som substans, men rammen (bestillingen) er uændret præcis.
+(status-synk-klassen, anden gang → disciplin-justering ovenfor) · 7 (stateless
+qwers-anker — NY klasse, men en direkte konsekvens-opfølgning på batch 3's
+eget spor-anker-fix; lukket samme runde). §3.4-alert blev vurderet ved 4:
+fundene konvergerer (én klasse ad gangen, hver lukket før næste batch);
+runde 5-APPROVAL bekræftede vurderingen. Rammen (bestillingen) er fortsat
+præcis — ingen krav-dok-genåbning indiceret.
 
 ## Blocker
 
