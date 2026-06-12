@@ -6,6 +6,13 @@
 
 ## Sidste handling
 
+**LEVERANCEN ER FÆRDIG — SLUT-BEVIS FØRT 2026-06-12:** fuld selftest GRØN
+(172 cases, fra 111 ved gov-5-luk) · preflight GRØN live (11/11 inkl.
+.nvmrc-afledning + issue-write-probe mod #126) · dirigenten ALDRIG genstartet
+(service inactive gennem hele leverancen). Codex-APPROVAL pr. batch: runde 5
+(batch 1+2) · 11 (batch 4) · 12 (batch 5; batch 3's fund lukket i runde 5-10).
+Kode-PR afventer Mathias-klik (beslutnings-sti). CODEOWNERS-PR #150 MERGED.
+
 **Batch 5 (punkt 7+8) FÆRDIG — ALLE bestillingens punkter er nu bygget**
 (punkt 10 udgået på Mathias-ord). Punkt 7: code.sh-prompten differentierer
 pr. opgave-klasse (mekanik → MINIMAL læseliste; build → plan SEKTIONSVIS;
@@ -65,14 +72,17 @@ prettier-format på de tre kæde-filer → fixet @ 7ee7316) · 9 (1× KRITISK,
 MEKANIK: status-bogføring af runde 8 manglede) · 10 (1× KRITISK, MEKANIK:
 #150-merge ikke bogført — ekstern state ændrede sig: Mathias mergede mens
 batchen kørte; synket + rebaset) · 11 (APPROVAL — batch 4 bekræftet inkl.
-systemd-analyze verify grøn). Alle fund ACCEPT + fixet. §8.1-SVAR
-runde 2-11: INGEN-MODSIGELSE.
+systemd-analyze verify grøn) · 12 (APPROVAL — batch 5). Alle fund ACCEPT +
+fixet. §8.1-SVAR runde 2-12: INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Runde 12 reviewer batch 5; ved APPROVAL: slut-bevis (fuld selftest grøn +
-preflight grøn, INGEN dirigent-genstart) → branch pushes → kode-PR til
-Mathias-review (beslutnings-sti: scripts/kaede/ + .gitignore).
+Mathias-klik på kode-PR'en (eneste udestående gate). Efter merge: pakke-luk
+(§4-bevarelse: status/plan/reviews ryddes, krav-dok arkiveres) — og gov-6-
+genåbning er Mathias' ord (qwers-format på #126; gammelt stående qwers-ord
+genfyrer beviseligt ikke). Dirigenten startes IKKE af denne leverance —
+aktivering er Mathias' tjekliste (inkl. fjernelse af evt. stop-fil +
+installation af opdateret unit-fil: cp + daemon-reload).
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
 
