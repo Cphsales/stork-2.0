@@ -687,10 +687,7 @@ check(
 // rette-til punkt 1: de tre recon-mønstre er nu ejer-løs bogførings-flade
 // (CODEOWNERS-PR'en) — helperen skal være sand mod CODEOWNERS (én sandhed).
 check("recon-kode er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/coordination/gov-6-recon-kode.md"));
-check(
-  "recon-research er bogføring (rette-til punkt 1)",
-  erBogfoeringsSti("docs/coordination/gov-6-recon-research.md"),
-);
+check("recon-research er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/coordination/gov-6-recon-research.md"));
 check("recon-oplaeg er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/coordination/gov-6-recon-oplaeg.md"));
 
 // ---------- 19b. modificeret tracked bærer → AFVENTER-COMMIT (Codex runde 13) ----------
@@ -923,8 +920,7 @@ function nytTestRepoMedOrigin() {
     .map((l) => JSON.parse(l));
   check(
     "udfoer: transport-fejl → KAEDE-STOP logget + stoppet (ingen stille videre)",
-    res.stoppet === true &&
-      logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl"),
+    res.stoppet === true && logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl"),
   );
   check(
     "udfoer: transport-fejl skriver stop-filen (persistent, punkt 11a)",
@@ -1383,10 +1379,7 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
     h3.some((x) => x.handling === "BLOKERET" && (x.mangler ?? []).includes("spor-ikke-ingen")) &&
       !h3.some((x) => x.handling === "DISPATCH"),
   );
-  const h4 = decide(
-    { ...INGEN, events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6" }] },
-    REGLER,
-  );
+  const h4 = decide({ ...INGEN, events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6" }] }, REGLER);
   check(
     "qwers-åbning bærer egen pakke → dispatches stadig (værnet rammer kun ægte 'ingen')",
     h4.filter((x) => x.handling === "DISPATCH").length === 2,
@@ -1456,7 +1449,9 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   const unit = readFileSync(join(KAEDE, "stork-kaede.service"), "utf8");
   check(
     "stork-kaede.service: verdikt-exits genopliver ikke (RestartPreventExitStatus) + start-loft (StartLimit)",
-    /RestartPreventExitStatus=.*\b2\b/.test(unit) && /StartLimitBurst=/.test(unit) && /StartLimitIntervalSec=/.test(unit),
+    /RestartPreventExitStatus=.*\b2\b/.test(unit) &&
+      /StartLimitBurst=/.test(unit) &&
+      /StartLimitIntervalSec=/.test(unit),
   );
   const dirigent = readFileSync(join(KAEDE, "dirigent.mjs"), "utf8");
   check(
