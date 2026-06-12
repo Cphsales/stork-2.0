@@ -787,8 +787,15 @@ function nytTestRepoMedOrigin() {
   const fil = "docs/coordination/codex-reviews/r.md";
   writeFileSync(join(repo, fil), "aktør-leverance");
   const ghKald = [];
+  // fakeGh m. styrbar PR-tilstand (Codex runde 1-fund 1): 'pr view' svarer med
+  // prTilstand; null = ingen PR for grenen (gh fejler).
+  const ghSvar = { prTilstand: null };
   const fakeGh = (args) => {
     ghKald.push(args.join(" "));
+    if (args[0] === "pr" && args[1] === "view") {
+      if (!ghSvar.prTilstand) throw new Error("no pull requests found");
+      return JSON.stringify(ghSvar.prTilstand);
+    }
     return "";
   };
   const mainFoer = o("rev-parse", "main");
@@ -816,13 +823,60 @@ function nytTestRepoMedOrigin() {
       g("status", "--porcelain", "--untracked-files=all").includes("M  README.md") &&
       g("status", "--porcelain", "--untracked-files=all").includes(`?? ${fil}`),
   );
+  // Codex runde 1-fund 1: 'gren findes' er IKKE bevis for PR + auto-merge —
+  // afventer-merge må kun returneres når PR-tilstanden er BEVIST.
+  ghSvar.prTilstand = { state: "OPEN", autoMergeRequest: { enabledAt: "2026-06-12" } };
   const kaldFoer = ghKald.length;
   const res2 = transportCommit(fil, { cwd: repo, gh: fakeGh });
   check(
-    "transport-vej: eksisterende transport-gren (samme indhold) → afventer-merge, INGEN dublet-PR (idempotens)",
-    res2.status === "afventer-merge" && ghKald.length === kaldFoer,
+    "transport-vej: gren + ÅBEN PR m. armeret auto-merge → afventer-merge, INGEN dublet-PR (idempotens)",
+    res2.status === "afventer-merge" && !ghKald.slice(kaldFoer).some((k) => k.startsWith("pr create")),
+  );
+  ghSvar.prTilstand = { state: "OPEN", autoMergeRequest: null };
+  const res3 = transportCommit(fil, { cwd: repo, gh: fakeGh });
+  check(
+    "transport-vej: gren + åben PR UDEN auto-merge → re-armering (pr merge --auto --rebase), ingen ny PR",
+    res3.status === "afventer-merge" &&
+      ghKald.at(-1).startsWith("pr merge") &&
+      ghKald.at(-1).includes("--auto") &&
+      !ghKald.slice(kaldFoer).some((k) => k.startsWith("pr create")),
+  );
+  ghSvar.prTilstand = null;
+  const res4 = transportCommit(fil, { cwd: repo, gh: fakeGh });
+  check(
+    "transport-vej: gren UDEN PR (create fejlede tidligere) → PR oprettes + armeres igen (recovery)",
+    res4.status === "pr-oprettet" &&
+      ghKald.slice(kaldFoer).some((k) => k.startsWith("pr create")) &&
+      ghKald.at(-1).startsWith("pr merge"),
+  );
+  ghSvar.prTilstand = { state: "CLOSED", autoMergeRequest: null };
+  const res5 = transportCommit(fil, { cwd: repo, gh: fakeGh });
+  check(
+    "transport-vej: gren + LUKKET u-merged PR → transport-fejl (fail-closed, aldrig stille afventer)",
+    res5.status === "transport-fejl",
   );
   rmSync(base, { recursive: true, force: true });
+}
+
+// ---------- 21c. udfoer: transport-fejl → KAEDE-STOP (Codex runde 1-fund 1) ----------
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const LOG = join(KAEDE, ".dispatch-log.jsonl");
+  const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  const res = udfoer([{ handling: "TRANSPORT-COMMIT", fil: "x.md", selvtjek: [], afsender: "codex", spor: "p" }], {
+    transportFn: () => ({ status: "transport-fejl", gren: "kaede/transport/x", grund: "PR CLOSED uden merge" }),
+  });
+  const logLinjer = readFileSync(LOG, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  check(
+    "udfoer: transport-fejl → KAEDE-STOP logget + stoppet (ingen stille videre)",
+    res.stoppet === true &&
+      logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl"),
+  );
+  if (logBackup === null) rmSync(LOG, { force: true });
+  else writeFileSync(LOG, logBackup);
 }
 
 // ---------- 21b. syncFremad (PR-vejens konvergens: bagud-stilling er ikke divergens) ----------
