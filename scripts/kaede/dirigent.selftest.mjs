@@ -10,7 +10,15 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
-import { decide, behandletNoegler, udfoer, transportCommit, selvtjekKoer, betingelseOpfyldt } from "./dirigent.mjs";
+import {
+  decide,
+  behandletNoegler,
+  udfoer,
+  transportCommit,
+  selvtjekKoer,
+  betingelseOpfyldt,
+  syncFremad,
+} from "./dirigent.mjs";
 import {
   parseDeklaration,
   udtraekMarkers,
@@ -627,6 +635,15 @@ check(
   erBogfoeringsSti("docs/coordination/arkiv/gov-4-branch-protection-plan.md"),
 );
 
+// rette-til punkt 1: de tre recon-mønstre er nu ejer-løs bogførings-flade
+// (CODEOWNERS-PR'en) — helperen skal være sand mod CODEOWNERS (én sandhed).
+check("recon-kode er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/coordination/gov-6-recon-kode.md"));
+check(
+  "recon-research er bogføring (rette-til punkt 1)",
+  erBogfoeringsSti("docs/coordination/gov-6-recon-research.md"),
+);
+check("recon-oplaeg er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/coordination/gov-6-recon-oplaeg.md"));
+
 // ---------- 19b. modificeret tracked bærer → AFVENTER-COMMIT (Codex runde 13) ----------
 {
   const h = decide(
@@ -741,27 +758,112 @@ check(
   else writeFileSync(LOG, logBackup);
 }
 
-// ---------- 21. transport-commit-isolation (Codex runde 14: BEVIS i tmp-repo) ----------
-{
-  const repo = mkdtempSync(join(tmpdir(), "kaede-tc-"));
+// ---------- 21. transport→PR-vej (rette-til punkt 1, GH006: aldrig direkte main-push) ----------
+// Erstatter den gamle direkte-commit-test; runde 14-garantien (fremmed staged
+// ændring følger ALDRIG med) bevares som eksplicit case i den nye vej.
+function nytTestRepoMedOrigin() {
+  const base = mkdtempSync(join(tmpdir(), "kaede-pr-"));
+  const origin = join(base, "origin.git");
+  const repo = join(base, "repo");
+  execFileSync("git", ["init", "--bare", "--quiet", "-b", "main", origin]);
+  execFileSync("git", ["clone", "--quiet", origin, repo]);
   const g = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
-  g("init", "--quiet");
   g("config", "user.email", "selftest@kaede");
   g("config", "user.name", "kaede-selftest");
-  writeFileSync(join(repo, "fremmed.md"), "v1");
-  g("add", "fremmed.md");
+  writeFileSync(join(repo, "README.md"), "init");
+  g("add", "README.md");
   g("commit", "--quiet", "-m", "init");
-  writeFileSync(join(repo, "fremmed.md"), "v2-staged-men-IKKE-kædens");
-  g("add", "fremmed.md"); // fremmed ændring ligger staged i index
-  writeFileSync(join(repo, "leverance.md"), "aktør-leverance");
-  transportCommit("leverance.md", { cwd: repo, push: false });
-  const sidsteCommitFiler = g("show", "--name-only", "--format=", "HEAD");
-  check("transport-commit indeholder KUN leverancen", sidsteCommitFiler === "leverance.md");
+  g("push", "--quiet", "-u", "origin", "main");
+  const o = (...args) => execFileSync("git", args, { cwd: origin, encoding: "utf8" }).trim();
+  return { base, origin, repo, g, o };
+}
+{
+  const { base, repo, g, o } = nytTestRepoMedOrigin();
+  // fremmed staged ændring i hoved-checkoutet (runde 14-bevarelsen)
+  writeFileSync(join(repo, "README.md"), "v2-staged-men-IKKE-kædens");
+  g("add", "README.md");
+  // untracked aktør-leverance
+  mkdirSync(join(repo, "docs/coordination/codex-reviews"), { recursive: true });
+  const fil = "docs/coordination/codex-reviews/r.md";
+  writeFileSync(join(repo, fil), "aktør-leverance");
+  const ghKald = [];
+  const fakeGh = (args) => {
+    ghKald.push(args.join(" "));
+    return "";
+  };
+  const mainFoer = o("rev-parse", "main");
+  const lokalHeadFoer = g("rev-parse", "HEAD");
+  const res = transportCommit(fil, { cwd: repo, gh: fakeGh });
+  check("transport-vej: origin/main URØRT (aldrig direkte main-push, GH006)", o("rev-parse", "main") === mainFoer);
   check(
-    "fremmed staged ændring følger IKKE med (forbliver staged)",
-    g("status", "--porcelain").includes("M  fremmed.md"),
+    "transport-vej: leverancen pushet til kaede/transport/-gren på origin",
+    res.status === "pr-oprettet" &&
+      res.gren.startsWith("kaede/transport/") &&
+      o("rev-parse", `refs/heads/${res.gren}`).length === 40,
   );
-  rmSync(repo, { recursive: true, force: true });
+  check(
+    "transport-vej: transport-committen indeholder PRÆCIS én fil (leverancen)",
+    o("show", "--name-only", "--format=", `refs/heads/${res.gren}`) === fil,
+  );
+  check(
+    "transport-vej: gh pr create + gh pr merge --auto --rebase (bogførings-sti-mønstret, #130/#132)",
+    ghKald.some((k) => k.startsWith("pr create")) &&
+      ghKald.some((k) => k.startsWith("pr merge") && k.includes("--auto") && k.includes("--rebase")),
+  );
+  check(
+    "transport-vej: lokal main + index urørt — ingen lokal commit; fremmed staged ændring består (runde 14)",
+    g("rev-parse", "HEAD") === lokalHeadFoer &&
+      g("status", "--porcelain").includes("M  README.md") &&
+      g("status", "--porcelain").includes(`?? ${fil}`),
+  );
+  const kaldFoer = ghKald.length;
+  const res2 = transportCommit(fil, { cwd: repo, gh: fakeGh });
+  check(
+    "transport-vej: eksisterende transport-gren (samme indhold) → afventer-merge, INGEN dublet-PR (idempotens)",
+    res2.status === "afventer-merge" && ghKald.length === kaldFoer,
+  );
+  rmSync(base, { recursive: true, force: true });
+}
+
+// ---------- 21b. syncFremad (PR-vejens konvergens: bagud-stilling er ikke divergens) ----------
+{
+  const { base, origin, repo, g } = nytTestRepoMedOrigin();
+  // simulér merged transport-PR på origin/main via en anden klon
+  const klon2 = join(base, "klon2");
+  execFileSync("git", ["clone", "--quiet", origin, klon2]);
+  const g2 = (...args) => execFileSync("git", args, { cwd: klon2, encoding: "utf8" }).trim();
+  g2("config", "user.email", "selftest@kaede");
+  g2("config", "user.name", "kaede-selftest");
+  mkdirSync(join(klon2, "docs/coordination"), { recursive: true });
+  writeFileSync(join(klon2, "docs/coordination/p-recon-kode.md"), "frossen leverance");
+  g2("add", "docs/coordination/p-recon-kode.md");
+  g2("commit", "--quiet", "-m", "kæde-transport: p-recon-kode.md");
+  g2("push", "--quiet", "origin", "main");
+  // lokal: samme leverance ligger stadig untracked (identisk indhold)
+  mkdirSync(join(repo, "docs/coordination"), { recursive: true });
+  writeFileSync(join(repo, "docs/coordination/p-recon-kode.md"), "frossen leverance");
+  const res = syncFremad({ cwd: repo });
+  check(
+    "syncFremad: rent bagud → ff-synk; identisk untracked kopi afløst af den frosne (rent træ)",
+    res.synket === true &&
+      g("rev-parse", "HEAD") === g("rev-parse", "origin/main") &&
+      g("status", "--porcelain") === "",
+  );
+  // ægte divergens: lokal-egen commit → INGEN synk (fail-closed; divergens-tjek STOPper)
+  writeFileSync(join(repo, "lokal.md"), "lokal-egen");
+  g("add", "lokal.md");
+  g("commit", "--quiet", "-m", "lokal-egen commit");
+  const headFoer = g("rev-parse", "HEAD");
+  writeFileSync(join(klon2, "ny.md"), "origin går videre");
+  g2("add", "ny.md");
+  g2("commit", "--quiet", "-m", "origin videre");
+  g2("push", "--quiet", "origin", "main");
+  const res2 = syncFremad({ cwd: repo });
+  check(
+    "syncFremad: ægte divergens (lokal-egen commit) → INGEN synk, HEAD urørt (fail-closed)",
+    res2.synket === false && res2.grund === "divergens" && g("rev-parse", "HEAD") === headFoer,
+  );
+  rmSync(base, { recursive: true, force: true });
 }
 
 // ---------- 22. regelbogs-håndhævelse: betingelser → BLOKERET (V8-V21) ----------
