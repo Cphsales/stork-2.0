@@ -22,13 +22,13 @@ forhåndsdikterede leverancer)
 
 ## Batches (implementations-rækkefølge = bestillingens punkt-rækkefølge)
 
-| Batch | Punkter  | Filer (forventet)                                                                                                                                            |
-| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | 1        | .github/CODEOWNERS (separat PR #150) · dirigent.mjs · tilstand.mjs · selftest                                                                                |
-| 2     | 2+3      | dirigent.mjs (transport↔lås) · adapters/codex.sh (tmp+mv) · selftest                                                                                         |
-| 3     | 4+11     | tilstand.mjs (spor-anker) · dirigent.mjs (spor-værn, stop-fil) · preflight.sh · stork-kaede.service · selftest                                               |
-| 4     | 5+6+9+10 | stork-kaede.service (PATH/.nvmrc) · dirigent.mjs (varighed) · preflight.sh (mobil-tjekliste + issue-write-probe) · adapters/codex.sh (selvtjek-docs-kobling) |
-| 5     | 7+8      | adapters/code.sh (læselister/plan-diæt) · claude-ai-rolle-instruks.md (recon-FORM)                                                                           |
+| Batch | Punkter | Filer (forventet)                                                                                                                                           |
+| ----- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 1       | .github/CODEOWNERS (separat PR #150) · dirigent.mjs · tilstand.mjs · selftest                                                                               |
+| 2     | 2+3     | dirigent.mjs (transport↔lås) · adapters/codex.sh (tmp+mv) · selftest                                                                                        |
+| 3     | 4+11    | tilstand.mjs (spor-anker) · dirigent.mjs (spor-værn, stop-fil) · preflight.sh · stork-kaede.service · selftest                                              |
+| 4     | 5+6+9   | stork-kaede.service (PATH/.nvmrc) · dirigent.mjs (varighed) · preflight.sh (mobil-tjekliste + issue-write-probe) — punkt 10 UDGÅET (Mathias-ord 2026-06-12) |
+| 5     | 7+8     | adapters/code.sh (læselister/plan-diæt) · claude-ai-rolle-instruks.md (recon-FORM)                                                                          |
 
 ## Patch-først-noter (§3.1)
 

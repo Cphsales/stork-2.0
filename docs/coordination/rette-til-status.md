@@ -44,13 +44,13 @@ Ingen.
 
 ## Batch-plan (bestillingens 11 punkter)
 
-| Batch | Punkter  | Indhold                                                                    |
-| ----- | -------- | -------------------------------------------------------------------------- |
-| 1     | 1        | CODEOWNERS-PR (forudsætning, separat PR) + transport→PR-vej                |
-| 2     | 2+3      | transport bundet til adapter-exit 0 · atomisk codex-skrivning              |
-| 3     | 4+11     | spor-attribution · stale-dispatch-værn · persistent KAEDE-STOP             |
-| 4     | 5+6+9+10 | systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse · 1a-kobling |
-| 5     | 7+8      | plan-diæt + læselister · recon-FORM-reglen                                 |
+| Batch | Punkter | Indhold                                                                                                                                                                          |
+| ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 1       | CODEOWNERS-PR (forudsætning, separat PR) + transport→PR-vej                                                                                                                      |
+| 2     | 2+3     | transport bundet til adapter-exit 0 · atomisk codex-skrivning                                                                                                                    |
+| 3     | 4+11    | spor-attribution · stale-dispatch-værn · persistent KAEDE-STOP                                                                                                                   |
+| 4     | 5+6+9   | systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse — punkt 10 UDGÅET (Mathias-ord 2026-06-12: 1a-koblingen bygges ikke; selvtjek-docs.mjs består som manuelt værktøj) |
+| 5     | 7+8     | plan-diæt + læselister · recon-FORM-reglen                                                                                                                                       |
 
 Codex-review pr. batch. Selftest udvides FØR hvert fix. Kode-/CODEOWNERS-PR'er
 kræver Mathias-klik; slut-bevis = preflight grøn + selftest grøn (ingen
