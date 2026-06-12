@@ -6,6 +6,14 @@
 
 ## Sidste handling
 
+**Batch 5 (punkt 7+8) FÆRDIG — ALLE bestillingens punkter er nu bygget**
+(punkt 10 udgået på Mathias-ord). Punkt 7: code.sh-prompten differentierer
+pr. opgave-klasse (mekanik → MINIMAL læseliste; build → plan SEKTIONSVIS;
+konservativ default → fuld LÆSEFØLGE). Punkt 8: RECON-FORM-reglen (KUN
+findings + forretnings-spørgsmål, ALDRIG løsninger) i code-adapterens
+recon-prompt + claude-ai-rolle-instruksens recon-syntese. Adapter-kontrakter
+selftest-håndhævet.
+
 **Batch 4 (punkt 5+6+9) FÆRDIG** — punkt 5: node-env.sh afleder node af
 .nvmrc via nvm (unit-PATH pinner ingen versions-sti; preflight beviser
 match). Punkt 6: KOERSEL-SLUT bærer varighed_ms pr. dispatch. Punkt 9a:
@@ -56,14 +64,15 @@ stateless qwers-anker → hoererTilPakke-fixet) · 8 (1× KRITISK, MEKANIK:
 prettier-format på de tre kæde-filer → fixet @ 7ee7316) · 9 (1× KRITISK,
 MEKANIK: status-bogføring af runde 8 manglede) · 10 (1× KRITISK, MEKANIK:
 #150-merge ikke bogført — ekstern state ændrede sig: Mathias mergede mens
-batchen kørte; synket + rebaset). Alle fund ACCEPT + fixet. §8.1-SVAR
-runde 2-10: INGEN-MODSIGELSE.
+batchen kørte; synket + rebaset) · 11 (APPROVAL — batch 4 bekræftet inkl.
+systemd-analyze verify grøn). Alle fund ACCEPT + fixet. §8.1-SVAR
+runde 2-11: INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Runde 11 reviewer batch 4, derefter batch 5 (punkt 7+8): code-adapter-prompt
-(plan-diæt + opgave-klasse-læselister) + recon-FORM-reglen i code-adapterens
-recon-prompt og claude-ai-rolle-instruksens recon-syntese.
+Runde 12 reviewer batch 5; ved APPROVAL: slut-bevis (fuld selftest grøn +
+preflight grøn, INGEN dirigent-genstart) → branch pushes → kode-PR til
+Mathias-review (beslutnings-sti: scripts/kaede/ + .gitignore).
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
 
