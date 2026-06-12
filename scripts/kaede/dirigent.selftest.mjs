@@ -920,6 +920,45 @@ function nytTestRepoMedOrigin() {
   rmSync(base, { recursive: true, force: true });
 }
 
+// ---------- 21d. GATE-AFGJORT: transport-fejl → KAEDE-STOP, ingen Code-dispatch (Codex runde 2) ----------
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const LOG = join(KAEDE, ".dispatch-log.jsonl");
+  const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  const TMP = join(KAEDE, ".selftest-tmp");
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
+  const gateFil = "scripts/kaede/.selftest-tmp/gate.md";
+  writeFileSync(join(KAEDE, "..", "..", gateFil), "Status: AFVENTER MATHIAS\n");
+  writeFileSync(join(TMP, "adapter.sh"), `#!/bin/bash\ntouch "${TMP}/dispatch-koerte"\n`);
+  const res = udfoer(
+    [
+      { handling: "GATE-AFGJORT", afgoerelse: "gate-godkendt", gates: [gateFil], sha: "c9" },
+      {
+        handling: "DISPATCH",
+        aktoer: "code",
+        opgave: "gate-afgjort-fortsaet",
+        adapter: "scripts/kaede/.selftest-tmp/adapter.sh",
+        kontekst: { event: "gate-godkendt", sha: "c9", spor: "p" },
+      },
+    ],
+    { transportFn: () => ({ status: "transport-fejl", gren: "kaede/transport/gate", grund: "PR CLOSED uden merge" }) },
+  );
+  const logLinjer = readFileSync(LOG, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  check(
+    "GATE-AFGJORT m. transport-fejl → KAEDE-STOP + INGEN efterfølgende Code-dispatch (gate-sporet er fail-closed)",
+    res.stoppet === true &&
+      logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl") &&
+      !existsSync(join(TMP, "dispatch-koerte")),
+  );
+  rmSync(TMP, { recursive: true, force: true });
+  if (logBackup === null) rmSync(LOG, { force: true });
+  else writeFileSync(LOG, logBackup);
+}
+
 // ---------- 22. regelbogs-håndhævelse: betingelser → BLOKERET (V8-V21) ----------
 {
   const lev = { fil: "v.md", sha: "s", deklaration: null, type: "troskabs-verdikt", markers: ["PASS"] };
