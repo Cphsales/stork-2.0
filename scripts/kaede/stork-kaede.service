@@ -16,10 +16,13 @@ StartLimitBurst=5
 [Service]
 Type=simple
 WorkingDirectory=%h/stork-2.0
-# PATH eksplicit: user-units arver ikke shell-PATH (claude/codex/gh/node)
-Environment=PATH=%h/.local/bin:%h/.nvm/versions/node/v24.15.0/bin:/usr/local/bin:/usr/bin:/bin
+# PATH eksplicit: user-units arver ikke shell-PATH (claude/gh). Node + codex
+# pinnes IKKE til en nvm-versions-sti (rette-til punkt 5/5c) — de afledes af
+# .nvmrc via node-env.sh (sources i ExecStart + preflight), så nvm-opgradering
+# ikke dræber kæden midt i natlig drift.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStartPre=/bin/bash scripts/kaede/preflight.sh
-ExecStart=/usr/bin/env node scripts/kaede/dirigent.mjs
+ExecStart=/bin/bash -c 'source scripts/kaede/node-env.sh && exec node scripts/kaede/dirigent.mjs'
 Restart=on-failure
 RestartSec=30
 # Verdikt-exits genopliver ALDRIG (punkt 11a): 2 = KAEDE-STOP/PAUSE-verdikt,

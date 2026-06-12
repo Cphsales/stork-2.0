@@ -645,6 +645,7 @@ export function udfoer(
         // Dispatch pr. filtype (Codex runde 35: mathias.mjs er Node/ESM —
         // bash-spawn gav syntaksfejl før mobilfladen overhovedet ramtes).
         const fortolker = adapterSti.endsWith(".mjs") ? process.execPath : "bash";
+        const dispatchStart = Date.now(); // punkt 6: adapter-kørselstid pr. DISPATCH
         const child = spawn(fortolker, [adapterSti], {
           cwd: REPO_ROD,
           stdio: ["ignore", "inherit", "inherit"],
@@ -659,7 +660,15 @@ export function udfoer(
         const faerdig = new Promise((resolve) => {
           child.on("exit", (code) => {
             koerende.delete(noegle);
-            log({ handling: "KOERSEL-SLUT", aktoer: h.aktoer, exit: code, kontekst: h.kontekst });
+            // varighed_ms (rette-til punkt 6, 0a kæde-halvdel): adapter-
+            // kørselstid som biprodukt af dispatchen — ingen ny ceremoni.
+            log({
+              handling: "KOERSEL-SLUT",
+              aktoer: h.aktoer,
+              exit: code,
+              varighed_ms: Date.now() - dispatchStart,
+              kontekst: h.kontekst,
+            });
             if (code !== 0) {
               // Adapter-kontrakt (B2): exit 0 = leverance leveret; alt andet =
               // kørsel fejlede → STOP, manuelt flow. Ingen auto-retry-loop.
