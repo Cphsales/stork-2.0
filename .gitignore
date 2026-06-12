@@ -62,3 +62,4 @@ docs/coordination/codex-reviews/*.tmp
 # Porten: konstant aktiv, versioneret - nedtagning kun paa Mathias ordrette ord
 !.claude/settings.json
 !.claude/porten.md
+!.claude/port-vagt.sh
