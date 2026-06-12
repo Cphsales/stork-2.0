@@ -125,17 +125,24 @@ export function decide(tilstand, regler) {
   // 3. Untracked leverancer → transport-commit (ordret) før routing — men
   // ALDRIG mens en kørsel er aktiv på sporet (Codex runde 15-fund): filen kan
   // være halvskrevet indtil aktørens exit 0 har bevist at den er færdig.
-  // Konservativt: enhver aktiv kørsel på sporet → VENT.
+  // Konservativt: enhver aktiv kørsel på sporet → VENT. Rette-til punkt 2
+  // (race-fundet): transport bindes til AFSENDER-adapterens completion —
+  // typens afsender m. aktiv kørsel på ETHVERT spor → VENT (adapter-
+  // kontrakten: exit 0 = leverance klar; fil-eksistens er aldrig bevis).
   for (const lev of tilstand.leverancer ?? []) {
     if (!lev.untracked) continue;
+    const tcType = lev.deklaration?.type ?? lev.type ?? null;
+    const tcRegel = tcType ? regler.leverance_typer[tcType] : null;
     if (laase.some((l) => l.spor === spor)) {
       handlinger.push({ handling: "VENT", fil: lev.fil, grund: "koersel-paa-spor" });
       continue;
     }
+    if (tcRegel?.afsender && laase.some((l) => l.aktoer === tcRegel.afsender)) {
+      handlinger.push({ handling: "VENT", fil: lev.fil, grund: "afsender-koersel" });
+      continue;
+    }
     // Selv-validering før frys (design pkt. 12, V15/V16): typens selvtjek-
     // liste vedhæftes — udfoer() kører den FØR commit; fejl = ingen frys.
-    const tcType = lev.deklaration?.type ?? lev.type ?? null;
-    const tcRegel = tcType ? regler.leverance_typer[tcType] : null;
     handlinger.push({
       handling: "TRANSPORT-COMMIT",
       fil: lev.fil,

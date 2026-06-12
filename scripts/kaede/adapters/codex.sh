@@ -45,8 +45,13 @@ case "$OPGAVE" in
   kode-research | recon-research)
     # Uafhængig kode-recon (V8-kædestart / §2.1-parallel): producerer recon-doc,
     # IKKE et review. Output untracked → kurérens transport-commit.
+    # Atomisk skrivning (rette-til punkt 3, race-fund 3c): der streames til
+    # tmp-fil — målfilen findes FØRST når leverancen er komplet (mv ved succes).
+    # .tmp ender ikke på .md og er derfor usynlig for kurérens leverance-scan.
     UD="docs/coordination/${SPOR}-recon-research.md"
     [ "$OPGAVE" = "kode-research" ] && UD="docs/coordination/codex-reviews/${DATO}-${SPOR}-kode-research.md"
+    UD_TMP="${UD}.tmp"
+    trap 'rm -f "$UD_TMP"' EXIT
     PROMPT="Du er Codex i Stork 2.0 — uafhængig kode-recon (read-only, disciplin §9.3).
 Læs FØR arbejde: docs/LÆSEFØLGE.md's seks dokumenter + faktisk kode (migrations, RPC'er, policies).
 OPGAVE: uafhængig recon af NUVÆRENDE kode for pakke '${SPOR}' — teknisk realiserbarhed,
@@ -55,16 +60,21 @@ Hvert fund med file:linje. Ingen forretnings-tolkning (Claude.ai's bord), ingen 
 Skriv HELE leverancen som markdown til stdout — den gemmes som ${UD}."
     timeout --signal=KILL 480 codex exec --skip-git-repo-check \
       -c 'model_reasoning_effort="xhigh"' --enable fast_mode \
-      "$PROMPT" > "$UD" 2>/dev/null < /dev/null
-    [ -s "$UD" ] || { echo "recon-output tom" >&2; exit 1; }
+      "$PROMPT" > "$UD_TMP" 2>/dev/null < /dev/null
+    [ -s "$UD_TMP" ] || { echo "recon-output tom" >&2; exit 1; }
+    mv "$UD_TMP" "$UD"
     ;;
   sparring-svar | agree-refine-escalate)
+    # Atomisk skrivning (rette-til punkt 3) — samme tmp+mv-mønster som recon.
     UD="docs/coordination/codex-reviews/${DATO}-${SPOR}-svar-$(naeste_runde).md"
+    UD_TMP="${UD}.tmp"
+    trap 'rm -f "$UD_TMP"' EXIT
     timeout --signal=KILL 240 codex exec --skip-git-repo-check \
       -c 'model_reasoning_effort="medium"' --enable fast_mode \
       "Du er Codex (Stork 2.0, §9.3). Besvar §5-leverancen i ${FIL} (frossen @ ${SHA}) per FLAG→LØS-disciplinen (AGREE/REFINE/ESCALATE eller CONFIRM/TIMING/AVOID). Kort, konkret, file:linje. Skriv svaret som markdown til stdout." \
-      > "$UD" 2>/dev/null < /dev/null
-    [ -s "$UD" ] || { echo "svar-output tom" >&2; exit 1; }
+      > "$UD_TMP" 2>/dev/null < /dev/null
+    [ -s "$UD_TMP" ] || { echo "svar-output tom" >&2; exit 1; }
+    mv "$UD_TMP" "$UD"
     ;;
   *)
     echo "Ukendt KAEDE_OPGAVE for codex-adapter: $OPGAVE" >&2
