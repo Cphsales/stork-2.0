@@ -28,6 +28,7 @@ import {
   afledEvents,
   erBogfoeringsSti,
   infererType,
+  hoererTilPakke,
 } from "./tilstand.mjs";
 
 const REGLER = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"), "utf8"));
@@ -1514,6 +1515,99 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   check(
     "nyt qwers-ord (nyt kommentar-id) → åbner stadig (idempotens rammer kun det behandlede id)",
     h2.filter((x) => x.handling === "DISPATCH").length === 2,
+  );
+}
+
+// ---------- 34. åbnings-anker er ikke frikort (Codex runde 7-KRITISK) ----------
+// Det stående 'qwers gov-6' på #126 giver pakke-anker (spor 'gov-6') også
+// EFTER at åbningen er behandlet — det må ikke give stale leverancer fra ANDRE
+// spor et gyldigt spor. Under åbnings-anker (markør 'ingen') flyder KUN
+// pakkens egne leverancer.
+{
+  const AABNING = {
+    ...TOM,
+    marker: { pakke: "ingen", fase: "plan" },
+    pakke: "gov-6",
+    behandlede: ["event:qwers-aabning@c1#code", "event:qwers-aabning@c1#codex"],
+  };
+  const h = decide(
+    {
+      ...AABNING,
+      events: [{ type: "qwers-aabning", sha: "c1", pakke: "gov-6" }],
+      leverancer: [
+        {
+          fil: "docs/coordination/codex-reviews/2026-06-11-disciplin-runde-21.md",
+          untracked: false,
+          sha: "267aa91",
+          type: "review-feedback",
+          deklaration: null,
+          markers: ["KRITISK"],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "behandlet qwers + markør 'ingen' + stale committed review fra ANDET spor → INGEN dispatch (runde 7-repro)",
+    !h.some((x) => x.handling === "DISPATCH"),
+  );
+  const h2 = decide(
+    {
+      ...AABNING,
+      leverancer: [{ fil: "docs/coordination/gov-6-recon-kode.md", untracked: true, deklaration: null, markers: [] }],
+    },
+    REGLER,
+  );
+  check(
+    "åbnings-anker: pakkens EGEN recon-leverance transporteres stadig (legitimt åbnings-flow ubrudt)",
+    h2.some((x) => x.handling === "TRANSPORT-COMMIT" && x.spor === "gov-6"),
+  );
+  const h3 = decide(
+    {
+      ...AABNING,
+      leverancer: [
+        {
+          fil: "docs/coordination/gov-6-krav-og-data.md",
+          untracked: false,
+          sha: "k1",
+          type: "krav-dok-udkast",
+          deklaration: null,
+          markers: [],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "åbnings-anker: pakkens eget krav-dok-udkast routes stadig (hash-post)",
+    h3.find((x) => x.handling === "DISPATCH")?.opgave === "hash-post",
+  );
+}
+{
+  // hoererTilPakke (ren helper): pakkens egne bærere matcher, fremmede gør ikke.
+  check("hoererTilPakke: recon-fil", hoererTilPakke("docs/coordination/gov-6-recon-kode.md", "gov-6"));
+  check("hoererTilPakke: krav-dok", hoererTilPakke("docs/coordination/gov-6-krav-og-data.md", "gov-6"));
+  check("hoererTilPakke: status-fil", hoererTilPakke("docs/coordination/gov-6-status.md", "gov-6"));
+  check(
+    "hoererTilPakke: dateret review-bærer",
+    hoererTilPakke("docs/coordination/codex-reviews/2026-06-12-gov-6-runde-3.md", "gov-6"),
+  );
+  check(
+    "hoererTilPakke: dateret slut-rapport",
+    hoererTilPakke("docs/coordination/rapport-historik/2026-06-12-gov-6.md", "gov-6"),
+  );
+  check(
+    "hoererTilPakke: ANDEN pakkes review matcher IKKE",
+    !hoererTilPakke("docs/coordination/codex-reviews/2026-06-11-disciplin-runde-21.md", "gov-6"),
+  );
+  check(
+    "hoererTilPakke: pakke-navne m. regex-tegn (selvtjek-docs.mjs) escapes",
+    hoererTilPakke("docs/coordination/codex-reviews/2026-06-11-selvtjek-docs.mjs-runde-12.md", "selvtjek-docs.mjs") &&
+      !hoererTilPakke("docs/coordination/codex-reviews/2026-06-11-selvtjek-docsXmjs-runde-12.md", "selvtjek-docs.mjs"),
+  );
+  check(
+    "hoererTilPakke: præfiks-pakke matcher IKKE (gov-6 vs gov-6-forslag-og-udskudte)",
+    !hoererTilPakke("docs/coordination/codex-reviews/2026-06-11-gov-6-forslag-og-udskudte-runde-9.md", "gov-6"),
   );
 }
 

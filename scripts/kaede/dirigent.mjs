@@ -18,7 +18,7 @@ import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readF
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { laesTilstand } from "./tilstand.mjs";
+import { hoererTilPakke, laesTilstand } from "./tilstand.mjs";
 
 const KAEDE_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROD = join(KAEDE_DIR, "..", "..");
@@ -69,6 +69,11 @@ export function decide(tilstand, regler) {
   // Spor-anker (rette-til punkt 4): tilstand.pakke bærer qwers-ankeret under
   // åbning (markøren er "ingen" indtil plan-fasen) — markøren er kun fallback.
   const spor = tilstand.pakke ?? tilstand.marker?.pakke ?? "ingen";
+  // Åbnings-anker er ikke frikort (Codex runde 7-KRITISK): det stående qwers-
+  // ord giver pakke-spor FØR markøren flipper — i den fase flyder KUN pakkens
+  // egne leverancer (hoererTilPakke), så stale filer fra andre spor aldrig
+  // arver ankeret som gyldigt spor.
+  const aabningsAnker = (tilstand.marker?.pakke ?? "ingen") === "ingen" && spor !== "ingen";
   // Betingelses-tjek pr. OPGAVE (regelbogs-håndhævelse): mangler → liste af navne
   const manglendeBetingelser = (opgave) =>
     (regler.betingelser?.[opgave] ?? []).filter((navn) => !betingelseOpfyldt(navn, tilstand.betingelsesFakta));
@@ -136,6 +141,10 @@ export function decide(tilstand, regler) {
       handlinger.push({ handling: "BLOKERET", fil: lev.fil, mangler: ["spor-ikke-ingen"] });
       continue;
     }
+    if (aabningsAnker && !hoererTilPakke(lev.fil, spor)) {
+      handlinger.push({ handling: "BLOKERET", fil: lev.fil, mangler: ["leverance-uden-for-aabnings-pakken"] });
+      continue;
+    }
     const tcType = lev.deklaration?.type ?? lev.type ?? null;
     const tcRegel = tcType ? regler.leverance_typer[tcType] : null;
     if (laase.some((l) => l.spor === spor)) {
@@ -169,6 +178,13 @@ export function decide(tilstand, regler) {
     }
     const noegle = `${lev.fil}@${lev.sha ?? "HEAD"}`;
     if (behandlede.has(noegle)) continue;
+
+    // Åbnings-anker-tilhørighed (Codex runde 7-KRITISK) — FØR fund-gate, så
+    // stale markers fra andre spor heller ikke dispatcher Mathias-gates.
+    if (aabningsAnker && !hoererTilPakke(lev.fil, spor)) {
+      handlinger.push({ handling: "BLOKERET", fil: lev.fil, mangler: ["leverance-uden-for-aabnings-pakken"] });
+      continue;
+    }
 
     // 4a. Fund-gate-markers → Mathias-gate + spor-pause (runde 14-fund 1):
     // fund-gaten DISPATCHES til mathias-adapteren (gate-anmodning + gate-fil,

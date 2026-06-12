@@ -171,6 +171,24 @@ export function erBogfoeringsSti(fil) {
   return BOGFOERING_RES.some((re) => re.test(fil));
 }
 
+// Pakke-tilhørighed (rette-til, Codex runde 7-KRITISK): under åbnings-anker
+// (markør "ingen", spor båret af qwers-ordet) flyder KUN pakkens egne
+// leverancer — det stående qwers-ord på dirigent-issuet må aldrig give stale
+// filer fra andre spor et gyldigt spor. Matcher kædens navne-konventioner:
+// <pakke>-{status,plan,krav-og-data,recon-*}.md + daterede bærere
+// (<dato>-<pakke>-{runde,troskab,svar,gatepakke,kode-research}-….md) +
+// slut-rapport (<dato>-<pakke>.md). Kendte suffikser kræves, så pakke-navne
+// der er præfiks af andre (gov-6 vs gov-6-forslag-og-udskudte) ikke kolliderer.
+export function hoererTilPakke(sti, pakke) {
+  const navn = String(sti).split("/").at(-1);
+  const p = String(pakke).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (new RegExp(`^${p}-(status|plan|krav-og-data)\\.md$`).test(navn)) return true;
+  if (new RegExp(`^${p}-recon-(kode|research|oplaeg)\\.md$`).test(navn)) return true;
+  return new RegExp(`^\\d{4}-\\d{2}-\\d{2}-${p}(-(runde|troskab|svar|gatepakke|kode-research)(-|\\.)|\\.md$)`).test(
+    navn,
+  );
+}
+
 function filSha(sti, cwd) {
   try {
     return git(["log", "-1", "--format=%H", "--", sti], cwd) || null;
