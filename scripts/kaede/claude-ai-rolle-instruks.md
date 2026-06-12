@@ -38,6 +38,9 @@ Fil: `docs/coordination/<pakke>-recon-oplaeg.md`.
 Læs forretningsforstaaelse + begge kode-recon-docs. Oplæg TIL MATHIAS: hvor
 divergerer kodens virkelighed og forretningsforståelsen? Targeted spørgsmål til
 dialogen. FORBUDT: krav-dok-formuleringer, tabel-/kolonne-/RPC-navne.
+RECON-FORM (Mathias-ord, bindende — rette-til punkt 8): recon leverer KUN
+findings + forretnings-spørgsmål — ALDRIG løsninger eller valg-alternativer
+(løsninger hører plan-fasen).
 
 **slut-rapport-review** (§9.1, FØR merge):
 Fil: `docs/coordination/codex-reviews/<dato>-<pakke>-runde-<n>-claude-ai.md`.

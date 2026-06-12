@@ -14,7 +14,7 @@ SHA="${KAEDE_SHA:-}"
 
 # Opgave-instruks (rollen bærer dømmekraften — adapteren bærer kun rammen)
 case "$OPGAVE" in
-  recon-kode)        DETALJE="Recon af NUVÆRENDE kodes FORRETNINGSSIDE for pakke '${SPOR}' (V8-kædestart): hvordan rettigheder, PII-klassifikation og lifecycle REELT fungerer i koden — præcis den info krav-dokket skal stå på. Skriv docs/coordination/${SPOR}-recon-kode.md (untracked — kuréren fryser; du committer den IKKE). Forretningssprog m. file:linje-belæg." ;;
+  recon-kode)        DETALJE="Recon af NUVÆRENDE kodes FORRETNINGSSIDE for pakke '${SPOR}' (V8-kædestart): hvordan rettigheder, PII-klassifikation og lifecycle REELT fungerer i koden — præcis den info krav-dokket skal stå på. Skriv docs/coordination/${SPOR}-recon-kode.md (untracked — kuréren fryser; du committer den IKKE). Forretningssprog m. file:linje-belæg. RECON-FORM (Mathias-ord, bindende — rette-til punkt 8): recon leverer KUN findings + forretnings-spørgsmål — ALDRIG løsninger eller valg-alternativer (løsninger hører plan-fasen)." ;;
   plan-start)        DETALJE="Start plan-fasen for '${SPOR}': DB-state-dump (§3.2), G/H-opslag, plan-V1 per §10.2 på docs/coordination/${SPOR}-plan.md + opret ${SPOR}-status.md (§3.5). Commit+push dine leverancer." ;;
   naeste-version)    DETALJE="Reviewet i ${FIL} (frossen @ ${SHA}) kræver næste plan-version: håndtér hvert fund eksplicit (ACCEPT/PUSHBACK/PROPOSE-ALTERNATIVE), skriv V<n+1>, commit+push." ;;
   build-start)       DETALJE="Plan for '${SPOR}' er rolle-godkendt (Codex-APPROVAL + troskabs-PASS — betingelser mekanisk verificeret). Byg per implementations-rækkefølgen i batches m. selvtjek; commit+push pr. batch." ;;
@@ -30,8 +30,24 @@ case "$OPGAVE" in
   *) echo "Ukendt KAEDE_OPGAVE for code-adapter: $OPGAVE" >&2; exit 64 ;;
 esac
 
+# Opgave-klasse-læselister (rette-til punkt 7: 4b plan-diæt + 4f): mekanik-
+# opgaver får minimal læseliste (§3.10 — fuld LÆSEFØLGE er ressourcespild når
+# opgaven er et merge-klik); build læser planen SEKTIONSVIS. Konservativ
+# default: fuld læsning ved recon/plan/fund m.v.
+case "$OPGAVE" in
+  krav-dok-merge | slut-merge)
+    LAESEDISCIPLIN="MINIMAL LÆSELISTE (mekanik-opgave, §3.10 — IKKE fuld LÆSEFØLGE): (1) branch-bevidst git-sync (disciplin §13), (2) docs/coordination/${SPOR}-status.md, (3) selve opgavens artefakt. Læs ikke øvrige docs — opgaven er ren mekanik."
+    ;;
+  build-start | fortsaet | gate-afgjort-fortsaet)
+    LAESEDISCIPLIN="Følg docs/LÆSEFØLGE.md (branch-bevidst sync FØRST). PLAN-DIÆT (4b): læs planen SEKTIONSVIS — '## Implementations-rækkefølge' + den AKTUELLE batch' steps + patch-først-sektionerne for de funktioner batchen rører; IKKE hele plan-dokumentet ad gangen."
+    ;;
+  *)
+    LAESEDISCIPLIN="Følg docs/LÆSEFØLGE.md (branch-bevidst sync FØRST)."
+    ;;
+esac
+
 PROMPT="qwers ${SPOR} — du er Code i Stork 2.0 (headless kæde-kørsel, disciplin §9.2).
-Følg docs/LÆSEFØLGE.md (branch-bevidst sync FØRST). Pakke-status er kontekst (§3.5).
+${LAESEDISCIPLIN} Pakke-status er kontekst (§3.5).
 OPGAVE: ${DETALJE}
 ALTID til sidst: opdater docs/coordination/${SPOR}-status.md (sidste handling /
 næste forventet / konvergens-counter / blocker) og afslut filen med præcis én
