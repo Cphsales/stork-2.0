@@ -6,6 +6,13 @@
 
 ## Sidste handling
 
+**Batch 4 (punkt 5+6+9) FÆRDIG** — punkt 5: node-env.sh afleder node af
+.nvmrc via nvm (unit-PATH pinner ingen versions-sti; preflight beviser
+match). Punkt 6: KOERSEL-SLUT bærer varighed_ms pr. dispatch. Punkt 9a:
+mobil-MODTAGE-tjekliste i preflight-output (manuelt Mathias-punkt). Punkt 9b:
+issue-write-probe (reaction add/delete, fail-closed). Preflight kørt LIVE:
+alle 11 mekaniske punkter ✓ inkl. probe mod #126.
+
 **Batch 3 (punkt 4+11) FÆRDIG** @ `d5d31fd` — punkt 4: laesTilstand
 returnerer pakke-feltet (qwers-ankeret), decide() bruger det før
 markør-fallback (rodårsagen til spor "ingen"-attributionen). Punkt 11:
@@ -19,12 +26,15 @@ instans-spor (log↔journal-paritet var reelt OK — KOPI'en var snapshottet
 før aften-kørslerne); (d) behandlet qwers-ord genfyrer ALDRIG efter genstart
 — bevist mekanisk i selftest; nyt kommentar-id åbner stadig.
 
-Batch 1+2: Codex-APPROVAL runde 5. Batch 1: CODEOWNERS-PR #150 (afventer
-Mathias-klik) + transport→PR-vej m. BEVIST PR-tilstand; batch 2: afsender-
-exit-0-binding + atomisk codex-skrivning. Punkt 10 UDGÅET (Mathias-ord
-2026-06-12) — batch 4 er punkt 5+6+9. Gate-transport-klassen (runde 3+4-
-KRITISK) lukket: GATE-AFGJORT dispatcher aldrig i samme cyklus; lokal
-gate-fil bevarer AFVENTER MATHIAS indtil merge+ff-synk.
+Batch 1+2: Codex-APPROVAL runde 5. Batch 1: **CODEOWNERS-PR #150 MERGED
+(Mathias-klik 2026-06-12 01:10Z @ `2cc8245`) — punkt 1-forudsætningen er
+PASSERET**; arbejds-branchen er rebaset på origin/main (cherry-picken
+deduperet væk; selftest + format:check grønne efter rebase). Transport→PR-vej
+m. BEVIST PR-tilstand; batch 2: afsender-exit-0-binding + atomisk
+codex-skrivning. Punkt 10 UDGÅET (Mathias-ord 2026-06-12) — batch 4 er punkt
+5+6+9. Gate-transport-klassen (runde 3+4-KRITISK) lukket: GATE-AFGJORT
+dispatcher aldrig i samme cyklus; lokal gate-fil bevarer AFVENTER MATHIAS
+indtil merge+ff-synk.
 
 **Runde 7-KRITISK (ACCEPT) lukket:** qwers-ankeret var stateless — det stående
 `qwers gov-6` på #126 gav stale leverancer fra ANDRE spor et gyldigt spor
@@ -44,14 +54,16 @@ Codex-runder: 1 (2× KRITISK) · 2 (1× KRITISK) · 3 (1× KRITISK + 1× MELLEM)
 klassen bekræftet lukket) · 6 (1× KRITISK: status-fil bagud) · 7 (1× KRITISK:
 stateless qwers-anker → hoererTilPakke-fixet) · 8 (1× KRITISK, MEKANIK:
 prettier-format på de tre kæde-filer → fixet @ 7ee7316) · 9 (1× KRITISK,
-MEKANIK: status-bogføring af runde 8 manglede → denne synk). Alle fund
-ACCEPT + fixet. §8.1-SVAR runde 2-9: INGEN-MODSIGELSE.
+MEKANIK: status-bogføring af runde 8 manglede) · 10 (1× KRITISK, MEKANIK:
+#150-merge ikke bogført — ekstern state ændrede sig: Mathias mergede mens
+batchen kørte; synket + rebaset). Alle fund ACCEPT + fixet. §8.1-SVAR
+runde 2-10: INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Re-review (runde 10) bekræfter status-synk, derefter batch 4 (punkt 5+6+9):
-systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse
-(mobil-MODTAGE-tjekliste + issue-write-probe).
+Runde 11 reviewer batch 4, derefter batch 5 (punkt 7+8): code-adapter-prompt
+(plan-diæt + opgave-klasse-læselister) + recon-FORM-reglen i code-adapterens
+recon-prompt og claude-ai-rolle-instruksens recon-syntese.
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
 
