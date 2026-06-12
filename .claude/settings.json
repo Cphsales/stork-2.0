@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": ["Bash(*)"]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'PORTEN AKTIV (.claude/porten.md — konstant; nedtagning KUN ved Mathias ordrette godkendelse): Før svar — S1 hvem tjener det, mig=K.O. · S2 relevans ≥80%, fylde/bortforklaring=0 · S3 nyt, ikke genfortalt · S4 bed aldrig Mathias om mit arbejde · S5 sandheds-REGNSKAB: bevist/ubevist/ved-ikke. Leverancer: fuld port, ingen K.O., ≥10/12. Intet go, intet ros før porten.'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ ! -e \"$HOME/.claude/port-aabning\" ]; then input=$(cat); if echo \"$input\" | grep -qE 'porten\\.md|\\.claude/settings\\.json'; then echo 'BLOKERET: Porten er KONSTANT AKTIV — ændring/nedtagning kræver Mathias ORDRETTE godkendelse, citeret i porten.md. Først derefter: touch ~/.claude/port-aabning, udfør ændringen, slet oplåsningen igen.' >&2; exit 2; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
