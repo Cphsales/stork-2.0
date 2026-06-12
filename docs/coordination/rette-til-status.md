@@ -35,19 +35,21 @@ BLOKERET ["leverance-uden-for-aabnings-pakken"], også FØR fund-gate-dispatch.
 Codex' repro er selftest-case; legitimt åbnings-flow (egen recon/krav-dok)
 bevist ubrudt.
 
-**Disciplin-justering (runde 6-KRITISK, ACCEPT — klassen ramt to gange):**
-status-filen opdateres som DEL af hvert batch-luk, FØR Codex-review kaldes —
-ikke bagefter.
+**Disciplin-justering (runde 6 + 9, ACCEPT — klassen ramt tre gange, skærpet):**
+status-filen synkes FØR HVER Codex-review-kald (også mekanik-runder) — review-
+trigger er en LÆSEFØLGE-klasse-trigger, og §3.5 gør filen til sessionsbro.
 
 Codex-runder: 1 (2× KRITISK) · 2 (1× KRITISK) · 3 (1× KRITISK + 1× MELLEM) ·
 4 (2× KRITISK: gentaget gate-fund + status-usandhed) · 5 (APPROVAL — gate-
 klassen bekræftet lukket) · 6 (1× KRITISK: status-fil bagud) · 7 (1× KRITISK:
-stateless qwers-anker → lukket ovenfor). Alle fund ACCEPT + fixet.
-§8.1-SVAR runde 2-7: INGEN-MODSIGELSE.
+stateless qwers-anker → hoererTilPakke-fixet) · 8 (1× KRITISK, MEKANIK:
+prettier-format på de tre kæde-filer → fixet @ 7ee7316) · 9 (1× KRITISK,
+MEKANIK: status-bogføring af runde 8 manglede → denne synk). Alle fund
+ACCEPT + fixet. §8.1-SVAR runde 2-9: INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Re-review (runde 8) bekræfter runde 7-fixet, derefter batch 4 (punkt 5+6+9):
+Re-review (runde 10) bekræfter status-synk, derefter batch 4 (punkt 5+6+9):
 systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse
 (mobil-MODTAGE-tjekliste + issue-write-probe).
 
@@ -70,14 +72,14 @@ systemd-PATH/.nvmrc · dispatch-varighed · preflight-udvidelse
 
 ## Konvergens-counter
 
-7 — substans-runder: 1 (2 KRITISK, transport-idempotens + CODEOWNERS-state) ·
-2-4 (gate-transport-klassen, lukket og APPROVAL-bekræftet i runde 5) · 6
-(status-synk-klassen, anden gang → disciplin-justering ovenfor) · 7 (stateless
-qwers-anker — NY klasse, men en direkte konsekvens-opfølgning på batch 3's
-eget spor-anker-fix; lukket samme runde). §3.4-alert blev vurderet ved 4:
-fundene konvergerer (én klasse ad gangen, hver lukket før næste batch);
-runde 5-APPROVAL bekræftede vurderingen. Rammen (bestillingen) er fortsat
-præcis — ingen krav-dok-genåbning indiceret.
+7 substans (runde 8+9 er mekanik-runder per §3.4-skellet: format + bogførings-
+synk — bogført, tæller ikke mod alert/STOP). Substans-historik: 1 (2 KRITISK,
+transport-idempotens + CODEOWNERS-state) · 2-4 (gate-transport-klassen, lukket
+og APPROVAL-bekræftet i runde 5) · 6 (status-synk-klassen) · 7 (stateless
+qwers-anker — konsekvens-opfølgning på batch 3's spor-anker-fix; lukket samme
+runde). §3.4-alert blev vurderet ved 4: fundene konvergerer (én klasse ad
+gangen, hver lukket før næste batch); runde 5-APPROVAL bekræftede vurderingen.
+Rammen (bestillingen) er fortsat præcis — ingen krav-dok-genåbning indiceret.
 
 ## Blocker
 
