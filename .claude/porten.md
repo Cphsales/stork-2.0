@@ -41,6 +41,30 @@ billede, og det fanges ved bredere søgning")
   eller i sammenhængen (hvad betyder fundene TILSAMMEN, hvad modsiger
   hinanden)?
 
+## Lag 1c — HÅRD test (Mathias-ordre 2026-06-13: "testen skal være mere
+
+hård" — efter at to svar bestod påstande men missede smalt/forældet billede)
+
+Disse er K.O. — leverancen afvises uanset point:
+
+- **H1. Genbrug-som-afdækning:** En opgave der beder om "afdæk / find /
+  kortlæg / alle muligheder" besvaret fra hukommelse ELLER ved at genbruge
+  en tidligere kortlægning UDEN frisk kilde-opslag i dag. (Nattens fejl:
+  jeg genbrugte én aftens liste og kaldte det en afdækning.)
+- **H2. Friskheds-stempel mangler:** Hvert belæg skal bære HVORNÅR det
+  blev slået op (dato/commit/opslags-tidspunkt). Et præcist citat uden
+  friskheds-stempel er et muligt forældet billede (K2-klassen).
+- **H3. Bekræftelses-bias:** En afdækning der KUN finder det, der
+  bekræfter eget forslag. Mindst ét fund skal UDFORDRE leverancens egen
+  retning — ellers ledte den efter medhold, ikke sandhed.
+- **H4. Blind-først ved krydsreview** (eksternt afdækket 2026: debat
+  overvurderet, flertalspres undertrykker korrektion): uafhængige dommere
+  må IKKE se hinandens verdikt eller mit forsvar før egen dom. Krydsreview
+  uden blind-først tæller ikke som to uafhængige godkendelser.
+- **H5. Falsificering:** Enhver "virker / komplet / alle / færdig" skal
+  navngive HVAD der ville modbevise den. Kan intet modbevise den, er den
+  ikke testet — den er påstået.
+
 ## Lag 2 — Leverance-porten (alt der afleveres som arbejde)
 
 **Kontrolspørgsmålene:**
