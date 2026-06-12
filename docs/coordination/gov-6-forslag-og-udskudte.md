@@ -84,7 +84,15 @@ bevidst slettes.
 - [FUND] **Lag-blanding i disciplinen:** manuel-flow og kæde-flow står flettet
   som ligeværdige tekster (aktør-glid målt samme aften); trigger-ord har
   aktør-afhængige dobbeltbetydninger (qwerr); dagens "mandat-arbejdsform"
-  (oplæg→go m. enkelt-værn) er udokumenteret. Alle tre er V5-gennemgangs-stof.
+  (oplæg→go m. enkelt-værn) er udokumenteret. Hertil BEGREBS-HYGIEJNE
+  (Mathias-fund + hegn 2026-06-12): interne termer med skæve metaforer er
+  glid-kilder i et system, hvor aktører handler på ord — fx "bogførings-
+  mønstre" (regnskabs-metafor, aldrig brugt af Mathias selv) for stier, der må
+  merge uden klik, fordi de ligger INDEN FOR en allerede godkendt ramme.
+  HEGN: klasse-navne hentes fra Mathias' eget sprog — "ramme" er det korrekte
+  ord her (ramme-stier: godkendt ramme → intet klik · beslutnings-stier:
+  rammen røres → Mathias' ord). Ved kodificeringen navngives klasserne efter,
+  hvad de ER, med hans ord. Alle fire fund er V5-gennemgangs-stof.
 - [FUND] **Adapter-asymmetri:** app-adapteren er slanket til ren glue;
   kæde-instruksen bærer fortsat metode-indhold som rolle-hjemmet også
   beskriver (to-hjem-rest).
