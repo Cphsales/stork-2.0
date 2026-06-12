@@ -14,7 +14,8 @@
 //   node scripts/kaede/dirigent.mjs               poll-løkke (systemd-service)
 
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { laesTilstand } from "./tilstand.mjs";
@@ -279,26 +280,114 @@ function log(post) {
   appendFileSync(LOG_STI, `${JSON.stringify({ tid: new Date().toISOString(), ...post })}\n`);
 }
 
-// Ordret commit af PRÆCIS én aktør-leverance — kuréren rører ALDRIG indholdet,
-// og fremmede staged ændringer følger ALDRIG med (runde 14-fund 2: --only +
-// pathspec committer kun den navngivne fil uanset index-tilstand).
-// Eksporteret m. cwd-parameter så selftesten kan bevise isolationen i tmp-repo.
-export function transportCommit(fil, { cwd = REPO_ROD, push = true } = {}) {
-  execFileSync("git", ["add", "--", fil], { cwd });
-  execFileSync(
-    "git",
+// Ordret transport af PRÆCIS én aktør-leverance via PR-vejen (rette-til punkt 1,
+// GH006-fundet: direkte main-push afvises af gov-4-protection — kuréren pusher
+// ALDRIG main). Bogførings-sti-mønstret (bevist af #130/#132): transport-commit
+// på gren → PR → `gh pr merge --auto --rebase`; gren-navnet bærer indholds-
+// hashen, så samme leverance aldrig får dublet-PR (idempotens — afventer-merge).
+// Committen bygges i et midlertidigt worktree fra origin/main: hoved-checkoutets
+// index røres ALDRIG (runde 14-garantien composes strukturelt: fremmede staged
+// ændringer KAN ikke følge med). Kuréren rører aldrig indholdet (ordret).
+// gh er injicerbar så selftesten kan bevise vejen uden netværk/gh-auth.
+function ghExec(args, cwd) {
+  return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
+}
+export function transportCommit(fil, { cwd = REPO_ROD, remote = "origin", base = "main", gh = ghExec } = {}) {
+  const g = (args, dir = cwd) => execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
+  const blob = g(["hash-object", "--", fil]);
+  const gren = `kaede/transport/${fil.replace(/[^a-zA-Z0-9._/-]+/g, "-").replaceAll("/", "--")}-${blob.slice(0, 7)}`;
+  // Idempotens: gren m. samme indholds-hash findes allerede på remote →
+  // transporten er i flight (auto-merge afventer CI) — ingen dublet-PR.
+  if (g(["ls-remote", "--heads", remote, gren])) return { status: "afventer-merge", gren };
+  const tmp = mkdtempSync(join(tmpdir(), "kaede-transport-"));
+  try {
+    g(["worktree", "add", "--quiet", "--detach", tmp, `${remote}/${base}`]);
+    mkdirSync(dirname(join(tmp, fil)), { recursive: true });
+    copyFileSync(join(cwd, fil), join(tmp, fil));
+    g(["add", "--", fil], tmp);
+    g(
+      [
+        "commit",
+        "--quiet",
+        "--only",
+        "-m",
+        `kæde-transport: ${fil} (ordret aktør-leverance — dispatch-log: se scripts/kaede/.dispatch-log.jsonl)`,
+        "--",
+        fil,
+      ],
+      tmp,
+    );
+    g(["push", "--quiet", remote, `HEAD:refs/heads/${gren}`], tmp);
+  } finally {
+    try {
+      g(["worktree", "remove", "--force", tmp]);
+    } catch {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+  gh(
     [
-      "commit",
-      "--quiet",
-      "--only",
-      "-m",
-      `kæde-transport: ${fil} (ordret aktør-leverance — dispatch-log: se scripts/kaede/.dispatch-log.jsonl)`,
-      "--",
-      fil,
+      "pr",
+      "create",
+      "--base",
+      base,
+      "--head",
+      gren,
+      "--title",
+      `kæde-transport: ${fil}`,
+      "--body",
+      "Ordret aktør-leverance (kæde-transport, gov-5). Rolle-valideret bogførings-sti: merger på grøn CI " +
+        "(gate-model: Mathias' gates er ordene, ikke klikkene). Beslutnings-sti-filer afventer code-owner-review.",
     ],
-    { cwd },
+    cwd,
   );
-  if (push) execFileSync("git", ["push", "--quiet"], { cwd });
+  gh(["pr", "merge", gren, "--auto", "--rebase"], cwd);
+  return { status: "pr-oprettet", gren };
+}
+
+// PR-vejens konvergens (rette-til punkt 1): efter en transport-PR-merge er
+// origin/main foran det lokale checkout. RENT bagud er ikke divergens — kuréren
+// ff-synker fremad (transport-niveau, ingen dømmekraft) og fjerner lokale
+// untracked leverance-kopier hvis indhold nu ER frosset identisk på origin
+// (blob-match — afviger indholdet røres intet og divergens-tjekket STOPper).
+// Lokal-egne commits (ægte divergens) synkes ALDRIG væk (fail-closed).
+export function syncFremad({ cwd = REPO_ROD, fetch = true } = {}) {
+  const g = (args) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  if (fetch) g(["fetch", "--quiet"]);
+  const branch = g(["branch", "--show-current"]);
+  let originSha;
+  try {
+    originSha = g(["rev-parse", `origin/${branch}`]);
+  } catch {
+    return { synket: false, grund: "ingen-remote-gren" };
+  }
+  if (g(["rev-parse", "HEAD"]) === originSha) return { synket: false, grund: "allerede-ens" };
+  try {
+    g(["merge-base", "--is-ancestor", "HEAD", `origin/${branch}`]);
+  } catch {
+    return { synket: false, grund: "divergens" };
+  }
+  const untracked = g(["status", "--porcelain", "--untracked-files=all", "docs/coordination/"])
+    .split("\n")
+    .filter((l) => l.startsWith("??"))
+    .map((l) => l.slice(3).trim());
+  const fjernede = [];
+  for (const fil of untracked) {
+    try {
+      if (g(["rev-parse", `origin/${branch}:${fil}`]) === g(["hash-object", "--", fil])) {
+        rmSync(join(cwd, fil));
+        fjernede.push(fil);
+      }
+    } catch {
+      // findes ikke på origin — lokal leverance afventer stadig transport; røres ikke
+    }
+  }
+  try {
+    g(["merge", "--ff-only", "--quiet", `origin/${branch}`]);
+  } catch (fejl) {
+    return { synket: false, grund: `ff-fejl: ${fejl}`, fjernede };
+  }
+  return { synket: true, fjernede };
 }
 
 // Selvtjek-motor (design pkt. 12, V15/V16 — Mathias-forslag): MEKANISKE tjek
@@ -382,7 +471,13 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
           }
           break;
         }
-        transportCommit(h.fil);
+        const transport = transportCommit(h.fil);
+        log({
+          handling: transport.status === "pr-oprettet" ? "TRANSPORT-PR-OPRETTET" : "TRANSPORT-AFVENTER-MERGE",
+          fil: h.fil,
+          gren: transport.gren,
+          spor: h.spor ?? "ingen",
+        });
         break;
       }
       case "GATE-AFGJORT": {
@@ -393,7 +488,8 @@ export function udfoer(handlinger, { dryRun = false, koerende = new Map(), onSto
           const sti = join(REPO_ROD, gateFil);
           const tekst = readFileSync(sti, "utf8");
           writeFileSync(sti, tekst.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
-          transportCommit(gateFil);
+          const gateTransport = transportCommit(gateFil);
+          log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren });
         }
         break;
       }
@@ -536,6 +632,12 @@ async function main() {
 
   do {
     try {
+      // PR-vejens konvergens (punkt 1): rent bagud → ff-synk FØR tilstandslæsning,
+      // så merged transport-PR'er ikke fremstår som divergens. Fail-closed ved alt andet.
+      if (!offline) {
+        const synk = syncFremad({ cwd: REPO_ROD });
+        if (synk.synket || synk.fjernede?.length) log({ handling: "FF-SYNK", ...synk });
+      }
       const tilstand = laesTilstand({
         repoRod: REPO_ROD,
         kaedeIssue: regler.kaede_issue ?? null,

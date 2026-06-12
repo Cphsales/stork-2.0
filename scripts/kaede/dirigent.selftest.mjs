@@ -813,8 +813,8 @@ function nytTestRepoMedOrigin() {
   check(
     "transport-vej: lokal main + index urørt — ingen lokal commit; fremmed staged ændring består (runde 14)",
     g("rev-parse", "HEAD") === lokalHeadFoer &&
-      g("status", "--porcelain").includes("M  README.md") &&
-      g("status", "--porcelain").includes(`?? ${fil}`),
+      g("status", "--porcelain", "--untracked-files=all").includes("M  README.md") &&
+      g("status", "--porcelain", "--untracked-files=all").includes(`?? ${fil}`),
   );
   const kaldFoer = ghKald.length;
   const res2 = transportCommit(fil, { cwd: repo, gh: fakeGh });
