@@ -819,14 +819,14 @@ check("recon-oplaeg er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/c
     "unit pinner INGEN nvm-versions-sti (punkt 5: nvm-opgradering må ikke dræbe kæden)",
     !/\.nvm\/versions\/node\/v\d/.test(unit),
   );
-  check(
-    "unit's ExecStart går via node-env.sh (node afledt af .nvmrc)",
-    /ExecStart=.*node-env\.sh/.test(unit),
-  );
+  check("unit's ExecStart går via node-env.sh (node afledt af .nvmrc)", /ExecStart=.*node-env\.sh/.test(unit));
   const nodeEnv = readFileSync(join(KAEDE, "node-env.sh"), "utf8");
   check("node-env.sh afleder node via nvm (.nvmrc er sandheden)", /nvm use/.test(nodeEnv));
   const preflight = readFileSync(join(KAEDE, "preflight.sh"), "utf8");
-  check("preflight sourcer node-env.sh (samme node-opløsning som unit)", /source .*node-env\.sh|\. .*node-env\.sh/.test(preflight));
+  check(
+    "preflight sourcer node-env.sh (samme node-opløsning som unit)",
+    /source .*node-env\.sh|\. .*node-env\.sh/.test(preflight),
+  );
   check(
     "preflight bærer issue-write-proben (punkt 9b: reaction add/delete, fail-closed)",
     /reactions/.test(preflight) && /probe_issue_write/.test(preflight),
@@ -835,10 +835,7 @@ check("recon-oplaeg er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/c
     "preflight bærer mobil-MODTAGE-tjeklisten (punkt 9a: GitHub Mobile, Mathias bekræfter manuelt)",
     /GitHub Mobile/.test(preflight),
   );
-  check(
-    "preflight tjekker node mod .nvmrc (punkt 5: afledning bevist, ikke antaget)",
-    /\.nvmrc/.test(preflight),
-  );
+  check("preflight tjekker node mod .nvmrc (punkt 5: afledning bevist, ikke antaget)", /\.nvmrc/.test(preflight));
 }
 
 // ---------- 21. transport→PR-vej (rette-til punkt 1, GH006: aldrig direkte main-push) ----------
