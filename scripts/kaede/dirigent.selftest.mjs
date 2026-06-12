@@ -4,7 +4,7 @@
 // Dækker decide() (ren kerne) + tilstand.mjs' rene parsere — UDEN git/gh.
 // Kør: pnpm kaede:selftest
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
@@ -1353,11 +1353,28 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   );
 }
 {
-  // laesTilstand SKAL returnere pakke-feltet (integrations-tjek på det rigtige
-  // repo, offline): markøren er "ingen" og fetch=false → pakke === "ingen".
+  // laesTilstand SKAL returnere pakke-feltet — hermetisk tmp-repo (CI's
+  // PR-checkout har ingen origin/main-ref, så det rigtige repo duer ikke):
+  // origin/main simuleres med update-ref; markør "ingen" → pakke === "ingen".
   const { laesTilstand } = await import("./tilstand.mjs");
-  const t = laesTilstand({ repoRod: join(dirname(fileURLToPath(import.meta.url)), "..", ".."), fetch: false });
-  check("laesTilstand returnerer 'pakke'-feltet (spor-ankeret eksporteres)", "pakke" in t);
+  const repo = mkdtempSync(join(tmpdir(), "kaede-tilstand-"));
+  const g = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
+  g("init", "--quiet", "-b", "main");
+  g("config", "user.email", "selftest@kaede");
+  g("config", "user.name", "kaede-selftest");
+  mkdirSync(join(repo, "docs/coordination"), { recursive: true });
+  mkdirSync(join(repo, "scripts/kaede"), { recursive: true });
+  writeFileSync(join(repo, "docs/coordination/aktiv-plan.md"), "<!-- aktiv-pakke: ingen -->\n");
+  copyFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "kaede-regler.json"),
+    join(repo, "scripts/kaede/kaede-regler.json"),
+  );
+  g("add", "-A");
+  g("commit", "--quiet", "-m", "init");
+  g("update-ref", "refs/remotes/origin/main", "HEAD");
+  const t = laesTilstand({ repoRod: repo, fetch: false });
+  check("laesTilstand returnerer 'pakke'-feltet (spor-ankeret eksporteres)", "pakke" in t && t.pakke === "ingen");
+  rmSync(repo, { recursive: true, force: true });
 }
 
 // ---------- 31. spor 'ingen'-dispatch-værn (rette-til punkt 11b) ----------
