@@ -6,16 +6,22 @@
 
 ## Sidste handling
 
-Setup: branch oprettet, status-fil oprettet. LÆSEFØLGE fulgt (alle 6 docs).
-Nattens stale-artefakter (8× ingen-troskab + 5× mathias-gate) arkiveret til
-evidens-mappen af disciplin-vagt-terminalen — træet var rent ved branch-punktet.
-Verificeret: stork-kaede.service inactive/disabled, ingen dirigent-proces
-(dirigenten genstartes IKKE — ramme).
+**Batch 1 (punkt 1) FÆRDIG** — CODEOWNERS-PR #150 oprettet (afventer
+Mathias-klik = gaten; committen også cherry-picket til arbejds-branchen så
+helper+CODEOWNERS er konsistente, Codex runde 1-fund 2). transport→PR-vej
+implementeret test-først: gren→PR→auto-merge-rebase, idempotens m. BEVIST
+PR-tilstand (runde 1-fund 1), gate-transport fail-closed (runde 2-fund),
+syncFremad (rent bagud ≠ divergens). Punkt 10 UDGÅET (Mathias-ord 2026-06-12)
+— batch 4 er nu punkt 5+6+9. Selftest grøn, governance-check grøn.
+
+Codex-runder: 1 (2× KRITISK → ACCEPT+fix) · 2 (1× KRITISK → ACCEPT+fix) ·
+3 (1× MELLEM: status-synk → fixet i denne opdatering). §8.1-SVAR runde 2+3:
+INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Batch 1 (punkt 1): CODEOWNERS-PR (tre recon-mønstre → P3-blok, Mathias-klik er
-gaten) + transport→PR-vej i dirigent.mjs (selftest udvides FØR fixet).
+Batch 2 (punkt 2+3): transport bundet til afsender-adapterens exit 0 (selftest
+FØRST) + atomisk adapter-skrivning i codex.sh (tmp + mv).
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
 
@@ -36,7 +42,8 @@ gaten) + transport→PR-vej i dirigent.mjs (selftest udvides FØR fixet).
 
 ## Konvergens-counter
 
-0 (ingen review-runder kørt endnu)
+3 (alle substans: runde 1 = 2 KRITISK, runde 2 = 1 KRITISK, runde 3 = 1 MELLEM
+— alle ACCEPT + fixet samme batch)
 
 ## Blocker
 
