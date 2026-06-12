@@ -111,15 +111,12 @@ export function decide(tilstand, regler) {
     }
     for (const e of afgoerelser) {
       handlinger.push({ handling: "GATE-AFGJORT", afgoerelse: e.type, gates: tilstand.aabneGates, sha: e.sha });
-      handlinger.push({
-        handling: "DISPATCH",
-        aktoer: "code",
-        opgave: regler.events[e.type][0].opgave,
-        adapter: regler.aktoerer.code.adapter,
-        kontekst: { event: e.type, sha: e.sha ?? null, spor },
-      });
     }
-    return handlinger; // afgørelsen bærer cyklussen; øvrig routing fra næste cyklus
+    // Codex runde 3/4-KRITISK: INGEN Code-dispatch i samme cyklus — afgørelsen
+    // skal først FRYSES på main (transport-PR merged + ff-synket). Når gaten
+    // derefter er lukket, dispatcher event-vejen (regel 5: gate-godkendt/
+    // gate-afvist) Code med events-idempotens som værn mod dobbelt-kørsel.
+    return handlinger;
   }
 
   // 3. Untracked leverancer → transport-commit (ordret) før routing — men
@@ -525,9 +522,17 @@ export function udfoer(
         const ord = h.afgoerelse === "gate-godkendt" ? "GODKENDT" : "AFVIST";
         for (const gateFil of h.gates) {
           const sti = join(REPO_ROD, gateFil);
-          const tekst = readFileSync(sti, "utf8");
-          writeFileSync(sti, tekst.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
-          const gateTransport = transportFn(gateFil);
+          const original = readFileSync(sti, "utf8");
+          writeFileSync(sti, original.replace(/AFVENTER MATHIAS/g, `AFGJORT: ${ord} (kæde-issue ${h.sha})`));
+          let gateTransport;
+          try {
+            gateTransport = transportFn(gateFil);
+          } finally {
+            // Codex runde 3/4-KRITISK: afgørelsen fryses på MAIN (PR-vejen) —
+            // lokalt BEVARES 'AFVENTER MATHIAS', så gate-pausen består gennem
+            // genstart indtil den mergede version ankommer via ff-synk.
+            writeFileSync(sti, original);
+          }
           if (gateTransport.status === "transport-fejl") {
             // Codex runde 2-fund: gate-sporet er fail-closed som al anden
             // transport — fejlet gate-transport må ALDRIG lade kæden genoptage.
@@ -537,7 +542,7 @@ export function udfoer(
             );
             return { stoppet: true };
           }
-          log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren });
+          log({ handling: "TRANSPORT-GATE-AFGJORT", fil: gateFil, gren: gateTransport.gren, status: gateTransport.status });
         }
         break;
       }

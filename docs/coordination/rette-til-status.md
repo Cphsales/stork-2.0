@@ -6,22 +6,30 @@
 
 ## Sidste handling
 
-**Batch 1 (punkt 1) FÆRDIG** — CODEOWNERS-PR #150 oprettet (afventer
-Mathias-klik = gaten; committen også cherry-picket til arbejds-branchen så
-helper+CODEOWNERS er konsistente, Codex runde 1-fund 2). transport→PR-vej
-implementeret test-først: gren→PR→auto-merge-rebase, idempotens m. BEVIST
-PR-tilstand (runde 1-fund 1), gate-transport fail-closed (runde 2-fund),
-syncFremad (rent bagud ≠ divergens). Punkt 10 UDGÅET (Mathias-ord 2026-06-12)
-— batch 4 er nu punkt 5+6+9. Selftest grøn, governance-check grøn.
+**Batch 2 (punkt 2+3) FÆRDIG** — transport bundet til afsender-adapterens
+exit 0 (VENT ved afsender-kørsel uanset spor) + atomisk codex-skrivning
+(tmp+mv begge stream-veje). Batch 1 (punkt 1): CODEOWNERS-PR #150 (afventer
+Mathias-klik; cherry-picket til branchen, runde 1-fund 2) + transport→PR-vej
+m. BEVIST PR-tilstand (runde 1-fund 1). Punkt 10 UDGÅET (Mathias-ord
+2026-06-12) — batch 4 er punkt 5+6+9.
+
+**RETTELSE af tidligere status-påstand (runde 4-KRITISK 2, ACCEPT):** runde 3
+indeholdt et KRITISK-fund (gate-afgørelse genoptog kæden før transport-PR var
+merged) som denne status fejlagtigt udelod — det er nu LUKKET test-først:
+GATE-AFGJORT dispatcher aldrig i samme cyklus; AFGJORT-indholdet transporteres
+via PR mens lokal gate-fil bevarer AFVENTER MATHIAS indtil merge+ff-synk
+(pausespor består gennem genstart); Code-dispatch ad event-vejen bagefter.
+Lektion bogført: review-filer læses FULDT, aldrig i udsnit.
 
 Codex-runder: 1 (2× KRITISK → ACCEPT+fix) · 2 (1× KRITISK → ACCEPT+fix) ·
-3 (1× MELLEM: status-synk → fixet i denne opdatering). §8.1-SVAR runde 2+3:
+3 (1× KRITISK + 1× MELLEM → ACCEPT+fix) · 4 (2× KRITISK = gentaget runde
+3-fund + status-usandhed → begge ACCEPT+fixet her). §8.1-SVAR runde 2-4:
 INGEN-MODSIGELSE.
 
 ## Næste forventet
 
-Batch 2 (punkt 2+3): transport bundet til afsender-adapterens exit 0 (selftest
-FØRST) + atomisk adapter-skrivning i codex.sh (tmp + mv).
+Re-review (runde 5) der bekræfter gate-fixet, derefter batch 3 (punkt 4+11):
+spor-attribution + stale-dispatch-værn + persistent KAEDE-STOP.
 
 ## Rodårsags-noter (verificeret mod kode + dispatch-log + journal)
 
@@ -42,8 +50,12 @@ FØRST) + atomisk adapter-skrivning i codex.sh (tmp + mv).
 
 ## Konvergens-counter
 
-3 (alle substans: runde 1 = 2 KRITISK, runde 2 = 1 KRITISK, runde 3 = 1 MELLEM
-— alle ACCEPT + fixet samme batch)
+4 (alle substans: runde 1 = 2 KRITISK · runde 2 = 1 KRITISK · runde 3 =
+1 KRITISK + 1 MELLEM · runde 4 = 2 KRITISK (gentaget runde 3-fund +
+status-usandhed) — alle ACCEPT + fixet. §3.4-alert-tærsklen (4) ER ramt:
+rammen vurderes — fundene konvergerer (alle i samme gate-transport-klasse,
+ingen nye klasser i runde 4), så der fortsættes mod re-review runde 5; rammer
+runde 5 et NYT KRITISK i samme klasse, pauses og Mathias spørges.)
 
 ## Blocker
 
