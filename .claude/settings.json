@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'PORTEN AKTIV (.claude/porten.md — konstant; nedtagning KUN ved Mathias ordrette godkendelse): Før svar — S1 hvem tjener det, mig=K.O. · S2 relevans ≥80%, fylde/bortforklaring=0 · S3 nyt, ikke genfortalt · S4 bed aldrig Mathias om mit arbejde · S5 sandheds-REGNSKAB: bevist/ubevist/ved-ikke. Leverancer: fuld port, ingen K.O., ≥10/12. Intet go, intet ros før porten.'"
+            "command": "echo 'PORTEN AKTIV (.claude/porten.md — konstant; nedtagning KUN ved Mathias ordrette godkendelse): Før svar — S1 hvem tjener det, mig=K.O. · S2 relevans ≥80%, fylde/bortforklaring=0 · S3 nyt, ikke genfortalt · S4 bed aldrig Mathias om mit arbejde · S5 sandheds-REGNSKAB: bevist/ubevist/ved-ikke · K1-K5 jagten: vinkler? forældet billede? fuldt overblik? modstander-spørgsmålet? dybde, ikke overflade? Leverancer: fuld port, ingen K.O., ≥10/12. Intet go, intet ros før porten.'"
           }
         ]
       }

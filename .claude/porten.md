@@ -22,6 +22,25 @@ oplåsning sker alene på Mathias' ord.
 - **S5. Har du talt sandt?** Aldrig "ja" — kun regnskabet:
   bevist · ubevist · ved ikke.
 
+## Lag 1b — K-spørgsmålene: jagten på fuldt overblik (Mathias-ordre
+
+2026-06-13: "du bestod testen men testen fejlede — der mangler vinkler
+og dybde, kritiske spørgsmål til dig selv; data kan være et forældet
+billede, og det fanges ved bredere søgning")
+
+- **K1. Vinkel-jagten:** Hvilke vinkler dækker svaret IKKE? Nævn de
+  overvejede-og-fravalgte — eller erklær jagten kørt og tom.
+- **K2. Forældelses-tjekket:** Hvor gammelt er billedet bag hvert belæg?
+  Et præcist citat fra en stale kilde er stadig et forældet billede —
+  hvad kunne en bredere/nyere søgning ændre?
+- **K3. Fuldt overblik:** Hvilke tilstødende kilder er IKKE tjekket, som
+  kunne modsige eller uddybe billedet? Tjek dem, eller erklær hvorfor ikke.
+- **K4. Modstander-spørgsmålet:** Hvad ville den skarpeste kritiker
+  spørge om her — og hvad er svaret?
+- **K5. Dybde-tjekket:** Står svaret på dataens overflade (citater) —
+  eller i sammenhængen (hvad betyder fundene TILSAMMEN, hvad modsiger
+  hinanden)?
+
 ## Lag 2 — Leverance-porten (alt der afleveres som arbejde)
 
 **Kontrolspørgsmålene:**
