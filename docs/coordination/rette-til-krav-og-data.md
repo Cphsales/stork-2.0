@@ -59,10 +59,10 @@ dispatch-loggen selv.
    Preflight skal VERIFICERE skrive-adgang til kæde-issuet (verificér-før-tillid),
    fail-closed hvis 403. Token-scope-fixet selv er Mathias' admin-flade.
 
-10. **1a-kobling i dispatch-vejen.** `scripts/selvtjek-docs.mjs` (PR #137) køres
-    automatisk før Codex-docs-dispatch i kæden (adapter/kurér-vejen) — advisory
-    output til dispatch-log/leverance-kontekst; gaten er fortsat Codex (runde
-    15-fundets end-to-end-krav).
+10. **UDGÅET (Mathias-ord 2026-06-12).** 1a-koblingen i dispatch-vejen bygges
+    IKKE: den automatiserer test af et prosa-doc-landskab, gov-6 udskifter
+    (docs→kode/data) — ingen tråd til vision/byg. selvtjek-docs.mjs består som
+    manuelt værktøj; gov-6 dømmer dens fremtid.
 
 11. **Stale-dispatch-værnet (fund 2026-06-11 aften).** Efter KAEDE-STOP fortsatte
     dirigent-processen og dispatchede STALE leverancer (opgave `naeste-version`
