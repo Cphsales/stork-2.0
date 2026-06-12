@@ -145,10 +145,11 @@ export function infererType(sti, markers = []) {
   return null;
 }
 
-// Bogførings-sti-tjek (de 9 P3-mønstre — V9 rest-klik-afgørelser: arkiv +
-// krav-og-data un-ownet, gated af ord/hash). NB: CODEOWNERS er det HÅNDHÆVENDE
-// værn (GitHub) — denne helper afgør kun om kuréren skal re-requeste Mathias-
-// review (transport-høflighed); GitHub kræver det uanset hvad denne siger.
+// Bogførings-sti-tjek (de 9 P3-mønstre + 3 recon-mønstre, rette-til punkt 1 —
+// V9 rest-klik-afgørelser: arkiv + krav-og-data un-ownet, gated af ord/hash).
+// NB: CODEOWNERS er det HÅNDHÆVENDE værn (GitHub) — denne helper afgør kun om
+// kuréren skal re-requeste Mathias-review (transport-høflighed); GitHub kræver
+// det uanset hvad denne siger. Holdes 1:1 i synk med CODEOWNERS' ejer-løse blok.
 const BOGFOERING_RES = [
   /^docs\/coordination\/aktiv-plan\.md$/,
   /^docs\/coordination\/seneste-rapport\.md$/,
@@ -159,6 +160,9 @@ const BOGFOERING_RES = [
   /^docs\/coordination\/[^/]+-status\.md$/,
   /^docs\/coordination\/[^/]+-plan\.md$/,
   /^docs\/coordination\/[^/]+-krav-og-data\.md$/,
+  /^docs\/coordination\/[^/]+-recon-kode\.md$/,
+  /^docs\/coordination\/[^/]+-recon-research\.md$/,
+  /^docs\/coordination\/[^/]+-recon-oplaeg\.md$/,
 ];
 export function erBogfoeringsSti(fil) {
   return BOGFOERING_RES.some((re) => re.test(fil));
