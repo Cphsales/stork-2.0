@@ -8,6 +8,10 @@
 [Unit]
 Description=Stork 2.0 kaede-kurer (gov-5 dirigent)
 After=network-online.target
+# Start-loft (rette-til punkt 11a, rodårsag #147): selv hvis en restart-vej
+# overses, starter unit'en max 5 gange pr. 10 min — derefter failed-state.
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -18,6 +22,11 @@ ExecStartPre=/bin/bash scripts/kaede/preflight.sh
 ExecStart=/usr/bin/env node scripts/kaede/dirigent.mjs
 Restart=on-failure
 RestartSec=30
+# Verdikt-exits genopliver ALDRIG (punkt 11a): 2 = KAEDE-STOP/PAUSE-verdikt,
+# 64 = guard-nægtelse (lås/baseline), 78 = persistent stop-fil (preflight +
+# dirigent nægter). Stop-tilstanden bæres af scripts/kaede/.kaede-stop —
+# fjernelse er Mathias' genåbnings-handling (aktiverings-tjekliste).
+RestartPreventExitStatus=2 64 78
 
 [Install]
 WantedBy=default.target
