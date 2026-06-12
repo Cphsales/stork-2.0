@@ -117,6 +117,43 @@ const TOM = { divergens: [], gateOrd: [], leverancer: [], marker: { pakke: "gov-
       !h.some((x) => x.handling === "TRANSPORT-COMMIT"),
   );
 }
+{
+  // rette-til punkt 2: transport bindes til AFSENDER-adapterens exit 0 —
+  // typens afsender (her codex for recon-research-doc) har aktiv kørsel på et
+  // ANDET spor → stadig VENT (adapter-kontrakten: exit 0 = leverance klar;
+  // fil-eksistens er aldrig bevis).
+  const h = decide(
+    {
+      ...TOM,
+      laase: [{ aktoer: "codex", spor: "andet-spor" }],
+      leverancer: [
+        {
+          fil: "docs/coordination/gov-6-arkiv-fold-recon-research.md",
+          untracked: true,
+          type: "recon-research-doc",
+          deklaration: null,
+          markers: [],
+        },
+      ],
+    },
+    REGLER,
+  );
+  check(
+    "untracked + AFSENDER-adapterens kørsel i gang (andet spor) → VENT, ingen transport (punkt 2: exit 0-binding)",
+    h.some((x) => x.handling === "VENT" && x.grund === "afsender-koersel") &&
+      !h.some((x) => x.handling === "TRANSPORT-COMMIT"),
+  );
+}
+{
+  // punkt 3-kontrakt (mekanisk tekst-tjek): codex.sh må ALDRIG streame direkte
+  // til målfilen (filen findes ellers tom fra start — race-fundet 3c); output
+  // går til tmp-fil og flyttes atomisk (mv) ved succes.
+  const codexSh = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "adapters", "codex.sh"), "utf8");
+  check(
+    'codex.sh: ingen direkte stream til "$UD" + atomisk mv fra tmp (punkt 3)',
+    !/>\s*"\$UD"/.test(codexSh) && /mv\s+"\$UD_TMP"\s+"\$UD"/.test(codexSh),
+  );
+}
 
 // ---------- 4. routing pr. leverance-type (vækningsmodellen) ----------
 const ROUTING_CASES = [
