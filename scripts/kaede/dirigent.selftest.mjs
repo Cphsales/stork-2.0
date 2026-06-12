@@ -772,7 +772,7 @@ check("recon-oplaeg er bogføring (rette-til punkt 1)", erBogfoeringsSti("docs/c
         kontekst: { fil: "c", sha: "s", spor: "test" },
       },
     ],
-    { koerende, onStop: () => (stoppet = true) },
+    { koerende, onStop: () => (stoppet = true), stopDir: TMP },
   );
   await Promise.all([...koerende.values()].map((k) => k.faerdig));
   check("adapter exit ≠ 0 → onStop kaldt (KAEDE-STOP, ingen stille videre)", stoppet);
@@ -911,8 +911,10 @@ function nytTestRepoMedOrigin() {
   const KAEDE = dirname(fileURLToPath(import.meta.url));
   const LOG = join(KAEDE, ".dispatch-log.jsonl");
   const logBackup = existsSync(LOG) ? readFileSync(LOG, "utf8") : null;
+  const TMP_STOP = mkdtempSync(join(tmpdir(), "kaede-stop-"));
   const res = udfoer([{ handling: "TRANSPORT-COMMIT", fil: "x.md", selvtjek: [], afsender: "codex", spor: "p" }], {
     transportFn: () => ({ status: "transport-fejl", gren: "kaede/transport/x", grund: "PR CLOSED uden merge" }),
+    stopDir: TMP_STOP,
   });
   const logLinjer = readFileSync(LOG, "utf8")
     .split("\n")
@@ -923,6 +925,11 @@ function nytTestRepoMedOrigin() {
     res.stoppet === true &&
       logLinjer.some((p) => p.handling === "KAEDE-STOP" && p.grund === "transport-fejl"),
   );
+  check(
+    "udfoer: transport-fejl skriver stop-filen (persistent, punkt 11a)",
+    stopFilLaes({ dir: TMP_STOP })?.grund === "transport-fejl",
+  );
+  rmSync(TMP_STOP, { recursive: true, force: true });
   if (logBackup === null) rmSync(LOG, { force: true });
   else writeFileSync(LOG, logBackup);
 }
@@ -991,7 +998,10 @@ function nytTestRepoMedOrigin() {
         kontekst: { event: "gate-godkendt", sha: "c9", spor: "p" },
       },
     ],
-    { transportFn: () => ({ status: "transport-fejl", gren: "kaede/transport/gate", grund: "PR CLOSED uden merge" }) },
+    {
+      transportFn: () => ({ status: "transport-fejl", gren: "kaede/transport/gate", grund: "PR CLOSED uden merge" }),
+      stopDir: TMP,
+    },
   );
   const logLinjer = readFileSync(LOG, "utf8")
     .split("\n")
@@ -1029,6 +1039,7 @@ function nytTestRepoMedOrigin() {
       transporteretIndhold = readFileSync(join(KAEDE, "..", "..", fil), "utf8");
       return { status: "pr-oprettet", gren: "kaede/transport/gate-x" };
     },
+    stopDir: TMP,
   });
   check(
     "GATE-AFGJORT m. pending PR: AFGJORT-indhold transporteres, men lokal fil bevarer AFVENTER MATHIAS indtil merge+ff-synk",

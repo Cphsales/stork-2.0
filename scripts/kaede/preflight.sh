@@ -7,6 +7,17 @@ cd "$(git rev-parse --show-toplevel)"
 FEJL=0
 tjek() { if eval "$2" > /dev/null 2>&1; then echo "  ✓ $1"; else echo "  ✗ $1"; FEJL=1; fi; }
 
+# Persistent KAEDE-STOP (rette-til punkt 11a, rodårsag #147): preflight nægter
+# at køre forbi stop-filen — ellers genopliver Restart=on-failure en stoppet
+# kæde hvert 30s (nat 11→12/6: preflight var grøn hver gang og forhindrede
+# intet). Genåbning er Mathias' handling: håndtér årsagen og fjern filen
+# (aktiverings-tjekliste). Exit 78 matcher RestartPreventExitStatus i unit'en.
+if [ -f scripts/kaede/.kaede-stop ]; then
+  echo "✗ Persistent KAEDE-STOP aktiv: $(cat scripts/kaede/.kaede-stop)"
+  echo "Kæden starter IKKE. Genåbning: håndtér årsagen og fjern scripts/kaede/.kaede-stop (Mathias-handling)."
+  exit 78
+fi
+
 echo "Kæde-preflight (step 10):"
 tjek "git findes"            "command -v git"
 tjek "gh findes + auth"      "gh auth status"

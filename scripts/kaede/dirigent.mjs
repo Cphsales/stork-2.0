@@ -66,7 +66,9 @@ export function decide(tilstand, regler) {
   const handlinger = [];
   const laase = tilstand.laase ?? [];
   const behandlede = new Set(tilstand.behandlede ?? []);
-  const spor = tilstand.marker?.pakke ?? "ingen";
+  // Spor-anker (rette-til punkt 4): tilstand.pakke bærer qwers-ankeret under
+  // åbning (markøren er "ingen" indtil plan-fasen) — markøren er kun fallback.
+  const spor = tilstand.pakke ?? tilstand.marker?.pakke ?? "ingen";
   // Betingelses-tjek pr. OPGAVE (regelbogs-håndhævelse): mangler → liste af navne
   const manglendeBetingelser = (opgave) =>
     (regler.betingelser?.[opgave] ?? []).filter((navn) => !betingelseOpfyldt(navn, tilstand.betingelsesFakta));
@@ -128,6 +130,12 @@ export function decide(tilstand, regler) {
   // kontrakten: exit 0 = leverance klar; fil-eksistens er aldrig bevis).
   for (const lev of tilstand.leverancer ?? []) {
     if (!lev.untracked) continue;
+    // Spor-værn (rette-til punkt 11b): uden pakke fryses INTET — untracked
+    // filer under spor "ingen" er stale/manuelle artefakter, aldrig leverancer.
+    if (spor === "ingen") {
+      handlinger.push({ handling: "BLOKERET", fil: lev.fil, mangler: ["spor-ikke-ingen"] });
+      continue;
+    }
     const tcType = lev.deklaration?.type ?? lev.type ?? null;
     const tcRegel = tcType ? regler.leverance_typer[tcType] : null;
     if (laase.some((l) => l.spor === spor)) {
@@ -167,6 +175,11 @@ export function decide(tilstand, regler) {
     // B3) og ALT efterfølgende på sporet pauses i denne cyklus. Fra næste
     // cyklus bærer gate-filen pausen (regel 1b) til Mathias afgør.
     const gateMarkers = (lev.markers ?? []).filter((m) => regler.fund_gate_markers.includes(m));
+    if (gateMarkers.length && spor === "ingen") {
+      // Spor-værn (punkt 11b): fund-gate uden pakke er et stale artefakt.
+      handlinger.push({ handling: "BLOKERET", fil: lev.fil, mangler: ["spor-ikke-ingen"] });
+      continue;
+    }
     if (gateMarkers.length) {
       handlinger.push({ handling: "FUND-GATE", fil: lev.fil, markers: gateMarkers, spor });
       handlinger.push({
@@ -218,6 +231,13 @@ export function decide(tilstand, regler) {
       return [...handlinger, { handling: "KAEDE-STOP", grund: "ukendt-modtager", fil: lev.fil, modtager }];
     }
 
+    // 4c2. Spor-værn (rette-til punkt 11b): pakke-bundne opgaver dispatches
+    //      ALDRIG med spor "ingen" (stale-flod-fundet 2026-06-11 22:32Z).
+    if (spor === "ingen") {
+      handlinger.push({ handling: "BLOKERET", opgave: regel.opgave, fil: lev.fil, mangler: ["spor-ikke-ingen"] });
+      continue;
+    }
+
     // 4d. Lås pr. (aktør, spor): igangværende kørsel afbrydes ALDRIG
     //     (verdikt på frossen version) — leverancen venter til næste cyklus.
     if (laase.some((l) => l.aktoer === modtager && l.spor === spor)) {
@@ -254,6 +274,12 @@ export function decide(tilstand, regler) {
       // Event-idempotens PR. MODTAGER (Codex runde 11-fund): multi-modtager-
       // events må aldrig droppe én aktørs kørsel fordi en andens lykkedes.
       if (behandlede.has(`event:${ev.type}@${ev.sha ?? "HEAD"}#${m.aktoer}`)) continue;
+      // Spor-værn (rette-til punkt 11b) — også på event-vejen: qwers-events
+      // bærer egen pakke (eventSpor); ægte "ingen" dispatches aldrig.
+      if (eventSpor === "ingen") {
+        handlinger.push({ handling: "BLOKERET", event: ev.type, opgave: m.opgave, mangler: ["spor-ikke-ingen"] });
+        continue;
+      }
       if (laase.some((l) => l.aktoer === m.aktoer && l.spor === eventSpor)) {
         handlinger.push({ handling: "VENT", event: ev.type, modtager: m.aktoer, grund: "laas" });
         continue;
@@ -282,6 +308,25 @@ export function decide(tilstand, regler) {
 
 function log(post) {
   appendFileSync(LOG_STI, `${JSON.stringify({ tid: new Date().toISOString(), ...post })}\n`);
+}
+
+// Persistent KAEDE-STOP (rette-til punkt 11a, rodårsag #147): et verdikt-stop
+// skal overleve proces-/service-genstart — systemd's Restart=on-failure
+// genoplivede dirigenten hvert 30s hele natten 11→12/6. Stop-filen er
+// stop-tilstandens sandhed: preflight + dirigent NÆGTER at køre forbi den.
+// Fjernelse af filen er Mathias' genåbnings-handling (aktiverings-tjekliste).
+export function stopFilSkriv(grund, detalje = null, { dir = KAEDE_DIR } = {}) {
+  writeFileSync(join(dir, ".kaede-stop"), `${JSON.stringify({ tid: new Date().toISOString(), grund, detalje })}\n`);
+}
+
+export function stopFilLaes({ dir = KAEDE_DIR } = {}) {
+  const sti = join(dir, ".kaede-stop");
+  if (!existsSync(sti)) return null;
+  try {
+    return JSON.parse(readFileSync(sti, "utf8"));
+  } catch {
+    return { tid: null, grund: "ulæselig-stop-fil", detalje: null }; // fail-closed: filens eksistens ER stoppet
+  }
 }
 
 // Ordret transport af PRÆCIS én aktør-leverance via PR-vejen (rette-til punkt 1,
@@ -465,7 +510,14 @@ export function selvtjekKoer(tjekListe, filSti, { repoRod = REPO_ROD } = {}) {
 // af poll-cyklusser, ikke kun inden for én udfoer().
 export function udfoer(
   handlinger,
-  { dryRun = false, koerende = new Map(), onStop = null, regler = null, transportFn = transportCommit } = {},
+  {
+    dryRun = false,
+    koerende = new Map(),
+    onStop = null,
+    regler = null,
+    transportFn = transportCommit,
+    stopDir = KAEDE_DIR,
+  } = {},
 ) {
   for (const h of handlinger) {
     if (dryRun) {
@@ -505,6 +557,7 @@ export function udfoer(
           // Codex runde 1-fund 1: u-beviselig PR-tilstand er fejl, aldrig
           // stille afventen — STOP (manuelt flow, krav 7).
           log({ handling: "KAEDE-STOP", grund: "transport-fejl", fil: h.fil, detalje: transport.grund });
+          stopFilSkriv("transport-fejl", { fil: h.fil, detalje: transport.grund }, { dir: stopDir });
           console.error(`KÆDE-STOP: transport-fejl for ${h.fil} — ${transport.grund} (manuelt flow, krav 7)`);
           return { stoppet: true };
         }
@@ -537,6 +590,7 @@ export function udfoer(
             // Codex runde 2-fund: gate-sporet er fail-closed som al anden
             // transport — fejlet gate-transport må ALDRIG lade kæden genoptage.
             log({ handling: "KAEDE-STOP", grund: "transport-fejl", fil: gateFil, detalje: gateTransport.grund });
+            stopFilSkriv("transport-fejl", { fil: gateFil, detalje: gateTransport.grund }, { dir: stopDir });
             console.error(
               `KÆDE-STOP: transport-fejl for gate-fil ${gateFil} — ${gateTransport.grund} (manuelt flow, krav 7)`,
             );
@@ -551,6 +605,7 @@ export function udfoer(
         if (!existsSync(adapterSti)) {
           // Adapter mangler (B2 leverer dem) → ærligt STOP, ingen stille skip.
           log({ handling: "KAEDE-STOP", grund: "adapter-mangler", adapter: h.adapter });
+          stopFilSkriv("adapter-mangler", { adapter: h.adapter }, { dir: stopDir });
           console.error(`KÆDE-STOP: adapter mangler: ${h.adapter} — manuelt flow (krav 7)`);
           return { stoppet: true };
         }
@@ -579,6 +634,7 @@ export function udfoer(
               // Adapter-kontrakt (B2): exit 0 = leverance leveret; alt andet =
               // kørsel fejlede → STOP, manuelt flow. Ingen auto-retry-loop.
               log({ handling: "KAEDE-STOP", grund: "adapter-fejl", aktoer: h.aktoer, exit: code });
+              stopFilSkriv("adapter-fejl", { aktoer: h.aktoer, exit: code }, { dir: stopDir });
               console.error(`KÆDE-STOP: ${h.aktoer}-adapter exit ${code} — manuelt flow (krav 7)`);
               onStop?.();
             }
@@ -590,6 +646,8 @@ export function udfoer(
       }
       case "KAEDE-STOP":
       case "KAEDE-PAUSE":
+        // Persistent stop (punkt 11a): verdiktet overlever genstart via stop-fil.
+        stopFilSkriv(h.grund, h.detalje ?? null, { dir: stopDir });
         console.error(`${h.handling}: ${h.grund} — manuelt flow består (krav 7)`);
         return { stoppet: true };
       default:
@@ -630,6 +688,20 @@ async function main() {
   const offline = argv.includes("--offline"); // sandbox-verifikation: ingen fetch/gh
   const baseline = argv.includes("--baseline");
   const once = argv.includes("--once") || dryRun || baseline;
+
+  // Persistent KAEDE-STOP (rette-til punkt 11a): stoppet kæde FORBLIVER
+  // stoppet gennem proces-/service-genstart. Kun --dry-run (ren diagnostik,
+  // ingen effekter) tillades forbi stop-filen.
+  const stop = stopFilLaes();
+  if (stop) {
+    console.error(
+      `KÆDE-STOP er PERSISTENT (${stop.tid ?? "ukendt tid"}: ${stop.grund}) — dirigenten nægter at køre forbi ` +
+        "scripts/kaede/.kaede-stop. Genåbning er Mathias' handling: håndtér årsagen og fjern stop-filen " +
+        "(aktiverings-tjekliste). Manuelt flow består (krav 7).",
+    );
+    if (!dryRun) process.exit(78);
+    console.error("(--dry-run: diagnostik tilladt — ingen effekter udføres)");
+  }
 
   if (existsSync(LAAS_STI)) {
     console.error(`Dirigent kører allerede (${LAAS_STI}) — én instans ad gangen.`);
@@ -677,6 +749,10 @@ async function main() {
     process.exit(64);
   }
 
+  // Instans-spor (rette-til punkt 11c): hver levende instans efterlader ALTID
+  // mindst én log-linje — også hvis første cyklus hænger i et eksternt kald.
+  if (!dryRun) log({ handling: "KAEDE-START", pid: process.pid, mode: once ? "once" : "poll" });
+
   const koerende = new Map(); // aktive aktør-kørsler — kilden til decide()'s laase
   let stopSignal = false;
   const onStop = () => {
@@ -707,6 +783,7 @@ async function main() {
     } catch (fejl) {
       // Uventet fejl = kæde-STOP, aldrig stille videre (krav 4).
       log({ handling: "KAEDE-STOP", grund: "uventet-fejl", detalje: String(fejl) });
+      stopFilSkriv("uventet-fejl", String(fejl));
       console.error(`KÆDE-STOP (uventet fejl): ${fejl}`);
       await Promise.all([...koerende.values()].map((k) => k.faerdig));
       process.exit(2);

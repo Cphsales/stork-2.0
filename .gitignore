@@ -54,3 +54,7 @@ docs/coordination/v4-slettede-docs/
 scripts/kaede/.dispatch-log.jsonl
 scripts/kaede/.dirigent.lock
 scripts/kaede/.selftest-tmp/
+# Persistent stop-fil (rette-til punkt 11a) + adapters' atomiske tmp-skrivninger (punkt 3)
+scripts/kaede/.kaede-stop
+docs/coordination/*.tmp
+docs/coordination/codex-reviews/*.tmp

@@ -68,13 +68,16 @@ export function findDivergens(kildePar) {
 
 // ---------- impure læsning (tynd, defensiv) ----------
 
+// Timeout på alle eksterne kald (rette-til punkt 11c): en hængende git-/gh-
+// proces (netværk, rate-limit) må aldrig efterlade en log-løs dirigent-instans
+// — timeout → throw → KAEDE-STOP logges (fail-closed, synligt).
 function git(args, cwd) {
   // stderr pipes (ikke arves): upushet branch giver forventelig rev-parse-fejl
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000 }).trim();
 }
 
 function gh(args, cwd) {
-  return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
+  return execFileSync("gh", args, { cwd, encoding: "utf8", timeout: 120_000 }).trim();
 }
 
 function parseAktivMarker(aktivPlanTekst) {
@@ -469,5 +472,20 @@ export function laesTilstand({ repoRod, kaedeIssue = null, fetch = true }) {
     },
   ]);
 
-  return { branch, lokalSha, remoteSha, marker, leverancer, gateOrd, events, aabneGates, betingelsesFakta, divergens };
+  // pakke = spor-ankeret (rette-til punkt 4): markør ELLER qwers-åbnings-anker.
+  // Returneres EKSPLICIT — decide() må aldrig falde tilbage til markørens
+  // "ingen" under åbning (rodårsagen til spor-attribution-fundet 2026-06-11).
+  return {
+    branch,
+    lokalSha,
+    remoteSha,
+    marker,
+    pakke,
+    leverancer,
+    gateOrd,
+    events,
+    aabneGates,
+    betingelsesFakta,
+    divergens,
+  };
 }
