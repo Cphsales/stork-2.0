@@ -1640,6 +1640,26 @@ check("ukendt fil → null (ARV-vejen)", infererType("docs/coordination/et-eller
   );
 }
 
+// ---------- 35. punkt 7+8-kontrakter: adapter-prompter (mekanisk tekst-tjek) ----------
+{
+  const KAEDE = dirname(fileURLToPath(import.meta.url));
+  const codeSh = readFileSync(join(KAEDE, "adapters", "code.sh"), "utf8");
+  check(
+    "code.sh: mekanik-opgaver (krav-dok-merge/slut-merge) får MINIMAL læseliste (punkt 7/4f, §3.10)",
+    /MINIMAL LÆSELISTE/.test(codeSh),
+  );
+  check("code.sh: build-opgaver læser planen SEKTIONSVIS (punkt 7/4b plan-diæt)", /SEKTIONSVIS/.test(codeSh));
+  check(
+    "code.sh: recon-prompten bærer recon-FORM-reglen (punkt 8: KUN findings + forretnings-spørgsmål, ALDRIG løsninger)",
+    /ALDRIG løsninger/.test(codeSh) && /forretnings-spørgsmål/.test(codeSh),
+  );
+  const instruks = readFileSync(join(KAEDE, "claude-ai-rolle-instruks.md"), "utf8");
+  check(
+    "claude-ai-rolle-instruks: recon-syntesen bærer recon-FORM-reglen (punkt 8, Mathias-ord bindende)",
+    /ALDRIG løsninger/.test(instruks),
+  );
+}
+
 // ---------- resultat ----------
 if (failed) {
   console.error(`\nKæde-selftest FEJLEDE (${failed})`);
