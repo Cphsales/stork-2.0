@@ -71,13 +71,13 @@ Maskin-læsbar source of truth (læses af `governance-check.mjs` til H-ref-integ
 
 Tabel for mennesker:
 
-| Kode | Var                                                                                                                                                                            | Hvor dokumenteret                           |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| H010 | Arbejdsmetode + repo-struktur-etablering (pakke)                                                                                                                               | git-history; `teknisk-gaeld.md` G-historik  |
-| H011 | §1.7 permission-modsigelse (lukket v. rettelse 35)                                                                                                                             | `stork-2-0-master-plan.md` Appendix C       |
-| H020 | Automation flow-fejl (trigger ej på feature-branch)                                                                                                                            | `docs/coordination/arkiv/H020-flow-fejl.md` |
-| H022 | Immutable-test tx-wrap (løst i H024)                                                                                                                                           | `teknisk-gaeld.md` G-historik               |
-| H026 | gov-4 approval-mekanik (løst: tre-konto-struktur — fælles login urørt/kun protection-API, mgrubak = code owner, stork-code-bot = committer; CODEOWNERS-fix; bevist på PR #110) | gov-4 slut-rapport                          |
-| H024 | Test-artefakt-cleanup (pakke)                                                                                                                                                  | git-history; `rapport-historik/`            |
+| Kode | Var                                                                                                                                                                            | Hvor dokumenteret                          |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| H010 | Arbejdsmetode + repo-struktur-etablering (pakke)                                                                                                                               | git-history; `teknisk-gaeld.md` G-historik |
+| H011 | §1.7 permission-modsigelse (lukket v. rettelse 35)                                                                                                                             | `stork-2-0-master-plan.md` Appendix C      |
+| H020 | Automation flow-fejl (trigger ej på feature-branch)                                                                                                                            | git-historik                               |
+| H022 | Immutable-test tx-wrap (løst i H024)                                                                                                                                           | `teknisk-gaeld.md` G-historik              |
+| H026 | gov-4 approval-mekanik (løst: tre-konto-struktur — fælles login urørt/kun protection-API, mgrubak = code owner, stork-code-bot = committer; CODEOWNERS-fix; bevist på PR #110) | gov-4 slut-rapport                         |
+| H024 | Test-artefakt-cleanup (pakke)                                                                                                                                                  | git-history; `rapport-historik/`           |
 
 Historiske koder er afsluttede pakke-/issue-identifikatorer (som `T9`, `trin-10`). De er IKKE åbne handlinger og får ikke `### [Hxxx]`-entries; de lever som provenance i de angivne hjem.
