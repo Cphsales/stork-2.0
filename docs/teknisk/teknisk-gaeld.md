@@ -398,7 +398,7 @@
 - **Introduceret:** T9-build (Step 3, applied 2026-05-18).
 - **Skal løses:** Ingen aktiv handling — dokumentation tilstrækkelig.
 - **Risiko hvis glemt:** Lav. Developer der læser Step 3's fil ser buggy kode "as applied" uden at vide om fix-location.
-- **Spor til fix-location:** G048 selv + bygge-status.md "Vores trin 5"-detalje-sektion + T9 slut-rapport (`docs/coordination/rapport-historik/2026-05-18-t9.md`) dokumenterer bug-klassen og fix-location i Step 12. Inline kommentar i Step 3-filen overvejet, ikke leveret (ville kræve modifikation af applied migration-fil; rejected per append-only).
+- **Spor til fix-location:** G048 selv + bygge-status.md "Vores trin 5"-detalje-sektion + T9 slut-rapport (git-historik) dokumenterer bug-klassen og fix-location i Step 12. Inline kommentar i Step 3-filen overvejet, ikke leveret (ville kræve modifikation af applied migration-fil; rejected per append-only).
 - **Løses-i:** ingen handling (dokumentation tilstrækkelig)
 
 ### [G049] MELLEM — Apply-dispatcher-extension-pattern ikke formaliseret i plan-skabelon
@@ -490,7 +490,7 @@
   - T1 (G059): non-admin opretter pending via `org_node_upsert`-wrapper → admin approver → service_role apply → status='applied'
   - T2 (Approve-disciplin "above"): non-ancestor approver afvises med `approver_not_higher_level`; admin-bypass approver succeeds (superadmin-undtagelse)
   - T3 (Handlings-granularitet): `has_permission_action`-additive-model — action uden grant returnerer false
-- **Reference:** `docs/coordination/rapport-historik/2026-05-22-t9-supplement-2.md` Plan-afvigelse 1 (rettet). Mathias-afgørelse 2026-05-22: lever full-flow-smoke FØR pakke-lukning (krav-dok §3.5).
+- **Reference:** t9-supplement-2 slut-rapport (git-historik), Plan-afvigelse 1 (rettet). Mathias-afgørelse 2026-05-22: lever full-flow-smoke FØR pakke-lukning (krav-dok §3.5).
 
 ### [G059] LØST 2026-05-22 — T9 public wrappers mangler `stork.t9_write_authorized` session-var
 

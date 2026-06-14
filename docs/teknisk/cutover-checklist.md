@@ -76,7 +76,7 @@ Reference: G039 i `docs/teknisk/teknisk-gaeld.md`. H012 sporer hård deadline.
 | Anon-key          | `curl` mod `POST /rest/v1/rpc/set_config` (eller hvad PostgREST eksponerer) skal returnere 404 eller "function not found" |
 | Authenticated JWT | Samme curl med Bearer JWT skal også returnere 404. JWT-claims må ikke åbne attack-surface der ikke ses med anon           |
 
-**Hvis eksponering afsløres:** Stop-protokol fra `docs/coordination/arkiv/r-runde-2-plan.md` sektion 6.2. Anbefalet vej: Option D (PostgREST-schema-isolation, fitness-check at `db-schemas` ekskluderer `pg_catalog`). Fallback: Option A (REVOKE EXECUTE på `pg_catalog.set_config`).
+**Hvis eksponering afsløres:** Stop-protokol fra R-runde-2-planen §6.2 (git-historik). Anbefalet vej: Option D (PostgREST-schema-isolation, fitness-check at `db-schemas` ekskluderer `pg_catalog`). Fallback: Option A (REVOKE EXECUTE på `pg_catalog.set_config`).
 
 ---
 
