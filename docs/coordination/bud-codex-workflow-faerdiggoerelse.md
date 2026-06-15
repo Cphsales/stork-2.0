@@ -369,7 +369,48 @@ Det gør transport lettere, men fjerner PR/check/review-sporet. Main skal være 
 
 Docs-tests skal fange reelle brud. De må ikke udgive sig for at kunne afgøre vision/forretning/krav-mening.
 
-## 8. Modsvar med testede knudepunkter
+## 8. Idé-liste dækket
+
+Status lukker krav-dokkets idé-liste. "Dækket af anden bærer" betyder: metoden er brugt, men ikke med netop den produktflade som primær bærer.
+
+### Claude Code-egenskaber
+
+| Kandidat                           | Status                | Kort vurdering                                                                                                            |
+| ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Hooks                              | BRUGT                 | Led-validering og "fang før næste led" hører hjemme som lifecycle-værn omkring transport, selftest og stop.               |
+| `/goal`                            | FRAVALGT              | Fladen er for snæver som workflow-rygrad; evidens-register + gates er stærkere end transcript-evaluator for Stork-pakker. |
+| `.claude/rules/`                   | DÆKKET AF ANDEN BÆRER | `docs/workflow/*` + artefakt-kontrakt + schema bærer reglerne platform-uafhængigt; rules kan blive adapter-projektion.    |
+| Skills                             | BRUGT                 | Workflow-roller og faste gate-/review-procedurer bør pakkes som genbrugbare aktørprocedurer.                              |
+| Codex-plugin                       | FRAVALGT              | Uformel før-review kan være nyttig, men formel Codex-gate skal være uafhængig af Code/Claude-konteksten.                  |
+| `/loop`                            | DÆKKET AF ANDEN BÆRER | Event/state-machine + notifikationer erstatter session-polling som primær drift.                                          |
+| Statusline                         | DÆKKET AF ANDEN BÆRER | Led-status kommer fra evidens-register/status-projektion, ikke fra en enkelt terminals UI.                                |
+| Checkpointing (`/rewind`)          | FRAVALGT              | Lokal fortrydelse er nyttig operatørkomfort, men Git commits/worktrees/PR'er er workflowets sikre rollback-spor.          |
+| `--from-pr`                        | DÆKKET AF ANDEN BÆRER | PR/blob-binding giver kontekst-genoptagelse på tværs af aktører; `--from-pr` kan være adapterhjælp, ikke kerne.           |
+| `/doctor` + `/context` + `/memory` | DÆKKET AF ANDEN BÆRER | Preflight og evidens-register overtager diagnose/persistens; memory må ikke være pakke-sandhed.                           |
+| Sandboxing                         | DÆKKET AF ANDEN BÆRER | Worktree-isolation, permission-snit og CI/checks er de primære værn; OS-sandbox er adapter-/host-hardening.               |
+| Headless                           | BRUGT                 | Workflow-roller skal kunne vækkes scriptbart uden at Mathias er relæ.                                                     |
+| Agent SDK                          | DÆKKET AF ANDEN BÆRER | Workflow-kernen skal være uafhængig af én SDK; SDK kan implementere orkestrering senere.                                  |
+| Agent view                         | DÆKKET AF ANDEN BÆRER | Evidens-register + led-status giver observerbarhed; agent view er operatørflade, ikke sandhed.                            |
+| Agent teams                        | FRAVALGT              | Eksperimentel/no-resume-risiko og peer-beskeder er mindre robuste end kontrolleret modspil i frosne worktrees.            |
+| Workflows                          | BRUGT                 | Hele buddet er en workflow-kerne: step, gate, artifact-contract og modsvar.                                               |
+| ultrareview                        | FRAVALGT              | Kan supplere store diffs, men må ikke erstatte uafhængig Codex-gate og fire-aktør-godkendelse.                            |
+| Routines                           | DÆKKET AF ANDEN BÆRER | Periodiske audits kan bruge routines; pakke-flowets rygrad er event/state + GitHub-evidens.                               |
+| Worktrees                          | BRUGT                 | Step 0 kræver isolerede aktør-workspaces for at undgå clobbering.                                                         |
+| Auto mode                          | FRAVALGT              | Opaque semantisk klassifikation må ikke bære governance-gates; deterministiske gates vinder.                              |
+| Computer use                       | FRAVALGT              | Desktop-kontrol er for flade- og kontoafhængig til workflow-kerne; kan kun være manuel fallback.                          |
+
+### Codex-opsætning
+
+| Kandidat                 | Status                | Kort vurdering                                                                                            |
+| ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------- |
+| model + reasoning_effort | BRUGT                 | Skal være opgave-/rolleprofil i adapterlaget: højere indsats på modsvar/gates, lavere på mekanisk status. |
+| approval_policy          | BRUGT                 | Buddets transport-vs-dømmekraft-snit er approval-politikken: mekanik kan køre, beslutning gates.          |
+| sandbox_mode             | DÆKKET AF ANDEN BÆRER | Worktree-isolation + fil-/sti-snit er primær workflow-bærer; sandbox-mode er host-hardening.              |
+| network_access           | DÆKKET AF ANDEN BÆRER | Netadgang styres af preflight, GitHub/blob-regler og adaptertillid; ikke en selvstændig workflow-model.   |
+| github-plugin            | BRUGT                 | GitHub er transport-, blob-, PR- og evidens-spor; plugin/CLI er bærere for samme metode.                  |
+| trust_level pr. projekt  | BRUGT                 | Kun trusted repo/worktree må køre workflow-automatik; trust er en preflight-/host-forudsætning.           |
+
+## 9. Modsvar med testede knudepunkter
 
 ### Testgrundlag
 
