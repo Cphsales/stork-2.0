@@ -178,40 +178,42 @@ docs/
 
 ## 9) Idé-listen vejet — feltet lukket (ingen tavs kandidat)
 
-Hver kandidat fra krav-dokkets idé-liste, begge sektioner. Status: **BRUGT** / **FRAVALGT** / **DÆKKET AF ANDEN BÆRER**. Ikke to fulde modsvar pr. kandidat — kun bevis på at feltet er vejet, ikke kun mit eget valg pudset.
+Hver kandidat fra krav-dokkets idé-liste, begge sektioner, med **verificerbart anker** i buddet. Status: **BRUGT** (peg på stedet) / **FRAVALGT** (én konkret grund) / **DÆKKET AF ANDEN BÆRER** (navngiv bærer + metode den løser i stedet).
+
+Hver status er krydstjekket mod buddets faktiske tekst. Hvor et mærkat ikke matchede, er **mærket** rettet — ikke buddet: **Auto mode**, **Sandboxing**, **.claude/rules**, **--from-pr** er nedjusteret til FRAVALGT, fordi den påståede brug/bærer ikke faktisk står i buddet (et ærligt fravalg slår et mærkat der ikke holder).
 
 **Claude Code-egenskaber:**
 
-- **Hooks** — BRUGT (§3 fire-lags fejlfangst; §8A PreToolUse fail-closed FØR handling).
-- **/goal** — FRAVALGT: evaluatoren kan ikke kalde værktøjer (transcript-only, testet i recon), så den kan ikke bære spec-verifikation.
-- **.claude/rules/** — DÆKKET AF ANDEN BÆRER: "regler følger filerne" bæres af workflow-docs (§6) + mekanisk håndhævelse (§8A); rules-mekanikken er én mulig realisering.
-- **Skills** — BRUGT (§5 rolle-bootstrap / ét-kalds rolle-instruks; testet via `keybindings-help`).
-- **Codex-plugin** — FRAVALGT: en uformel Codex-i-Claude før-review blander generator og verifikator og udhuler den uafhængige formelle gate (§5).
-- **/loop** — DÆKKET AF ANDEN BÆRER: gate-overvågning bæres stærkere af hændelses-drevet drift + Monitor (§8D) end af session-polling.
-- **Statusline** — FRAVALGT: klient-display; bærer ingen gate/transport/verifikation (testet: ingen konfigureret).
-- **Checkpointing (/rewind)** — FRAVALGT: REPL-only lokal fortryd; git commit/PR er det delte, immutable spor (§8B).
-- **--from-pr** — DÆKKET AF ANDEN BÆRER: kontekst genskabes fra git-tilstanden (§2/§8B); flaget er bekvemmelighed oven på det.
-- **/doctor + /context** — FRAVALGT: diagnose-kommandoer, ikke kæde-led. **/memory** — DÆKKET AF ANDEN BÆRER: delt sandhed bor i git + workflow-docs (§2/§6), ikke i privat auto-memory.
-- **Sandboxing** — DÆKKET AF ANDEN BÆRER: handlings-grænsen bæres af hooks+permissions+auto-mode (§8A); `bwrap` er et supplerende OS-lag (testet present, ikke håndhævet nu).
-- **Headless** — BRUGT (§1 dispatch, §5 workflow-rolle, §8C/§8D; testet).
+- **Hooks** — BRUGT: §3 fejl-lag (1) "hook FØR handling (fail-closed)" + §8A (testet hård-blok). Metode: deterministisk spærring ved livscyklus-punkt.
+- **/goal** — FRAVALGT: evaluatoren kan ikke kalde værktøjer (transcript-only, testet i recon), så den kan ikke bære spec-verifikation. Også §7.
+- **.claude/rules/** — FRAVALGT (mekanikken ikke adopteret): dens metode er auto-loaded sti-scoped kontekst; buddet bærer regler som eksplicit-læste workflow-docs (§6) + mekanisk håndhævelse (§8A) — en anden metode, så ikke dækning. Kan tilføjes som realisering i planen.
+- **Skills** — BRUGT: §5 angiver rolle-skift "via `--agents`/`--agent`, `--permission-mode`, skills". Metode: ét-kalds rolle-instruks (mekanisme testet via `keybindings-help`).
+- **Codex-plugin** — FRAVALGT: en uformel Codex-i-Claude før-review blander generator og verifikator og udhuler den uafhængige formelle gate (§5 strukturel uafhængighed).
+- **/loop** — DÆKKET AF ANDEN BÆRER: bærer = Monitor (§8D, testet event-stream); metode i stedet = gate-overvågning via hændelser frem for session-polling.
+- **Statusline** — FRAVALGT: ren visnings-flade; kan ikke bære gate/transport/verifikation (testet: ingen konfigureret).
+- **Checkpointing (/rewind)** — FRAVALGT: REPL-only lokal fortryd; det delte, immutable spor er git commit/PR (§8B).
+- **--from-pr** — FRAVALGT (behovet designet ud): dens metode er session-genoptagelse; mit hændelses-drevne design genoptager ikke sessioner — hvert led re-derive'r kontekst fra git-artefakter (§2/§8B).
+- **/doctor + /context** — FRAVALGT: diagnose-kommandoer, ikke kæde-led. **/memory** — DÆKKET AF ANDEN BÆRER: bærer = git + workflow-docs (§2/§6); metode i stedet = tværsessions-persistens af den DELTE sandhed frem for privat auto-memory.
+- **Sandboxing** — FRAVALGT som workflow-mekanik: dens metode er OS-isolation af processen; buddet begrænser blast-radius via handlings-gating (hooks/CI, §8A) — en anden metode. `bwrap` testet present men ikke håndhævet; valgfrit ekstra lag, ikke båret af buddet.
+- **Headless** — BRUGT: §1 Step 0 "vækker recon headless" + §5 workflow-rolle + §8C/§8D `claude -p` (testet). Metode: deterministisk scriptbar instans-kørsel.
 - **Agent SDK** — FRAVALGT for denne pakke: headless CLI + custom-agents dækker behovet; SDK er en større ombygning (recon-flag), ikke nu.
-- **Agent view** — DÆKKET AF ANDEN BÆRER: drift/overvågning bæres af git+hændelser+background/Monitor (§8D); agent-view er supervisor-bekvemmelighed, ikke gate-bærer (testet).
-- **Agent teams** — FRAVALGT: eksperimentel, ingen resume (testet off); samme metode (parallel + uafhængighed) dækkes af subagenter + separate worktrees (§5).
-- **Workflows** — DÆKKET AF ANDEN BÆRER: den adversarielle fan-out (§1/§5) realiseres af subagenter/headless. ÅBENT: om Workflow-værktøjet skal være orkestratoren afgøres i planen (ikke kørt i recon — opt-in/tungt).
-- **ultrareview** — FRAVALGT som gate: Codex-uafhængighed er governance-valget; ultrareview kan supplere på store diffs, men erstatter ikke den uafhængige gate (testet: subcommand findes).
-- **Routines** — FRAVALGT som primær drift: cloud-routine mister lokal working-copy + connector-scope (§8D). ÅBENT om Mathias' plan/org har dem som supplerende nat-tjek (recon-flade-begrænsning).
-- **Worktrees** — BRUGT (§2/§5 isolation pr. aktør — ingen clobber; testet, og lært konkret i denne pakke, §8B).
-- **Auto mode** — BRUGT (enforcement-familien §8A/§3: intent-gating-lag for autonome led; testet config).
+- **Agent view** — DÆKKET AF ANDEN BÆRER: bærer = headless dispatch (§1) + background/Monitor (§8D) + git-tilstand (§2); metode i stedet = dispatch + observér langtkørende arbejde uden attach-UI'en.
+- **Agent teams** — FRAVALGT: eksperimentel, ingen resume (testet off). Samme metode (parallel + uafhængighed) bæres af subagenter + separate worktrees (§5).
+- **Workflows** — DÆKKET AF ANDEN BÆRER: metoden (deterministisk parallel fan-out) bæres af §1 Step 4 "multi-lens refutering" + §4 + §5 "3-5 parallelle spor", realiseret via subagenter/headless. ÅBENT: om Workflow-værktøjet skal være orkestratoren afgøres i planen (ikke kørt — opt-in/tungt).
+- **ultrareview** — FRAVALGT som gate: Codex-uafhængighed er governance-valget (§5); ultrareview kan supplere på store diffs, men erstatter ikke den uafhængige gate (testet: subcommand findes).
+- **Routines** — FRAVALGT som primær drift: cloud-routine mister lokal working-copy + connector-scope (§8D Modsvar 2). ÅBENT om Mathias' plan/org har dem som supplerende nat-tjek (recon-flade-begrænsning).
+- **Worktrees** — BRUGT: §1 Step 1 "hver sin recon i eget worktree" + §2 "eget worktree pr. aktør (ingen clobber)"; lært konkret i denne pakke (§8B). Metode: isolation af parallelt fil-arbejde.
+- **Auto mode** — FRAVALGT. Rettelse ved verifikation: optræder IKKE i buddets krop (§1–§8); enforcement bæres dér af deterministiske hooks+CI (§8A), en anden metode end semantisk intent-klassifikation. (Testet i recon, ikke båret videre; kan tilføjes som supplerende intent-lag.)
 - **Computer use** — FRAVALGT: kræver desktop-Chrome (Mathias' flade), beskytter intet teknisk, ingen kæde-anvendelse.
 
-**Codex-opsætning** (Codex' eget udstyr — kun workflow-niveau-status; substansen reciteres ikke, den hører i Codex' recon/bid):
+**Codex-opsætning** (Codex' eget udstyr — kun workflow-niveau-status; substansen reciteres ikke, den hører i Codex' recon/bid. Mit bud styrer ikke Codex' interne config — kun hans ROLLE (§5) og hvordan hans output gater kæden (§4)):
 
-- **model + reasoning_effort** — DÆKKET AF ANDEN BÆRER: "kræfter hvor de giver mest værdi" pr. rolle (§5); den konkrete Codex-indstilling er Codex' bord.
-- **approval_policy** — DÆKKET AF ANDEN BÆRER: gate-modellen (§4: uafhængig formel gate + author-verificerede Mathias-gates); Codex' egen approval-config styrer jeg ikke.
-- **sandbox_mode** — DÆKKET AF ANDEN BÆRER: Codex read-only/uafhængig (§5) + enforcement (§8A); konkret sandbox-værdi er Codex' bord.
-- **network_access** — FRAVALGT som workflow-lever: Codex' netadgang under read-only-rollen er hans config, ikke en kæde-flade jeg styrer.
-- **github-plugin** — DÆKKET AF ANDEN BÆRER: git+GitHub som tilstandsmaskine (§2/§8B); hvordan Codex tilgår GitHub er hans config.
-- **trust_level pr. projekt** — DÆKKET AF ANDEN BÆRER: gate-model (§4) + rolle-uafhængighed (§5); projekt-trust Codex sætter er hans bord.
+- **model + reasoning_effort** — DÆKKET AF ANDEN BÆRER: §5 "dyr dømmekraft på kapabel model/høj effort; mekanik billigt/scriptet" bærer metoden (model/effort pr. rolle/værdi). Den konkrete Codex-værdi er Codex' bord.
+- **approval_policy** — FRAVALGT som workflow-lever (Codex' bord): buddet styrer ikke Codex' interne approval — kun at hans rolle er read-only (§5) og at hans verdikt gater via §4.
+- **sandbox_mode** — FRAVALGT som workflow-lever (Codex' bord): buddet kræver kun Codex' read-only/uafhængige rolle (§5); hans interne sandbox er hans, ikke min lever.
+- **network_access** — FRAVALGT som workflow-lever (Codex' bord): Codex' netadgang under read-only-rollen er hans config, ikke en kæde-flade jeg styrer.
+- **github-plugin** — FRAVALGT som workflow-lever (Codex' bord): workflow-substratet er git/GitHub (§2/§8B); HVORDAN Codex tilgår det (plugin vs. CLI) er hans config.
+- **trust_level pr. projekt** — FRAVALGT som workflow-lever (Codex' bord): buddet kræver kun rolle-uafhængighed (§5); projekt-trust Codex sætter er hans.
 
 ---
 
