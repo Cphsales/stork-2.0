@@ -176,6 +176,45 @@ docs/
 
 ---
 
+## 9) Idé-listen vejet — feltet lukket (ingen tavs kandidat)
+
+Hver kandidat fra krav-dokkets idé-liste, begge sektioner. Status: **BRUGT** / **FRAVALGT** / **DÆKKET AF ANDEN BÆRER**. Ikke to fulde modsvar pr. kandidat — kun bevis på at feltet er vejet, ikke kun mit eget valg pudset.
+
+**Claude Code-egenskaber:**
+
+- **Hooks** — BRUGT (§3 fire-lags fejlfangst; §8A PreToolUse fail-closed FØR handling).
+- **/goal** — FRAVALGT: evaluatoren kan ikke kalde værktøjer (transcript-only, testet i recon), så den kan ikke bære spec-verifikation.
+- **.claude/rules/** — DÆKKET AF ANDEN BÆRER: "regler følger filerne" bæres af workflow-docs (§6) + mekanisk håndhævelse (§8A); rules-mekanikken er én mulig realisering.
+- **Skills** — BRUGT (§5 rolle-bootstrap / ét-kalds rolle-instruks; testet via `keybindings-help`).
+- **Codex-plugin** — FRAVALGT: en uformel Codex-i-Claude før-review blander generator og verifikator og udhuler den uafhængige formelle gate (§5).
+- **/loop** — DÆKKET AF ANDEN BÆRER: gate-overvågning bæres stærkere af hændelses-drevet drift + Monitor (§8D) end af session-polling.
+- **Statusline** — FRAVALGT: klient-display; bærer ingen gate/transport/verifikation (testet: ingen konfigureret).
+- **Checkpointing (/rewind)** — FRAVALGT: REPL-only lokal fortryd; git commit/PR er det delte, immutable spor (§8B).
+- **--from-pr** — DÆKKET AF ANDEN BÆRER: kontekst genskabes fra git-tilstanden (§2/§8B); flaget er bekvemmelighed oven på det.
+- **/doctor + /context** — FRAVALGT: diagnose-kommandoer, ikke kæde-led. **/memory** — DÆKKET AF ANDEN BÆRER: delt sandhed bor i git + workflow-docs (§2/§6), ikke i privat auto-memory.
+- **Sandboxing** — DÆKKET AF ANDEN BÆRER: handlings-grænsen bæres af hooks+permissions+auto-mode (§8A); `bwrap` er et supplerende OS-lag (testet present, ikke håndhævet nu).
+- **Headless** — BRUGT (§1 dispatch, §5 workflow-rolle, §8C/§8D; testet).
+- **Agent SDK** — FRAVALGT for denne pakke: headless CLI + custom-agents dækker behovet; SDK er en større ombygning (recon-flag), ikke nu.
+- **Agent view** — DÆKKET AF ANDEN BÆRER: drift/overvågning bæres af git+hændelser+background/Monitor (§8D); agent-view er supervisor-bekvemmelighed, ikke gate-bærer (testet).
+- **Agent teams** — FRAVALGT: eksperimentel, ingen resume (testet off); samme metode (parallel + uafhængighed) dækkes af subagenter + separate worktrees (§5).
+- **Workflows** — DÆKKET AF ANDEN BÆRER: den adversarielle fan-out (§1/§5) realiseres af subagenter/headless. ÅBENT: om Workflow-værktøjet skal være orkestratoren afgøres i planen (ikke kørt i recon — opt-in/tungt).
+- **ultrareview** — FRAVALGT som gate: Codex-uafhængighed er governance-valget; ultrareview kan supplere på store diffs, men erstatter ikke den uafhængige gate (testet: subcommand findes).
+- **Routines** — FRAVALGT som primær drift: cloud-routine mister lokal working-copy + connector-scope (§8D). ÅBENT om Mathias' plan/org har dem som supplerende nat-tjek (recon-flade-begrænsning).
+- **Worktrees** — BRUGT (§2/§5 isolation pr. aktør — ingen clobber; testet, og lært konkret i denne pakke, §8B).
+- **Auto mode** — BRUGT (enforcement-familien §8A/§3: intent-gating-lag for autonome led; testet config).
+- **Computer use** — FRAVALGT: kræver desktop-Chrome (Mathias' flade), beskytter intet teknisk, ingen kæde-anvendelse.
+
+**Codex-opsætning** (Codex' eget udstyr — kun workflow-niveau-status; substansen reciteres ikke, den hører i Codex' recon/bid):
+
+- **model + reasoning_effort** — DÆKKET AF ANDEN BÆRER: "kræfter hvor de giver mest værdi" pr. rolle (§5); den konkrete Codex-indstilling er Codex' bord.
+- **approval_policy** — DÆKKET AF ANDEN BÆRER: gate-modellen (§4: uafhængig formel gate + author-verificerede Mathias-gates); Codex' egen approval-config styrer jeg ikke.
+- **sandbox_mode** — DÆKKET AF ANDEN BÆRER: Codex read-only/uafhængig (§5) + enforcement (§8A); konkret sandbox-værdi er Codex' bord.
+- **network_access** — FRAVALGT som workflow-lever: Codex' netadgang under read-only-rollen er hans config, ikke en kæde-flade jeg styrer.
+- **github-plugin** — DÆKKET AF ANDEN BÆRER: git+GitHub som tilstandsmaskine (§2/§8B); hvordan Codex tilgår GitHub er hans config.
+- **trust_level pr. projekt** — DÆKKET AF ANDEN BÆRER: gate-model (§4) + rolle-uafhængighed (§5); projekt-trust Codex sætter er hans bord.
+
+---
+
 ## Bilag — kravsdækning (kontraktens "Workflowet skal kunne")
 
 Vision/krav/plan/slut-sammenhæng → eksekverbar spec som tråd (§1,§2). Intet uden krav / intet lukket uden validering → dæknings-gate+gates (§3,§8E). Sammenhæng med kode → kode-recon+Codex (§1,§4). Forretnings-recon 100% dækkende → Step 1+2 (§1). Kode-recon fanger misforståelser → Step 4 (§4). Fire-aktør-godkendelse → §4. Fang brud undervejs → fire lag (§3). Transport ikke dømmekraft → §3 (dækning vs. mening). Aktører løfter hinanden → strukturel uafhængighed (§5). Test hvor det skaber værdi → §3+§8. Repo-renhed → §6. Main=sporet → git-tilstand (§2,§8B). Kræfter hvor mest værdi → §5. Auto åbning→luk + beskyt friskhed → §3,§4 (destillation). Mathias ude af mekanik → §4. To rolle-typer → §5. Fordel roller (grundighed+effektivitet) → §5 (model/effort+3-5 cap). To modsvar pr. funktion → §8 (testet).
