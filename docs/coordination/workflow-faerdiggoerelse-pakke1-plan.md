@@ -1,7 +1,7 @@
 # Plan — Pakke 1 (front-halvdel: åbning → godkendt plan)
 
 **Pakke:** workflow-færdiggørelse · **Del:** Pakke 1 af 2 (front-halvdel; bag-halvdel = Pakke 2) · **Forfatter:** Code · **Dato:** 2026-06-17
-**Status:** v7 (trin A) — Codex' trin-C-FEEDBACK (runde 1-7, inkl. review-/recon-dybde + doc-vægt-guardrail) adresseret; re-request **full-scope** review (ikke drip). Frosset som plan-SHA; trin C (Codex review + Claude.ai krav-troskab, dual-hash-bundet) → trin D (Mathias plan-gate, sidst krav 5).
+**Status:** v8 (trin A) — Codex' trin-C-FEEDBACK (runde 1-8, inkl. review-/recon-dybde + doc-vægt-guardrail + repo-hygiejne-gate) adresseret; re-request **full-scope** review (ikke drip). Frosset som plan-SHA; trin C (Codex review + Claude.ai krav-troskab, dual-hash-bundet) → trin D (Mathias plan-gate, sidst krav 5).
 **Grundlag:** krav-dok `c964826` (krav OK) · koblings-recon PR #166 `@2edb290` (Codex PASS) · proces PR #164 · finalbud Code #162 + Codex #163 (ramme, krav 11).
 **Altitude:** planen NAVNGIVER tekst-artefakter + accept-tests + failure-cases; kontrakt-teksterne selv skrives i build (Pakke 1), ikke her. **Test-ref `#162 §8X`** = terminal-testet mekanisme i Code-buddet.
 **Doc-vægt-guardrail (krav 7/8):** kun tekst der **ER funktionen** findes (rolle-instrukser, gate-defs, recon-format, krav-tjek-metode, review-/recon-kontrakter) — som **klausuler i ÉN `workflow/`-regelflade**, ikke parallelle docs; ingen forklarings-docs der gentager en test/gate; worklog **genereres** (skrives ikke); recon komplet men **komprimeret** (hovedtekst + evidens via sti); tests bærer beviset, tekstfilen kun kontrakten; midlertidige recon/bud/proces-docs arkiveres når foldet ind. **Accept-regel pr. tekstfil:** "hvilken funktion driver den, og hvilken test fejler hvis den er forkert?" — uklart svar → filen eksisterer ikke.
@@ -49,13 +49,15 @@ REUSE: PR/blob-handoff, worktree-isolation, CI/governance-skelet. EXTEND: plan-S
 - **S13 — Hooks/CI for front-artefakter** · EXTEND-skelet (#166-12). Checks for rule-snapshot, krav-ID-coverage, worklog-drift, master-plan-konsistens, kontrakt-FAIL-cases. · Test: hver i CI (#162 §8A). · K3, K8.
 - **S14 — Kæde-uafhængig e2e: åbning → godkendt plan (+ failure-cases)** · NET-NEW (kæde-uafhængig, PR #164). Kører hele front-halvdelen på syntetisk pakke: åbning→scale→recon→kravspec→**krav-gate (matrix+menings)**→plan+plan-gate→plan OK. **Mekaniske failure-cases skal fejle:** dårlig recon (stopper for tidligt), hvordan/kode-spørgsmål til Mathias, K-ID uden step/test, Pakke-2-uden-begrundelse, plan-step der ændrer mening. · Test: e2e grøn = front-halvdelen producerer godkendt plan uden hånd-syning OG alle failure-cases fejler mekanisk; acceptance måler **både plan-kvalitet og review-disciplin** (genfundet gammelt-scope-fund = reviewer-miss, ikke plan-fejl). · K1, K9, K2, K4, K6.
 
+- **S15 — Repo-hygiejne-gate + repo-sandheds-recon (precondition for Plan-2-acceptance)** · NET-NEW (lean: governance-check-udvidelse + doc-inventory, ikke flere docs). **Lukker recon-gabet:** koblings-reconen (#166) var en smal koblings/setup-recon, ikke en full-scope repo-sandheds-recon (v6/v7-standarden). S15 bruger `docs/teknisk/doc-redegoerelse.md` som **recon-kort** (ikke ny sandhed) til: én aktiv sandhed pr. emne for workflow/regler/autoritet (flere → BLOKERET el. eksplicit ÅBEN/ARKIV); hver levende doc har formål + ejer-funktion + test/gate; midlertidige recon/bud/proces-docs (inkl. denne bootstraps egne) arkiveres/git-history når foldet ind. · **Test:** levende doc uden formål/funktion/test → FAIL; konkurrerende aktiv workflow-doc / stale gate-/autoritetstekst / unclassified doc i aktivt lag → FAIL. · K8.
+
 ## End-to-end-test (acceptance)
 
-S14, kæde-uafhængig: hele kæden + at den ikke kan producere en "komplet-udseende men utro" plan (failure-cases fejler). Endelig acceptance: Plan 2 produceret gennem front-halvdelen.
+S14, kæde-uafhængig: hele kæden + at den ikke kan producere en "komplet-udseende men utro" plan (failure-cases fejler). **Forudsætning: S15 (repo-hygiejne) grøn** — Plan 2 testes på et **rent repo-sæt** (ingen konkurrerende aktive workflow-docs, ingen stale gate-/autoritetstekst, ingen unclassified docs i aktivt lag). Endelig acceptance: Plan 2 produceret gennem front-halvdelen.
 
 ## Rækkefølge
 
-S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 (krav-gate) → S9 (plan-gate) → S10 → S11 → S12 → S13 → S14.
+S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 (krav-gate) → S9 (plan-gate) → S10 → S11 → S12 → S13 → S14 → **S15 (repo-hygiejne, før Plan-2-test)**.
 
 ## IKKE i Pakke 1 (→ Pakke 2)
 
