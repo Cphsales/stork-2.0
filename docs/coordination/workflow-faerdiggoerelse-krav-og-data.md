@@ -1,7 +1,7 @@
 # workflow-færdiggørelse — Krav-og-data
 
 **Type:** Mathias' krav til hvad workflowet skal kunne
-**Dato:** 2026-06-15 · **Status:** UDKAST — intet låst, krav OK ikke givet. Navnet (v6/gov-6) er ligegyldigt; budskabet er ét.
+**Dato:** 2026-06-16 · **Status:** UDKAST — intet låst, krav OK ikke givet. Navnet (v6/gov-6) er ligegyldigt; budskabet er ét.
 
 ## Formål
 
@@ -17,31 +17,56 @@ Grunden er enkel: bygger vi videre på det nuværende, arver vi også svagheden 
 
 Dette dokument er kravene til løsningen: hvad workflowet skal kunne. Selve løsningen ligger i planen. Det er dér det afgøres hvilke funktioner der tages i brug, og hvornår. Planen skal derfor beskrive workflowet **step for step** — hvilke funktioner der bruges, og på hvilket sted i flowet.
 
-## Workflowet skal kunne
+## Krav
 
-- Validere at vision+forretning, krav, plan og slut hænger sammen — det er hovedvalideringen.
-- Sikre at intet bygges uden krav bag det, og at intet lukkes uden fuld validering.
-- Sikre at det byggede hænger sammen med den nuværende kode og forretningslogikker.
-- Lave forretnings-recon der gør kravet 100% dækkende for alle forretningsfunktioner pakken rører.
-- Lave kode-recon der fanger misforståelser mellem krav-dok og koden.
-- Sikre at krav, plan og slut hver godkendes af alle fire aktører — Mathias' godkendelse er at planen/byg er tro mod hans hvad, ikke en stillingtagen til hvordan.
-- Fange fejl, bordbrud og kædebrud undervejs ved hvert led — gennem validering, ikke til sidst.
-- Automatisere transport, ikke dømmekraft — aktørernes validering forbliver fuld.
-- Lade aktørerne løfte hinandens arbejde — direkte modspil der løfter er en pligt; modspil der ikke løfter (ligegyldige spørgsmål, spildtid) hører ikke hjemme.
-- Teste hvor det skaber værdi — så validering ikke stjæler kræfter fra bygningen.
-- Teste docs på en måde der skaber værdi — fange reelle brud uden at skabe forkert fokus.
-- Holde repoet rent — hvert dokument har ét formål, ingen dubletter, holdes opdateret, én sandhed, kun relevant info.
-- Lade main/GitHub være sporet efter fuld validering — så færdige pakker ikke kræver dokumentering oven på det.
-- Tage de brugbare aktør-egenskaber i brug der, hvor de giver mest værdi.
-- Bruge hver aktørs kræfter der, hvor de giver mest værdi.
-- Køre automatisk fra åbning til luk og derved beskytte Mathias' friskhed — fjerne dræn, så hans glid-fangst holdes skarp (systemkrav, ikke bekvemmelighed).
-- Holde Mathias ude af det mekaniske — aldrig hvordan-spørgsmål til ham. Han styrer hvad systemet skal kunne (vision, forretning, krav-dok); Code/Codex sørger for hvordan det kan lade sig gøre i kode (plan, byg). Kald ham kun ind på beslutninger der er hans — og de fund undervejs der kræver hans afgørelse.
-- Give de tre AI-aktører to rolle-typer — en workflow-rolle og en almindelig rolle — som de skifter mellem efter behov. Mathias styrer selv.
-- Fordele rollerne så både grundighed og effektivitet øges.
+**1. Funktioner bygges grundigt**
+Hver funktion workflowet bruger bygges grundigt. Teksten/opbygningen af funktionen er afgørende for outputtet — funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.
 
-## Det afgørende krav — to modsvar pr. funktion
+**2. Kæden hænger sammen**
+Kæden er vision+forretning = krav = plan = slut, tro hele vejen. Mathias ejer vision+forretning og krav; det er hvad build skal overholde. Vision+forretning er låste docs; krav laves først og låses ved Mathias' krav OK. Eksisterende kode/build må ikke ændres uden Mathias' tydelige godkendelse — sker det, stop. Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.
 
-For hver funktion der overvejes til planen, skal der som minimum ligge to modsvar — to konkrete indvendinger mod at bruge den, hver båret af en anden funktion. En funktion der ikke har mødt mindst to modsvar, er ikke klar til at komme i planen. Det er værnet mod første-løsning-svagheden: ingen funktion vælges, før den er prøvet imod af andre funktioner.
+**3. Fejl fanges løbende**
+Fejl fanges løbende under hele workflowet, ikke til sidst. Et brud fanges mekanisk, af en anden aktør, eller af aktøren selv — flere mekanismer må gerne være i spil på én gang. Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt.
+
+**4. Forretnings-recon før krav og kode-recon før plan**
+Før krav og plan skrives, laver workflowet fuld recon af hvad pakken berører. Reconen stopper ikke ved første fund — den kortlægger det hele.
+
+**5. Fire-aktør-godkendelse**
+Krav, plan og slut godkendes hver af alle fire aktører. Mathias godkender sidst — hans godkendelse sker først efter de tre andre har godkendt.
+
+**6. Mathias' bord**
+Mathias' bord er ikke kode. Det er udelukkende hvad systemet skal kunne — ikke hvordan/kode. Mathias tager stilling til krav-dok, og derfor skal alle spørgsmål til ham omhandle hans bord. Alt i krav-dok skal være tydeligt godkendt af Mathias.
+
+Ved krav præsenteres den samlede recon for Mathias til validering eller spørgsmål. De funktioner/forretningsdele pakken berører kortlægges gennem recon og fremlægges sådan — "Pakken berører disse forretningsdele":
+
+_Nuværende kode:_
+
+1. x er bygget på denne måde i koden — er det korrekt?
+2. osv.
+
+_Ikke bygget endnu / dokument-info:_
+
+1. pakken bygger x, og dokument y siger dette — er det korrekt?
+2. osv.
+
+_Intet data:_
+
+1. Pakken berører x, og der er intet data om det — hvad skal x kunne?
+
+**7. Roller**
+Workflowet har fire aktører: Mathias, Claude.ai, Code og Codex. De tre AI-aktører har hver to rolle-typer — en workflow-rolle og en almindelig rolle. Mathias skal nemt kunne styre hvilken rolle der er aktiv via en simpel prompt. Claude.ai er Mathias' nærmeste partner og skal hjælpe med at holde det uoverskuelige — tekst, kode og lignende — simpelt for Mathias.
+
+**8. Docs og repo**
+Repoet holdes rent gennem hele workflowet: hvert dokument har ét formål, ingen dubletter, én sandhed. En færdig pakke efterlader main som det fulde spor — der skrives ikke dokumentering oven på en validering der allerede er sket.
+
+**9. Flow og gates**
+Mathias starter workflowet med én simpel prompt (qwers). Derefter aktiveres alle aktører, og det kører af sig selv indtil Mathias præsenteres for forretnings-recon og det der skal valideres. Mathias og Claude.ai laver krav sammen; når kravet er færdigt, uploades det og valideres af de tre andre aktører — Mathias får besked om godkendt, eller om spørgsmål/andet. Ved Mathias' krav OK kører alt af sig selv indtil plan, hvor det stopper for Mathias' plan OK; ved OK kører alt af sig selv indtil build, hvor det stopper for Mathias' build OK. Grænsen består under flowet: det der kører af sig selv, er transport — at flytte, samle og fremlægge. Dømmekraft kører aldrig af sig selv; hver aktørs validering forbliver fuld og udføres af aktøren. Det fjerner det mekaniske dræn, så Mathias kun kaldes ind ved sine gates og hans friskhed bevares.
+
+**10. Master-plan styrer retning**
+Master-planen bestemmer den overordnede retning og opdateres løbende. Ændringer i master-planen — og modsigelser mod den — kræver Mathias' tydelige godkendelse.
+
+**11. Rammen for pakken**
+Vi har ikke et workflow der virker endnu, så de to bud fra Code og Codex er retningen, sammen med Mathias' tre styrende docs: vision-og-principper, forretningsforståelse og krav.
 
 ## IKKE i scope
 
