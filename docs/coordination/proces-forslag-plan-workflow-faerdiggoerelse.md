@@ -1,52 +1,92 @@
-# Proces-forslag: hvordan vi laver planen (Code's forslag til fælles proces)
+# Proces for at lave planen — Code + Codex fuldt konvergeret
 
-**Type:** Forslag til HVORDAN planen laves — ikke planen selv · **Forfatter:** Code (`stork-code-bot`) · **Dato:** 2026-06-16
-**Status:** Codes halvdel af ét fælles forslag. **Codex har endnu ikke publiceret sit** — så dette er grundlaget, ikke en konvergeret konsensus. Codex reviewer + amender på dette committede artefakt → fælles forslag → Mathias afgør.
+**Type:** Fælles proces til HVORDAN planen laves — ikke planen selv · **Dato:** 2026-06-16
+**Status:** **FULDT KONVERGERET (Code + Codex).** Codex reviewede PR #164 (`4943256`) fra origin, foreslog tre amendments + forward-kompat-krav — alle tiltrådt og indfoldet her. **Ingen åbne punkter.** Afventer Mathias' afgørelse + `krav OK`.
 **Kontrakt:** `docs/coordination/workflow-faerdiggoerelse-krav-og-data.md`.
 
-## Mathias' to-plan-split (rygraden i dette forslag)
+## To-plan-split (Mathias' idé; Code + Codex enige, søm ved GATE 2)
 
 Workflowet deles ved sit naturlige søm — **GATE 2 (godkendt plan)** — i to implementerings-pakker under ÉT krav-dok (kontrakt-sanktioneret: "krav-dok forbliver ÉT dok, implementation splittes over pakker"):
 
-- **Pakke 1 — front-halvdel + delt substrat:** åbning → krav → recon → krav-ID-spec → plan → fire-aktør plan-godkendelse (GATE 2). Plus det **delte substrat** begge halvdele bruger: git/ledger/worklog, cross-review-på-committet-PR, hooks/CI-gates, worktree-isolation.
-- **Pakke 2 — bag-halvdel:** godkendt plan → batch-build → per-batch cross-review + dispositioner → slutrapport (genereret) → fire slut-godkendelser → ren luk.
+- **Pakke 1 — front-halvdel:** åbning → godkendt plan. Bygges først, i hånden (mindre scope).
+- **Pakke 2 — bag-halvdel:** godkendt plan → luk. **Dens plan produceres IGENNEM den byggede front-halvdel = front-halvdelens rigtige acceptance-test** (en ægte opgave, ikke en syntetisk dry-run).
 
-**Bootstrap-rækkefølgen (det der gør splittet stærkt):**
+Det løser bootstrap-problemet: vi mangler workflowet til at lave planen, så vi bygger først den del der kan lave planer.
 
-1. Plan for **Pakke 1 laves i hånden** (meta-processen nedenfor) — mindre scope end én fuld plan, så hånd-bootstrappet er billigere.
-2. **Pakke 1 bygges** (hånd-kørt, da bag-halvdelens automatik endnu ikke findes).
-3. Plan for **Pakke 2 produceres IGENNEM den byggede front-halvdel** = front-halvdelens **rigtige e2e-test** (erstatter en syntetisk dry-run). Producerer den en ren, godkendt Plan 2, er front-halvdelen bevist på en ægte opgave.
-4. **Pakke 2 bygges**; derefter er workflowet komplet.
-5. **Første rigtige Stork-pakke gennem hele workflowet** = fuld e2e-bekræftelse.
+## Pakke 1 bygger front-substratet (alt der kræves for at producere en godkendt Plan 2)
 
-**Ærlig sekventering af hvad der beviser hvad:** front-halvdelen bevises ved at producere en _godkendt_ Plan 2 (hvor "godkendt" inkluderer Code build-ready + Codex APPROVAL = byggbar-dømt). At godkendte planer _faktisk bygger rent_ bevises først når bag-halvdelen findes (trin 4) og en fuld pakke er kørt igennem (trin 5). Selve build'et er hånd-kørt indtil bag-halvdelen findes — splittet front-loader den mest genbrugelige halvdel (planlægning), ikke automatiseringen af build.
+- author-verificeret åbning
+- rule-snapshot
+- scale-provisional → scale-signal → scale-lock
+- krav-ID-spec + hash
+- krav-ID coverage-gate
+- plan-SHA-binding for fire aktører
+- genereret worklog/projektion for **planfasens** mekaniske felter
+- worklog-drift-gate for de felter
+- PR/blob-handoff
+- worktree-isolation
+- plan-review på committet PR
+- review-dispositioner for plan-/review-fund
+- relevante hooks/CI-checks for docs/spec/plan/worklog
+- e2e-test for netop åbning → godkendt plan
 
-## Meta-princip — hvorfor hånd-processen ikke er lovløs
+## Pakke 1 bygger IKKE bag-substratet endnu (→ Pakke 2)
 
-Vi har ikke det automatiserede workflow (det er det vi bygger), men vi har dets **beviste primitiver**, alle terminal-testede denne session og **uafhængigt af kæden**: committet-PR cross-review, krav-ID-dækning, plan-SHA-binding, evidens-gate, isolerede worktrees, hooks, drift-gate. Pakke 1's plan laves **i hånden med disse primitiver**; Pakke 2's plan laves igennem den byggede front-halvdel.
+- batch-build orchestration
+- fuld per-batch build review-pakke-automatik
+- slutrapport-generator fra build-evidens
+- fuld archive/cleanup-automatik
+- fuld production CI-gate-matrix ud over eksisterende checks
+- egentlig multi-schema ledger — **kun hvis Plan-2-produktionen beviser behovet**
+
+Kort: Pakke 1 skal have nok substrat til at validere front-halvdelen ved at lave Plan 2. Den forudbygger ikke bag-halvdelen.
+
+## Worklog/ledger — forward-kompat (Codex' skærpelse, tiltrådt)
+
+Plan 1's worklog/ledger er lean, men bygges som **front-halvdelens første version (v1) af samme blivende artefaktfamilie** — ikke en midlertidig fil der omskrives i Plan 2:
+
+- `schemaVersion`/format-version fra start.
+- Stabile felter: `packageId`, krav-ID'er, `scale-*`, `planSha`, gate-state, artefakt-referencer.
+- Plan 2 udvider **additivt** (build-batch, review, disposition, slutrapport-felter).
+- Plan 2 må **ikke** rename/omskrive Plan 1-felter.
+- Breaking change kræver eksplicit rule-/schema-change gate.
+- Worklog er stadig **projektion**: de mekaniske felter genereres/tjekkes (drift-gate), håndholdes ikke.
+
+→ forward-kompat = Plan 1 laver minimal v1 af den blivende struktur; Plan 2 udvider den. Ikke to forskellige strukturer.
+
+## Acceptance-test (hvornår Plan 1 er færdig)
+
+Når Plan 1 er bygget og godkendt, åbnes en ny pakke ("byg workflow fra godkendt plan til slut"), og dens plan køres **gennem den byggede front-halvdel**: Mathias åbner → Code/Codex/Claude.ai recon → kravspec m. krav-ID → Plan 2 skrives → scale-lock + plan-SHA → fire godkender samme SHA.
+
+**Kriteriet (skarpt):** _"Plan 2 kan produceres gennem front-halvdelen uden manuel improvisation, med krav-ID, scale-lock, plan-SHA og fire aktør-godkendelser."_ Dømmekraften (recon-fund, krav, plan-indhold) er stadig aktørernes; det er TRANSPORTEN/gates der skal køre uden improvisation. Hver manuel hånd-syning af et artefakt workflowet selv skal drive = et logget hul i Plan 1.
+
+**Bevisrækken (Codex, tiltrådt):** 1) Plan 1 laves håndholdt · 2) Pakke 1 bygges · 3) Plan 2 laves gennem Pakke 1 · 4) godkendes Plan 2 rent, er front-halvdelen bevist · 5) Pakke 2 bygger bag-halvdelen · 6) første rigtige Stork-pakke gennem hele workflowet = fuld e2e-bekræftelse. To naturlige beviser i rækkefølge, ikke én uoverskuelig test.
+
+## Meta-princip — hvorfor Pakke 1's hånd-proces ikke er lovløs
+
+Vi har ikke det automatiserede workflow, men dets **beviste primitiver** (committet-PR cross-review, krav-ID-dækning, plan-SHA-binding, evidens-gate, isolerede worktrees, hooks, drift-gate — alle terminal-testede denne session, uafhængigt af kæden). Pakke 1's plan laves i hånden med dem; Pakke 2's plan laves igennem den byggede front-halvdel.
 
 ## Prærekvisit (FLAG, kontrakt)
 
-Krav-dokket er `Status: UDKAST — krav OK ikke givet`. Kontrakten + begge buds GATE 1 siger intet planlægges uden et krav-OK'd krav-dok bag. → **Mathias giver `krav OK <hash>` (eller bekræfter krav-dokket som bindende) FØR planlægning.** Det er Mathias' ord at give.
+Krav-dokket er `Status: UDKAST — krav OK ikke givet`. Kontrakten + begge buds GATE 1 siger intet planlægges uden et krav-OK'd krav-dok bag. → **Mathias giver `krav OK <hash>` (eller gør krav-dokket eksplicit bindende) FØR Plan 1 skrives.**
 
 ## Meta-proces for Pakke 1's plan (i hånden)
 
-| Trin                                                                                                                 | Hvad | Skriver                                                                                           | Uafhængig review                                  | Lås |
-| -------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --- |
-| **A. Konsolidér de to bud → ét fundament-doc** (Codex' form + Codes carry-ins)                                       | Code | Codex (PR) + Claude.ai (tro mod krav-dok)                                                         | commit/PR; Mathias design-bekræfter (hvad-niveau) |
-| **B. Verificeret koblings-recon** (front-halvdel + substrat → nuværende setup pr. sti/commit)                        | Code | Codex (uafhængig verifikation)                                                                    | commit                                            |
-| **C. Plan-skrivning for Pakke 1** (krav-ID → step → verificeret kobling → test; **lean form**; frosset som plan-SHA) | Code | —                                                                                                 | plan-SHA                                          |
-| **D. Uafhængig validering**                                                                                          | —    | Codex teknisk review (dispositioner) + Claude.ai krav-troskab, begge SHA-bundet → iterér til grøn | plan-SHA                                          |
-| **E. Mathias-gate**                                                                                                  | —    | fire-aktør-godkendelse på samme plan-SHA                                                          | færdig, valideret Pakke-1-plan                    |
+| Trin                                                                                                                                                                                                                                                                                            | Hvad | Skriver                                                                                           | Uafhængig review |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------- | ---------------- |
+| **A. Plan-skrivning for Pakke 1** — formål/grundlag = **fælles plan-præmis/rygrad** der refererer begge finalbud (ingen separat langlivet konsoliderings-doc; foldes ind i Plan 1 / senere `docs/workflow/*`); krav-ID → step → verificeret kobling → test; **lean form**; frosset som plan-SHA | Code | —                                                                                                 |
+| **B. Verificeret koblings-recon** — front-halvdel → nuværende setup pr. sti/commit                                                                                                                                                                                                              | Code | Codex (uafhængig verifikation)                                                                    |
+| **C. Uafhængig validering**                                                                                                                                                                                                                                                                     | —    | Codex teknisk review (dispositioner) + Claude.ai krav-troskab, begge SHA-bundet → iterér til grøn |
+| **D. Mathias-gate**                                                                                                                                                                                                                                                                             | —    | fire-aktør-godkendelse på samme plan-SHA → færdig, valideret Pakke-1-plan                         |
 
-Pakke 2's plan kører derefter trin A–E **igennem den byggede front-halvdel**, ikke i hånden — det er testen.
+**Code drafter; Codex reviewer uafhængigt** (ikke co-author — bevarer den uafhængige reviewflade).
 
 ## Roller og gates
 
-- **Code skriver** (builder/teknisk planforfatter): konsolidering, koblings-recon, plan.
-- **Codex reviewer uafhængigt** på hvert committet artefakt i frisk kontekst; dispositioner i hånden (`BLOCKER/FIX-NOW/FOLLOW-UP/FALSE-POSITIVE-WITH-EVIDENCE/MATHIAS-GATE`). Den der skriver, reviewer ikke selv.
-- **Claude.ai** ved trin A (fundament tro mod krav-dok) og trin D (**krav-troskab** — plan sætning-for-sætning mod krav-dok → PASS/FEEDBACK).
-- **Mathias' gates:** `krav OK` (prærekvisit) · design-bekræftelse (trin A) · plan-hvad-gate (trin E). Holdes ude af det mekaniske.
+- **Code skriver** (builder/teknisk planforfatter): plan, koblings-recon.
+- **Codex reviewer uafhængigt** på committede artefakter i frisk kontekst; dispositioner i hånden (`BLOCKER/FIX-NOW/FOLLOW-UP/FALSE-POSITIVE-WITH-EVIDENCE/MATHIAS-GATE`). Den der skriver, reviewer ikke selv.
+- **Claude.ai** ved trin C: **krav-troskab** — plan sætning-for-sætning mod krav-dok → PASS/FEEDBACK.
+- **Mathias' gates:** `krav OK` (prærekvisit) · plan-hvad-gate (trin D). Holdes ude af det mekaniske.
 
 ## Hvad planen kobler til — verificeret (sti/commit), ikke antaget
 
@@ -58,19 +98,17 @@ Regel: **hver kobling citerer sti/commit**; koblings-recon (trin B) verificeres 
 - Code's hook-flade: PreToolUse i `~/.claude/settings.json`.
 - Eksisterende kæde (kun inspiration): `scripts/kaede/*` — planen afgør genbrug vs. erstatning, citeret pr. sti.
 
-## Hvor tungt-vs-lean-valget lander (nu empirisk)
+## Tungt-vs-lean (empirisk, ikke forhånds-spike)
 
-Splittet gør valget empirisk i stedet for et forhånds-spike: **byg Pakke 1 lean**; friktionen ved at producere Plan 2 igennem front-halvdelen ER målingen. Knækker en overgang reelt under Plan-2-produktionen, hærder vi netop den overgang — bevist, ikke valgt. Den fulde e2e-bekræftelse er trin 5 (første rigtige pakke).
+Byg Pakke 1 **lean**; friktionen ved at producere Plan 2 igennem front-halvdelen ER målingen. Knækker en overgang reelt, hærder vi netop den — bevist, ikke valgt. Multi-schema ledger bygges kun hvis Plan-2-produktionen beviser behovet.
 
-## Konvergens-mekanisme + åbne punkter
+## Konvergens-status
 
-**Sådan bliver vi enige:** Codex reviewer dette committede forslag, foreslår amendments på PR'en (samme cross-review-primitiv vi vil bruge i workflowet), vi lukker punkterne nedenfor → fælles forslag → Mathias afgør.
+Fuldt konvergeret mellem Code og Codex — ingen åbne punkter:
 
-**Forventet enighed:** to-plan-splittet ved GATE 2, meta-princippet, trin A–E, rolle-/gate-fordelingen, lean-start + empirisk hærdning, alt låst via PR i egne worktrees.
-
-**Åbne punkter at lukke (valg, ikke uenigheder):**
-
-1. **Hvem drafter konsolideringen (trin A):** Code (builder) med Codex uafhængig review — eller co-author. Forslag: Code drafter.
-2. **Substrat-snittet:** præcis hvilke delte dele der hører i Pakke 1 vs. kan vente til Pakke 2 (forslag: alt cross-review/ledger/worklog/CI-gate-substrat i Pakke 1, da front-halvdelen ikke kan validere uden det).
-
-Intet i dette modsiger kontrakten; den ene kontrakt-binding jeg flager er prærekvisitten (`krav OK` før planlægning).
+- To-plan-split ved GATE 2 · Plan 1 først · Plan 2 = acceptance-test for Plan 1.
+- Front-substrat i Pakke 1, bag-substrat i Pakke 2 (præcise lister ovenfor).
+- Worklog/ledger = lean v1 af blivende struktur, forward-kompat (additiv udvidelse, ingen omskrivning, breaking change kun via gate).
+- Code drafter, Codex reviewer uafhængigt; ingen separat tung konsoliderings-doc.
+- Skarpt acceptkriterie + bevisrække i to trin.
+- Mathias' `krav OK <hash>` er prærekvisit før Plan 1 skrives.
