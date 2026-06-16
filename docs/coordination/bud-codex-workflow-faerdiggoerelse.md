@@ -1,298 +1,243 @@
-# workflow-faerdiggoerelse — Codex' bud
+# workflow-faerdiggoerelse - Codex' endelige bud
 
-**Status:** Codex' konkurrerende bud, ikke konsensus.
-**Dato:** 2026-06-15.
+**Status:** Endeligt konkurrerende bud fra Codex.
+**Dato:** 2026-06-16.
 **Kontrakt:** `docs/coordination/workflow-faerdiggoerelse-krav-og-data.md`.
-**Grundlag læst:** Code-recon fra `origin/claude/recon-code-workflow-faerdiggoerelse` + Codex-recon fra `origin/codex-recon-workflow-faerdiggoerelse` + kontrakten fra `origin/main`.
+**Grundlag:** begge recon-filer, otte feltkilder, begge v2.1-bud og den afsluttende modspilsrunde.
 
 ## Hovedbud
 
-Mit bud er et **bevisstyret arbejdsflow med kontrolleret modspil**.
+Stork 2.0 skal have en **krav-ID-båret workflow-kernel med lean grundform og hærdede overgange dér hvor kæden faktisk knækker**.
 
-Workflowet skal ikke være "den nuværende kæde plus lidt mere". Det skal være den rigtige arbejdsform for resten af Stork 2.0: en **workflow-kerne** der bygger en pakke fra krav til luk med samme disciplin hver gang, uanset hvilke konkrete agentværktøjer der er bedst om tre måneder.
+Det endelige valg på aksen er derfor ikke "mest muligt schema" og ikke "én løs worklog". Kernen skal være smal nok til at køre build efter build uden vedligeholdelsesgæld, men hård dér hvor brud allerede er observeret eller feltet gentager samme fejlklasse:
 
-Den nuværende kæde er derfor kun en prototype-bank. Den har bevist nyttige knudepunkter, men den er ikke rammen. Rammen er kravet:
+1. **Krav-ID er hovedtråden.** Krav-ID -> planpunkt -> test -> PR -> review -> slut-evidens er den primære læsevej.
+2. **GitHub og package-ledger er sandheden.** Worklog og slutrapport er projektioner, ikke manuelt primær-sandhed.
+3. **Scale reducerer kontrakt-tæthed, ikke sikkerhedsgulvet.** Small non-sensitive får let form; sensitive eller opskalerede pakker får fuld form.
+4. **Overgange hærdes med få kontrakter:** rule-snapshot, actor-start, plan-SHA, review-pakke og review-disposition.
+5. **Schemafladen holdes lille.** Der er én package-ledger-schema og én rule-projection-schema. Review-dispositioner ligger i ledger-schemaet.
+6. **Dømmekraft automatiseres aldrig.** Transport, checks, routing og drift-gates automatiseres; krav, mening, risiko og accept bliver hos aktørerne.
 
-1. Alt væsentligt starter som krav fra Mathias.
-2. Alle afgørende valg møder modspil før de bliver plan.
-3. Alle aktørbidrag bliver frosset i GitHub, ikke i mutable working-tree-filer.
-4. Transport automatiseres hårdt.
-5. Dømmekraft automatiseres aldrig, men den gøres obligatorisk, SHA-/hash-bundet og synlig.
-6. Konkurrence bruges kun der, hvor den løfter beslutningskvalitet; ikke som sport, ikke som pynt, ikke som permanent kamp om alt.
+Den endelige kæde:
 
-Det stærkeste workflow er derfor:
+**pakkeåbning -> foreløbig scale + rule-snapshot -> recon med scale-signal -> kravspec med krav-ID og hash -> plan med krav-ID-dækning, scale-lock og plan-SHA -> fire aktør-godkendelser på samme SHA -> batch-build med scale-passende review-pakke, cross-review og dispositioner -> slutrapport genereret fra ledger/worklog -> fire slut-godkendelser -> ren lukning.**
 
-**pakkeåbning + foreløbig scale + regel-snapshot → actor-start-kontrakt → parallel recon med scale-signal → krav-hash → plan med scale-lock og modsvar → fire aktør-godkendelser → batch-build med review-pakke og cross-review/disposition-loop på committede PR'er → slutrapport med fire aktør-godkendelser → ren pakke-luk.**
+## Felt-syntese - otte kilder
 
-Min store satsning: workflowet skal have et **evidens-register** som første-klasses objekt. Ikke et dokument der fortæller hvad der skete, men en pakke-ledger der løbende binder krav-sætninger, plan-valg, modsvar, commits, tests, reviews og gates sammen. Slutrapporten bliver en læsbar projektion af registeret, ikke endnu et manuelt sandhedsdokument.
+Feltet er ikke brugt som løse tips. Det er brugt til at finde de mønstre der gentages på tværs:
 
-## Felt-syntese — otte kilder
+- [Towards Data Science: How to Combine Claude Code and Codex for Maximum Coding Power](https://towardsdatascience.com/how-to-combining-claude-code-and-codex-for-max-coding-power/) - committet PR + anden model som reviewer + fix/re-review er den praktiske kombinationsgevinst.
+- [DEV: Same Framework, Different Engine](https://dev.to/shinpr/same-framework-different-engine-porting-ai-coding-workflows-from-claude-code-to-codex-cli-n3p) - workflow skal bæres af roller, artefakter, scale-routing og stop-punkter, ikke en bestemt terminalflade.
+- [GenAI Unplugged: Claude Code vs Codex - Build a Bridge Instead](https://genaiunplugged.substack.com/p/claude-code-vs-codex-comparison) - samme regler til begge agenter, filbaseret handoff, worktrees og hooks ved garanti-behov.
+- [Verdent: Codex CLI vs Claude Code for Terminal Agent Workflows](https://www.verdent.ai/guides/codex-cli-vs-claude-code-terminal-agent-workflows) - vurder workflowform, budgets, review og session-grænser; ikke model-vinder som dogme.
+- [GenAI Unplugged: OpenAI Codex Setup Guide](https://genaiunplugged.substack.com/p/openai-codex-setup-guide-beginner) - handoff-fil, permission-mode og long-running loops er nyttige, men kræver sikkerhedssnit.
+- [arXiv: tap - A File-Based Protocol for Heterogeneous LLM Agent Collaboration](https://arxiv.org/abs/2606.14445) - heterogene agenter fungerer bedst via filbaserede artefakter, worktree-isolation og artifact-protokoller.
+- [GitHub: shinpr/codex-workflows](https://github.com/shinpr/codex-workflows) - scale-routing, PRD/design/task/commit-kæde, TDD, quality gates og fresh-context review.
+- [GitHub: shinpr/claude-code-workflows](https://github.com/shinpr/claude-code-workflows) - samme workflowform på anden terminalflade: small/medium/large routing, design-sync, verification og context separation.
 
-Jeg har læst de fire angivne kilder og fundet fire supplerende kilder, der handler om samme praktiske felt: fælles terminal-/repo-workflows for Codex og Claude Code, store kodeopgaver, handoff, gates, parallelitet og hvad der knækker i drift.
+**Enighed der bærer buddet:** fil-/PR-artefakter over chat-hukommelse, worktrees ved parallelitet, fælles regler, fresh-context review, scale-routing, cross-review på committet PR og mekanisk håndhævelse dér hvor mennesker ellers glemmer.
 
-### De fire angivne
-
-- [Towards Data Science: How to Combine Claude Code and Codex for Maximum Coding Power](https://towardsdatascience.com/how-to-combining-claude-code-and-codex-for-max-coding-power/) — konkret cross-review-loop: builder laver plan/implementation, den anden model reviewer committet PR, builder retter og gen-requester review til grøn.
-- [DEV: Same Framework, Different Engine](https://dev.to/shinpr/same-framework-different-engine-porting-ai-coding-workflows-from-claude-code-to-codex-cli-n3p) — workflow-overførsel lykkes, når roller, kontekstseparation, stop-punkter og artefakthandoffs er platform-uafhængige.
-- [GenAI Unplugged: Claude Code vs Codex — Build a Bridge Instead](https://genaiunplugged.substack.com/p/claude-code-vs-codex-comparison) — `CLAUDE.md`/`AGENTS.md` som samme regelhjerne, `CHANGES.log` som fælles handoff, worktrees til store projekter, hooks når log-reglen skal være garanti.
-- [Verdent: Codex CLI vs Claude Code for Terminal Agent Workflows](https://www.verdent.ai/guides/codex-cli-vs-claude-code-terminal-agent-workflows) — begge flader flytter sig hurtigt; vurder workflowform, MCP/skills/review/session/budget og ikke "hvilken model vinder".
-
-### Fire supplerende
-
-- [GenAI Unplugged: OpenAI Codex Setup Guide](https://genaiunplugged.substack.com/p/openai-codex-setup-guide-beginner) — tilføjer konkret `handoff.md`-bro, terminal-i-Codex hvor Claude kan køres samme sted, permission-mode som autonomi-snit, Goals som long-running loop og sikkerhedsadvarsel ved app-/mail-adgang.
-- [arXiv: tap — A File-Based Protocol for Heterogeneous LLM Agent Collaboration](https://arxiv.org/abs/2606.14445) — tilføjer produktionsbevis for filbaserede beskeder + realtidsnotifikationer + separate worktrees; 27 dage, 209 PR'er, 717 artifacts, og flere review-fund i heterogene modelpar end homogene.
-- [GitHub: shinpr/codex-workflows](https://github.com/shinpr/codex-workflows) — tilføjer konkret Codex-implementering af scale-routing, PRD/design/task/commit-kæde, TDD, quality gates, fresh-context subagents og "1 task = 1 commit".
-- [GitHub: shinpr/claude-code-workflows](https://github.com/shinpr/claude-code-workflows) — tilføjer samme workflowform på Claude-siden: small/medium/large routing, design-sync, verification, fullstack slicing, review mod design docs og context separation.
-
-### Enighed på tværs
-
-- **Filer bærer samarbejde bedre end chat-hukommelse.** Kilderne gentager samme mønster: regler, handoff, design, tasks, reviews og test-evidens skal være repo-filer/PR-artifacts, ikke usynlig session state.
-- **Worktrees er ikke pynt ved store opgaver.** Når flere agenter arbejder parallelt, skal de isoleres i branch/worktree og først mødes ved PR/merge.
-- **Fælles regler skal projekteres til begge agenters læseflade.** `CLAUDE.md` og `AGENTS.md` må ikke drive fra hinanden; én sandhed skal generere begge.
-- **Kontekstseparation er en arkitektur, ikke en feature.** Generator, reviewer, verifier og fixer skal arbejde fra artefakter i friske kontekster, så den samme antagelse ikke bare genbruges.
-- **Cross-review-loopet er den praktiske kombinationsgevinst.** Værdien kommer ikke af at have to modeller i samme rum, men af en committet PR, en anden model som uafhængig reviewer, rettelser og ny review.
-- **Store opgaver skal routes efter scale.** Letvægtsopgaver må ikke drukne i tung proces; store eller kritiske opgaver må ikke slippe for PRD/design/test/review-kæden.
-
-### Modsigelser feltet tvinger stillingtagen til
-
-- **"CHANGES.log er nok" vs. "worktrees ved store opgaver".** Mit valg: enkel handoff-log er nok som hukommelsesformat, men ikke som isolation. Stork bruger handoff-log som evidens-view og worktrees som skadefladeværn.
-- **Full Access/Goals for autonomi vs. godkendelseskrav.** Mit valg: Goals/long-running loops kan bruges til transport efter plan-gate, men aldrig til krav, planvalg, risk-accept eller slut OK.
-- **Fast model-rolle vs. skiftende lead efter opgave.** Mit valg: Stork har faste ansvarsroller, men ikke fast "bedste model". Lead/indsats routes efter package-scale og led, ikke efter modeltro.
-- **Tool-features vs. workflow-kerne.** Mit valg: konkrete flader som `CLAUDE.md`, `AGENTS.md`, hooks, skills og PR-review bruges som adaptere. Sandheden er stadig workflow-docs, evidens-register og GitHub.
-
-### Virker i praksis vs. hype
-
-- **Virker i praksis:** committede PR'er som review-enhed, separate worktrees, filbaseret handoff, identiske regelprojektioner, explicit scale-routing, fresh-context review, tests før commit, hooks/checks der håndhæver log/regeldrift.
-- **Hype eller forfatter-præference:** "vælg én vinder-model", "Full Access er bare bedre", "memory/goals kan bære sandheden", "én app som command center løser governance", og "flere parallelle agenter er automatisk bedre".
-
-### Ændringer i denne forbedrede version
-
-| Ændring                                                                  | Hvad feltet viste                                                                                                     | Led der styrkes                              |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Scale-determination ved åbning                                           | DEV + begge workflow-repos bruger small/medium/large routing; store opgaver kræver mere struktur, små opgaver mindre. | Åbning, plan, Mathias-friskhed               |
-| Én regelrygrad med `CLAUDE.md` + `AGENTS.md` som genererede projektioner | GenAI-bridge og Verdent viser samme regler som praktisk bro; drift mellem filerne er kendt fejl.                      | Rolle-aktivering, handoff, doc-sandhed       |
-| Handoff-log som evidence-view                                            | GenAI bruger `CHANGES.log`/`handoff.md`; tap viser filbaserede beskeder overlever restart/notification-fejl.          | Handoff, restart, audit                      |
-| Cross-review-loop på committet PR                                        | TDS, GenAI og tap peger på anden model som reviewer som den reelle kombinationsgevinst.                               | Build-validering, fejl-fangst, kvalitet      |
-| Token-/turn-/loop-budget pr. scale                                       | Verdent og GenAI viser task budgets/Goals/limits som praktisk driftspunkt; uden budget løber automatik.               | Automatisering, stop-state, Mathias-friskhed |
-| Permission-mode som led-politik                                          | GenAI setup viser Full Access vs default som autonomi-snit; sikkerhedsafsnittet advarer ved app/mail/private data.    | Transport vs dømmekraft, sikkerhed           |
-
-Svageste led i mit tidligere bud var derfor Step 5: review var korrekt uafhængig, men ikke stærk nok som iterativ kæde. Første v2 ændrede det til et SHA-/PR-bundet cross-review-loop med budget og stop-regler. Den fulde kæde-gennemgang viser nu et mere præcist svagt led: ikke review alene, men **overgangen mellem led**. Scale kan være forkert efter recon, regler kan drive mellem aktører, og review kan mangle den pakke der gør et PR-fund handlingsbart. Derfor er v2 nu strammet på overgangene, ikke kun på enkeltfunktionerne.
-
-### Helhedsgennemgang efter v2
-
-| Kædepunkt                       | Feltets signal                                                                                                       | Helhedsvurdering                                                                                                      | Ændring i buddet                                                                                                         |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Scale som livscyklus            | DEV + begge workflow-repos bruger scale-routing, men store opgaver ændrer ofte form efter intake/recon.              | En åbning-scale alene kan under-scope en pakke; scale skal starte foreløbig, bekræftes efter recon og låses i planen. | `Step 0`, `Step 1`, `Step 3` ændres til `scale-provisional → scale-signal → scale-lock`.                                 |
-| Actor-start som samlet kontrakt | GenAI-bridge, tap og DEV peger på filer/handoff/frisk kontekst som bro mellem heterogene agenter.                    | Regel-checksum, seneste handoff, korrekt SHA/PR og budget må ikke være fire løse checks; de skal være én startport.   | `Step 0`, `§2` og `§3` får actor-start-kontrakt, så ingen aktør starter et led med halv kontekst.                        |
-| Review-pakke før cross-review   | TDS' PR-loop, GenAI-handoff og workflow-repoernes design/task/review-kæde viser, at review kræver stabilt materiale. | Uafhængig review kan blive støj, hvis reviewer kun ser diffen og ikke plan-slice, tests, evidens-delta og handoff.    | `Step 5` kræver review-pakke før review-request.                                                                         |
-| Review-disposition efter fund   | TDS viser fix/re-review-værdien; Verdent og workflow-repos viser budget/quality-gates som værn mod uendelig drift.   | Et review-fund må hverken ignoreres tavst eller tvinge evigt loop; hvert fund skal klassificeres og lukkes synligt.   | `Step 5`, `§3`, `§4` og `§9` får dispositioner: blocker, fix-now, follow-up, false-positive-with-evidence, Mathias-gate. |
-| Evidens-register som router     | tap og workflow-repos viser at artifact-protokoller virker, når næste handling kan udledes af status, ikke chat.     | Registeret skal ikke kun dokumentere efterfølgende; det skal drive næste lovlige led og stoppe manglende bevis.       | `§2`, `§3` og `§6` gør evidens-gap til routing-input.                                                                    |
-| Rule-snapshot pr. pakke         | GenAI-bridge advarer indirekte mod drift i agentregler; tap viser at protokollen skal overleve parallel drift.       | Hvis workflow-regler ændres midt i en pakke, kan aktører godkende forskellige virkeligheder.                          | `Step 0`, `§3` og `§6` får rule-snapshot og rule-change gate.                                                            |
-
-### Hvad feltet bekræfter urørt
-
-- Fire aktør-godkendelser bliver stående. Kilderne løfter cross-review og filbaserede artefakter, men intet i feltet erstatter Mathias' krav/slutdom eller Claude.ai's krav-/meningsdom.
-- Worktree/blob-isolation bliver stående. TDS, GenAI og tap peger alle mod PR/commit/worktree som samlingspunkt, ikke delt working tree.
-- Evidens-register + GitHub bliver stående som sandhed. `CHANGES.log`/`handoff.md` er nyttige bro-formater, men feltet viser dem som transport/hukommelse, ikke som tilstrækkelig sandhed for Stork.
-- Full Access/Goals bliver stående som fravalg for dømmekraft. Kilderne viser autonomi-værdi efter plan-gate, men også behov for budget, permission-snit og stop.
-- Scale må stadig ikke fjerne hovedgates. Feltet bekræfter routing efter størrelse, men ingen kilde viser at små opgaver bør slippe krav-hash, plan-SHA eller slut OK.
-- Samtidig multi-agent-build af samme batch bliver ikke indført. Feltet viser værdi i uafhængig review på committet PR; parallel skrivning på samme batch ville svække ejerskab, disposition og rollback.
+**Modsigelse der styrer buddet:** feltet viser både værdi i stærke artefaktkontrakter og risiko for procesoverhead. Derfor har buddet et ufravigeligt sikkerhedsgulv, men scale afgør hvor tungt artefakterne materialiseres.
 
 ## 1. Struktur
 
-### Step 0 — Åbning, scale og isolering
+### Step 0 - Åbning, snapshot og foreløbig scale
 
-**Funktioner:**
+**Funktioner**
 
-- Mathias åbner en **pakke-case** på en author-verificerbar kanal.
-- Workflow-kernen opretter et entydigt pakke-id, evidens-register og aktør-workspaces.
-- Workflow-kernen laver **foreløbig scale-determination**: Small, Medium, Large eller Critical.
-- Scale starter som foreløbig procesvalg, bekræftes/ændres efter recon og låses først i plan-SHA. Scale styrer artefakt-dybde, review-cadence, budgetter og loop-grænser. Scale må aldrig fjerne krav-hash, plan-SHA eller slut-gate.
-- Workflow-kernen tager et **rule-snapshot** af den gældende workflow-sandhed. Pakken kører på snapshot'et, medmindre en rule-change gate eksplicit åbnes.
-- Workflow-kernen genererer/validerer regelprojektioner: `docs/workflow/*` er sandhed; `.claude/CLAUDE.md` og `AGENTS.md` er adapter-projektioner med samme checksum.
-- Workflow-kernen opretter `handoff.jsonl` som append-only view af evidens-registeret; ingen aktør starter et led uden at læse seneste handoff.
-- Workflow-kernen håndhæver en **actor-start-kontrakt** før hvert led: korrekt rule-snapshot/checksum, seneste handoff læst, korrekt pakke-id/SHA/PR-kontekst og budget tilbage.
-- Hver aktør arbejder i egen branch/worktree.
-- Alle aktør-artefakter læses fra committede blobs/origin-refs, ikke fra den aktuelle working tree.
-- Preflight tjekker værktøjer, auth, mobil-modtagelse, stop-state, baseline, regel-drift, handoff-format og budgetprofil.
+- Mathias åbner en pakke på author-verificerbar kanal.
+- Workflow-kernen opretter pakke-id, aktør-workspaces, `package-ledger.json` og en genereret `worklog.md`.
+- Kernen tager `rule-snapshot.json` af workflow-regler og schema-versioner.
+- Kernen laver `scale-provisional`: `DIRECT`, `WORKFLOW`, `DELEGATED` eller `CRITICAL`.
+- Kernen vælger kontrakt-tæthed efter scale:
 
-**Formål:** Første led skal forhindre det der allerede gik galt: delt arbejdstræ, mutable untracked filer og branch-flip der ændrer andres virkelighed.
+| Scale       | Typisk scope                                   | Kontrakt-tæthed                                                     | Ufravigeligt gulv                                        |
+| ----------- | ---------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------- |
+| `DIRECT`    | 1-2 filer, non-sensitive                       | Pakke-preflight, genereret PR-template, disposition kun ved fund    | krav-hash, plan-SHA, mindst én uafhængig review, slut OK |
+| `WORKFLOW`  | 3-5 filer eller tværgående doc/kode            | Actor-start pr. hovedled, review-pakke pr. PR, disposition ved fund | samme gulv                                               |
+| `DELEGATED` | 6+ filer, flere batches eller uklar arkitektur | Fuld actor-start, fuld review-pakke, konkurrerende opsætninger      | samme gulv                                               |
+| `CRITICAL`  | løn, penge, schema, RLS, auth, dataadgang      | Fuld kontrakt uanset filantal, ekstra review-cadence                | samme gulv                                               |
 
-**Output:** pakke-id, `scale-provisional`, evidens-register, handoff-log, aktør-branches/worktrees, rule-snapshot-id, regel-checksum, actor-start-kontrakt, budgetprofil, baseline, "klar til recon".
+**Formål**
 
-### Step 1 — Parallel recon før krav
+Åbningen skal forhindre delt working-tree, stale regler og forkert procesdybde. Den må ikke gøre en lille pakke tungere end nødvendigt.
 
-**Funktioner:**
+**Output**
 
-- Code-recon: faktisk repo/kode/docs/forretningslogik i koden.
+Pakke-id, rule-snapshot, schema-version, `scale-provisional`, package-ledger, generated worklog, aktør-workspaces og "klar til recon".
+
+### Step 1 - Parallel recon med scale-signal
+
+**Funktioner**
+
+- Code-recon: repo/kode/teknisk realitet.
 - Codex-recon: uafhængig teknisk/verifikations-recon og feltmønstre.
-- Claude.ai-recon: forretningssprog, vision, forretningsforståelse, Mathias-intentioner og spørgsmål.
-- Recon-syntese: kun fund + åbne spørgsmål; ingen løsning, ingen plan.
-- Hver recon leverer et **scale-signal**: om den foreløbige scale stadig passer, eller om fundene kræver op-/nedskalering.
-- Recon-filer committes/pushes på aktørens egen branch og læses derefter fra blob.
+- Claude.ai-recon: forretningssprog, vision, Mathias-intentioner og dækningsspørgsmål.
+- Hver recon leverer `scale-signal`: behold, op- eller nedskalér.
+- Recon-filer committes og læses derefter fra blob/origin-ref.
+- Recon-syntese er kun fund + åbne spørgsmål, ikke løsning.
 
-**Formål:** Kravet skal være dækkende for alle forretningsfunktioner pakken rører, og kode-misforståelser skal opdages før plan.
+**Formål**
 
-**Output:** tre recon-filer + syntese + scale-signal + spørgsmål til Mathias.
+Kravet skal være dækkende før plan. En pakke der så lille ud ved åbning, kan opskaleres før planen låses.
 
-### Step 2 — Krav-dok-dialog og krav-hash
+**Output**
 
-**Funktioner:**
+Tre recon-filer, syntese, åbne spørgsmål, scale-signal og eventuelle Mathias-gates.
 
-- Claude.ai almindelig rolle skriver krav-dok fra Mathias' ord.
-- Code og Codex må kun flage dækningshuller og teknisk/faktisk urealiserbarhed; de må ikke skrive løsningen ind i kravet.
-- Mathias validerer med `krav OK <hash>`.
-- Krav-hash skal matche den fil, der bliver merged.
+### Step 2 - Kravspec med krav-ID og hash
 
-**Formål:** Intet bygges uden krav bag sig, og det skal kunne bevises hvilket krav Mathias godkendte.
+**Funktioner**
 
-**Output:** krav-dok på main + hash-bevis.
+- Claude.ai almindelig rolle skriver kravspec fra Mathias' ord.
+- Hvert krav får stabilt `K-<nr>` med acceptkriterie og kilde.
+- Code og Codex må flage dækningshuller og urealiserbarhed, men må ikke skrive løsningen ind i kravet.
+- Mathias godkender med `krav OK <hash>`.
+- Krav-hash skal matche den fil der bliver merged.
 
-### Step 3 — Plan med kontrolleret konkurrence
+**Formål**
 
-**Funktioner:**
+Krav-ID er tråden gennem hele workflowet. Intet bygges uden krav bag sig.
 
-- Code skriver hovedplanen.
-- Codex leverer adversarial plan-review og kan levere alternativ opsætning for afgørende valg.
-- Claude.ai laver krav-troskabs-review: kravets mening sætning for sætning mod planen.
-- Evidens-registeret knytter hver krav-sætning til planpunkt, testform, review-status og eventuel Mathias-gate.
-- Planen låser scale som `scale-lock` og forklarer afvigelser fra åbningens foreløbige scale.
-- Planen definerer review-pakkens minimumsindhold for hver batch: plan-slice, krav-id'er, diff/PR, test-output, evidens-delta, handoff-resumé og budgetstatus.
-- Planen definerer review-dispositioner, så hvert review-fund skal lukkes som blocker, fix-now, follow-up, false-positive-with-evidence eller Mathias-gate.
-- Planen fastlægger review-loopets kadence: hvilke batches kræver cross-review, maksimal antal fix/review-runder før stop, og hvilken scale der kræver ekstra review.
-- For hvert afgørende valg skal planen indeholde:
-  - valgt opsætning,
-  - to andre opsætninger,
-  - testet modsvar mod begge,
-  - hvorfor tabende opsætninger ikke vælges,
-  - hvilke tabende indvendinger der bliver til værn.
+**Output**
 
-**Konkurrence-mekanikkens plads:** Den skal være fast i planfasen for afgørende valg, men ikke som "bedste retoriske bud vinder". Den skal hedde **modspilsrunde**: to eller flere opsætninger prøves mod kontrakten og terminal-/repo-beviser, og den stærkeste evidens vinder. En tabende opsætning efterlades ikke som affald; dens bedste indvendinger bliver tests, gates eller fravalg.
+`krav.md` med krav-ID'er, acceptkriterier og hash-bevis.
 
-**Formål:** Første-løsning-svagheden dør først, når konkurrerende opsætninger faktisk skal slå hinanden på bevis.
+### Step 3 - Plan med scale-lock, plan-SHA og modspil
 
-**Output:** plan-SHA med `scale-lock`, modsvarsmatrix, krav→plan→test-bindinger, review-pakke-kontrakt, review-dispositioner, batch-/review-loop-kadence og budgetprofil.
+**Funktioner**
 
-### Step 4 — Fire aktør-godkendelser før build
+- Planen låser scale som `scale-lock`; mismatch mellem `scale-provisional` og recon `scale-signal` skal forklares og re-routes før plan-lock.
+- Planen mapper hvert krav-ID til planpunkt, testform, ejer, review-form og slut-evidens.
+- Afgørende valg får to modsvar. I `DIRECT` kan modsvar være korte og test-/kontraktbårne; i `DELEGATED` og `CRITICAL` kræves fuld matrix.
+- Planen fryses som `plan-SHA`.
+- Alle fire plan-godkendelser skal pege på samme aktuelle plan-SHA. Nyt plan-commit invaliderer tidligere godkendelser.
 
-**Funktioner:**
+**Formål**
 
-- **Mathias:** godkender at planen/byg-retningen er tro mod hans hvad.
-- **Claude.ai:** PASS/FEEDBACK på krav-troskab.
-- **Code:** build-ready og scope-ready.
-- **Codex:** teknisk APPROVAL/FEEDBACK.
-- Build-start kræver alle fire godkendelser på samme plan-SHA og ingen åbne Mathias-gates.
+Planen skal være stærk nok til at bygge efter, men ikke så tung at små pakker dør i proces.
 
-**Formål:** Planen kan ikke snige sig fra "plausibel" til "bygget" uden fuld rolle-validering.
+**Output**
 
-**Output:** build-start eller FEEDBACK-runde.
+Plan-SHA, scale-lock, krav-ID-dækningsmatrix, modsvarsmatrix, test-/review-form og build-start-kriterier.
 
-### Step 5 — Batch-build med led-validering
+### Step 4 - Fire aktør-godkendelser før build
 
-**Funktioner:**
+**Funktioner**
 
-- Code bygger i små batches.
-- Hver batch fryses som commit/PR, før den anden tekniske aktør reviewer.
-- Hver PR får en **review-pakke** før review-request: plan-SHA, plan-slice, krav-id'er, diff/PR-link, test-output, evidens-delta, seneste handoff-resumé og budgetstatus.
-- Cross-review-loopet kører sådan: build → commit/PR → uafhængig review i frisk kontekst → fix-commit → re-request review → gentag til grøn eller stop.
-- Loopet er bounded: scale bestemmer max-runder; samme fejlklasse to gange i træk udløser stop/ejer-gate i stedet for mere automatik.
-- Hvert review-fund får en **review-disposition** i evidens-registeret: `BLOCKER`, `FIX-NOW`, `FOLLOW-UP`, `FALSE-POSITIVE-WITH-EVIDENCE` eller `MATHIAS-GATE`. Builder må ikke ignorere fund tavst; reviewer må ikke gøre smag til blocker uden kontrakt/test/krav-belæg.
-- Mekaniske checks kører før frys: hash/SHA, ordret-diff, status/counter, filklasse, link/marker/deklaration.
-- Hver batch opdaterer evidens-registeret: hvilke krav/planpunkter blev dækket, hvilke tests/reviews beviser det, og hvilke åbne huller står tilbage.
-- Codex reviewer hver batch read-only som teknisk verifikator, når Code har bygget; hvis Codex bygger et teknisk batch-artefakt, skal Code-review køre mod den committede PR efter samme princip.
-- Claude.ai kaldes kun ind, når batchen rejser krav-/meningsspørgsmål eller skal oversætte Mathias-gate.
-- Mathias kaldes kun ind på beslutninger der er hans.
+- Mathias godkender planens hvad-retning på plan-SHA; hvis der ingen nye what-valg er, præsenteres kun en kort gatepakke.
+- Claude.ai giver krav-/menings-PASS på plan-SHA.
+- Code giver build-ready på plan-SHA.
+- Codex giver teknisk APPROVAL/FEEDBACK på plan-SHA.
+- Build-start kræver alle fire relevante godkendelser på samme SHA og ingen åbne Mathias-gates.
 
-**Formål:** Fejl, bordbrud og kædebrud fanges ved det led de opstår, ikke som slutrapport-overraskelse.
+**Formål**
 
-**Output:** batch-commits/PR'er, review-pakker, review-artefakter, review-dispositioner, fix-commits, loop-resultat, eventuelle fund-gates.
+Planen kan ikke glide fra plausibel til bygget uden fuld rolle-validering.
 
-### Step 6 — Slutrapport med fuld validering
+**Output**
 
-**Funktioner:**
+Build-start eller FEEDBACK-runde.
 
-- Code genererer/skriver slutrapport som læsbar projektion af evidens-registeret: krav-dækning, plan-afvigelser, test-evidens, åbne rester og links til GitHub-evidens.
-- Codex reviewer teknisk sandhed og kravdækning.
+### Step 5 - Batch-build med scale-passende review
+
+**Funktioner**
+
+- Builder arbejder i egen branch/worktree.
+- Hver batch fryses som commit/PR.
+- Review kører i frisk kontekst på committet PR.
+- Review-pakke er scale-passende:
+  - `DIRECT`: genereret PR-template med krav-ID, plan-SHA, test-output og diff.
+  - `WORKFLOW`: separat review-pakke med plan-slice, krav-ID'er, test-output, evidence-delta og budgetstatus.
+  - `DELEGATED`/`CRITICAL`: fuld review-pakke pr. batch plus ekstra review-cadence.
+- Review-fund får disposition:
+  - `BLOCKER`: skal rettes før batch kan lukke.
+  - `FIX-NOW`: rettes i samme loop.
+  - `FOLLOW-UP`: reelt, ikke-blokerende, får sporet issue/gæld med krav-ID og evidens.
+  - `FALSE-POSITIVE-WITH-EVIDENCE`: lukkes kun med test/source/kontraktbelæg.
+  - `MATHIAS-GATE`: hvad, risiko, scope eller workaround.
+- Loopet er bounded af scale. Samme fejlklasse to gange eller budget udløbet stopper og får ejer.
+
+**Formål**
+
+Cross-review skal fange reelle fejl uden at blive uendelig churn eller stille ignorering.
+
+**Output**
+
+Batch-commits/PR'er, review-resultater, dispositioner ved fund, fix-commits og evidence-opdatering.
+
+### Step 6 - Slutrapport og luk
+
+**Funktioner**
+
+- `worklog.md` genereres fra package-ledger + git/GitHub-state og drift-checkes.
+- Slutrapport genereres som læsbar projektion af krav-ID-dækning, plan-afvigelser, tests, reviews, åbne follow-ups og gates.
+- Codex reviewer teknisk sandhed og krav-ID-dækning.
 - Claude.ai reviewer krav/vision/forretning og rapportens mening.
 - Mathias giver slut OK.
-- Slut-merge kræver alle fire slut-godkendelser.
+- Slut-merge kræver fire slut-godkendelser.
 
-**Formål:** Intet lukkes uden fuld validering. Main/GitHub bliver sporet, ikke chat-hukommelsen.
+**Formål**
 
-**Output:** slutrapport + pakke-luk.
+Intet lukkes uden fuld validering, og færdige pakker kræver ikke ny manuel dokumentation oven på GitHub-sporet.
 
-### Step 7 — Renhed og arkivering
+**Output**
 
-**Funktioner:**
+Slutrapport, lukket package-ledger, merged PR'er og rent repo.
 
-- Pakke-artefakter lukkes: beholdes, genereres, flyttes eller slettes efter formål.
-- Idéer flyttes til idé-hjem og må aldrig blive workflow-sandhed.
-- Workflow-regler opdateres kun når pakken faktisk ændrer workflowet.
+### Step 7 - Renhed og arkivering
+
+**Funktioner**
+
+- Pakke-artefakter lukkes, arkiveres eller slettes efter formål.
+- Idéer flyttes til idé-hjem og må modsige workflow-sandheden.
+- Workflow-regler ændres kun via egen rule-change gate.
 - Slutrapport og GitHub er historikken.
 
-**Formål:** Repoet skal ikke vokse til et arkiv af gamle sandheder.
+**Formål**
 
-**Output:** rent repo efter pakke-luk.
+Repoet skal ikke blive et arkiv af gamle sandheder.
 
 ## 2. Kobling
 
-Kæden skal kobles med fjorten bærende bindinger:
+Kæden har ni bærende bindinger:
 
-1. **Pakke-id-binding:** alle artefakter, events og reviews hører til et bestemt pakke-id.
-2. **Scale-livscyklus-binding:** scale går fra `scale-provisional` til recon `scale-signal` til planens `scale-lock`; den bestemmer procesdybde, budget og review-kadence, men ikke om hovedgates findes.
-3. **Rule-snapshot-binding:** pakken peger på det workflow-snapshot den kører efter; midt-pakke regelændring kræver rule-change gate.
-4. **Regel-binding:** `docs/workflow/*` genererer `CLAUDE.md` og `AGENTS.md`; checksum-drift blokerer.
-5. **Actor-start-binding:** ingen aktør starter et led uden samme pakke-id, rule-snapshot, seneste handoff, korrekt SHA/PR-kontekst og budget tilbage.
-6. **Handoff-binding:** hver aktør læser seneste `handoff.jsonl`-event før start og skriver et nyt event ved led-luk.
-7. **Blob-binding:** aktører læser hinandens leverancer fra commits/origin-refs, ikke fra mutable working tree.
-8. **Hash-binding:** Mathias' krav OK peger på et konkret krav-dok.
-9. **SHA-binding:** plan- og review-godkendelser peger på en konkret plan.
-10. **PR-binding:** cross-review kører på committet PR/diff, ikke på den byggende agents session.
-11. **Review-pakke-binding:** review-request må kun sendes, når PR'en har plan-slice, krav-id'er, tests, evidens-delta, handoff-resumé og budgetstatus.
-12. **Review-disposition-binding:** hvert review-fund får en synlig disposition; uafklarede fund blokerer batch-luk.
-13. **Gate-binding:** hvert stop har en ejer: Code, Codex, Claude.ai eller Mathias.
-14. **Evidens-binding:** krav, planpunkt, test, review, commit, handoff, disposition og slutrapport bindes i ét register, og manglende binding router næste handling.
+1. **Krav-ID-binding:** `K-*` er primær tråd fra krav til slut.
+2. **Package-binding:** alle artefakter har pakke-id og branch/PR-reference.
+3. **Scale-livscyklus-binding:** `scale-provisional -> scale-signal -> scale-lock`.
+4. **Rule-snapshot-binding:** pakken kører på sit rule-snapshot; midt-pakke regelændring kræver gate.
+5. **Plan-SHA-binding:** fire plan-godkendelser skal pege på samme aktuelle plan-SHA.
+6. **Blob/PR-binding:** aktører læser committede blobs og PR'er, ikke mutable working tree.
+7. **Actor-start-binding:** fuld pr. hovedled i `WORKFLOW+`; let pakke-preflight i `DIRECT`.
+8. **Review-binding:** review kræver scale-passende materiale og disposition ved fund.
+9. **Ledger/worklog-binding:** package-ledger + GitHub er sandhed; worklog er genereret projektion med drift-gate.
 
-Ingen del må alene kunne bære flowet:
+Ingen del kan alene bære workflowet:
 
-- Recon uden krav er kun input.
-- Scale uden krav må kun vælge procesdybde.
-- Scale uden recon-bekræftelse må ikke låse plan.
-- Actor-start uden rule-snapshot/handoff/SHA/budget er ikke aktivering.
-- Regelfiler uden checksum kan drive og må ikke aktivere roller.
-- Handoff-log uden commit/PR er kun note, ikke bevis.
-- Krav uden hash må ikke planlægges.
-- Plan uden modspil må ikke godkendes.
-- Modspil uden test er kun mening.
-- Test uden aktør-dømmekraft er kun prefilter.
-- Review uden PR/SHA og review-pakke kan ikke starte eller lukke batch.
-- Review-fund uden disposition er et åbent hul, ikke en afsluttet review.
-- Slutrapport uden fire aktør-godkendelser kan ikke lukke pakken.
-- Slutrapport uden evidens-register er prosa, ikke bevis.
+- Worklog uden ledger/GitHub er prosa.
+- Ledger uden krav-ID er bogføring uden mening.
+- Scale uden recon-signal kan under-scope.
+- Review uden PR/SHA kan arve session-bias.
+- Fund uden disposition bliver enten tavst ignoreret eller uendelig churn.
+- Slutrapport uden fire godkendelser lukker ikke pakken.
 
 ## 3. Automatisering
 
 ### Automatiseres
 
-- Event-opdagelse.
-- Scale-determination efter deklarerede heuristikker.
-- Scale-signal sammenlignes mod foreløbig scale, og scale-lock valideres mod planen.
-- Rule-snapshot oprettes ved pakkeåbning og sammenlignes ved aktørstart.
-- Generering og drift-check af `CLAUDE.md`/`AGENTS.md` fra workflow-sandheden.
-- Handoff-log append, format-check og "seneste handoff læst"-check.
-- Actor-start-kontrakt: pakke-id, snapshot, checksum, handoff, SHA/PR-kontekst og budget.
-- Dispatch til aktørernes workflow-roller.
-- Status, led-log og notifikationer.
-- Evidens-registerets mekaniske felter: commits, SHA'er, PR'er, testnavne, review-refs, åbne gates.
-- Evidens-gap routing: manglende kravbinding, test, review-pakke eller disposition sender pakken til det led der ejer hullet.
-- Transport-PR'er, review-request og re-request efter fix.
-- Review-pakke format-check før review-request.
-- Review-disposition format-check og "ingen uafklarede blocker/fix-now"-check før batch-luk.
-- Baseline, idempotens og budget-counter.
-- Hash/SHA/deklaration/marker/fileclass/selftest.
-- Stop ved ukendt event/type/modtager.
-- Stop ved regel-drift, manglende handoff eller budget/loop-overskridelse.
-- Stop ved divergens, stale spor eller halvskrevet leverance.
+- Pakkeoprettelse, worktree/branch-oprettelse og package-ledger-initialisering.
+- Scale-provisional og scale-signal-sammenligning.
+- Rule-snapshot, schema-version-check og rule-projection-check.
+- Package-ledger mekaniske felter: krav-ID, SHA'er, PR'er, testnavne, review-refs, gates og dispositionsstatus.
+- Generering af `worklog.md` fra ledger + GitHub.
+- Drift-gate: worklogens mekaniske påstande re-deriveres og skal matche.
+- Krav-ID coverage-gate: krav uden plan/test/evidens blokerer.
+- Plan-SHA-gate: stale eller mismatchende approvals blokerer.
+- Review-request og re-request efter fix.
+- Review-pakke-format efter scale.
+- Disposition-check: blocker/fix-now åbne blokerer; follow-up kræver tracking; false-positive kræver evidens.
+- Budget/loop-counters.
+- Stop ved ukendt event, stale SHA, schema mismatch, drift, divergens eller halvskrevet leverance.
 
 ### Automatiseres aldrig
 
@@ -300,69 +245,59 @@ Ingen del må alene kunne bære flowet:
 - Claude.ai's krav-/meningsdom.
 - Codex' tekniske review-dom.
 - Codes tekniske valg inden for godkendt krav.
-- At overrule et review-fund som "acceptabelt".
-- Valget om at acceptere en risiko, et scope-skift eller en workaround.
+- At acceptere risiko, scope-skift, workaround eller overrule et review-fund uden belæg.
 
 ### Fejl-fangst ved hvert led
 
-- **Åbning:** forkert author ignoreres; pakke-id, scale, regel-checksum og handoff-log kræves.
-- **Actor-start:** mismatch i pakke-id, rule-snapshot, checksum, handoff-read, SHA/PR-kontekst eller budget blokerer før aktøren må arbejde.
-- **Recon:** syntese blokerer uden alle krævede recon-kilder; scale-signal uden belæg må ikke ændre scale.
+- **Åbning:** author, pakke-id, rule-snapshot, schema-version og scale-provisional kræves.
+- **Recon:** alle krævede recon-kilder kræves; scale-signal uden belæg ændrer ikke scale.
 - **Krav:** hash mismatch blokerer.
-- **Plan:** manglende scale-lock, modsvar, utestede modsvar, review-pakke-kontrakt, review-dispositioner, review-kadence eller budgetprofil blokerer.
-- **Godkendelse:** PASS/APPROVAL på forkert SHA blokerer.
-- **Build:** batch-review, selftest, committet PR og review-pakke før review; adapter-fejl stopper.
-- **Cross-review-loop:** samme fejlklasse to gange, konflikt mellem review og plan, manglende review-disposition eller loop-budget udløber stopper og tildeler ejer.
-- **Rule-change:** workflow-regelændring midt i en pakke kræver rule-change gate; ellers kører pakken videre på åbningens snapshot.
-- **Gate:** åben Mathias-gate pauser sporet.
-- **Slut:** manglende Claude.ai/Codex/Code/Mathias-godkendelse blokerer luk.
+- **Plan:** umappet krav-ID, manglende scale-lock, manglende modsvar eller manglende plan-SHA blokerer.
+- **Godkendelse:** godkendelse på forkert/stale plan-SHA blokerer.
+- **Build:** PR, tests og scale-passende review-materiale kræves.
+- **Review:** udisponerede fund blokerer batch-luk.
+- **Worklog:** drift mellem genereret worklog og ledger/GitHub blokerer.
+- **Schema/rules:** kørende pakke fortsætter på snapshot; migration kræver rule-change gate.
+- **Slut:** manglende Code/Codex/Claude.ai/Mathias-godkendelse blokerer luk.
 
 ## 4. Kontrolposter
 
 ### Mathias kaldes ind
 
 - Pakkeåbning.
-- Krav-validering (`krav OK <hash>`).
-- Planens hvad-gate, hvis planen har reelle valg der kræver hans accept.
-- Fund-gates: formål, scope, forretningsregel, risikoaccept, workaround.
-- Scale-override kun hvis `scale-lock` ændrer hvor meget af hans forretningsrisiko der vurderes nu; ikke for mekanisk filantal.
-- Review-fund med disposition `MATHIAS-GATE`, når fundet handler om hvad, risiko, scope eller accept af en workaround.
-- Beslutnings-sti-review: workflow-regler, stamme-docs, kode, DB, scripts, GitHub protection/adgang.
+- Krav-validering: `krav OK <hash>`.
+- Planens hvad-gate, når planvalg ændrer formål, scope, risiko eller prioritet.
+- Review-disposition `MATHIAS-GATE`.
+- Rule-change gate, hvis workflow-regelændring ændrer hans beslutningsflade.
 - Slut OK.
 
 ### Mathias holdes ude af
 
-- Actor-relæ.
-- Branch-/worktree-skift.
-- Statusbogføring.
-- Transport-PR'er på ramme-stier.
-- Genkørsler efter mekaniske fejl.
-- Cross-review-retry og re-request efter tekniske fix.
-- Klassifikation af tekniske review-fund som `FIX-NOW`, `FOLLOW-UP` eller `FALSE-POSITIVE-WITH-EVIDENCE`, medmindre dispositionen peger på hans beslutningsflade.
-- Regelfil-projektion og handoff-format.
+- Branch/worktree, transport, PR-relæ og statusbogføring.
+- Genkørsel efter mekaniske fejl.
+- Review-retry efter tekniske fix.
+- Klassifikation af tekniske fund som `FIX-NOW`, `FOLLOW-UP` eller `FALSE-POSITIVE-WITH-EVIDENCE`.
+- Schema-/worklog-drift-checks.
 - Hvordan-spørgsmål.
-- Konkurrencebedømmelse på teknik; den afgøres af kontrakt, tests og aktørernes rolleansvar.
 
 ### Fire-aktør-godkendelser
 
 - **Krav:** Mathias krav OK; Claude.ai kravtekst/mening; Code byggelighedsfakta; Codex teknisk realiserbarhedsfakta.
-- **Plan:** Code plan-ready; Codex APPROVAL; Claude.ai PASS; Mathias hvad-gate når påkrævet.
-- **Build-batch:** builder commit/PR; uafhængig teknisk review; fix-loop til grøn eller ejer-gate.
+- **Plan:** Code build-ready; Codex teknisk APPROVAL; Claude.ai krav-/menings-PASS; Mathias hvad-gate når påkrævet. Alle på samme plan-SHA.
+- **Build-batch:** builder PR; uafhængig teknisk review; fix/disposition-loop til grøn eller ejer-gate.
 - **Slut:** Code leverance-erklæring; Codex slut-review; Claude.ai slut-review; Mathias slut OK.
-
-Alle godkendelser skal være artefakt-båret og kunne læses efterfølgende uden chat-hukommelse.
 
 ## 5. Rolle-opsætning
 
 ### Claude.ai
 
-- **Workflow-rolle:** forretnings-recon, krav-troskabsdommer, Mathias-gate-oversætter, slutrapport-reviewer.
+- **Workflow-rolle:** forretnings-recon, kravspec-forfatter, krav-/meningsdommer, Mathias-gate-oversætter, slutrapport-reviewer.
 - **Almindelig rolle:** krav-dialog med Mathias og strategisk sparring i forretningssprog.
 
 ### Code
 
-- **Workflow-rolle:** builder, teknisk planforfatter, repo-/kode-recon, state-/transport-ejer, slutrapportforfatter.
-- **Almindelig rolle:** implementering af Stork-features, tests, migrations, UI/API og teknisk kvalitet.
+- **Workflow-rolle:** builder, teknisk planforfatter, repo-/kode-recon, transport-/state-ejer, slutrapportforfatter.
+- **Almindelig rolle:** implementering, tests, migrations, UI/API og teknisk kvalitet.
 
 ### Codex
 
@@ -371,10 +306,8 @@ Alle godkendelser skal være artefakt-båret og kunne læses efterfølgende uden
 
 ### Mathias
 
-Mathias er ikke AI-aktør, men hans flade deles i to:
-
 - **Beslutningsflade:** hvad, krav, forretning, risikoaccept, slut OK.
-- **Modtageflade:** led-status, gate-pakker, spørgsmål, alerts.
+- **Modtageflade:** genereret worklog, gate-pakker, korte spørgsmål og alerts.
 
 Modtagefladen må aldrig blive mekanisk relæ.
 
@@ -382,22 +315,29 @@ Modtagefladen må aldrig blive mekanisk relæ.
 
 ### Grundregel
 
-Repoet skal skelne mellem:
-
-- **Sandhed:** bindende.
-- **Workflow-regel:** bindende proces.
-- **Adapter-projektion:** genereret læseflade til en bestemt agent; ikke sandhed.
-- **Pakke-artefakt:** midlertidigt indtil pakke-luk.
-- **Evidens-register:** maskinlæsbar pakke-ledger.
-- **Historik:** slutrapporter + GitHub.
+- **Sandhed:** kravspec, plan-SHA, package-ledger, GitHub PR'er, rule-snapshot.
+- **Projektion:** `worklog.md`, `status.json`, slutrapport.
+- **Workflow-regel:** `docs/workflow/*`.
+- **Adapter-projektion:** `CLAUDE.md` og `AGENTS.md`, genereret fra samme workflow-regler.
 - **Idé:** må modsige, må aldrig styre.
+
+### Schema-ejerskab og versionering
+
+- Code ejer eksekverbar schema-/transport-implementering.
+- Codex reviewer schema-sandhed, drift og fail-closed-adfærd.
+- Claude.ai og Mathias inddrages kun hvis schemaændring ændrer mening, gates eller beslutningsflade.
+- `package-ledger.schema.json` versioneres med `schemaVersion`.
+- Hver pakke pin'er `schemaVersion` og `ruleSnapshotId`.
+- Kørende pakker fortsætter på deres snapshot som default.
+- Schema-/regelændring midt i pakke kræver rule-change gate og migrationsplan.
+- Mekaniske worklog-felter må ikke håndredigeres; de genereres fra ledger + GitHub og drift-checkes.
 
 ### Foreslået mappestruktur
 
 ```text
 repo-root/
-  CLAUDE.md              # genereret fra docs/workflow/*
-  AGENTS.md              # genereret fra samme kilde, samme checksum
+  CLAUDE.md              # genereret adapter-projektion
+  AGENTS.md              # genereret adapter-projektion, samme checksum
   docs/
     strategi/
       vision-og-principper.md
@@ -409,10 +349,8 @@ repo-root/
       gates.md
       scale-og-budgetter.md
       artefakt-kontrakt.md
-      actor-start-kontrakt.md
-      evidens-register.schema.json
+      package-ledger.schema.json
       rule-projection.schema.json
-      review-disposition.schema.json
       adapters/
         claude-ai.md
         code.md
@@ -423,17 +361,14 @@ repo-root/
         krav.md
         plan.md
         rule-snapshot.json
-        evidence.json
-        handoff.jsonl
-        status.json      # genereret/projektion af evidence.json
+        package-ledger.json
+        worklog.md        # genereret projektion
+        status.json       # genereret projektion
         recon/
           code.md
           codex.md
           claude-ai.md
-        review-packages/
-          <batch>.json
         reviews/
-        review-dispositions.jsonl
         slutrapport.md
     ideas/
       workflow/
@@ -443,432 +378,193 @@ repo-root/
         <dato>-<pakke>.md
 ```
 
-### Hvad er workflow-docs
-
-- `docs/workflow/workflow.md`: menneskelig step-for-step sandhed.
-- `docs/workflow/roller.md`: rolletyper og ansvar.
-- `docs/workflow/gates.md`: gate-ord, beslutnings-stier, ramme-stier.
-- `docs/workflow/scale-og-budgetter.md`: scale-heuristik, turn/token/loop-budget, review-cadence.
-- `docs/workflow/artefakt-kontrakt.md`: markers, `→NÆSTE`, hash/SHA, filnavne.
-- `docs/workflow/actor-start-kontrakt.md`: minimumskrav før en aktør må starte et led.
-- `docs/workflow/evidens-register.schema.json`: krav→plan→test→review→gate-kontrakt.
-- `docs/workflow/rule-projection.schema.json`: checksum og genereringskontrakt for `CLAUDE.md`/`AGENTS.md`.
-- `docs/workflow/review-disposition.schema.json`: lovlige review-dispositioner og lukke-regler.
-- `scripts/**` eller tilsvarende maskinlæsbar regelbog: den eksekverbare del.
-- Adapter-docs: kun aktivering/pointer, ikke rolleindhold.
-- `CLAUDE.md` og `AGENTS.md`: genererede adapter-projektioner; de må ikke håndredigeres som sandhed.
-
-### Hvad er udenom
-
-- Strategi-docs er anker, ikke workflow-regler.
-- Tekniske docs er reference/gæld, ikke proces.
-- Idé-docs er lovlige modsigelser, tydeligt mærket.
-- Slutrapporter er historik, ikke nye regler.
-- Lokal session-memory og agent-app history er brugerflade, ikke repo-sandhed.
-
 ### Slette-/flytteplan
 
-- `docs/coordination/v4-slettede-docs/**`: ud af levende repo; git-history er default hjem.
-- Gamle pakke-planer/krav i `docs/coordination/arkiv/**`: slettes eller flyttes til history kun hvis slutrapport ikke dækker.
-- `gov-5-automation-*` og `rette-til-*`: behold kun indtil workflow-færdiggørelse lukker; derefter slutrapport/history eller slet.
-- `gov-6-forslag-og-udskudte.md`: opløses i krav/plan eller `docs/ideas/workflow/`.
-- `aktiv-plan.md` og `seneste-rapport.md`: erstattes af genereret current-state eller én kort pointer.
-- `docs/claude-ai/SKILL.md`: behold kun som ren adapter/pointer.
-- `docs/codex/sandbox-opsaetning.md`: teknisk reference, ikke workflow-regel.
-- Håndskrevne `CLAUDE.md`/`AGENTS.md` med selvstændige regler: erstattes af genererede projektioner fra `docs/workflow/*`.
-- Løse `CHANGES.log`/`handoff.md` uden schema eller package-id: migreres til `handoff.jsonl` eller slettes efter slutrapport.
+- Gamle pakke-planer, recon og rapporter flyttes til package-history eller slettes, hvis slutrapport/GitHub dækker.
+- `aktiv-plan.md` og `seneste-rapport.md` erstattes af genereret current pointer.
+- Løse `CHANGES.log`/`handoff.md` migreres til generated worklog eller slettes.
+- Håndskrevne `CLAUDE.md`/`AGENTS.md` med egne regler erstattes af genererede projektioner.
+- Idé-docs flyttes til `docs/ideas/workflow/`.
 
 ## 7. Fravalg
 
-### Fravalgt: delt working tree som leverancehjem
-
-Det er allerede observeret som skadeligt. Untracked filer i et delt træ har ingen author, ingen commit, ingen stabil branch og kan forsvinde ved checkout. Artefakter skal låses med commit+push.
-
-### Fravalgt: Cowork/postkasse som gate
-
-Cowork/postkasse kan blive informationskanal, men ikke gate, før author-verifikation er bevist. En lokal fil kan ikke alene bevise Mathias' beslutning.
-
-### Fravalgt: cloud-first rygrad
-
-Cloud-rutiner er relevante til audits og natlige checks, men Stork-flowet kræver lokal repo-state, GitHub-state, WSL/tooling og aktørernes konkrete arbejdstræer. Cloud kan supplere, ikke være fundament.
-
-### Fravalgt: permanent "bedste bud vinder" for hele workflowet
-
-Konkurrence løfter valg, når kriterier og beviser er faste. Den skader, hvis den belønner overbevisende tekst, store løfter eller aktører der skriver stærkest. Derfor skal konkurrence være en **kontrolleret modspilsrunde på afgørende valg**, ikke en permanent kampform for alle pakker.
-
-### Fravalgt: slutrapport som primær sandhed
-
-Slutrapporten er læsbar og nødvendig, men den må ikke være den primære sandhed. Hvis slutrapporten er primær, gentager vi den manuelle afskriftsfejl. Den primære pakke-sandhed skal være evidens-registeret + GitHub; rapporten er den menneskelige visning.
-
-### Fravalgt: én super-agent
-
-Kravet kræver fire aktører og modspil. Én agent der både skriver, bygger, reviewer og oversætter genskaber første-løsning-svagheden.
-
-### Fravalgt: direct main-push
-
-Det gør transport lettere, men fjerner PR/check/review-sporet. Main skal være resultat af validering, ikke transportgenvej.
-
-### Fravalgt: doc-lint som meningsdommer
-
-Docs-tests skal fange reelle brud. De må ikke udgive sig for at kunne afgøre vision/forretning/krav-mening.
-
-### Fravalgt: unbounded Full Access/Goals som workflow-rygrad
-
-Long-running autonomous loops er nyttige efter plan-gate, men uden scale-budget, permission-snit og stop-regler bliver de en ny fejlflade. De må bære transport, aldrig dømmekraft.
-
-### Fravalgt: `CHANGES.log` som primær sandhed
-
-Feltet viser, at en fælles log virker som bro, men Stork kræver stærkere bevis. Derfor bliver handoff en append-only projektion af evidens-registeret med package-id, SHA/PR og schema, ikke en løs tekstlog.
-
-### Fravalgt: parallel skrivning på samme batch
-
-Feltet viser værdi i uafhængig review på committet PR, ikke i at to tekniske aktører skriver samme batch samtidig. Samtidig skrivning kan se hurtigere ud, men svækker ejerskab, review-disposition, rollback og krav→plan→test-binding.
-
-### Fravalgt: review-fund som automatisk blocker
-
-Alle review-fund skal lukkes, men ikke alle fund skal stoppe pakken. Automatisk blocker-status ville gøre cross-review-loopet tungt og belønne støj; disposition med belæg holder både uafhængigheden og fremdriften.
-
-### Fravalgt: realtidsnotifikation som gate
-
-tap viser at notifikationer er nyttig transport, men en notifikation er ikke author-, SHA- eller krav-bevis. Stork kan bruge notifikationer til opmærksomhed, men gate-status bor i evidens-registeret og GitHub.
-
-### Fravalgt: scale som shortcut udenom hovedgates
-
-Scale skal beskytte Mathias' friskhed og vælge procesdybde. Hvis Small får lov til at springe krav-hash, plan-SHA eller slut OK over, bliver routing til governance-lækage.
+- **Delt working tree som leverancehjem:** observeret skadeligt; commits/PR'er er eneste stabile leverancehjem.
+- **Manuel worklog som sandhed:** kan blive stale. Worklog er genereret projektion med drift-gate.
+- **Multi-schema-sprawl:** review-dispositioner og actor-start skal ikke have egne schemaer. De bor i package-ledger/artefakt-kontrakt.
+- **Fuld kontrakt på alle Small-pakker:** beskytter ikke helheden hvis overhead bliver nyt svagt led. `DIRECT` bruger let form, men gulvet består.
+- **Scale der dropper gates:** scale må ikke fjerne krav-hash, plan-SHA, uafhængig review eller slut OK.
+- **Permanent "bedste bud vinder":** konkurrence bruges på afgørende valg, ikke som sport i alle led.
+- **Review-fund som automatisk blocker:** giver churn. Fund skal disponeres.
+- **Unbounded Full Access/Goals:** kan bære transport efter plan-gate, aldrig dømmekraft.
+- **Cloud-first rygrad:** kan supplere audits, men lokal repo/GitHub-state bærer workflowet.
+- **Én super-agent:** bryder kravet om modspil og fire aktører.
+- **Doc-lint som meningsdommer:** docs-tests må fange brud, ikke afgøre forretningsmening.
+- **Realtidsnotifikation som gate:** nyttig transport, men ikke author-/SHA-/krav-bevis.
 
 ## 8. Idé-liste dækket
 
-Status lukker krav-dokkets idé-liste. "Brugt" betyder, at funktionen faktisk er en del af buddets workflow. "Dækket af anden bærer" betyder, at samme metode er løst, men ikke med kandidatens produktflade som primær bærer. Henvisningerne peger på stabile afsnit i dette bud, så belægget ikke knækker ved formattering.
-
-Efter felt-syntesen bliver flere kandidater stærkere, men stadig ikke "brugt" som deres egen produktflade. De er dækket af Storks workflow-bærere: scale, rule-projection, handoff, PR-binding, worktrees, budgetter og evidens-register.
+Status lukker krav-dokkets idé-liste. "Brugt" betyder del af workflowet. "Dækket" betyder metoden løses af en anden bærer.
 
 ### Claude Code-egenskaber
 
-| Kandidat                           | Status                | Verificerbart belæg                                                                                                                                                                                                     |
-| ---------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hooks                              | DÆKKET AF ANDEN BÆRER | **Bærer:** scripts/checks for regel-drift, handoff-format, selftest og stop. **Metode:** lifecycle-værn. **Belæg:** `§3 Automatisering`, `§3 Fejl-fangst`, `§6 workflow-docs`.                                          |
-| `/goal`                            | FRAVALGT              | Konkret grund: en session-goal kan ikke alene bære krav-hash, plan-SHA, PR-binding og fire aktør-godkendelser; long-running loops er kun transport efter plan-gate. **Belæg:** `Fravalgt: unbounded Full Access/Goals`. |
-| `.claude/rules/`                   | DÆKKET AF ANDEN BÆRER | **Bærer:** `docs/workflow/*` plus genererede `CLAUDE.md`/`AGENTS.md`. **Metode:** samme regler til begge agenter uden at gøre Claude-fladen til sandhed. **Belæg:** `Step 0`, `§6 Dokument-opsætning`.                  |
-| Skills                             | DÆKKET AF ANDEN BÆRER | **Bærer:** workflow-docs, adapter-docs og eksekverbar regelbog. **Metode:** genbrugbare rolle-/gate-procedurer. **Belæg:** `§5 Rolle-opsætning`, `§6 workflow-docs`.                                                    |
-| Codex-plugin                       | FRAVALGT              | Konkret grund: formel Codex-gate skal være uafhængig af Code/Claude-konteksten; plugin kan bruges som før-review, men ikke gate. **Belæg:** `§4 Fire-aktør-godkendelser`, `§5 Codex`.                                   |
-| `/loop`                            | DÆKKET AF ANDEN BÆRER | **Bærer:** cross-review-loop + budget/stop. **Metode:** iterér build/review/fix uden ubegrænset session-loop. **Belæg:** `Step 5`, `§3 Automatisering`.                                                                 |
-| Statusline                         | DÆKKET AF ANDEN BÆRER | **Bærer:** evidens-register, `handoff.jsonl` og `status.json`. **Metode:** synlig led-status fra pakke-sandheden. **Belæg:** `Step 0`, `§6 mappestruktur`.                                                              |
-| Checkpointing (`/rewind`)          | DÆKKET AF ANDEN BÆRER | **Bærer:** commit+push, PR'er, branches/worktrees og blob-binding. **Metode:** rollback/genoptagelse på frosne artefakter. **Belæg:** `§2 Kobling`, `Fravalgt: delt working tree`.                                      |
-| `--from-pr`                        | DÆKKET AF ANDEN BÆRER | **Bærer:** PR-binding + blob-binding. **Metode:** genoptagelse/review fra frossen PR-kontekst. **Belæg:** `§2 Kobling`, `Step 5`.                                                                                       |
-| `/doctor` + `/context` + `/memory` | DÆKKET AF ANDEN BÆRER | **Bærer:** preflight, handoff-log, evidens-register og GitHub. **Metode:** diagnose/kontekst/persistens uden session-memory som sandhed. **Belæg:** `Step 0`, `§6 Hvad er udenom`.                                      |
-| Sandboxing                         | DÆKKET AF ANDEN BÆRER | **Bærer:** worktree-isolation, permission-/sti-snit, CI/checks og stop-regler. **Metode:** begræns skadeflade. **Belæg:** `Step 0`, `§3 Fejl-fangst`.                                                                   |
-| Headless                           | DÆKKET AF ANDEN BÆRER | **Bærer:** event-dispatch til workflow-roller. **Metode:** aktører kaldes uden Mathias som relæ. **Belæg:** `§3 Automatisering`, `§4 Mathias holdes ude af`.                                                            |
-| Agent SDK                          | DÆKKET AF ANDEN BÆRER | **Bærer:** workflow-kerne + adapter-docs. **Metode:** orkestrering via kontrakt frem for én SDK. **Belæg:** `Hovedbud`, `§6 adapters`.                                                                                  |
-| Agent view                         | DÆKKET AF ANDEN BÆRER | **Bærer:** evidens-register, handoff-log og status-projektion. **Metode:** observerbarhed. **Belæg:** `Step 0`, `§3 Automatisering`, `§6 mappestruktur`.                                                                |
-| Agent teams                        | FRAVALGT              | Konkret grund: peer-chat/team-runtime giver ikke i sig selv frosne blobs, PR-binding eller fire uafhængige gates. **Belæg:** `§2 Kobling`, `Step 5`.                                                                    |
-| Workflows                          | DÆKKET AF ANDEN BÆRER | **Bærer:** Storks workflow-kerne + `docs/workflow/*`. **Metode:** gentagelig pakkeproces med steps, gates, artefaktkontrakt og evidens. **Belæg:** `Hovedbud`, `§1 Struktur`, `§6 Dokument-opsætning`.                  |
-| ultrareview                        | FRAVALGT              | Konkret grund: stor-diff-review kan supplere, men kan ikke erstatte uafhængig Codex-gate, Claude.ai kravdom, Code build-erklæring og Mathias slut OK. **Belæg:** `§4 Fire-aktør-godkendelser`.                          |
-| Routines                           | DÆKKET AF ANDEN BÆRER | **Bærer:** workflow-docs + scripts + event/state. **Metode:** gentagelige procedurer/audits uden cloud-rutine som rygrad. **Belæg:** `§3 Automatisering`, `§6 workflow-docs`, `Fravalgt: cloud-first rygrad`.           |
-| Worktrees                          | BRUGT                 | **Brugt i buddet:** egen branch/worktree pr. aktør og worktree-isolation ved store opgaver. **Belæg:** `Step 0`, `§2 Blob-binding`, `Fravalgt: delt working tree`.                                                      |
-| Auto mode                          | FRAVALGT              | Konkret grund: opaque klassifikation må ikke bære governance-gates; buddet bruger deklarerede events, scale, filklasse, hash/SHA og stop-regler. **Belæg:** `Step 0`, `§3 Fejl-fangst`.                                 |
-| Computer use                       | FRAVALGT              | Konkret grund: desktop-kontrol er konto-/fladeafhængig og giver ikke stabilt artifact-, author- eller SHA-bevis. **Belæg:** `§4 Fire-aktør-godkendelser`, `Fravalgt: unbounded Full Access/Goals`.                      |
+| Kandidat                           | Status   | Belæg                                                                            |
+| ---------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| Hooks                              | DÆKKET   | Drift-gates, coverage-gates, worklog-drift og rule-projection checks i §3 og §6. |
+| `/goal`                            | FRAVALGT | Long-running loops bærer transport, ikke gates eller dømmekraft, jf. §7.         |
+| `.claude/rules/`                   | DÆKKET   | `docs/workflow/*` genererer `CLAUDE.md`/`AGENTS.md`, jf. §6.                     |
+| Skills                             | DÆKKET   | Rolle-/adapter-docs og workflow-regler, jf. §5-§6.                               |
+| Codex-plugin                       | FRAVALGT | Gate skal være uafhængig PR-/artifact-review, ikke in-session blanding.          |
+| `/loop`                            | DÆKKET   | Bounded cross-review-loop, jf. Step 5 og §3.                                     |
+| Statusline                         | DÆKKET   | Generated worklog/status, jf. §6.                                                |
+| Checkpointing (`/rewind`)          | DÆKKET   | Git commits/PR/worktrees, jf. §2.                                                |
+| `--from-pr`                        | DÆKKET   | PR-binding og fresh-context review, jf. §2 og Step 5.                            |
+| `/doctor` + `/context` + `/memory` | DÆKKET   | Preflight, rule-snapshot, worklog og package-ledger, jf. Step 0 og §6.           |
+| Sandboxing                         | DÆKKET   | Worktrees, permission-snit og fail-closed checks, jf. Step 0 og §3.              |
+| Headless                           | DÆKKET   | Event-dispatch og workflow-roller, jf. §3-§5.                                    |
+| Agent SDK                          | FRAVALGT | Workflow-kontrakten må ikke afhænge af én SDK.                                   |
+| Agent view                         | DÆKKET   | Worklog/status/ledger som observerbarhed, jf. §6.                                |
+| Agent teams                        | FRAVALGT | Peer-runtime giver ikke i sig selv PR/SHA/gate-bevis.                            |
+| Workflows                          | DÆKKET   | Hele §1-§6 er workflow-kernen.                                                   |
+| ultrareview                        | FRAVALGT | Kan supplere, men erstatter ikke fire aktører og krav-ID-review.                 |
+| Routines                           | DÆKKET   | Gentagelige gates/checks i §3 og §6.                                             |
+| Worktrees                          | BRUGT    | Egen branch/worktree pr. aktør, jf. Step 0 og §2.                                |
+| Auto mode                          | FRAVALGT | Opaque klassifikation bærer ikke governance; scale er deklareret.                |
+| Computer use                       | FRAVALGT | Desktop-kontrol giver ikke stabilt author-/SHA-bevis.                            |
 
 ### Codex-opsætning
 
-| Kandidat                 | Status                | Verificerbart belæg                                                                                                                                                                                                                                |
-| ------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| model + reasoning_effort | DÆKKET AF ANDEN BÆRER | **Bærer:** scale-/budgetprofil i adapterlaget. **Metode:** højere indsats på modsvar/review, lavere på mekanisk transport, uden at vælge én fast model som workflow-sandhed. **Belæg:** `Step 0`, `Step 3`, `docs/workflow/scale-og-budgetter.md`. |
-| approval_policy          | DÆKKET AF ANDEN BÆRER | **Bærer:** permission-mode som led-politik + gates. **Metode:** transport kan køre, dømmekraft kræver aktør/human. **Belæg:** `§3 Automatisering`, `Fravalgt: unbounded Full Access/Goals`.                                                        |
-| sandbox_mode             | DÆKKET AF ANDEN BÆRER | **Bærer:** worktree-isolation, sti-/permission-snit og fail-closed checks. **Metode:** begrænset skrive- og skadeflade. **Belæg:** `Step 0`, `§3 Fejl-fangst`.                                                                                     |
-| network_access           | DÆKKET AF ANDEN BÆRER | **Bærer:** preflight, GitHub/blob-transport og trusted adapter. **Metode:** netadgang som verificerbar transport, ikke beslutningsgrundlag. **Belæg:** `Step 0`, `§2 Blob-/PR-binding`, `§3 Automatisering`.                                       |
-| github-plugin            | DÆKKET AF ANDEN BÆRER | **Bærer:** GitHub som PR/blob/evidens-spor, uanset plugin/CLI. **Metode:** frosne artefakter, review-requests og historik. **Belæg:** `Hovedbud`, `§2 Kobling`, `Step 5`.                                                                          |
-| trust_level pr. projekt  | DÆKKET AF ANDEN BÆRER | **Bærer:** preflight, aktør-workspaces, regel-checksum og gate-ejerskab. **Metode:** workflow-automatik kun i kontrolleret repo-/worktree-kontekst. **Belæg:** `Step 0`, `§2 Gate-binding`, `§3 Fejl-fangst`.                                      |
+| Kandidat                 | Status | Belæg                                                    |
+| ------------------------ | ------ | -------------------------------------------------------- |
+| model + reasoning_effort | DÆKKET | Scale-/budgetprofil i §1 og §3.                          |
+| approval_policy          | DÆKKET | Transport vs. dømmekraft og permission-snit i §3 og §7.  |
+| sandbox_mode             | DÆKKET | Worktree/permission/fail-closed i Step 0 og §3.          |
+| network_access           | DÆKKET | GitHub/blob transport som verificerbart spor, jf. §2-§3. |
+| github-plugin            | DÆKKET | GitHub som PR/blob/evidens-spor, uanset konkret flade.   |
+| trust_level pr. projekt  | DÆKKET | Rule-snapshot, workspaces, actor-start og gates.         |
 
-## 9. Modsvar med testede knudepunkter
+## 9. Modsvar og testede knudepunkter
 
-### Testgrundlag
+### Hvad er testet, og hvad er ikke e2e-bevist
 
-```text
-pnpm kaede:selftest
-Resultat: Kæde-selftest: alle cases passed
-```
+`pnpm kaede:selftest` tester eksisterende transport-/fail-closed-primitiver. Det er nyttigt belæg for hash/SHA, author, stale-spor, stop og dispatch, men det er ikke et e2e-bevis for dette endelige workflow.
 
-Udvalgte grønne selftest-knudepunkter:
+De finale knudepunkter nedenfor er eksekverede terminalprober. De er kontraktprober, ikke fuld e2e.
 
 ```text
-qwers-åbning → kæden IGANGSÆTTES: Code + Codex recon-dispatches
-recon-syntese uden begge kode-docs → BLOKERET
-krav OK-hash ≠ fil-hash → krav-dok-merge BLOKERET
-PASS bundet til FORKERT plan-SHA → BLOKERET
-transport-vej: origin/main URØRT
-adapter-fejl → stop-fil skrevet
+schema-running-package schema-v1@rulesnap-a OK
+schema-change-without-gate BLOKERET:rule-change-gate
+schema-change-with-gate MIGRATION-PLAN-KRAEVET
+worklog-generated OK:derived-from-ledger
+worklog-drift BLOKERET:worklog-drift
+direct-small DIRECT->DIRECT actor-start:package-preflight review-package:generated-pr-template dispositions:on-findings-only
+direct-sensitive DIRECT+SAFETY-FLOOR->DIRECT+SAFETY-FLOOR cross-review:required
+recon-upscope DIRECT->DELEGATED plan-lock:DELEGATED
+plan-approval-same-sha BUILD-OK
+plan-approval-stale BLOKERET:plan-sha-mismatch
+review-follow-up DISPOSITION-OK:FOLLOW-UP:not-blocking
+review-false-positive-no-evidence BLOKERET:false-positive-evidence
 ```
 
-Felt-syntesens nye knudepunkter sanity-testet i terminalen:
+`pnpm kaede:selftest` er også kørt på samme branch:
 
 ```text
-scale-1-file Small maxLoops 1
-scale-6-files Large maxLoops 3
-scale-critical Critical maxLoops 4
-rule-projection OK:same-checksum
-rule-drift BLOKERET:rules-checksum
-handoff-missing BLOKERET:seneste-handoff-laest
-handoff-read START-OK
-review-no-pr BLOKERET:committed-pr-required
-review-with-pr REVIEW-OK:committed-pr
-loop-distinct LOOP-OK
-loop-repeat BLOKERET:gentaget-fejlklasse-ejer-gate
-loop-overbudget BLOKERET:loop-budget
+Kæde-selftest: alle cases passed
 ```
 
-Helhedskædens nye overgange sanity-testet i terminalen:
+### Opsætning A - Krav-ID spine
+
+**Valg:** Krav-ID er primær tråd.
+
+**Modsvar mod bred ledger uden primær tråd:** for meget kan bindes uden at vise krav-dækning.
+
+**Modsvar mod prosa-spec:** udeladelser bliver svære at fange.
+
+**Knudepunkt:** krav-ID coverage-gate blokerer umappede krav i plan.
+
+### Opsætning B - Generated worklog + ledger som sandhed
+
+**Valg:** Worklog er menneskelig flade; package-ledger + GitHub er sandhed.
+
+**Modsvar mod manuel worklog som sandhed:** stale worklog bliver ny driftgæld.
+
+**Modsvar mod fuld multi-schema-register:** flere schemaer bliver selv nye vedligeholdelsesled.
+
+**Terminalprobe:**
 
 ```text
-scale-lifecycle Small->Medium->Medium
-scale-critical Critical->Critical->Critical
-actor-start-ok START-OK:actor-start-contract
-actor-start-drift BLOKERET:actor-start-contract
-review-package-ok REVIEW-REQUEST-OK:review-package
-review-package-missing BLOKERET:review-package:planSlice,requirements,evidenceDelta,handoffSummary,budget
-disposition-fix DISPOSITION-OK:FIX-NOW
-disposition-false-positive BLOKERET:false-positive-evidence
-disposition-mathias DISPOSITION-OK:MATHIAS-GATE
-rule-change-without-gate BLOKERET:rule-change-gate
-rule-change-with-gate RULE-SNAPSHOT-OK
+worklog-generated OK:derived-from-ledger
+worklog-drift BLOKERET:worklog-drift
 ```
 
-### Opsætning A — Blob/worktree-isolation som artefaktregel
+### Opsætning C - Scale-livscyklus
 
-**Valg:** Aktører arbejder i egne branches/worktrees. Leverancer læses fra committede blobs/origin-refs.
+**Valg:** `scale-provisional -> scale-signal -> scale-lock`.
 
-**Modsvar mod delt working tree:** Observeret skadeligt; terminal viser nu separate worktrees.
+**Modsvar mod one-shot scale:** recon kan vise større scope end åbningen.
 
-**Modsvar mod "bare untracked files":** Recon-blobs findes på origin og kan læses uden checkout; untracked filer har ikke den garanti.
+**Modsvar mod fast tungvægt:** små ufarlige pakker brænder verifikationsressource.
 
-**Terminaltest:**
+**Terminalprobe:**
 
 ```text
-code-recon-blob-ok
-codex-recon-blob-ok
-
-worktree /home/mathias/stork-2.0       [codex-bud-workflow-faerdiggoerelse]
-worktree /home/mathias/stork-2.0-code  [claude/bud-code-workflow-faerdiggoerelse]
+direct-small DIRECT->DIRECT actor-start:package-preflight review-package:generated-pr-template dispositions:on-findings-only
+recon-upscope DIRECT->DELEGATED plan-lock:DELEGATED
 ```
 
-### Opsætning B — Event/state-machine som transport-rygrad
+### Opsætning D - Plan-SHA-binding
 
-**Valg:** Workflowet styres af events, state, regler og frosne artefakter.
+**Valg:** Alle fire plan-godkendelser peger på samme aktuelle plan-SHA.
 
-**Modsvar mod manuel relæ-opsætning:** qwers dispatches automatisk til to aktører; idempotens og behandlet-state er selftestet.
+**Modsvar mod "godkendt i chat":** kan være stale eller bundet til forkert version.
 
-**Modsvar mod always-on chat/session som rygrad:** selftest viser fail-closed ved ukendt event/type/modtager og stop-fil ved fejl. En session er aktørflade, ikke sandhed.
+**Modsvar mod PR-klik alene:** klik beviser ikke hvilken planversion aktøren vurderede.
 
-**Terminaltest:**
+**Terminalprobe:**
 
 ```text
-qwers-dispatch code:recon-kode,codex:recon-research
-syntese-uden-begge BLOKERET:begge-kode-recon-docs-findes
-syntese-med-begge claude-ai-rolle:recon-syntese
+plan-approval-same-sha BUILD-OK
+plan-approval-stale BLOKERET:plan-sha-mismatch
 ```
 
-### Opsætning C — Parallel recon + syntese
+### Opsætning E - Cross-review med disposition
 
-**Valg:** Code og Codex recon parallelt; Claude.ai syntese efter begge; Mathias afklarer.
+**Valg:** Review-fund lukkes som blocker, fix-now, follow-up, false-positive-with-evidence eller Mathias-gate.
 
-**Modsvar mod én samlet recon:** syntese blokerer uden begge kode-docs; én kilde er ikke nok.
+**Modsvar mod automatisk blocker:** giver churn på nits/follow-ups.
 
-**Modsvar mod Claude.ai først, kode bagefter:** kravet om kode-recon før krav understøttes af blokeringen uden begge tekniske inputs.
+**Modsvar mod tavs ignorering:** reelle fund forsvinder uden spor.
 
-**Terminaltest:**
+**Terminalprobe:**
 
 ```text
-syntese-uden-begge BLOKERET:begge-kode-recon-docs-findes
-syntese-med-begge claude-ai-rolle:recon-syntese
+review-follow-up DISPOSITION-OK:FOLLOW-UP:not-blocking
+review-false-positive-no-evidence BLOKERET:false-positive-evidence
 ```
 
-### Opsætning D — Author-verificeret gate + krav-hash
+### Opsætning F - Schema-snapshot og migration
 
-**Valg:** Mathias-gates bæres af author-verificerbare events og hash.
+**Valg:** Pakker pin'er schemaVersion og ruleSnapshotId; migration kræver gate.
 
-**Modsvar mod Cowork/lokal fil som gate:** forkert author ignoreres.
+**Modsvar mod flydende schema:** kørende pakker skifter regler under fødderne på aktørerne.
 
-**Modsvar mod PR-klik som eneste krav-gate:** hash mismatch blokerer; klik alene beviser ikke indholdet.
+**Modsvar mod frosne schemaer for evigt:** workflowet kan ikke udvikle sig.
 
-**Terminaltest:**
+**Terminalprobe:**
 
 ```text
-wrong-author IGNORER-GATE-ORD
-right-author GATE-ORD-REGISTRERET
-hash-mismatch BLOKERET:krav-ok-hash-matcher-fil-hash
+schema-running-package schema-v1@rulesnap-a OK
+schema-change-without-gate BLOKERET:rule-change-gate
+schema-change-with-gate MIGRATION-PLAN-KRAEVET
 ```
 
-### Opsætning E — SHA-bundet fire-aktør-godkendelse
+## 10. Endelig ændrings-log v2.1 -> final
 
-**Valg:** Build og luk kræver fire aktørers frosne godkendelser.
-
-**Modsvar mod Codex-only gate:** slut uden Claude.ai approval blokeres.
-
-**Modsvar mod Claude.ai/Mathias-only gate:** forkert Codex approval SHA blokerer build.
-
-**Terminaltest:**
-
-```text
-build-start-ok DISPATCH:code:build-start
-wrong-plan-sha BLOKERET:codex-approval-paa-aktuel-plan-sha
-slut-without-claude BLOKERET:claude-ai-approval-findes
-```
-
-### Opsætning F — Differentierede stier
-
-**Valg:** Beslutnings-stier kræver Mathias; ramme-/transport-stier kan merge efter rolle-validering og grøn CI.
-
-**Modsvar mod "alt kræver Mathias":** recon, plan og rapporthistorik klassificeres som ramme.
-
-**Modsvar mod "intet kræver Mathias":** scripts, CODEOWNERS og disciplin klassificeres som beslutning.
-
-**Terminaltest:**
-
-```text
-ramme docs/coordination/workflow-test-recon-kode.md
-ramme docs/coordination/workflow-test-plan.md
-beslutning scripts/kaede/dirigent.mjs
-beslutning .github/CODEOWNERS
-beslutning docs/strategi/disciplin.md
-ramme docs/coordination/rapport-historik/2026-06-15-workflow-test.md
-```
-
-### Opsætning G — Kontrolleret konkurrence som modspilsrunde
-
-**Valg:** Konkurrence bruges fast på afgørende valg, men kun som bevisbaseret modspil: opsætninger prøves mod kontrakt, tests og role reviews.
-
-**Modsvar mod ingen konkurrence:** kontrakten kræver to modsvar; uden modspil vender første-løsning-svagheden tilbage.
-
-**Modsvar mod permanent vinderkonkurrence:** delt arbejdstræ viste, at konkurrence uden isolation giver clobbering; "stærkest skrivende" kan se bedre ud end stærkest løsning. Derfor kræves blob/worktree-isolation og testmatrix.
-
-**Terminaltest af de nødvendige sikkerhedsrammer:**
-
-```text
-code-recon-blob-ok
-codex-recon-blob-ok
-worktree /home/mathias/stork-2.0-code [claude/bud-code-workflow-faerdiggoerelse]
-worktree /home/mathias/stork-2.0      [codex-bud-workflow-faerdiggoerelse]
-```
-
-### Opsætning H — Få sandheder + idé-hjem
-
-**Valg:** Workflow-docs samles; pakke-artefakter er midlertidige; idéer må modsige, men må ikke styre.
-
-**Modsvar mod nuværende coordination som levende sandhed:** recon viser blanding af gamle pakker, arkiv, forslag, status og aktivt workflow. Det skaber glid.
-
-**Modsvar mod kun GitHub og ingen rapportdocs:** GitHub er detaljespor; slutrapporten er den menneskelige slutfortælling. Begge er nødvendige, men de må ikke dubleres som regler.
-
-**Terminal-/repo-observation:** nuværende coordination-root rummer samtidig `gov-5-automation-*`, `rette-til-*`, `gov-6-forslag-og-udskudte.md`, `v4-slettede-docs/**`, `rapport-historik/**`, `aktiv-plan.md` og `seneste-rapport.md`. Det er ikke én sandhed; det er flere dokument-klasser i samme læseflade.
-
-### Opsætning I — Evidens-register som primær pakke-sandhed
-
-**Valg:** Hver pakke har et maskinlæsbar evidens-register. Slutrapporten er en læsbar projektion.
-
-**Modsvar mod manuel slutrapport som primær sandhed:** recon og historik viser stale/status-afskriftsfejl. Registeret kan mekanisk bære SHA'er, PR'er, testnavne og review-refs.
-
-**Modsvar mod kun GitHub som sandhed:** GitHub har detaljerne, men ikke den semantiske krav→plan→test-binding. Registeret binder GitHub-evidens til kravets mening.
-
-**Terminaltest der viser behovet for mekanisk binding:**
-
-```text
-krav OK-hash ≠ fil-hash → krav-dok-merge BLOKERET
-PASS bundet til FORKERT plan-SHA → BLOKERET
-transport-vej: origin/main URØRT
-```
-
-### Opsætning J — Scale og budget som livscyklus
-
-**Valg:** Alle pakker får foreløbig scale-determination ved åbning, scale-signal efter recon og scale-lock i planen. Scale styrer artefaktdybde, review-cadence og loop-budget, men aldrig om krav/plan/slut-gates findes.
-
-**Modsvar mod "alt kører tung kæde":** små pakker bruger færre runder og mindre dokumentdybde, så Mathias' friskhed ikke brændes på mekanik. Hvis recon viser større blast radius, opskaleres pakken før plan-lock.
-
-**Modsvar mod "ingen scale, bare agentens vurdering":** store/critical pakker får flere loops og stærkere artifacts, før arbejde må fortsætte. Scale er ikke en engangs-mavefornemmelse; den skal efterprøves mod recon.
-
-**Terminaltest:**
-
-```text
-scale-1-file Small maxLoops 1
-scale-6-files Large maxLoops 3
-scale-critical Critical maxLoops 4
-loop-overbudget BLOKERET:loop-budget
-scale-lifecycle Small->Medium->Medium
-```
-
-### Opsætning K — Regelprojektion + handoff-log
-
-**Valg:** `docs/workflow/*` er sandhed. `CLAUDE.md` og `AGENTS.md` er genererede projektioner med samme checksum. `handoff.jsonl` er append-only evidence-view, og aktørstart kræver at seneste handoff er læst.
-
-**Modsvar mod løse `CLAUDE.md`/`AGENTS.md`:** drift mellem regelfiler blokerer, i stedet for at to agenter kører forskellige regler tavst.
-
-**Modsvar mod løs `CHANGES.log`:** handoff skal have package-id, schema og SHA/PR-binding; ellers er den note, ikke bevis.
-
-**Terminaltest:**
-
-```text
-rule-projection OK:same-checksum
-rule-drift BLOKERET:rules-checksum
-handoff-missing BLOKERET:seneste-handoff-laest
-handoff-read START-OK
-actor-start-ok START-OK:actor-start-contract
-actor-start-drift BLOKERET:actor-start-contract
-rule-change-without-gate BLOKERET:rule-change-gate
-```
-
-### Opsætning L — PR-bundet cross-review-loop med review-pakke
-
-**Valg:** Kombinationen af Codex og den anden tekniske aktør bruges som committet PR-loop: build → PR med review-pakke → uafhængig review → disposition → fix/re-review eller gate → grøn eller stop.
-
-**Modsvar mod same-session review:** samme kontekst kan dele fejlantagelser; PR-review i frisk kontekst bevarer uafhængigheden.
-
-**Modsvar mod one-pass review:** feltet viser, at værdien ofte opstår, når review-fund bliver rettet og re-reviewed; ét review uden loop taber den gevinst.
-
-**Modsvar mod review uden pakke/disposition:** det kan give mange fund, men ikke en stabil kæde. Review-pakken sikrer at reviewer ser kontrakt, tests og evidens; dispositionen sikrer at fund lukkes uden tavs ignorering eller uendelig churn.
-
-**Terminaltest:**
-
-```text
-review-no-pr BLOKERET:committed-pr-required
-review-with-pr REVIEW-OK:committed-pr
-loop-distinct LOOP-OK
-loop-repeat BLOKERET:gentaget-fejlklasse-ejer-gate
-review-package-ok REVIEW-REQUEST-OK:review-package
-review-package-missing BLOKERET:review-package:planSlice,requirements,evidenceDelta,handoffSummary,budget
-disposition-fix DISPOSITION-OK:FIX-NOW
-disposition-false-positive BLOKERET:false-positive-evidence
-```
-
-### Opsætning M — Overgangskontrakter som samlet kæde
-
-**Valg:** De stærkeste feltmønstre samles som overgangskontrakter: scale-livscyklus, actor-start, review-pakke, review-disposition og rule-snapshot.
-
-**Modsvar mod isolerede gode led:** et stærkt review-loop hjælper ikke, hvis scale er forkert, aktøren starter på driftede regler eller review mangler plan/test/evidens. Overgangskontrakterne binder leddene, så næste aktør får det samme verificerede billede som forrige led lukkede på.
-
-**Modsvar mod at tilføje alt feltet:** notifikationer, full-access loops og parallel skrivning kan styrke transport eller hastighed, men svækker author-bevis, dømmekraft, ejerskab og rollback. Derfor bruges de kun som sekundær transport, ikke som kædebærere.
-
-**Terminaltest:**
-
-```text
-scale-lifecycle Small->Medium->Medium
-actor-start-ok START-OK:actor-start-contract
-actor-start-drift BLOKERET:actor-start-contract
-review-package-ok REVIEW-REQUEST-OK:review-package
-disposition-mathias DISPOSITION-OK:MATHIAS-GATE
-rule-change-without-gate BLOKERET:rule-change-gate
-```
-
-## Slutkonklusion
-
-Mit bud er ikke at pudse den nuværende kæde. Det er at gøre workflowet til Stork 2.0's build-kernel: en pakke-case med evidens-register, kontrolleret modspil, frosne aktørartefakter og fire aktør-godkendelser.
-
-Den færdige løsning skal gøre ni ting ufravigelige:
-
-1. **Alt vigtigt er frosset i GitHub, ikke i working tree.**
-2. **Scale er en livscyklus fra foreløbig vurdering til recon-signal til plan-lock.**
-3. **Scale bestemmer procesdybde, ikke om hovedgates findes.**
-4. **Pakke-sandheden bæres af evidens-register + GitHub, ikke manuel prosa.**
-5. **Regler, handoff og actor-start er filbaserede, genererede og checksum-/schema-validerede.**
-6. **Afgørende valg og batches møder testet modspil på committede artefakter.**
-7. **Cross-review kræver review-pakke og synlig disposition for hvert fund.**
-8. **Alle tre AI-aktører har workflow-rolle og almindelig rolle.**
-9. **Mathias' friskhed beskyttes ved at skære mekanik væk, ikke ved at skære hans beslutningsret væk.**
-
-Konkurrence hører hjemme i workflowet som kontrolleret modspil på afgørende valg og som cross-review-loop på committede PR'er. Ikke som permanent show, ikke som alt-eller-intet-kamp, og aldrig uden test, budget og stop. Det er sådan konkurrencen løfter uden at belønne det der bare virker stærkest.
+- Krav-ID blev gjort til primær spine, så package-ledger ikke bliver bred bogføring uden krav-dækning.
+- Worklog blev ændret fra artefakt i kæden til genereret projektion med drift-gate.
+- Schemafladen blev reduceret til `package-ledger.schema.json` + `rule-projection.schema.json`; review-dispositioner flyttede ind i ledger-schemaet.
+- Schema-ejerskab, versionering, snapshot og migration blev specificeret.
+- Scale blev gjort til reel kontrakt-tætheds-routing: `DIRECT` får let form, mens sensitive/opscope får fuld form.
+- Scale-livscyklus blev fastholdt og skærpet: `scale-provisional -> scale-signal -> scale-lock`.
+- Plan-SHA-binding blev gjort til eksplicit build-start-kontrakt for alle fire plan-godkendelser.
+- Review-dispositioner blev bevaret, men gjort lean: dispositioner oprettes kun ved fund; `FOLLOW-UP` og `FALSE-POSITIVE-WITH-EVIDENCE` lukker hullet mellem churn og tavs ignorering.
+- Testgrundlaget blev adskilt: `pnpm kaede:selftest` er primitive-belæg, finale terminalprober er kontraktprober, ikke påstået e2e.
