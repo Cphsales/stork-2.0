@@ -1,78 +1,76 @@
 # Plan — Pakke 1 (front-halvdel: åbning → godkendt plan)
 
 **Pakke:** workflow-færdiggørelse · **Del:** Pakke 1 af 2 (front-halvdel; bag-halvdel = Pakke 2) · **Forfatter:** Code · **Dato:** 2026-06-17
-**Status:** v2 (trin A) — Codex' trin-C-FEEDBACK adresseret; re-request review. Frosset som plan-SHA; trin C (Codex review + Claude.ai krav-troskab, SHA-bundet) → trin D (Mathias plan-gate, sidst krav 5).
+**Status:** v4 (trin A) — Codex' trin-C-FEEDBACK (runde 1-4) adresseret; re-request review. Frosset som plan-SHA; trin C (Codex review + Claude.ai krav-troskab, dual-hash-bundet) → trin D (Mathias plan-gate, sidst krav 5).
 **Grundlag:** krav-dok `c964826` (krav OK) · koblings-recon PR #166 `@2edb290` (Codex PASS) · proces PR #164 · finalbud Code #162 + Codex #163 (ramme, krav 11).
-**Form:** lean. Test-referencer `#162 §8X` = terminal-testet mekanisme i Code-buddet (PR #162, §8), gengivet lokalt pr. step.
+**Altitude:** planen NAVNGIVER tekst-artefakter + accept-tests + failure-cases; kontrakt-teksterne selv skrives i build (Pakke 1), ikke her. **Test-ref `#162 §8X`** = terminal-testet mekanisme i Code-buddet.
 
 ## Formål (plan-præmis)
 
-Pakke 1 bygger den del af workflowet der **kan producere en godkendt plan**: åbning → recon → kravspec → **krav-gate** → plan → **plan-gate**. Bootstrap: Plan 2 produceres derefter gennem front-halvdelen (acceptance). Plan-præmis = de to finalbud + de tre styrende docs (krav 11); ingen separat fundament-doc.
+Pakke 1 bygger den del af workflowet der **kan producere en godkendt plan**: åbning → recon → kravspec → **krav-gate** → plan → **plan-gate**. Bootstrap: Plan 2 produceres derefter gennem front-halvdelen (acceptance). Plan-præmis = de to finalbud + de tre styrende docs (krav 11).
 
 ## Krav-ID-dækning (K1–K11 → Pakke 1 / Pakke 2)
 
-`K1`–`K11` = krav-dokkets nummererede krav (stabile ID'er etableres her, S7).
+`K1`–`K11` = krav-dokkets nummererede krav (stabile ID'er etableres S7).
 
-| Krav                            | Pakke 1 leverer                                          | Step          | Test                                                | Udskudt → Pakke 2 |
-| ------------------------------- | -------------------------------------------------------- | ------------- | --------------------------------------------------- | ----------------- |
-| K1 grundigt                     | front-funktioner bygges+testes                           | alle          | hver komponent har egen test                        | bag-funktioner    |
-| K2 kæden hænger                 | krav=plan-led (krav-ID-tråd spec→plan→test)              | S7,S9         | coverage-gate (S7)                                  | plan=slut-led     |
-| K3 fejl løbende                 | coverage-gate, drift-gate, plan-review, hooks/CI         | S7,S3,S10,S13 | hver gate FAIL-test                                 | build-tids fangst |
-| K4 recon før krav/plan          | recon-step + format + recon-før-plan                     | S6            | denne pakkes koblings-recon #166                    | —                 |
-| K5 fire-aktør (Mathias sidst)   | **krav-gate** + **plan-gate** (4 aktører, Mathias sidst) | **S8, S9**    | S8 krav-gate-test + S9 plan-SHA-test                | slut-gate         |
-| K6 Mathias' bord + recon-format | recon i 3 kategorier; kun hvad til Mathias               | S6            | recon-format-output-test                            | —                 |
-| K7 roller (2 typer)             | rolle-aktivering for front-roller                        | S2            | rolle-skift kontrakt-vs-dialog                      | —                 |
-| K8 docs rent                    | `workflow/`-regelflade + governance + ingen dubletter    | S1            | governance-check grøn på nye stier                  | —                 |
-| K9 flow og gates                | åbning → krav OK → plan OK                               | S4,S8,S9      | S14 e2e                                             | build OK + slut   |
-| K10 master-plan styrer          | **master-plan-snapshot + ændrings-/modsigelses-gate**    | **S1, S11**   | S11 master-plan-ændret-siden-krav-OK → Mathias-gate | —                 |
-| K11 rammen (2 bud + 3 docs)     | plan-præmissen ER de to bud + tre docs                   | —             | opfyldt ved konstruktion                            | —                 |
+| Krav                            | Pakke 1 leverer                                                                          | Step             | Test                                                        | → Pakke 2         |
+| ------------------------------- | ---------------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------- | ----------------- |
+| K1 grundigt                     | tekstbårne funktioner = konkrete artefakter + adfærds-tests                              | S1,S2            | adfærds-test pr. artefakt (teksten virker, ikke kun findes) | bag-funktioner    |
+| K2 kæden hænger                 | krav=plan: matrix-gate + menings-gate                                                    | S7,S8,S9         | umappet/uændret-mening → FAIL                               | plan=slut         |
+| K3 fejl løbende                 | coverage/drift/recon/plan-review/hooks-CI gates                                          | S3,S6,S7,S10,S13 | hver gate FAIL-case                                         | build-tids fangst |
+| K4 grundig recon før krav/plan  | **grundig-recon-kontrakt** (stopper ikke ved første fund)                                | S1,S6            | recon der stopper for tidligt → FAIL                        | —                 |
+| K5 fire-aktør (Mathias sidst)   | krav-gate + plan-gate (4 aktører, Mathias sidst)                                         | S8,S9            | krav-gate + plan-SHA-test                                   | slut-gate         |
+| K6 Mathias' bord + recon-format | **Mathias-kommunikationskontrakt** (kun hvad) + **recon-præsentationskontrakt** (3 kat.) | S1,S2,S6         | hvordan/kode til Mathias → FAIL; ikke-3-kat-output → FAIL   | —                 |
+| K7 roller (2 typer)             | seks rolle-instrukser der importerer kontrakterne                                        | S2               | rolle-skift kontrakt-vs-dialog                              | —                 |
+| K8 docs rent                    | `workflow/`-regelflade + governance + ingen dubletter                                    | S1               | governance-check grøn på nye stier                          | —                 |
+| K9 flow og gates                | åbning → krav OK → plan OK                                                               | S4,S8,S9         | S14 e2e                                                     | build OK + slut   |
+| K10 master-plan styrer          | master-plan-snapshot + ændrings-/modsigelses-gate                                        | S1,S11           | master-plan-ændret → Mathias-gate                           | —                 |
+| K11 rammen (2 bud + 3 docs)     | plan-præmissen                                                                           | —                | ved konstruktion                                            | —                 |
 
-## Verificerede koblinger (fra recon #166)
+## Verificerede koblinger (recon #166)
 
-REUSE: PR/blob-handoff, worktree-isolation, CI/governance-skelet. EXTEND: plan-SHA-binding (2→4 aktører), gate-ord, plan-review (lokal-fil → committed-PR). NET-NEW: rule-snapshot, scale, krav-ID + coverage-gate, krav-gate, recon-format, worklog+drift-gate, dispositioner, master-plan-gate, kæde-uafhængig e2e, rolle-aktivering. (Sti/commit: PR #166.)
+REUSE: PR/blob-handoff, worktree-isolation, CI/governance-skelet. EXTEND: plan-SHA-binding (2→4), gate-ord, plan-review (lokal-fil→committed-PR). NET-NEW: rule-snapshot, scale, krav-ID+coverage-gate, krav-gate, kontrakt-artefakter (Mathias-comm/recon-format/grundig-recon/krav-troskab-metode), worklog+drift-gate, dispositioner, master-plan-gate, kæde-uafhængig e2e, rolle-aktivering.
 
 ## Implementerings-steps (afhængigheds-ordnet)
 
-Hver: **hvad · kobling (klasse) · test · krav-ID**.
-
-- **S1 — `workflow/`-regelflade + rule-snapshot + master-plan-snapshot + governance-allowlist** · NET-NEW (kobling: governance-check #166-2). **Konkrete tekst-artefakter:** fælles **regel-/gate-def-fil** (gate-ord, gate-defs, dispositions-vokabular), **spec-skema** (krav-ID-format + acceptkriterie-form), governance-allowlist-entries. Rule-snapshot = git-SHA af regel-flade pr. pakke; master-plan-SHA fanges i samme snapshot (K10); allowlist udvides samtidigt (lært af #166). · **Test (tekstbåren, krav 1 — teksten skal virke, ikke kun findes):** spec-skema accepterer en konform spec og **afviser** en der bryder skemaet; gate-def gater faktisk (FAIL-case); governance-check grøn på nye stier; snapshot-mismatch → BLOKERET (#162 §8A). · K8, K10, K3, K1.
-- **S2 — Rolle-aktivering: konkrete rolle-instrukser (2 typer pr. AI)** · NET-NEW (kobling: S1's regel-flade). **Konkrete tekst-artefakter — seks rolle-instrukser:** Code workflow + Code almindelig · Codex workflow + Codex almindelig · Claude.ai workflow + Claude.ai almindelig — hver importerer S1's fælles regler/gates; promptbar rolle-skift (krav 7). **Skills/routines:** fravalgt som metode-bærere i Pakke 1 (rolle-instrukser + custom-agents dækker; jf. #162 §9), genovervejes hvis Pakke 2 viser behov. Rolle-type-primitiverne (`--agents`/`--permission-mode`/skills) er produkt-features bevist i #162 §8C/§5, ikke repo-koblinger. · **Test (tekstbåren, krav 1 — teksten skal ÆNDRE adfærd):** workflow-rolle-instruks → aktiveret rolle giver **kontrakt-output** (#162 §8C: streng instruks → `{"verdikt":"PASS"}`); almindelig rolle → dialog; workflow-rollen holder transport/dømmekrafts-grænsen (laver ikke dømmekraft uden for sin bane). · K7, K1.
-- **S3 — Worklog/ledger v1 + drift-gate** · NET-NEW drift-gate; EXTEND observations-mønster (kobling: `tilstand.mjs` read-only reader #166-7). v1 af **blivende** struktur (forward-kompat): `schemaVersion` fra start; stabile felter `packageId/krav-ID/scale-*/kravHash/planSha/gate-state/artefakt-ref`; Pakke 2 udvider additivt; mekaniske felter genereres fra git + drift-tjekkes. · Test: worklog≠git → DRIFT BLOKERET (#162 §8M). · K3, K8.
-- **S4 — Author-verificeret åbning** · INSPIRATION/EXTEND (kobling: dirigent author-check l.104 #166-1). Front-halvdelens egen åbning: author-verificeret start-ord. · Test: forkert author → IGNORER; rigtig → ÅBNET. · K9.
+- **S1 — `workflow/`-regelflade + rule-/master-plan-snapshot + governance-allowlist + KONTRAKT-ARTEFAKTER** · NET-NEW (kobling: governance-check #166-2). **Konkrete tekst-artefakter (navngivet; tekst skrives i build):** (a) regel-/gate-def-fil (gate-ord, dispositions-vokabular), (b) spec-skema (krav-ID-format + acceptkriterie), (c) **Mathias-kommunikationskontrakt** (kun "hvad", aldrig kode/hvordan), (d) **recon-præsentationskontrakt** (krav 6: tre kategorier — nuværende kode / ikke-bygget / intet-data), (e) **grundig-recon-kontrakt** (krav 4: hele berørte scope kortlægges, stopper ikke ved første fund), (f) **krav-troskab-metode** (matrix-gate + menings-gate + failure-cases + dual-hash-binding; se S8). rule-snapshot+master-plan-SHA pr. pakke; allowlist udvides samtidigt. · **Test (krav 1, teksten virker):** spec-skema afviser ikke-konform spec; hver kontrakt har en FAIL-case (nedenfor); governance-check grøn; snapshot-mismatch → BLOKERET (#162 §8A). · K8, K10, K3, K1, K4, K6.
+- **S2 — Rolle-aktivering: seks rolle-instrukser der IMPORTERER kontrakterne** · NET-NEW (kobling: S1). Code/Codex/Claude.ai × {workflow, almindelig}; hver instruks **importerer** de relevante S1-kontrakter (alle: Mathias-comm + grundig-recon + recon-præsentation; Claude.ai-workflow også krav-troskab-metode). Skills/routines fravalgt i Pakke 1 (#162 §9). · **Test (krav 1, teksten ændrer adfærd):** workflow-instruks → kontrakt-output (#162 §8C); almindelig → dialog; rolle der sender hvordan/kode til Mathias → FAIL; transport/dømmekrafts-grænse holdt. · K7, K1, K6.
+- **S3 — Worklog/ledger v1 + drift-gate** · NET-NEW drift-gate; EXTEND reader (`tilstand.mjs` #166-7). v1 af blivende struktur (forward-kompat): `schemaVersion`, stabile felter `packageId/krav-ID/scale-*/kravHash/planSha/gate-state/artefakt-ref`; Pakke 2 udvider additivt; mekaniske felter genereres fra git + drift-tjekkes. · Test: worklog≠git → DRIFT BLOKERET (#162 §8M). · K3, K8.
+- **S4 — Author-verificeret åbning** · INSPIRATION/EXTEND (dirigent author-check #166-1). · Test: forkert author → IGNORER; rigtig → ÅBNET. · K9.
 - **S5 — Scale-livscyklus (provisional → signal → lock)** · NET-NEW. Ruter dybde, ikke gulvet; recon-mismatch → re-route. · Test: 1→DIRECT/9→DELEGATED; recon=7≠prov → re-route; sensitive → fuld cross-review (#162 §8F/§8N/§8K). · K9.
-- **S6 — Recon-step + recon-format (krav 6)** · EXTEND recon + NET-NEW format. 3-kategori-output (nuværende kode / ikke-bygget / intet-data); kode-recon FØR plan (krav 4). · Test: syntese blokerer uden alle kilder; output = 3 kategorier. · K4, K6.
-- **S7 — Kravspec: stabile krav-ID'er + hash + coverage-gate** · krav-ID NET-NEW; hash REUSE-princip (kobling: kaede-regler hash-match #166-4). `K-<n>` + acceptkriterie; krav-hash bindes; coverage-gate: umappet krav-ID → FAIL. · Test: umappet ID → BLOKERET (#162 §8E). · K2, K3.
-- **S8 — KRAV-GATE: fire-aktør på krav-hash (Mathias sidst)** · NET-NEW (kobling: S3-worklog + S7-hash). Tre AI-valideringer (Claude.ai krav-troskab + Code byggelighed + Codex realiserbarhed) bundet til **samme krav-hash**, derefter Mathias `krav OK <hash>` **sidst** (krav 5); stale/hash-mismatch → BLOKERET. **Plan kan ikke skrives/låses før krav-gaten er ren.** · Test: hash-mismatch → BLOKERET; plan-start før ren krav-gate → BLOKERET (S14 e2e). · K5, K9, K2.
-- **S9 — PLAN-GATE: plan-SHA fire-aktør-binding** · EXTEND (kobling: kaede-regler 2-aktør #166-6) + eksplicit status-check. Fire godkendelser navngiver samme plan-SHA; stale → afvist; Mathias sidst. NB (recon-BLOCKER): kan ikke bæres af branch-protection+CODEOWNERS alene → eksplicit status-check; _required på GitHub_ kræver **Mathias/admin-protection-opsætning** (beslutning, ikke antaget). · Test: stale-SHA → BLOKERET (#162 §8O). · K5, K9.
-- **S10 — Plan-review på committet PR + dispositioner** · EXTEND/INSPIRATION (kobling: codex-review.sh lokal-fil → committed-PR #166-10) + NET-NEW dispositioner. Review på **fetched PR/head-blob**; disposition pr. fund (`BLOCKER/FIX-NOW/FOLLOW-UP/FALSE-POSITIVE-WITH-EVIDENCE/MATHIAS-GATE`); loop bundet. · Test: FOLLOW-UP lukker / udisponeret blokerer (#162 §8P); bundet loop (#162 §8L). · K3, K5.
-- **S11 — Master-plan-konsistens-gate** · NET-NEW (kobling: S1 master-plan-snapshot). Tjek om master-plan er ændret siden krav OK, og om planen modsiger master-plan → **Mathias-gate** (krav 10: ændring/modsigelse kræver Mathias). · Test: master-plan-ændret-siden-krav-OK → Mathias-gate; plan modsiger master-plan → Mathias-gate. · K10.
-- **S12 — Gate-ord-afstemning** · EXTEND + afstemning #1. Eksterne gate-ord = Mathias' `krav OK / plan OK` (front; `build OK`/`slut OK` = Pakke 2) → interne states. · Test: gate-ord-mapping. · K9.
-- **S13 — Hooks/CI for front-artefakter** · EXTEND-skelet (kobling: ci.yml governance-job + PreToolUse #166-12). Checks for rule-snapshot, krav-ID-coverage, worklog-drift, master-plan-konsistens i CI/hooks. · Test: hver check FAIL-test i CI (#162 §8A). · K3, K8.
-- **S14 — Kæde-uafhængig e2e: åbning → godkendt plan** · NET-NEW (bevidst kæde-uafhængig, PR #164). Kører hele front-halvdelen på syntetisk pakke: åbning(S4) → scale(S5) → recon(S6) → kravspec(S7) → **krav-gate(S8)** → plan + plan-gate(S9) → plan OK. **Verificerer eksplicit at plan ikke kan låses før krav-gaten er ren.** · Test: e2e grøn = front-halvdelen bærer en plans tilblivelse uden manuel improvisation. · K1, K9.
+- **S6 — Recon-step (håndhæver grundig-recon + recon-præsentation)** · EXTEND recon + NET-NEW håndhævelse. Recon kortlægger **hele** scope (grundig-recon-kontrakt) og leverer 3-kategori-output (recon-præsentationskontrakt); kode-recon FØR plan (krav 4). · **Test (failure-cases):** recon der stopper ved første fund / mangler en kilde → FAIL; output ikke i 3 kategorier → FAIL. · K4, K6.
+- **S7 — Kravspec + matrix-gate (coverage)** · krav-ID NET-NEW; hash REUSE-princip (#166-4). `K-<n>` + acceptkriterie; krav-hash bindes; **matrix-gate:** hvert krav-ID → plan-step + test; **failure-cases:** K-ID uden step, K-ID uden test, plan-step uden K-ID, krav markeret Pakke 2 **uden begrundelse** → FAIL. · Test: hver failure-case → BLOKERET (#162 §8E). · K2, K3.
+- **S8 — KRAV-GATE: matrix-gate + menings-gate, fire-aktør på krav-hash (Mathias sidst)** · NET-NEW (kobling: S3+S7 + krav-troskab-metode S1f). **Matrix-gate** (mekanisk, S7) OG **menings-gate** (rolle, begge krævet): Claude.ai krav-troskab læser krav-dok+plan **sætning-for-sætning** (ikke kun matrix) og fanger overclaim, manglende krav, ændret mening, "teknisk løsning forklædt som kravopfyldelse". Tre AI-valideringer bundet til **samme krav-hash**; Mathias `krav OK` sidst; **verdikt navngiver krav-hash** (+ plan-SHA ved plan-gate). Plan kan ikke låses før ren krav-gate. · **Test (failure-cases):** plan-step der ændrer kravets mening → FEEDBACK; plan der spørger Mathias om hvordan/kode → FAIL; hash-mismatch → BLOKERET. · K5, K9, K2, K1.
+- **S9 — PLAN-GATE: plan-SHA fire-aktør-binding (dual-hash)** · EXTEND (#166-6) + eksplicit status-check. Fire godkendelser navngiver samme plan-SHA; krav-troskab-verdikt navngiver **både krav-hash OG plan-SHA** (ny plan eller nyt krav-dok invaliderer); stale → afvist; Mathias sidst. NB: 4-aktör kan ikke bæres af branch-protection+CODEOWNERS alene → eksplicit status-check; _required på GitHub_ kræver **Mathias/admin-protection-opsætning**. · Test: stale-SHA → BLOKERET (#162 §8O). · K5, K9.
+- **S10 — Plan-review på committet PR + dispositioner** · EXTEND/INSPIRATION (#166-10) + NET-NEW. Review på fetched PR/head-blob; disposition pr. fund; loop bundet. · Test: FOLLOW-UP lukker / udisponeret blokerer (#162 §8P); bundet loop (#162 §8L). · K3, K5.
+- **S11 — Master-plan-konsistens-gate** · NET-NEW (S1 master-plan-snapshot). Master-plan ændret siden krav OK, eller plan modsiger master-plan → **Mathias-gate** (krav 10). · Test: begge → Mathias-gate. · K10.
+- **S12 — Gate-ord-afstemning** · EXTEND + afstemning #1. `krav OK / plan OK` eksterne (front) → interne states. · Test: mapping. · K9.
+- **S13 — Hooks/CI for front-artefakter** · EXTEND-skelet (#166-12). Checks for rule-snapshot, krav-ID-coverage, worklog-drift, master-plan-konsistens, kontrakt-FAIL-cases. · Test: hver i CI (#162 §8A). · K3, K8.
+- **S14 — Kæde-uafhængig e2e: åbning → godkendt plan (+ failure-cases)** · NET-NEW (kæde-uafhængig, PR #164). Kører hele front-halvdelen på syntetisk pakke: åbning→scale→recon→kravspec→**krav-gate (matrix+menings)**→plan+plan-gate→plan OK. **Mekaniske failure-cases skal fejle:** dårlig recon (stopper for tidligt), hvordan/kode-spørgsmål til Mathias, K-ID uden step/test, Pakke-2-uden-begrundelse, plan-step der ændrer mening. · Test: e2e grøn = front-halvdelen producerer godkendt plan uden hånd-syning OG alle failure-cases fejler mekanisk. · K1, K9, K2, K4, K6.
 
-## End-to-end-test-design (acceptance)
+## End-to-end-test (acceptance)
 
-S14, kæde-uafhængig: åbning → scale → recon+format → kravspec+coverage → **krav-gate (4-aktør, Mathias sidst)** → plan + plan-SHA (4-aktør) → plan OK. Grøn = front-halvdelen producerer en godkendt plan uden hånd-syning, OG plan kan ikke låses før krav-gaten er ren. Endelig acceptance: Plan 2 produceret gennem front-halvdelen.
+S14, kæde-uafhængig: hele kæden + at den ikke kan producere en "komplet-udseende men utro" plan (failure-cases fejler). Endelig acceptance: Plan 2 produceret gennem front-halvdelen.
 
-## Implementerings-rækkefølge
+## Rækkefølge
 
-S1 → S2 → S3 (worklog tidligt; flere steps skriver) → S4 → S5 → S6 → S7 → **S8 (krav-gate)** → S9 (plan-gate) → S10 → S11 → S12 → S13 → S14 (samler).
+S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 (krav-gate) → S9 (plan-gate) → S10 → S11 → S12 → S13 → S14.
 
 ## IKKE i Pakke 1 (→ Pakke 2)
 
-batch-build, build-PR cross-review, slutrapport-generator, arkiv/oprydnings-automatik, `build OK` + `slut OK`-gates, slut-godkendelse (K5/K9-slut-del), fuld production-impl, multi-schema ledger (kun hvis Plan-2 beviser behovet).
+batch-build, build-PR cross-review, slutrapport-generator, arkiv/oprydning, `build OK`+`slut OK`, slut-godkendelse, fuld production-impl, multi-schema ledger (kun hvis Plan-2 beviser behovet).
 
 ## Afstemninger (lukket)
 
-1. Gate-navne (S12): `krav OK / plan OK` eksterne (front), mappet til interne states. 2. Recon-format (S6): krav 6's tre kategorier.
+1. Gate-navne (S12): `krav OK / plan OK` eksterne. 2. Recon-format (S6): krav 6's tre kategorier.
 
-## Lukkede dispositioner (Codex trin-C-FEEDBACK)
+## Lukkede dispositioner (Codex trin-C, runde 1-4)
 
-- **K5/K9 (BLOCKER):** ny **S8 krav-gate** (4-aktør på krav-hash, Mathias sidst); e2e tester plan-lås-blokeret-før-ren-krav-gate. ✓
-- **S2 (BLOCKER):** reklassificeret EXTEND → **NET-NEW** båret af S1; rolle-primitiver er #162-beviste produkt-features, ikke repo-koblinger. ✓
-- **K10 (FIX-NOW):** bundet til **S1 (master-plan-snapshot) + S11 (konsistens-gate)** med test. ✓
-- **FOLLOW-UP:** test-referencer gjort selvbærende (`#162 §8X` + lokal beskrivelse pr. step). ✓
+- R1: K5/K9 krav-gate (S8); S2 → NET-NEW; K10 → S1/S11; selvbærende test-refs. ✓
+- R2/R3: tekstbårne funktioner → konkrete artefakter + adfærds-tests (S1/S2). ✓
+- R4a: Mathias-comm + recon-præsentation + grundig-recon-kontrakter, importeret af rolle-instrukser, med FAIL-tests (S1/S2/S6). ✓
+- R4b: krav-troskab-**metode** — matrix-gate + menings-gate (begge krævet), failure-cases, dual-hash-binding (krav-hash + plan-SHA), som rolle-/regel-tekst + e2e (S1f/S7/S8/S9/S14). ✓
 
 ## Doc-currency
 
-Krav-dok `c964826` (krav OK) + koblings-recon `@2edb290` (Codex PASS) — current. Status-flip-bogføring på krav-dok (main siger UDKAST) — separat lille PR; blokerer ikke. Ingen intent-ændring mod vision/forretning.
+Krav-dok `c964826` + recon `@2edb290` — current. Status-flip-bogføring på krav-dok — separat PR. Ingen intent-ændring mod vision/forretning.
