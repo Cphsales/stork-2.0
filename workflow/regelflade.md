@@ -39,8 +39,12 @@ Ved Leverance-1-review skal disse konkrete tråde findes (ikke "noteret men ikke
 
 **S13-wiring (kører i CI, hærdet):** `scripts/workflow/selvtjek.mjs` (`pnpm workflow:selftest`) gør to ting, kørt som CI-step i governance-jobbet: **(1) dæknings-tjek** — hver `*-check.mjs` SKAL have en matchende selftest, ellers FAIL (lukker silent-skip via fejlnavn/manglende test; tvinger nye kontrakter f–m med); **(2) kørsel** — alle selftests køres, CI fejler hvis nogen fejler. `selvtjek.selftest.mjs` (meta) beviser begge fail-stier mod en temp-fixture. (Codex' tre CI-punkter: CI fejler-på-fejl ✓, ingen lydløs skip ✓, nye kontrakter tvinges med ✓.)
 
-## Klausuler (f)–(m) — bygges gennem Leverance 1
+## Klausul (g) — review-dybde / proportionel re-validering (deterministisk) ✅ bygget
 
-(f) krav-troskab-metode + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
+Autoritativ: `workflow/review-dybde-kontrakt.json` · checker: `scripts/workflow/review-dybde-check.mjs` · bevis: `scripts/workflow/review-dybde-check.selftest.mjs`. `decideReValidering()` afgør **deterministisk** (ikke skøn): ingen baseline → full-scope; berører en trigger (bærende kontrakt/krav-mapping/gate-semantik/rolle-instruks/recon-skema/aktør-aktivering/repo-sandhed/reviewer-miss) → full-scope; ellers diff-bundet. Kanariefugl: en trigger kan ikke gambles til diff-bundet.
+
+## Klausuler (f), (h)–(m) — bygges gennem Leverance 1
+
+(f) krav-troskab-metode (matrix done b · menings-gate · dual-hash · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
