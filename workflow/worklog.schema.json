@@ -1,0 +1,6 @@
+{
+  "_kontrakt": "S3: worklog/ledger v1 — blivende state-struktur (forward-kompat). Mekaniske felter verificeres mod kilde (git/filer); drift-gate: worklog ≠ kilde → DRIFT BLOKERET. Pakke 2 udvider additivt. Worklog er den PÅLIDELIGE state-kilde (j) binder mod (Codex' afhængighed). Gate-state lever HER (genereret), ikke i den hash-bundne krav-body.",
+  "schemaVersion": 1,
+  "stabileFelter": ["packageId", "kravHash", "planSha", "gateState", "scale", "artefaktRef"],
+  "planShaFormat": "^[0-9a-f]{7,40}$"
+}
