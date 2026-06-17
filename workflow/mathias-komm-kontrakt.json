@@ -1,0 +1,8 @@
+{
+  "_kontrakt": "Regel-flade klausul (c): Mathias-kommunikationskontrakt (krav 6). En Mathias-bundet besked er KUN 'hvad' (beslutning/retning) — aldrig kode/hvordan/mekanik. Checker mekaniserer den klareste overtraedelse (kode-hegn + impl-kommandoer); fuld regel staar i regelflade.md.",
+  "forbudtIMathiasFlade": {
+    "kodeHegn": "fenced code block (```), aktoer-flade laekket ind paa Mathias' bord",
+    "implKommandoer": ["git ", "npm ", "pnpm ", "node ", "supabase ", "gh "]
+  },
+  "tilladt": "inline kode-referencer som fakta (fx en SHA i backticks) er IKKE kode/hvordan og flagges ikke"
+}
