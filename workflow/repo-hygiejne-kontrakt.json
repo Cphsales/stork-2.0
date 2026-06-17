@@ -1,0 +1,14 @@
+{
+  "_kontrakt": "Regel-flade klausul (i): repo-hygiejne-/klassifikations-kontrakt (krav 8). Status- + handlings-taksonomi; én aktiv sandhed pr. emne; hver levende doc har formål + ejer-funktion + test/gate. S15(-light) kører denne over docs/.",
+  "statusTaksonomi": [
+    "aktiv-sandhed",
+    "workflow-funktion",
+    "historik",
+    "arkiv",
+    "midlertidig-bootstrap",
+    "dublet-konkurrerende",
+    "uden-formaal"
+  ],
+  "handlingsTaksonomi": ["behold", "fold-ind", "arkiver-git-historik", "slet"],
+  "levendeStatus": ["aktiv-sandhed", "workflow-funktion"]
+}

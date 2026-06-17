@@ -61,7 +61,11 @@ Autoritativ: `workflow/djaevel-kontrakt.json` · checker: `scripts/workflow/djae
 
 Autoritativ: `workflow/chat-recon-kontrakt.json` · checker: `scripts/workflow/chat-recon-check.mjs` · bevis: `scripts/workflow/chat-recon-check.selftest.mjs`. Fund fra chat-projektet skal cite med citat/dato/tråd + gyldig klassifikation (låst-beslutning/stærk-intention/mulig-præference/gammel-superseded/modsigelse-uklarhed); ukildet/uklassificeret → afvist (ingen usynlig sandhed). **Modsiger låste docs** (el. klassifikation `modsigelse-uklarhed`) → skal til **Mathias/FEEDBACK** (`tilMathias`), **aldrig anvendt som auto-sandhed** (`anvendtSomSandhed` → FAIL). (Codex-hærdning: Claude.ai vælger ikke selv.)
 
-## Klausuler (f), (h), (i) — bygges gennem Leverance 1
+## Klausul (i) — repo-hygiejne / klassifikation (krav 8) ✅ bygget
+
+Autoritativ: `workflow/repo-hygiejne-kontrakt.json` · checker: `scripts/workflow/repo-hygiejne-check.mjs` · bevis: `scripts/workflow/repo-hygiejne-check.selftest.mjs`. Validerer en repo-sandheds-inventory: gyldig status/handling pr. doc; hver **levende doc** (aktiv-sandhed/workflow-funktion) har formål + ejer-funktion + test/gate; **én aktiv sandhed pr. emne** (flere → `konkurrerendeSandhed` BLOKER). Grundlaget S15(-light) kører over hele `docs/`.
+
+## Klausuler (f), (h) — bygges gennem Leverance 1
 
 (f) krav-troskab-metode (matrix done b · menings-gate · dual-hash via j · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
