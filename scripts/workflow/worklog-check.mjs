@@ -51,13 +51,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const kravDokPath =
     process.argv[3] ?? resolve(here, "../../docs/coordination/workflow-faerdiggoerelse-krav-og-data.md");
   const worklog = JSON.parse(readFileSync(worklogPath, "utf8"));
+  // HÅRDE checks (deterministiske, miljø-uafhængige): schema + kravHash-drift + gate-state + format.
   const res = driftModKravDok(worklog, kravDokPath);
-  // Real-kilde-verifikation: planSha skal eksistere som commit i git.
-  if (worklog?.planSha && !planShaFindesIGit(worklog.planSha, resolve(here, "../..")))
-    res.fejl.push(`planShaIkkeIGit(${worklog.planSha})`);
   if (res.fejl.length) {
     console.error("WORKLOG DRIFT/AFVIST:\n  " + res.fejl.join("\n  "));
     process.exit(1);
   }
-  console.log("worklog OK (krav-hash drift-tjekket + planSha findes i git + gate-state konsistent)");
+  // BEST-EFFORT: planSha er ofte et cross-branch commit (plan-branchen), som en isoleret/
+  // lavvandet CI-checkout ikke har. Verificér eksistens HVOR objektet er tilgængeligt; ellers note
+  // (ikke en drift — de hårde checks ovenfor bærer integriteten).
+  if (worklog?.planSha && !planShaFindesIGit(worklog.planSha, resolve(here, "../..")))
+    console.warn(
+      `note: planSha ${worklog.planSha} ikke i denne checkout (cross-branch/lavvandet) — format + hermetiske checks gælder`,
+    );
+  console.log("worklog OK (krav-hash drift-tjekket + gate-state konsistent + planSha-format)");
 }
