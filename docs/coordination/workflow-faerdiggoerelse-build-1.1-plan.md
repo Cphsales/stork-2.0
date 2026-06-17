@@ -51,6 +51,7 @@ Hvert reelt aktør-output (Codex recon/review/verdikt; senere de øvrige) commit
 
 - **SHA-integritet (bindende):** `artifactSha` er **IKKE** et selvrapporteret felt. Gaten beregner selv **`computedArtifactSha`** fra den committede fil (git blob/commit-SHA) og binder den til state/register. Påstår en aktør-rapport selv en SHA, er det **kun metadata — aldrig autoritativt**. Et aktør-artefakt kan dermed ikke lyve om sin identitet (samme værn som mod fixtures).
 - **antiPaperGreen (bindende):** tomme felter, `"x"`, placeholders eller generisk tekst (coverage uden konkret flade, evidenceRefs uden reel reference) = **FAIL**.
+- **Tre aktør-artefakter (bindende — Codex-fund):** gaten kræver ÉT committet artefakt pr. AI-aktør — **Code, Codex, Claude.ai** — hver i dette format og gate-SHA-bundet. **Code-workflow-aktøren producerer sit EGET artefakt, adskilt fra Code-transport/orkestrator** (A1). Manglende aktør-artefakt eller orkestrator-fabrikeret verdikt → **BLOKER (F23)**.
 
 ---
 
@@ -58,7 +59,7 @@ Hvert reelt aktør-output (Codex recon/review/verdikt; senere de øvrige) commit
 
 _Afhængigheds-ordnet; hvert step kræver **runtime-effekt**, ikke selftest._
 
-- **A1 — Integrér `scripts/kaede` ↔ `workflow/` til ÉN runtime-sandhed; Code = runtime-orkestrator/transport.** Genbrug qwers, author-check, dispatch-log, fail-closed, transport-commit, parallel dispatch. **`scripts/kaede` må være transport-MOTOR, men `workflow/` er AUTORITATIVT for gates, state, test-klassifikation og acceptance — ikke to parallelle systemer.** Divergerer kaede-state og workflow-state → **BLOKER**. Opdatér læsefladen (CLAUDE.md / LÆSEFØLGE / aktiv-plan / disciplin) → frisk aktør finder Build 1-flowet (én sandhed). Code orkestrerer **kun transport** (opgave/SHA), aldrig dømmekraft. _Bevis:_ `qwers <pakke>` → aktivering deterministisk; kaede↔workflow-state-divergens → BLOKER.
+- **A1 — Integrér `scripts/kaede` ↔ `workflow/` til ÉN runtime-sandhed; Code = runtime-orkestrator/transport.** Genbrug qwers, author-check, dispatch-log, fail-closed, transport-commit, parallel dispatch. **`scripts/kaede` må være transport-MOTOR, men `workflow/` er AUTORITATIVT for gates, state, test-klassifikation og acceptance — ikke to parallelle systemer.** Divergerer kaede-state og workflow-state → **BLOKER**. Opdatér læsefladen (CLAUDE.md / LÆSEFØLGE / aktiv-plan / disciplin) → frisk aktør finder Build 1-flowet (én sandhed). Code orkestrerer **kun transport** (opgave/SHA), aldrig dømmekraft. **Skarp rolle-adskillelse (Codex-fund):** Code-**transport/orkestrator** må ALDRIG skrive eller ændre actor-verdikter — den flytter kun opgave/SHA. Code-**workflow-aktøren** er en separat rolle, der producerer sit eget committede actor-artefakt (A7/M2) på samme vilkår som Codex/Claude.ai. _Bevis:_ `qwers <pakke>` → aktivering deterministisk; kaede↔workflow-state-divergens → BLOKER; orkestrator-fabrikeret Code-verdikt → BLOKER (F23).
 
 - **A2 — Code→Codex CLI = første reelle aktørkanal (broen fra substrat til levende workflow).** Code starter Codex **headless** (`codex exec … < /dev/null`, frossen @ SHA — `codex.sh`-mønsteret) med **committet prompt + committet expected-output-format**. Codex' svar gemmes som **reelt, committet aktør-artefakt** i det kanoniske format; **gaten beregner selv `computedArtifactSha` fra den committede fil** og binder den til state — aldrig selvrapporteret SHA eller håndlavet fixture/literal. Build 1.1 beskriver IKKE længere Codex-verdikter som JSON-literals. _Gate-kanariefugle:_ F03 · F04 · F05 · F06 (se F-ID-liste).
 
@@ -70,7 +71,7 @@ _Afhængigheds-ordnet; hvert step kræver **runtime-effekt**, ikke selftest._
 
 - **A6 — S7 kravspec fra reel recon-hash.** _Bevis:_ krav-hash bundet mod committet recon-hash-1; F11/F12/F13.
 
-- **A7 — S8/S9 gates fra reelle aktør-artefakter.** Gaterne fodres af **faktiske, committede aktør-artefakter** (A2/A3) med **gate-beregnet `computedArtifactSha`** — **ikke testdata/literals/selvrapporteret SHA**. Strukturen er hård (PASS); kun runtime-fødningen tilføjes. _Bevis:_ fire-aktør (F14), Mathias sidst (F16), dual-hash/ikke-stale (F17) på gate-SHA-bundne artefakter; F15.
+- **A7 — S8/S9 gates fra reelle aktør-artefakter (tre AI + Mathias sidst).** Gaterne fodres af **tre committede AI-aktør-artefakter — Code, Codex, Claude.ai** — hver med **gate-beregnet `computedArtifactSha`**, **ikke testdata/literals/selvrapporteret SHA**. Code-aktør-artefaktet er adskilt fra Code-transport (A1). Strukturen er hård (PASS); kun runtime-fødningen tilføjes. _Bevis:_ fire-aktør (F14) inkl. Mathias sidst (F16), dual-hash/ikke-stale (F17) på gate-SHA-bundne artefakter; manglende/orkestrator-fabrikeret Code-verdikt → BLOKER (F23); F15.
 
 - **A8 — S11 reel master-plan snapshot/diff** (ikke flags). _Bevis:_ reel ændring/modsigelse → Mathias-gate mekanisk (F21).
 
@@ -109,32 +110,38 @@ A1 → A2 → A3 → A4 → A5 → A6 (C hærder A5–A7) → A7 → A8 → A9 �
 
 **Reel, committet testpakke gennem hele kæden uden fixtures** (trigger → aktører → recon-sandhed → krav-oplæg → gates). Acceptance-grøn = front-halvdelen producerer godkendt plan uden hånd-syning, **og hver kanariefugl (F-ID) fanges af sin station med `runtimeProof`**. **Først da: Plan 2.**
 
-**Kanariefugl-suite (eksplicit — ingen "~20"; hver mappes i acceptance-register):**
+**Afgrænsning (Codex-fund):** A10 er den **fulde M2-runtime-suite (F01–F26)** — **ikke** "fuld Plan 1-suite". **S1l chat-recon** (claude.ai-app) er en **eksplicit Mathias-godkendt M3-udskydelse** og tæller **ikke som løst**; den er ikke en del af M2-acceptance (spores i D-tabellen).
 
-| F-ID | Seedet fejl                                                       | Station | Forventet      |
-| ---- | ----------------------------------------------------------------- | ------- | -------------- |
-| F01  | forkert author                                                    | A1      | IGNORER/BLOKER |
-| F02  | qwers aktiverer ikke alle krævede aktører                         | A1      | FAIL           |
-| F03  | aktør kører ikke                                                  | A2      | FAIL           |
-| F04  | aktør-output ikke committet                                       | A2      | FAIL           |
-| F05  | actor-artefakt ikke gate-SHA-bundet                               | A2      | FAIL           |
-| F06  | actor-rapport placeholder/tom/"x"                                 | A2/C    | FAIL           |
-| F07  | recon stopper for tidligt                                         | A5      | FAIL           |
-| F08  | recon uden dokument-recon                                         | A5      | FAIL           |
-| F09  | recon uden S15-inventory-grundlag                                 | A4/A5   | FAIL           |
-| F10  | divergerende/u-konsolideret recon                                 | A5      | BLOKER         |
-| F11  | kravspec ikke bygget fra recon-hash                               | A6      | FAIL           |
-| F12  | kravspec uden reel medforfatterrapport                            | A6      | FAIL           |
-| F13  | krav driver fra vision/forretning uden FEEDBACK                   | A6      | FAIL           |
-| F14  | S8/S9 bruger literal/fixture i stedet for actor-artefakt          | A7      | FAIL           |
-| F15  | approval uden djævlens-advokatrapport                             | A7      | FAIL           |
-| F16  | Mathias ikke sidst                                                | A7      | FAIL           |
-| F17  | stale planSha/kravHash                                            | A7      | BLOKER         |
-| F18  | plan modsiger vision/krav uden FEEDBACK                           | A7      | FAIL           |
-| F19  | S15-full rød                                                      | A9      | BLOKER         |
-| F20  | konkurrerende aktiv sandhed i docs/                               | A4/A9   | BLOKER         |
-| F21  | master-plan ændret uden snapshot/diff/Mathias-gate                | A8      | BLOKER         |
-| F22  | cost/runaway el. hele-historik-recon hvor inventory skulle bruges | A5      | FLAG/BLOKER    |
+**Kanariefugl-suite (eksplicit F01–F26 — ingen "~20"; hver mappes i acceptance-register):**
+
+| F-ID | Seedet fejl                                                                                               | Station | Forventet      |
+| ---- | --------------------------------------------------------------------------------------------------------- | ------- | -------------- |
+| F01  | forkert author                                                                                            | A1      | IGNORER/BLOKER |
+| F02  | qwers aktiverer ikke alle krævede aktører                                                                 | A1      | FAIL           |
+| F03  | aktør kører ikke                                                                                          | A2      | FAIL           |
+| F04  | aktør-output ikke committet                                                                               | A2      | FAIL           |
+| F05  | actor-artefakt ikke gate-SHA-bundet                                                                       | A2      | FAIL           |
+| F06  | actor-rapport placeholder/tom/"x"                                                                         | A2/C    | FAIL           |
+| F07  | recon stopper for tidligt                                                                                 | A5      | FAIL           |
+| F08  | recon uden dokument-recon                                                                                 | A5      | FAIL           |
+| F09  | recon uden S15-inventory-grundlag                                                                         | A4/A5   | FAIL           |
+| F10  | divergerende/u-konsolideret recon                                                                         | A5      | BLOKER         |
+| F11  | kravspec ikke bygget fra recon-hash                                                                       | A6      | FAIL           |
+| F12  | kravspec uden reel medforfatterrapport                                                                    | A6      | FAIL           |
+| F13  | krav driver fra vision/forretning uden FEEDBACK                                                           | A6      | FAIL           |
+| F14  | S8/S9 bruger literal/fixture i stedet for actor-artefakt                                                  | A7      | FAIL           |
+| F15  | approval uden djævlens-advokatrapport                                                                     | A7      | FAIL           |
+| F16  | Mathias ikke sidst                                                                                        | A7      | FAIL           |
+| F17  | stale planSha/kravHash                                                                                    | A7      | BLOKER         |
+| F18  | plan modsiger vision/krav uden FEEDBACK                                                                   | A7      | FAIL           |
+| F19  | S15-full rød                                                                                              | A9      | BLOKER         |
+| F20  | konkurrerende aktiv sandhed i docs/                                                                       | A4/A9   | BLOKER         |
+| F21  | master-plan ændret uden snapshot/diff/Mathias-gate                                                        | A8      | BLOKER         |
+| F22  | cost/runaway el. hele-historik-recon hvor inventory skulle bruges                                         | A5      | FLAG/BLOKER    |
+| F23  | transport/orkestrator auto-validerer/muterer actor-verdikt · el. manglende/fabrikeret Code-aktør-artefakt | A1/A7   | BLOKER         |
+| F24  | Mathias-flade indeholder hvordan/kode/kommando i stedet for beslutningsflade                              | A6/C    | FAIL           |
+| F25  | invalid kravspec-matrix (K-ID uden step/test · plan-step uden krav · Pakke-2 uden begrundelse)            | A6      | BLOKER         |
+| F26  | handoff uden self-valideringsrapport bundet til artefakt/SHA                                              | A7/C    | FAIL           |
 
 **Milepæls-fasing:** (M1) **Code↔Codex** reel kæde uden fixtures = første sande bevis på broen. (M2) **alle tre** verdikt-kanaler reelle (Code + Codex + `claude -p`, jf. A3). (M3) **chat-recon (S1l)** når claude.ai-app-kanalen er løst — separat, uløst, blokerer ikke M2. **Acceptance-grøn = M2.**
 
@@ -144,6 +151,11 @@ A1 → A2 → A3 → A4 → A5 → A6 (C hærder A5–A7) → A7 → A8 → A9 �
 2. **Afgrænsning:** `claude -p` tæller **IKKE** som S1l chat-recon fra Claude.ai Windows-app'ens chathistorik → **S1l uløst/M3**.
 3. **S5 livscyklus:** eksplicit udskudt; resolved scale er nok for Build 1.1 front-proof.
 4. **C/D:** accepteret som **"ikke færdige, uden for Build 1.1" — ikke som løst.**
+
+## Review-spor (forbedringer → fund)
+
+- **Codex runde 1 (paste):** F01–F22 + computedArtifactSha + én runtime-sandhed + rolle-adskilt fremgangsmåde.
+- **Codex runde 2 (egen git-læsning, PR #172):** Code-aktør-artefakt adskilt fra Code-orkestrator (F23) · F24–F26 tilføjet · A10/S1l-ordlyd præciseret (M2-suite, S1l = M3-udskydelse, ikke løst).
 
 ## Doc-currency
 
