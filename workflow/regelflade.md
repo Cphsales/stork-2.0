@@ -37,6 +37,8 @@ Ved Leverance-1-review skal disse konkrete tråde findes (ikke "noteret men ikke
 - **(c)-tråd:** Mathias-komm-kontrakt → importeret af rolle-instruks → realistisk-opgave-fixture → output holder sig til Mathias' bord (hvad/valg/spørgsmål) → kanariefugl afviser kode/hvordan.
 - **(d)-tråd:** recon-format → påvirker næste led (krav-oplæg) korrekt — fixture nu, fuld e2e i Leverance 4.
 
+**S13-wiring (kører i CI):** alle substrat-selftests samles af `scripts/workflow/selvtjek.mjs` (`pnpm workflow:selftest`) og køres som CI-step i governance-jobbet — substratets kanariefugle **kører** (ikke papirgrøn). Nye kontrakters selftests auto-opdages.
+
 ## Klausuler (f)–(m) — bygges gennem Leverance 1
 
 (f) krav-troskab-metode + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
