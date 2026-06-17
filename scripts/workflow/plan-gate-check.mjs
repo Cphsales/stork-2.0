@@ -35,6 +35,11 @@ export function validatePlanGate(gate, def = loadDef()) {
   // Mathias sidst.
   const alleAi = def.aiAktoerer.every((a) => aiVerdikter.some((x) => x?.aktoer === a));
   if (gate?.mathiasVerdikt && !alleAi) fejl.push("mathiasIkkeSidst");
+  // Mathias' egen verdikt skal OGSÅ bindes til samme plan-SHA + krav-hash (ægte fire-aktør; Codex-lukning).
+  if (gate?.mathiasVerdikt) {
+    const bm = validateBinding(gate.mathiasVerdikt, gate?.current);
+    if (!bm.ok) fejl.push(...bm.fejl.map((x) => `binding(Mathias):${x}`));
+  }
   return { ok: fejl.length === 0, fejl };
 }
 

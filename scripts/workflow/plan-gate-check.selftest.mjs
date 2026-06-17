@@ -62,6 +62,13 @@ ok(
 );
 ok("manglende plan-troskab → FAIL", harFejl(validatePlanGate({ ...god, planTroskab: {} }), "manglerPlanTroskab"));
 ok(
+  "stale Mathias-verdikt → FAIL (ægte fire-aktør)",
+  harFejl(
+    validatePlanGate({ ...god, mathiasVerdikt: { aktoer: "Mathias", planSha: "STALE", kravHash: cur.kravHash } }),
+    "binding(Mathias):stale(planSha)",
+  ),
+);
+ok(
   "Mathias før alle AI → FAIL",
   harFejl(validatePlanGate({ ...god, aiVerdikter: [ai("Code"), ai("Codex")] }), "mathiasIkkeSidst"),
 );

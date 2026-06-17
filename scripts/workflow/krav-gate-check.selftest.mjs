@@ -73,6 +73,13 @@ ok(
   harFejl(validateKravGate({ ...god, currentReconHash: undefined }), "manglerCurrentReconHash"),
 );
 ok(
+  "stale Mathias-verdikt → FAIL (ægte fire-aktør)",
+  harFejl(
+    validateKravGate({ ...god, mathiasVerdikt: { aktoer: "Mathias", planSha: cur.planSha, kravHash: "STALE" } }),
+    "binding(Mathias):stale(kravHash)",
+  ),
+);
+ok(
   "ufuldt djævel-pass → FAIL",
   harFejl(
     validateKravGate({ ...god, djaevelPass: { krav: [{ id: "K-1", minLaesning: "m" }], approval: true } }),

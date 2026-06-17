@@ -41,6 +41,11 @@ export function validateKravGate(gate, def = loadDef()) {
   // Mathias sidst: hans verdikt må først komme når alle tre AI er der.
   const alleAi = def.aiAktoerer.every((a) => aiVerdikter.some((x) => x?.aktoer === a));
   if (gate?.mathiasVerdikt && !alleAi) fejl.push("mathiasIkkeSidst");
+  // Mathias' egen verdikt skal OGSÅ bindes til samme krav-hash (ægte fire-aktør; Codex-lukning).
+  if (gate?.mathiasVerdikt) {
+    const bm = validateBinding(gate.mathiasVerdikt, gate?.current);
+    if (!bm.ok) fejl.push(...bm.fejl.map((x) => `binding(Mathias):${x}`));
+  }
   return { ok: fejl.length === 0, fejl };
 }
 

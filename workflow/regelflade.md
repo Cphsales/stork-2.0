@@ -101,9 +101,9 @@ Runtime-stationerne der bruger substratets kontrakter. Bygget:
 
 Gate-orkestratorerne der komponerer L1-kontrakterne. Bygget:
 
-- **S8 — KRAV-GATE** (`krav-gate-check.mjs`): komponerer (f) krav-troskab + (k) djævlens-advokat-pass + (j) fire-aktør-binding på krav-hash + S7 kravspec **bundet mod aktuel S6 recon-sandhed** (Codex-note, nu obligatorisk ved gaten); Mathias sidst. Kanariefugle: manglende AI-verdikt / Mathias-før-AI / stale binding / recon-hash-mismatch / ufuldt djævel-pass → afvist.
+- **S8 — KRAV-GATE** (`krav-gate-check.mjs`): komponerer (f) krav-troskab + (k) djævlens-advokat-pass + (j) fire-aktør-binding på krav-hash + S7 kravspec **bundet mod aktuel S6 recon-sandhed** (Codex-note, nu obligatorisk ved gaten); Mathias sidst **og bundet til krav-hash** (ægte fire-aktør; stale Mathias-verdikt → FAIL, Codex-lukning). Kanariefugle: manglende AI-verdikt / Mathias-før-AI / stale binding / recon-hash-mismatch / ufuldt djævel-pass → afvist.
 
-- **S9 — PLAN-GATE** (`plan-gate-check.mjs`): dual-hash fire-aktør-binding (plan-SHA + krav-hash) + (k) djævel + plan⊨vision+krav + Mathias sidst; kan ikke låses før ren krav-gate.
+- **S9 — PLAN-GATE** (`plan-gate-check.mjs`): dual-hash fire-aktør-binding (plan-SHA + krav-hash) — **inkl. Mathias' egen verdikt** (stale Mathias → FAIL, Codex-lukning) — + (k) djævel + plan⊨vision+krav + Mathias sidst; kan ikke låses før ren krav-gate.
 - **S10 — plan-review + dispositioner** (`plan-review-check.mjs`): komponerer dispositions-vokabular (a) + proportionel re-validering (g); udisponeret/ugyldigt fund → blokerer.
 - **S11 — master-plan-konsistens** (`master-plan-check.mjs`): master-plan ændret / plan modsiger → kræver Mathias-gate (krav 10).
 - **S12 — gate-ord-afstemning** (`gate-ord-check.mjs`): hvert eksternt gate-ord → intern state (genbrug af a).
