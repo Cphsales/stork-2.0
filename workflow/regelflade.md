@@ -20,8 +20,14 @@ Autoritativ kilde: `workflow/spec-skema.json` · checker: `scripts/workflow/spec
 
 Autoritativ: `workflow/mathias-komm-kontrakt.json` · checker: `scripts/workflow/mathias-komm-check.mjs` · bevis: `scripts/workflow/mathias-komm-check.selftest.mjs`. En Mathias-bundet besked er kun **"hvad"** (beslutning/retning) — aldrig kode/hvordan. Kanariefugl: kode-hegn (```) eller impl-kommando (`git`/`pnpm`/…) på Mathias' bord → afvist. Inline fakta-referencer (fx en SHA i backticks) flagges ikke.
 
-## Klausuler (d)–(m) — bygges gennem Leverance 1
+**Test-dybde (Codex-punkt, bygges med S2):** mekanisk kode-afvisning er kun FØRSTE lag. Den fulde adfærds-test er at kontrakten **styrer rollens output-form** til hvad/valg/spørgsmål i en realistisk opgave (ikke bare fanger ordet "kode") — bevises i S2 (§8C: workflow-rolle → kontrakt-form-output; almindelig rolle → dialog).
 
-(d) recon-præsentationskontrakt + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
+## Klausul (d) — recon-præsentationskontrakt + recon-output-skema (krav 6 / S1d) ✅ bygget
+
+Autoritativ: `workflow/recon-skema.json` · checker: `scripts/workflow/recon-check.mjs` · bevis: `scripts/workflow/recon-check.selftest.mjs`. Forretnings-recon præsenteres i **3 kategorier** (nuværende-kode / ikke-bygget / intet-data); hvert fund struktureret (`{kilde, kategori, emne, evidensRef, aktør, klassifikation}`) så transport flettr parallelle aktør-recons **mekanisk**. Kanariefugl: fund uden påkrævet felt / ukendt kategori → afvist.
+
+## Klausuler (e)–(m) — bygges gennem Leverance 1
+
+(e) grundig-recon-kontrakt + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
