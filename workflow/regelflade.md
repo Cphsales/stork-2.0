@@ -65,8 +65,14 @@ Autoritativ: `workflow/chat-recon-kontrakt.json` · checker: `scripts/workflow/c
 
 Autoritativ: `workflow/repo-hygiejne-kontrakt.json` · checker: `scripts/workflow/repo-hygiejne-check.mjs` · bevis: `scripts/workflow/repo-hygiejne-check.selftest.mjs`. Validerer en repo-sandheds-inventory: gyldig status/handling pr. doc; hver **levende doc** (aktiv-sandhed/workflow-funktion) har formål + ejer-funktion + test/gate; **én aktiv sandhed pr. emne** (flere → `konkurrerendeSandhed` BLOKER). Grundlaget S15(-light) kører over hele `docs/`.
 
-## Klausuler (f), (h) — bygges gennem Leverance 1
+## Klausul (h) — recon-dybde-kontrakt ✅ bygget
 
-(f) krav-troskab-metode (matrix done b · menings-gate · dual-hash via j · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
+Autoritativ: `workflow/recon-dybde-kontrakt.json` · checker: `scripts/workflow/recon-dybde-check.mjs` · bevis: `scripts/workflow/recon-dybde-check.selftest.mjs`. Full-scope first-pass: recon viser sin **dækningsflade**, er **dedupliceret**, og i runde 2+ er et fund i allerede-dækket flade en **recon-miss**. Kanariefugle: manglende dækningsflade / dublet / recon-miss → afvist.
+
+## Klausul (f) — krav-troskab-metode (krav 2) ✅ bygget
+
+Autoritativ: `workflow/krav-troskab-kontrakt.json` · checker: `scripts/workflow/krav-troskab-check.mjs` · bevis: `scripts/workflow/krav-troskab-check.selftest.mjs`. **Komponerer** matrix (b/`validateSpec`) + dual-hash-binding (j/`validateBinding`) — ingen parallel logik — + menings-gate (rolle PASS/FEEDBACK registreret) + kumulativ kæde-troskab (krav⊨vision). Kanariefugle: fejl i hvert led (matrix/binding/menings/kæde) fanges.
+
+**Alle 13 klausuler (a–m) er bygget.** Tilbage i Leverance 1: 6 rolle-instrukser (S2, med (c)/(d)/(e)-test-trådene) + S15-light inventory.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.

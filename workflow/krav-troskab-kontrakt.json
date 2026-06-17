@@ -1,0 +1,5 @@
+{
+  "_kontrakt": "Regel-flade klausul (f): krav-troskab-metode (krav 2). Komponerer matrix-gate (b/spec-check) + dual-hash-binding (j/handoff-check) + menings-gate (rolle: PASS/FEEDBACK) + kumulativ kæde-troskab (krav⊨vision, plan⊨vision+krav). Genbruger (b)/(j) — ingen parallel logik.",
+  "meningsGateVerdikter": ["PASS", "FEEDBACK"],
+  "kaedeTroskabFelter": ["kravModVision"]
+}
