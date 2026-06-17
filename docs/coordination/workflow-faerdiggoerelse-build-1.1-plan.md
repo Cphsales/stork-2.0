@@ -1,0 +1,150 @@
+# Plan — Build 1.1 (front-halvdel: runtime + acceptance)
+
+> **Acceptance (done-kriterie):** Build 1.1 er først færdig, når en **reel, committet testpakke** kan køres gennem front-halvdelen **uden fixtures**: trigger → aktører → recon-sandhed → krav-oplæg → gates. **Ingen ny Plan 2 før den er sand.**
+
+**Pakke:** workflow-færdiggørelse · **Del:** Build 1.1 (fix-pakke for Pakke 1's front-halvdel) · **Forfatter:** Code · **Status:** UDKAST (ingen commit/build før Mathias godkender)
+
+**Grundlag:**
+
+- Build 1 `origin/main @ 97a650d` · Plan 1 v26 `@ 87652387`.
+- Konsolideret funktionstest (Code + Codex, 2026-06-18): strukturel kontraktlogik **stærk** (**S8/S9 = strukturelt PASS / runtime DELVIS**); runtime front-halvdel **RØD**; S14 acceptance **syntetisk**; **S15-full RØD**; `scripts/kaede` har **reel** transport, men er **ikke koblet** til `workflow/`.
+- **Eksisterende infra (verificeret):** `scripts/kaede/adapters/codex.sh` (`codex exec … < /dev/null`, frossen @ SHA), `code.sh` + `claude-ai-rolle.sh` (`claude -p … < /dev/null`); `codex` CLI på PATH. → **Code kan køre Codex headless fra sin terminal nu.**
+- Build 1.1 laves **manuelt**, ikke gennem den brudte front-halvdel.
+
+## Grundprincip (bindende)
+
+En test der ikke virker bliver præcist ÉN af fire: **A)** bygget i 1.1 (rød runtime-test) · **B)** omklassificeret som unit/structural og fjernet fra acceptance (syntetisk falsk-grøn) · **C)** hærdet mod papirgrøn (semantisk felt-tjek) · **D)** eksplicit udskudt med ejer + begrundelse (ikke færdig). **Ingen rød eller syntetisk test må længere give "færdig".**
+
+## Fremgangsmåde for Build 1.1 (arbejdsmetode — rolle-adskilt)
+
+Planen valideres ikke bare efter build; den **forbedres løbende** af Code/Codex uden at blande roller. Cyklus: **Code skriver/indarbejder → Codex reviewer (finder huller, må levere konkret forbedringstekst) → Code indarbejder → Codex reviewer igen → Mathias låser beslutninger/gates sidst.**
+
+1. Recon-/funktionstest-fund omsættes til **konkrete planændringer**, ikke kun accept/afvisning.
+2. Reviewer må levere **forbedringstekst**, men **committer aldrig som forfatter** (rolle-adskillelse; Code er forfatter).
+3. Hver forbedring **spores til et fund eller en rød/delvis funktion** (ingen anonyme ændringer).
+4. Ingen funktion kaldes færdig, før dens **acceptance viser samme type effekt som funktionen lover** (runtime-effekt, ikke form).
+5. Structural tests må bevares, men **tæller aldrig som acceptance**.
+6. **Acceptance-registeret er state-of-record** for hvad der kræves for grøn.
+7. **Mathias får beslutningsfladen** (kondenseret, beslutningsklar), ikke teknisk støj.
+
+## Håndhævelse — acceptance-register
+
+`workflow/acceptance-register.json` (ny) er **state-of-record**. Den tagger hver test `acceptance` | `structural` | `deferred{ejer, begrundelse}`, og mapper hver kanariefugl (F-ID nedenfor):
+
+```
+{ id, class: "acceptance", station, seed, expectedFailure, runtimeProof }
+```
+
+- **"Færdig"/acceptance-grøn kan KUN gives** når alle `acceptance`-tests er **runtime-grønne på en committet pakke** (A10).
+- **Ingen acceptance må stå "covered" uden `runtimeProof`** på committet testpakke.
+- En `structural`/syntetisk test **kan aldrig** bidrage til acceptance.
+- En `acceptance`-test uden runtime-impl = **rød gap**, vist åbent (ingen exit-0-rapport-snyd).
+- CI adskiller eksplicit **structural selftests** (kontraktlogik) fra **acceptance run** (runtime på committet pakke).
+
+## Aktør-artefakt-format (kanonisk — A2/A7/C)
+
+Hvert reelt aktør-output (Codex recon/review/verdikt; senere de øvrige) committes som artefakt i dette format:
+
+```
+{ actor, packageId, role, sourceSha, targetSha, coverage, evidenceRefs[], verdict, notVerified, generatedAt }
+```
+
+- **SHA-integritet (bindende):** `artifactSha` er **IKKE** et selvrapporteret felt. Gaten beregner selv **`computedArtifactSha`** fra den committede fil (git blob/commit-SHA) og binder den til state/register. Påstår en aktør-rapport selv en SHA, er det **kun metadata — aldrig autoritativt**. Et aktør-artefakt kan dermed ikke lyve om sin identitet (samme værn som mod fixtures).
+- **antiPaperGreen (bindende):** tomme felter, `"x"`, placeholders eller generisk tekst (coverage uden konkret flade, evidenceRefs uden reel reference) = **FAIL**.
+
+---
+
+## A — Røde runtime-tests (bygges i 1.1)
+
+_Afhængigheds-ordnet; hvert step kræver **runtime-effekt**, ikke selftest._
+
+- **A1 — Integrér `scripts/kaede` ↔ `workflow/` til ÉN runtime-sandhed; Code = runtime-orkestrator/transport.** Genbrug qwers, author-check, dispatch-log, fail-closed, transport-commit, parallel dispatch. **`scripts/kaede` må være transport-MOTOR, men `workflow/` er AUTORITATIVT for gates, state, test-klassifikation og acceptance — ikke to parallelle systemer.** Divergerer kaede-state og workflow-state → **BLOKER**. Opdatér læsefladen (CLAUDE.md / LÆSEFØLGE / aktiv-plan / disciplin) → frisk aktør finder Build 1-flowet (én sandhed). Code orkestrerer **kun transport** (opgave/SHA), aldrig dømmekraft. _Bevis:_ `qwers <pakke>` → aktivering deterministisk; kaede↔workflow-state-divergens → BLOKER.
+
+- **A2 — Code→Codex CLI = første reelle aktørkanal (broen fra substrat til levende workflow).** Code starter Codex **headless** (`codex exec … < /dev/null`, frossen @ SHA — `codex.sh`-mønsteret) med **committet prompt + committet expected-output-format**. Codex' svar gemmes som **reelt, committet aktør-artefakt** i det kanoniske format; **gaten beregner selv `computedArtifactSha` fra den committede fil** og binder den til state — aldrig selvrapporteret SHA eller håndlavet fixture/literal. Build 1.1 beskriver IKKE længere Codex-verdikter som JSON-literals. _Gate-kanariefugle:_ F03 · F04 · F05 · F06 (se F-ID-liste).
+
+- **A3 — Claude.ai-kanal (BESLUTTET, Mathias 2026-06-18).** Headless `claude -p` (`claude-ai-rolle.sh`, findes allerede) **tæller som Claude.ai-workflow-aktør for gate-verdikter** → alle tre aktørers verdikt-kanal reel (M2), ingen afvigelse fra "alle tre". **Afgrænsning (bindende):** dette tæller **IKKE** som **S1l chat-recon** fra Claude.ai Windows-app'ens chathistorik — den forbliver **uløst og app-bundet → M3**. `claude -p` må aldrig bruges til at påstå S1l dækket. _Bevis:_ Claude.ai-verdikt committet som gate-SHA-bundet artefakt via egen kanal; S1l markeret uløst.
+
+- **A4 — S15 minimum-inventory grøn FØR reel recon.** Recon (A5) læser aktive sandheder, én pr. emne. _Bevis:_ min.-scope grøn; konkurrerende sandhed → BLOKER før recon (F09/F20).
+
+- **A5 — S6 reel recon.** Faktisk recon på begge punkter (forretnings-recon før krav; kode-recon før plan) + dokument-recon, via de reelle CLI-kanaler (A2/A3) → **committet, hash'et recon-sandhed**. **S1l chat-recon (claude.ai-app) er IKKE inkluderet (M3, markeret åben — aldrig faket grøn).** _Bevis:_ recon-sandhed-1/2 committet; krav/plan bygges FRA hash'en; F07/F08/F10.
+
+- **A6 — S7 kravspec fra reel recon-hash.** _Bevis:_ krav-hash bundet mod committet recon-hash-1; F11/F12/F13.
+
+- **A7 — S8/S9 gates fra reelle aktør-artefakter.** Gaterne fodres af **faktiske, committede aktør-artefakter** (A2/A3) med **gate-beregnet `computedArtifactSha`** — **ikke testdata/literals/selvrapporteret SHA**. Strukturen er hård (PASS); kun runtime-fødningen tilføjes. _Bevis:_ fire-aktør (F14), Mathias sidst (F16), dual-hash/ikke-stale (F17) på gate-SHA-bundne artefakter; F15.
+
+- **A8 — S11 reel master-plan snapshot/diff** (ikke flags). _Bevis:_ reel ændring/modsigelse → Mathias-gate mekanisk (F21).
+
+- **A9 — S15 final docs-handling grøn FØR acceptance.** Fuld `docs/`-klassifikation + handling (behold/fold/arkivér/slet) + `s15-full --gate` **hard-wired**. _Bevis:_ exit 0 på rent repo-sæt; F19/F20.
+
+- **A10 — S14 reel acceptance uden fixtures** (se nederst).
+
+## B — Syntetiske tests omklassificeret (ud af acceptance)
+
+- **`e2e-check.mjs` → omdøbes** (fx `kontrakt-kompositions-check.mjs`); det er **ikke** e2e (tråder fixtures); tagges `structural`. Den rigtige e2e er A10.
+- **Alle `*-check.selftest.mjs`** beviser kun kontraktlogik → `structural`; må aldrig tælle som acceptance.
+- **Strukturelt-grønne validatorer** (gate-ord, spec-matrix, scale-router, review-dybde, recon-dybde, repo-hygiejne, handoff-binding, worklog-drift) forbliver `structural`.
+
+## C — Semantiske tests hærdet (mod papirgrøn)
+
+Gælder **S1c, S1d, S1e, S1f (menings-gate), S1k (djævel), S1m, S6/S7 (krav⊨vision + build-vs-ønsker)**. Hvert gate kræver en **durabel aktør-rapport i det kanoniske artefakt-format** (gate-SHA-bundet) + antiPaperGreen-reglen. Ikke automatisk "AI-dommer" — men felt-tilstedeværelse alene er ikke nok.
+
+## D — Eksplicit udskudt (ejer + begrundelse — IKKE færdig)
+
+_Mathias-accepteret 2026-06-18 som **"ikke færdige, uden for Build 1.1" — IKKE som løst.** Tagges `deferred`; må aldrig fremstå som leveret._
+
+| Test                              | Ejer           | Begrundelse                                                                                                                 |
+| --------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| S10 reel PR-review-runner         | Pakke 2        | Gate-integritet dækket af A7+C; review-eksekvering blokerer ikke front-bevis.                                               |
+| build-tids cost-levers            | Pakke 2        | Byg-fase, ikke front-halvdel.                                                                                               |
+| multi-schema ledger               | Pakke 2        | Worklog v1 rækker; kun hvis Plan 2 beviser behov.                                                                           |
+| S5 cost-synlighed                 | Pakke 2        | Blokerer ikke front-bevis.                                                                                                  |
+| S5 livscyklus (prov.→signal→lock) | Pakke 2        | **BESLUTTET udskudt:** resolved scale (routeren, grøn) er nok for front-proof; fuld livscyklus-state ikke runtime-critical. |
+| S1l chat-recon (claude.ai-app)    | M3 (app-kanal) | **Uløst, app-bundet:** `claude -p` dækker IKKE app-chathistorik. Markeret åben; aldrig faket grøn.                          |
+
+## Rækkefølge
+
+A1 → A2 → A3 → A4 → A5 → A6 (C hærder A5–A7) → A7 → A8 → A9 → **A10 acceptance**.
+
+## A10 — Acceptance-test (erstatter syntetisk e2e)
+
+**Reel, committet testpakke gennem hele kæden uden fixtures** (trigger → aktører → recon-sandhed → krav-oplæg → gates). Acceptance-grøn = front-halvdelen producerer godkendt plan uden hånd-syning, **og hver kanariefugl (F-ID) fanges af sin station med `runtimeProof`**. **Først da: Plan 2.**
+
+**Kanariefugl-suite (eksplicit — ingen "~20"; hver mappes i acceptance-register):**
+
+| F-ID | Seedet fejl                                                       | Station | Forventet      |
+| ---- | ----------------------------------------------------------------- | ------- | -------------- |
+| F01  | forkert author                                                    | A1      | IGNORER/BLOKER |
+| F02  | qwers aktiverer ikke alle krævede aktører                         | A1      | FAIL           |
+| F03  | aktør kører ikke                                                  | A2      | FAIL           |
+| F04  | aktør-output ikke committet                                       | A2      | FAIL           |
+| F05  | actor-artefakt ikke gate-SHA-bundet                               | A2      | FAIL           |
+| F06  | actor-rapport placeholder/tom/"x"                                 | A2/C    | FAIL           |
+| F07  | recon stopper for tidligt                                         | A5      | FAIL           |
+| F08  | recon uden dokument-recon                                         | A5      | FAIL           |
+| F09  | recon uden S15-inventory-grundlag                                 | A4/A5   | FAIL           |
+| F10  | divergerende/u-konsolideret recon                                 | A5      | BLOKER         |
+| F11  | kravspec ikke bygget fra recon-hash                               | A6      | FAIL           |
+| F12  | kravspec uden reel medforfatterrapport                            | A6      | FAIL           |
+| F13  | krav driver fra vision/forretning uden FEEDBACK                   | A6      | FAIL           |
+| F14  | S8/S9 bruger literal/fixture i stedet for actor-artefakt          | A7      | FAIL           |
+| F15  | approval uden djævlens-advokatrapport                             | A7      | FAIL           |
+| F16  | Mathias ikke sidst                                                | A7      | FAIL           |
+| F17  | stale planSha/kravHash                                            | A7      | BLOKER         |
+| F18  | plan modsiger vision/krav uden FEEDBACK                           | A7      | FAIL           |
+| F19  | S15-full rød                                                      | A9      | BLOKER         |
+| F20  | konkurrerende aktiv sandhed i docs/                               | A4/A9   | BLOKER         |
+| F21  | master-plan ændret uden snapshot/diff/Mathias-gate                | A8      | BLOKER         |
+| F22  | cost/runaway el. hele-historik-recon hvor inventory skulle bruges | A5      | FLAG/BLOKER    |
+
+**Milepæls-fasing:** (M1) **Code↔Codex** reel kæde uden fixtures = første sande bevis på broen. (M2) **alle tre** verdikt-kanaler reelle (Code + Codex + `claude -p`, jf. A3). (M3) **chat-recon (S1l)** når claude.ai-app-kanalen er løst — separat, uløst, blokerer ikke M2. **Acceptance-grøn = M2.**
+
+## Beslutninger (LÅST — Mathias 2026-06-18)
+
+1. **A3:** headless `claude -p` (claude-ai-rolle.sh) tæller som **Claude.ai-workflow-aktør for gate-verdikter** → alle tre reelle (M2). Ingen afvigelse fra "alle tre".
+2. **Afgrænsning:** `claude -p` tæller **IKKE** som S1l chat-recon fra Claude.ai Windows-app'ens chathistorik → **S1l uløst/M3**.
+3. **S5 livscyklus:** eksplicit udskudt; resolved scale er nok for Build 1.1 front-proof.
+4. **C/D:** accepteret som **"ikke færdige, uden for Build 1.1" — ikke som løst.**
+
+## Doc-currency
+
+Build 1 `@97a650d` · Plan 1 v26 `@87652387` — current. Bootstrap-/fix-artefakt; arkiveres når Build 1.1 er leveret og acceptance er sand.
