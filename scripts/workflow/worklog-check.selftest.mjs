@@ -20,13 +20,18 @@ const harFejl = (res, kode) => res.fejl.some((f) => f.startsWith(kode));
 
 const kravIndhold = "krav-dok indhold (fixture)";
 const kravHash = computeKravHash(kravIndhold);
+const planSha = "94c70eb5450ec5323dd4e25b5f213af070f23495";
 const godWorklog = {
   schemaVersion: 1,
   packageId: "p1",
   kravHash,
-  planSha: "94c70eb5450ec5323dd4e25b5f213af070f23495",
+  planSha,
   planRef: "claude/plan1-udkast",
   gateState: { kravOK: true, planOK: true, buildOK: false },
+  gateRecord: {
+    kravOK: { kravHash, af: "Mathias" },
+    planOK: { planSha, af: "Mathias" },
+  },
   scale: 9,
   artefaktRef: "branch @ sha",
 };
@@ -80,6 +85,32 @@ ok(
       kravHash,
     ),
     "gateStateLoegn(planOK uden planSha)",
+  ),
+);
+
+// Eksplicit gate-record (Claude.ai-fund 2 — bogføring kan ikke mangle eller lyve):
+ok(
+  "kravOK gatet men gateRecord mangler → FAIL",
+  harFejl(validateWorklog({ ...godWorklog, gateRecord: { planOK: { planSha, af: "Mathias" } } }, kravHash), "manglerGateRecord(kravOK)"),
+);
+ok(
+  "gateRecord lyver om krav-hash → FAIL",
+  harFejl(
+    validateWorklog(
+      { ...godWorklog, gateRecord: { ...godWorklog.gateRecord, kravOK: { kravHash: "LOEGN", af: "Mathias" } } },
+      kravHash,
+    ),
+    "gateRecordLoegn(kravOK.kravHash)",
+  ),
+);
+ok(
+  "gateRecord lyver om plan-SHA → FAIL",
+  harFejl(
+    validateWorklog(
+      { ...godWorklog, gateRecord: { ...godWorklog.gateRecord, planOK: { planSha: "deadbeef", af: "Mathias" } } },
+      kravHash,
+    ),
+    "gateRecordLoegn(planOK.planSha)",
   ),
 );
 

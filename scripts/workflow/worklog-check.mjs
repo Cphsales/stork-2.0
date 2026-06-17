@@ -27,6 +27,14 @@ export function validateWorklog(worklog, expectedKravHash, schema = loadSchema()
   if (g.planOK && !g.kravOK) fejl.push("gateStateLoegn(planOK uden kravOK)");
   if (g.planOK && !worklog?.planSha) fejl.push("gateStateLoegn(planOK uden planSha)");
   if (g.buildOK && !g.planOK) fejl.push("gateStateLoegn(buildOK uden planOK)");
+  // Eksplicit gate-record (bogføring på main): en gatet worklog SKAL bære den, og den kan ikke
+  // lyve om hvilken hash gaten blev givet på. Lukker Claude.ai-fund 2 uden at røre den hash-bundne
+  // krav-body: gate-state-of-record lever her (S3-design), ikke i krav-dokkets status-linje.
+  const gr = worklog?.gateRecord;
+  if (g.kravOK && !gr?.kravOK) fejl.push("manglerGateRecord(kravOK)");
+  if (gr?.kravOK && gr.kravOK.kravHash !== worklog?.kravHash) fejl.push("gateRecordLoegn(kravOK.kravHash)");
+  if (g.planOK && !gr?.planOK) fejl.push("manglerGateRecord(planOK)");
+  if (gr?.planOK && gr.planOK.planSha !== worklog?.planSha) fejl.push("gateRecordLoegn(planOK.planSha)");
   return { ok: fejl.length === 0, fejl };
 }
 
