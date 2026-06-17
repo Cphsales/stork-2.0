@@ -1,0 +1,7 @@
+{
+  "_kontrakt": "Regel-flade klausul (e): grundig-recon-kontrakt (krav 4). Hele det berørte scope kortlægges; reconen stopper IKKE ved første fund. Scale (S5) kan lette bredden/scope-udvælgelsen, men dybden i det valgte scope er fuld (Codex' bindende fortolkning).",
+  "regler": {
+    "ukortlagtScope": "hvert scope-emne skal have mindst ét fund → ellers FAIL",
+    "stoppetVedFoersteFund": "et 'stoppedEarly'-flag er forbudt → FAIL"
+  }
+}

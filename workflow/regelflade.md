@@ -26,8 +26,19 @@ Autoritativ: `workflow/mathias-komm-kontrakt.json` · checker: `scripts/workflow
 
 Autoritativ: `workflow/recon-skema.json` · checker: `scripts/workflow/recon-check.mjs` · bevis: `scripts/workflow/recon-check.selftest.mjs`. Forretnings-recon præsenteres i **3 kategorier** (nuværende-kode / ikke-bygget / intet-data); hvert fund struktureret (`{kilde, kategori, emne, evidensRef, aktør, klassifikation}`) så transport flettr parallelle aktør-recons **mekanisk**. Kanariefugl: fund uden påkrævet felt / ukendt kategori → afvist.
 
-## Klausuler (e)–(m) — bygges gennem Leverance 1
+## Klausul (e) — grundig-recon-kontrakt (krav 4) ✅ bygget
 
-(e) grundig-recon-kontrakt + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
+Autoritativ: `workflow/grundig-recon-kontrakt.json` · checker: `scripts/workflow/grundig-recon-check.mjs` · bevis: `scripts/workflow/grundig-recon-check.selftest.mjs`. Hele berørte scope kortlægges; recon stopper ikke ved første fund. Kanariefugl: ukortlagt scope-emne / `stoppedEarly`-flag → afvist. (Scale letter bredde/scope-udvælgelse, ikke dybden i valgt scope — Codex' bindende fortolkning.)
+
+## S2-byggekrav — test-tråde der følger effekten til næste led (Codex-standard, IKKE valgfrit)
+
+Ved Leverance-1-review skal disse konkrete tråde findes (ikke "noteret men ikke testet"):
+
+- **(c)-tråd:** Mathias-komm-kontrakt → importeret af rolle-instruks → realistisk-opgave-fixture → output holder sig til Mathias' bord (hvad/valg/spørgsmål) → kanariefugl afviser kode/hvordan.
+- **(d)-tråd:** recon-format → påvirker næste led (krav-oplæg) korrekt — fixture nu, fuld e2e i Leverance 4.
+
+## Klausuler (f)–(m) — bygges gennem Leverance 1
+
+(f) krav-troskab-metode + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
