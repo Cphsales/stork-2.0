@@ -83,6 +83,15 @@ Autoritativ: `workflow/roller.json` · checker: `scripts/workflow/roller-check.m
 
 Autoritativ: `workflow/doc-inventory.json` · checker: `scripts/workflow/s15-light-check.mjs` · bevis: `scripts/workflow/s15-light-check.selftest.mjs`. Kører (i) repo-hygiejne over inventory'et + verificerer at hver levende workflow-doc er inventoriseret (uinventeret doc / konkurrerende sandhed → afvist). Giver det **doc-grundlag S6 forventer** (én aktiv sandhed pr. emne). LIGHT scope = `workflow/`; **fuld `docs/`-tree-klassifikation = Leverance 4** (fuld S15-gate, Plan-2-precondition). Real-run i CI (`workflow:selftest`).
 
-**Leverance 1 (substrat) er hermed komplet:** alle 13 kontrakter (a–m) + S2 (roller) + S3 (worklog/drift) + S13 (CI-suite) + S15-light. Klar til formel Codex full-scope review.
+**Leverance 1 (substrat) — komplet, Codex-approved (PR #168 @ fb6471b), CI grøn.**
+
+## Leverance 2 — flow-stationer (recon + krav)
+
+Runtime-stationerne der bruger substratets kontrakter. Bygget:
+
+- **S5 — scale-router** (`workflow/scale-kontrakt.json` · `scripts/workflow/scale-check.mjs`): ruter dybde/kontrol-intensitet til pakke-scale (lav→DIRECT/høj→DELEGATED); altid-på-gulv scaler aldrig ned.
+- **S4 — start-kæde** (`workflow/start-kaede-kontrakt.json` · `scripts/workflow/start-kaede-check.mjs`): qwers → author-verificeret åbning → alle tre aktiveres → recon samlet → krav-oplæg. Kanariefugle: forkert author / ikke-alle-aktiveret / transport-auto-validerer / krav-oplæg-uden-recon → afvist.
+
+Tilbage i Leverance 2: **S6** (recon-eksekvering, 2 invokeringer) · **S7** (kravspec-skabelse + Claude.ai medforfatter). Derefter L3 (gates) + L4 (e2e + fuld S15).
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
