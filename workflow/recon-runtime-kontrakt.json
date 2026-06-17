@@ -1,0 +1,4 @@
+{
+  "_kontrakt": "S6 (Leverance 2): recon-eksekvering. Invokerer recon-funktionen på TO runtime-punkter (forretnings-recon før krav, kode-recon før plan), komponerer (d) recon-præsentation + (e) grundig-recon + (h) recon-dybde, og flettr de parallelle aktør-recons til ÉN deterministisk hash'et recon-sandhed.",
+  "punkter": ["foer-krav", "foer-plan"]
+}

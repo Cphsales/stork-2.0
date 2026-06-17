@@ -1,0 +1,13 @@
+{
+  "_kontrakt": "Regel-flade klausul (b): spec-skema. Krav-ID-format + acceptkriterie + matrix-binding (S7). Eksekverbar = autoritativ; regelflade.md dokumenterer.",
+  "kravIdFormat": "^K-[0-9]+$",
+  "paakraevedeFelter": ["id", "acceptkriterie", "step", "test"],
+  "matrixRegler": {
+    "kravUdenStep": "FAIL",
+    "kravUdenTest": "FAIL",
+    "kravUdenAcceptkriterie": "FAIL",
+    "ugyldigtKravId": "FAIL",
+    "stepUdenKrav": "FAIL",
+    "pakke2UdenBegrundelse": "FAIL"
+  }
+}

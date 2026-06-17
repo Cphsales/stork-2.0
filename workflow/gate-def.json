@@ -1,0 +1,16 @@
+{
+  "_kontrakt": "Regel-flade klausul (a): gate-ord + dispositions-vokabular. Aktoer-flade, eksekverbar = sandheden; regelflade.md dokumenterer. Bygges videre i Leverance 1 (kontrakter c-m).",
+  "boundTo": {
+    "plan": "workflow-faerdiggoerelse-pakke1-plan @ 94c70eb",
+    "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79"
+  },
+  "gateOrd": {
+    "eksterne": ["krav OK", "plan OK", "build OK"],
+    "interneStates": {
+      "krav OK": "krav-laast",
+      "plan OK": "plan-laast",
+      "build OK": "build-laast"
+    }
+  },
+  "dispositioner": ["BLOCKER", "FIX-NOW", "FOLLOW-UP", "FALSE-POSITIVE-WITH-EVIDENCE", "MATHIAS-GATE"]
+}

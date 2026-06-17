@@ -1,0 +1,5 @@
+{
+  "_kontrakt": "Regel-flade klausul (d): recon-præsentationskontrakt (krav 6) + recon-output-skema (S1d). Forretnings-recon præsenteres for Mathias i 3 kategorier; hvert fund er struktureret så transport flettr de parallelle aktør-recons MEKANISK (ikke hånd-syes).",
+  "kategorier": ["nuvaerende-kode", "ikke-bygget", "intet-data"],
+  "fundFelter": ["kilde", "kategori", "emne", "evidensRef", "aktoer", "klassifikation"]
+}

@@ -1,0 +1,13 @@
+{
+  "_kontrakt": "Regel-flade klausul (g): review-dybde-kontrakt. To faser (løbende djævel under skrivning + ÉT full-scope gate-pass) + PROPORTIONEL re-validering som deterministisk regel (ikke skøn): full-scope ÉN gang pr. baseline; derefter diff-bundet + regression-sweep; re-full-scope KUN ved en trigger fra listen.",
+  "reFullScopeTriggers": [
+    "baerende-kontrakt",
+    "krav-mapping",
+    "gate-semantik",
+    "rolle-instruks",
+    "recon-skema",
+    "aktoer-aktivering",
+    "repo-sandhed",
+    "reviewer-miss"
+  ]
+}

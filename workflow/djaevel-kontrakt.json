@@ -1,0 +1,11 @@
+{
+  "_kontrakt": "Regel-flade klausul (k): djævlens-advokat-kontrakt (krav 3/5). Pr. krav skriver reviewer 6 felter FØR approval; ingen APPROVAL uden fuldt pass. Reviewer-rolle, ALDRIG Mathias. Scope-routes via S5 (berørte krav ved lav scale, fuldt K1-K11 ved høj).",
+  "seksFelter": [
+    "minLaesning",
+    "maxLaesning",
+    "snydevejTilGroen",
+    "kanariefuglDerLukker",
+    "evneIkkeFaerdig",
+    "ikkeGemtBagBuildRecon"
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "_kontrakt": "Regel-flade klausul (h): recon-dybde-kontrakt. Full-scope first-pass + vist dækningsflade + dedup + støjbudget + diff-/hul-bundet re-recon; gammelt-scope-fund i runde 2+ = recon-miss (burde være fanget runde 1).",
+  "paakraevet": ["daekningsflade", "fund"]
+}

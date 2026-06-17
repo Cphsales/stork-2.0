@@ -1,0 +1,53 @@
+{
+  "_kontrakt": "S2: seks rolle-instrukser — Code/Codex/Claude.ai × {workflow, almindelig}. Workflow-roller IMPORTERER kontrakterne (driver adfærd); almindelig = fri dialog. Mathias styrer aktiv rolle via simpel prompt (krav 7).",
+  "krav": {
+    "workflowAlle": ["mathias-komm", "recon-praesentation", "grundig-recon", "recon-dybde"],
+    "reviewRoller": ["djaevel"],
+    "claudeWorkflowEkstra": ["krav-troskab", "chat-recon"]
+  },
+  "reviewRoller": ["Codex-workflow", "Claude.ai-workflow"],
+  "roller": {
+    "Code-workflow": {
+      "type": "workflow",
+      "importerer": [
+        "mathias-komm",
+        "recon-praesentation",
+        "grundig-recon",
+        "recon-dybde",
+        "review-dybde",
+        "handoff",
+        "self-validering"
+      ]
+    },
+    "Code-almindelig": { "type": "almindelig", "importerer": [] },
+    "Codex-workflow": {
+      "type": "workflow",
+      "importerer": [
+        "mathias-komm",
+        "recon-praesentation",
+        "grundig-recon",
+        "recon-dybde",
+        "djaevel",
+        "review-dybde",
+        "handoff",
+        "self-validering"
+      ]
+    },
+    "Codex-almindelig": { "type": "almindelig", "importerer": [] },
+    "Claude.ai-workflow": {
+      "type": "workflow",
+      "importerer": [
+        "mathias-komm",
+        "recon-praesentation",
+        "grundig-recon",
+        "recon-dybde",
+        "krav-troskab",
+        "chat-recon",
+        "djaevel",
+        "handoff",
+        "self-validering"
+      ]
+    },
+    "Claude.ai-almindelig": { "type": "almindelig", "importerer": [] }
+  }
+}

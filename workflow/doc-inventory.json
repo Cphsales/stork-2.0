@@ -1,0 +1,14 @@
+{
+  "_kontrakt": "S15-light: seed repo-sandheds-inventory. Giver det doc-grundlag S6 forventer (én aktiv sandhed pr. emne). LIGHT = workflow/-docs nu; FULD docs/-tree-klassifikation = Leverance 4 (fuld S15-gate, Plan-2-precondition).",
+  "inventory": [
+    {
+      "doc": "workflow/regelflade.md",
+      "status": "workflow-funktion",
+      "emne": "regelflade",
+      "formaal": "regel-flade: dokumenterer kontrakt-klausulerne (a-m) + S2/S3/S13",
+      "ejerFunktion": "workflow/*-check.mjs",
+      "testGate": "pnpm workflow:selftest",
+      "handling": "behold"
+    }
+  ]
+}

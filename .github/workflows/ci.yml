@@ -111,6 +111,8 @@ jobs:
         run: pnpm governance:selftest
       - name: Kæde selftest (gov-5 kurér-kerne)
         run: pnpm kaede:selftest
+      - name: Workflow substrat-selftests (Pakke 1 regel-flade-kanariefugle)
+        run: pnpm workflow:selftest
 
   db:
     name: DB (types, schema, db-tests)
