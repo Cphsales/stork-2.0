@@ -73,6 +73,12 @@ Autoritativ: `workflow/recon-dybde-kontrakt.json` · checker: `scripts/workflow/
 
 Autoritativ: `workflow/krav-troskab-kontrakt.json` · checker: `scripts/workflow/krav-troskab-check.mjs` · bevis: `scripts/workflow/krav-troskab-check.selftest.mjs`. **Komponerer** matrix (b/`validateSpec`) + dual-hash-binding (j/`validateBinding`) — ingen parallel logik — + menings-gate (rolle PASS/FEEDBACK registreret) + kumulativ kæde-troskab (krav⊨vision). Kanariefugle: fejl i hvert led (matrix/binding/menings/kæde) fanges.
 
-**Alle 13 klausuler (a–m) er bygget.** Tilbage i Leverance 1: 6 rolle-instrukser (S2, med (c)/(d)/(e)-test-trådene) + S15-light inventory.
+**Alle 13 klausuler (a–m) er bygget.**
+
+## S2 — seks rolle-instrukser ✅ bygget
+
+Autoritativ: `workflow/roller.json` · checker: `scripts/workflow/roller-check.mjs` · bevis: `scripts/workflow/roller-check.selftest.mjs`. Code/Codex/Claude.ai × {workflow, almindelig}. **Struktur:** alle workflow-roller importerer (c)/(d)/(e)/(h); review-rollerne (Codex-workflow, Claude.ai-workflow) også (k); Claude.ai-workflow også (f)/(l); almindelig = fri dialog. **Adfærds-tråd (Codex' krav):** kontrakten styrer rollens output i en realistisk opgave — Claude.ai-workflow importerer (c), så et krav-oplæg med kode på Mathias' bord **afvises**, et rent "hvad"-output accepteres. Kanariefugle: rolle uden krævet import / almindelig-rolle med imports → FAIL.
+
+Tilbage i Leverance 1: **S15-light inventory** (doc-grundlaget S6 forventer).
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
