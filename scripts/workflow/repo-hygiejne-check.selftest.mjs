@@ -25,7 +25,10 @@ ok("gyldig inventory passerer", validateInventory([levende, arkiv]).ok);
 
 // Kanariefugle:
 ok("ukendt status → FAIL", harFejl(validateInventory([{ ...levende, status: "fancy" }]), "ukendtStatus"));
-ok("levende doc uden testGate → FAIL", harFejl(validateInventory([{ ...levende, testGate: "" }]), "levendeDocUden(testGate)"));
+ok(
+  "levende doc uden testGate → FAIL",
+  harFejl(validateInventory([{ ...levende, testGate: "" }]), "levendeDocUden(testGate)"),
+);
 ok("ukendt handling → FAIL", harFejl(validateInventory([{ ...arkiv, handling: "smid-ud" }]), "ukendtHandling"));
 ok(
   "konkurrerende aktiv sandhed pr. emne → BLOKER",

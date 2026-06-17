@@ -10,10 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DEF_PATH = resolve(here, "../../workflow/self-validering-kontrakt.json");
 export const loadDef = (path = DEF_PATH) => JSON.parse(readFileSync(path, "utf8"));
 
-const tom = (v) =>
-  v == null ||
-  (typeof v === "string" && v.trim() === "") ||
-  (Array.isArray(v) && v.length === 0);
+const tom = (v) => v == null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.length === 0);
 
 // blok = { docsLaest, holdtOpMod, kanariefugl, driftFundet, ikkeVerificeret }
 export function validateSelfValidering(blok, def = loadDef()) {

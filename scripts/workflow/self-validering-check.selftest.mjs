@@ -22,9 +22,15 @@ const god = {
 ok("fuld self-validerings-blok passerer", validateSelfValidering(god).ok);
 
 // Kanariefugle: sprunget/tom blok SKAL afvises (papirgrøn-guard).
-ok("manglende kanariefugl → FAIL", harFejl(validateSelfValidering({ ...god, kanariefugl: "" }), "manglerIndhold(kanariefugl)"));
+ok(
+  "manglende kanariefugl → FAIL",
+  harFejl(validateSelfValidering({ ...god, kanariefugl: "" }), "manglerIndhold(kanariefugl)"),
+);
 ok("tom docsLaest → FAIL", harFejl(validateSelfValidering({ ...god, docsLaest: [] }), "manglerIndhold(docsLaest)"));
-ok("manglende driftFundet-felt → FAIL", harFejl(validateSelfValidering({ ...god, driftFundet: undefined }), "manglerFelt(driftFundet)"));
+ok(
+  "manglende driftFundet-felt → FAIL",
+  harFejl(validateSelfValidering({ ...god, driftFundet: undefined }), "manglerFelt(driftFundet)"),
+);
 ok("helt tom blok → flere fejl", validateSelfValidering({}).fejl.length >= 4);
 
 if (fejl) {

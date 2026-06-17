@@ -17,15 +17,12 @@ const def = loadGateDef();
 export const validGateOrd = (w) => def.gateOrd.eksterne.includes(w);
 export const validDisposition = (d) => def.dispositioner.includes(d);
 export const internalState = (w) =>
-  Object.prototype.hasOwnProperty.call(def.gateOrd.interneStates, w)
-    ? def.gateOrd.interneStates[w]
-    : null;
+  Object.prototype.hasOwnProperty.call(def.gateOrd.interneStates, w) ? def.gateOrd.interneStates[w] : null;
 
 // CLI: `node gate-check.mjs gate "plan OK"` | `node gate-check.mjs disp BLOCKER`
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [, , kind, token] = process.argv;
-  const ok =
-    kind === "gate" ? validGateOrd(token) : kind === "disp" ? validDisposition(token) : null;
+  const ok = kind === "gate" ? validGateOrd(token) : kind === "disp" ? validDisposition(token) : null;
   if (ok === null) {
     console.error('brug: gate-check.mjs <gate|disp> "<token>"');
     process.exit(2);

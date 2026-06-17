@@ -21,8 +21,7 @@ export function validateRecon(recon, skema = loadSkema()) {
     for (const felt of skema.fundFelter) {
       if (!f?.[felt]) fejl.push(`fundUdenFelt(${felt}): ${hvor}`);
     }
-    if (f?.kategori && !skema.kategorier.includes(f.kategori))
-      fejl.push(`ukendtKategori(${f.kategori}): ${hvor}`);
+    if (f?.kategori && !skema.kategorier.includes(f.kategori)) fejl.push(`ukendtKategori(${f.kategori}): ${hvor}`);
   }
   return { ok: fejl.length === 0, fejl };
 }

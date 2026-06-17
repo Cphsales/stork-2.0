@@ -23,11 +23,29 @@ const god = {
 ok("fuldt input passerer", validateKravTroskab(god).ok);
 
 // Kanariefugle — fejl i hvert komponeret led fanges:
-ok("matrix-fejl (krav uden step) → FAIL", harFejl(validateKravTroskab({ ...god, spec: { krav: [{ id: "K-1", acceptkriterie: "a", test: "t" }] } }), "matrix:kravUdenStep"));
-ok("binding-fejl (stale SHA) → FAIL", harFejl(validateKravTroskab({ ...god, verdikt: { ...god.verdikt, planSha: "570c9e6" } }), "binding:stale(planSha)"));
-ok("manglende menings-gate → FAIL", harFejl(validateKravTroskab({ ...god, verdikt: { planSha: "94c70eb", kravHash: "c964826" } }), "manglerMeningsGate"));
-ok("ugyldig menings-gate → FAIL", harFejl(validateKravTroskab({ ...god, verdikt: { ...god.verdikt, meningsGate: "LGTM" } }), "ugyldigMeningsGate"));
-ok("manglende kæde-troskab → FAIL", harFejl(validateKravTroskab({ ...god, kaedeTroskab: {} }), "manglerKaedeTroskab(kravModVision)"));
+ok(
+  "matrix-fejl (krav uden step) → FAIL",
+  harFejl(
+    validateKravTroskab({ ...god, spec: { krav: [{ id: "K-1", acceptkriterie: "a", test: "t" }] } }),
+    "matrix:kravUdenStep",
+  ),
+);
+ok(
+  "binding-fejl (stale SHA) → FAIL",
+  harFejl(validateKravTroskab({ ...god, verdikt: { ...god.verdikt, planSha: "570c9e6" } }), "binding:stale(planSha)"),
+);
+ok(
+  "manglende menings-gate → FAIL",
+  harFejl(validateKravTroskab({ ...god, verdikt: { planSha: "94c70eb", kravHash: "c964826" } }), "manglerMeningsGate"),
+);
+ok(
+  "ugyldig menings-gate → FAIL",
+  harFejl(validateKravTroskab({ ...god, verdikt: { ...god.verdikt, meningsGate: "LGTM" } }), "ugyldigMeningsGate"),
+);
+ok(
+  "manglende kæde-troskab → FAIL",
+  harFejl(validateKravTroskab({ ...god, kaedeTroskab: {} }), "manglerKaedeTroskab(kravModVision)"),
+);
 
 if (fejl) {
   console.error(`krav-troskab-check selftest: ${fejl} fejl`);

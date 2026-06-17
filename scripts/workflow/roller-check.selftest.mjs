@@ -18,7 +18,9 @@ ok("faktiske roller.json er konform", validateRoller().ok);
 // Kanariefugle (struktur): manglende import i de rigtige roller fanges.
 const def = loadDef();
 const udenC = structuredClone(def);
-udenC.roller["Claude.ai-workflow"].importerer = udenC.roller["Claude.ai-workflow"].importerer.filter((k) => k !== "mathias-komm");
+udenC.roller["Claude.ai-workflow"].importerer = udenC.roller["Claude.ai-workflow"].importerer.filter(
+  (k) => k !== "mathias-komm",
+);
 ok("workflow-rolle uden (c) → FAIL", harFejl(validateRoller(udenC), "mangler import: mathias-komm"));
 
 const udenK = structuredClone(def);
@@ -26,8 +28,13 @@ udenK.roller["Codex-workflow"].importerer = udenK.roller["Codex-workflow"].impor
 ok("review-rolle uden (k) → FAIL", harFejl(validateRoller(udenK), "mangler import: djaevel"));
 
 const udenKravTroskab = structuredClone(def);
-udenKravTroskab.roller["Claude.ai-workflow"].importerer = udenKravTroskab.roller["Claude.ai-workflow"].importerer.filter((k) => k !== "krav-troskab");
-ok("Claude.ai-workflow uden krav-troskab → FAIL", harFejl(validateRoller(udenKravTroskab), "mangler import: krav-troskab"));
+udenKravTroskab.roller["Claude.ai-workflow"].importerer = udenKravTroskab.roller[
+  "Claude.ai-workflow"
+].importerer.filter((k) => k !== "krav-troskab");
+ok(
+  "Claude.ai-workflow uden krav-troskab → FAIL",
+  harFejl(validateRoller(udenKravTroskab), "mangler import: krav-troskab"),
+);
 
 const almindeligMedImport = structuredClone(def);
 almindeligMedImport.roller["Code-almindelig"].importerer = ["mathias-komm"];

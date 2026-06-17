@@ -18,7 +18,15 @@ export function checkMathiasMessage(text, def = loadDef()) {
   if (/```/.test(text)) fejl.push("kodeHegn: fenced code block paa Mathias' bord");
   const linjer = text.split("\n");
   for (const kmd of def.forbudtIMathiasFlade.implKommandoer) {
-    if (linjer.some((l) => l.trimStart().toLowerCase().startsWith(kmd.trim().toLowerCase() + " ") || l.trimStart().toLowerCase().startsWith(kmd.toLowerCase())))
+    if (
+      linjer.some(
+        (l) =>
+          l
+            .trimStart()
+            .toLowerCase()
+            .startsWith(kmd.trim().toLowerCase() + " ") || l.trimStart().toLowerCase().startsWith(kmd.toLowerCase()),
+      )
+    )
       fejl.push(`implKommando: "${kmd.trim()}" paa Mathias' bord`);
   }
   return { ok: fejl.length === 0, fejl };

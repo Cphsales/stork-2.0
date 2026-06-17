@@ -13,7 +13,8 @@ const harFejl = (res, kode) => res.fejl.some((f) => f.startsWith(kode));
 // Positiv evne: runde-1 recon med dækningsflade + ingen dubletter passerer.
 ok(
   "runde-1 recon passerer",
-  validateReconDybde({ runde: 1, daekningsflade: ["kode", "docs"], fund: [{ emne: "a", kilde: "x", flade: "kode" }] }).ok,
+  validateReconDybde({ runde: 1, daekningsflade: ["kode", "docs"], fund: [{ emne: "a", kilde: "x", flade: "kode" }] })
+    .ok,
 );
 
 // Kanariefugle:

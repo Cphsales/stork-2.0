@@ -11,7 +11,8 @@ const ok = (navn, cond) => {
 const harFejl = (res, kode) => res.fejl.some((f) => f.startsWith(kode));
 
 // Positiv evne: en ren "hvad"-besked (prosa + inline SHA-fakta) passerer.
-const god = "Du godkender at vi bygger front-halvdelen.\n\nGaeldende plan-SHA: `94c70eb`.\nDit valg: plan OK eller flere skaerpelser?";
+const god =
+  "Du godkender at vi bygger front-halvdelen.\n\nGaeldende plan-SHA: `94c70eb`.\nDit valg: plan OK eller flere skaerpelser?";
 ok("ren hvad-besked passerer", checkMathiasMessage(god).ok);
 ok("inline SHA-backtick flagges ikke", checkMathiasMessage("Bundet til `c964826`.").ok);
 

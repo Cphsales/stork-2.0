@@ -11,13 +11,25 @@ const ok = (navn, cond) => {
 
 // Positiv evne (proportionalitet virker):
 ok("ingen baseline → full-scope", decideReValidering({ hasBaseline: false, touched: [] }) === "full-scope");
-ok("lille kosmetisk ændring → diff-bundet", decideReValidering({ hasBaseline: true, touched: ["status-historik"] }) === "diff-bundet");
+ok(
+  "lille kosmetisk ændring → diff-bundet",
+  decideReValidering({ hasBaseline: true, touched: ["status-historik"] }) === "diff-bundet",
+);
 ok("tom diff på baseline → diff-bundet", decideReValidering({ hasBaseline: true, touched: [] }) === "diff-bundet");
 
 // Kanariefugl: en trigger MÅ tvinge full-scope — kan ikke gambles til diff-bundet.
-ok("gate-semantik-trigger → full-scope", decideReValidering({ hasBaseline: true, touched: ["gate-semantik"] }) === "full-scope");
-ok("baerende-kontrakt-trigger → full-scope", decideReValidering({ hasBaseline: true, touched: ["status-historik", "baerende-kontrakt"] }) === "full-scope");
-ok("reviewer-miss → full-scope", decideReValidering({ hasBaseline: true, touched: ["reviewer-miss"] }) === "full-scope");
+ok(
+  "gate-semantik-trigger → full-scope",
+  decideReValidering({ hasBaseline: true, touched: ["gate-semantik"] }) === "full-scope",
+);
+ok(
+  "baerende-kontrakt-trigger → full-scope",
+  decideReValidering({ hasBaseline: true, touched: ["status-historik", "baerende-kontrakt"] }) === "full-scope",
+);
+ok(
+  "reviewer-miss → full-scope",
+  decideReValidering({ hasBaseline: true, touched: ["reviewer-miss"] }) === "full-scope",
+);
 
 if (fejl) {
   console.error(`review-dybde-check selftest: ${fejl} fejl`);

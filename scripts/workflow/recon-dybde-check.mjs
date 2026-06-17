@@ -12,8 +12,7 @@ export const loadDef = (path = DEF_PATH) => JSON.parse(readFileSync(path, "utf8"
 // recon = { runde, daekningsflade: [..], fund: [{emne, kilde, flade}], tidligereFlader?: [..] }
 export function validateReconDybde(recon) {
   const fejl = [];
-  if (!Array.isArray(recon?.daekningsflade) || recon.daekningsflade.length === 0)
-    fejl.push("manglerDaekningsflade");
+  if (!Array.isArray(recon?.daekningsflade) || recon.daekningsflade.length === 0) fejl.push("manglerDaekningsflade");
 
   const set = new Set();
   for (const f of Array.isArray(recon?.fund) ? recon.fund : []) {

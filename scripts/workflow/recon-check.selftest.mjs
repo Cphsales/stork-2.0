@@ -23,8 +23,14 @@ const fuldtFund = {
 ok("fuldt fund passerer", validateRecon({ fund: [fuldtFund] }).ok);
 
 // Kanariefugle: ufuldstændigt/ukategoriseret fund SKAL afvises (ellers kan transport ikke flette mekanisk).
-ok("fund uden evidensRef → FAIL", harFejl(validateRecon({ fund: [{ ...fuldtFund, evidensRef: undefined }] }), "fundUdenFelt(evidensRef)"));
-ok("fund uden kilde → FAIL", harFejl(validateRecon({ fund: [{ ...fuldtFund, kilde: undefined }] }), "fundUdenFelt(kilde)"));
+ok(
+  "fund uden evidensRef → FAIL",
+  harFejl(validateRecon({ fund: [{ ...fuldtFund, evidensRef: undefined }] }), "fundUdenFelt(evidensRef)"),
+);
+ok(
+  "fund uden kilde → FAIL",
+  harFejl(validateRecon({ fund: [{ ...fuldtFund, kilde: undefined }] }), "fundUdenFelt(kilde)"),
+);
 ok("ukendt kategori → FAIL", harFejl(validateRecon({ fund: [{ ...fuldtFund, kategori: "andet" }] }), "ukendtKategori"));
 
 if (fejl) {

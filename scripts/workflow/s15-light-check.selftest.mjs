@@ -26,7 +26,10 @@ const inv = [
 ok("dækkende inventory passerer", validateS15(inv, ["workflow/regelflade.md"]).ok);
 
 // Kanariefugle:
-ok("uinventeret workflow-doc → FAIL", harFejl(validateS15(inv, ["workflow/regelflade.md", "workflow/ny.md"]), "uinventeretDoc(workflow/ny.md)"));
+ok(
+  "uinventeret workflow-doc → FAIL",
+  harFejl(validateS15(inv, ["workflow/regelflade.md", "workflow/ny.md"]), "uinventeretDoc(workflow/ny.md)"),
+);
 ok(
   "konkurrerende aktiv sandhed videregives fra (i) → BLOKER",
   harFejl(
