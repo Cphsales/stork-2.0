@@ -117,6 +117,33 @@ ok(
   ),
 );
 
+// buildOK-bogføring (merge-hash-flow): build OK bundet til main-@-hash (mergeSha).
+const mergeSha = "97a650d4a742a6441f606f5b52333991d6a39238";
+const buildGod = {
+  ...godWorklog,
+  mergeSha,
+  gateState: { kravOK: true, planOK: true, buildOK: true },
+  gateRecord: { ...godWorklog.gateRecord, buildOK: { mergeSha, af: "Mathias" } },
+};
+ok("buildOK gatet med korrekt record passerer", validateWorklog(buildGod, kravHash).ok);
+ok(
+  "buildOK gatet men buildOK-record mangler → FAIL",
+  harFejl(
+    validateWorklog({ ...buildGod, gateRecord: { ...godWorklog.gateRecord } }, kravHash),
+    "manglerGateRecord(buildOK)",
+  ),
+);
+ok(
+  "buildOK-record lyver om merge-SHA → FAIL",
+  harFejl(
+    validateWorklog(
+      { ...buildGod, gateRecord: { ...buildGod.gateRecord, buildOK: { mergeSha: "deadbeef", af: "Mathias" } } },
+      kravHash,
+    ),
+    "gateRecordLoegn(buildOK.mergeSha)",
+  ),
+);
+
 // Real-fil drift-gate: gen-beregner krav-hash fra fil.
 const dir = mkdtempSync(join(tmpdir(), "wf-worklog-"));
 try {

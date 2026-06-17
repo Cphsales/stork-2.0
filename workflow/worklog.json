@@ -4,7 +4,8 @@
   "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79",
   "planSha": "94c70eb5450ec5323dd4e25b5f213af070f23495",
   "planRef": "claude/plan1-udkast",
-  "gateState": { "kravOK": true, "planOK": true, "buildOK": false },
+  "mergeSha": "97a650d4a742a6441f606f5b52333991d6a39238",
+  "gateState": { "kravOK": true, "planOK": true, "buildOK": true },
   "gateRecord": {
     "kravOK": {
       "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79",
@@ -15,6 +16,11 @@
       "planSha": "94c70eb5450ec5323dd4e25b5f213af070f23495",
       "af": "Mathias",
       "note": "plan OK givet på denne plan-SHA (94c70eb). Plan-doc'en er foldet ind på main-sporet; plan-SHA er den immutable gatede identitet."
+    },
+    "buildOK": {
+      "mergeSha": "97a650d4a742a6441f606f5b52333991d6a39238",
+      "af": "Mathias",
+      "note": "build OK givet og front-halvdelen merget til main (#168, squash). mergeSha er main-@-hash — det fulde gate-spor krav OK → plan OK → build OK er nu bogført på main."
     }
   },
   "scale": 9,

@@ -35,6 +35,8 @@ export function validateWorklog(worklog, expectedKravHash, schema = loadSchema()
   if (gr?.kravOK && gr.kravOK.kravHash !== worklog?.kravHash) fejl.push("gateRecordLoegn(kravOK.kravHash)");
   if (g.planOK && !gr?.planOK) fejl.push("manglerGateRecord(planOK)");
   if (gr?.planOK && gr.planOK.planSha !== worklog?.planSha) fejl.push("gateRecordLoegn(planOK.planSha)");
+  if (g.buildOK && !gr?.buildOK) fejl.push("manglerGateRecord(buildOK)");
+  if (gr?.buildOK && gr.buildOK.mergeSha !== worklog?.mergeSha) fejl.push("gateRecordLoegn(buildOK.mergeSha)");
   return { ok: fejl.length === 0, fejl };
 }
 
