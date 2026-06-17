@@ -95,6 +95,14 @@ Runtime-stationerne der bruger substratets kontrakter. Bygget:
 - **S6 — recon-eksekvering** (`recon-runtime-check.mjs`): komponerer (d)/(e)/(h) på begge punkter + konsoliderer til ÉN hash'et recon-sandhed.
 - **S7 — kravspec-skabelse** (`kravspec-runtime-check.mjs`): bygger kravspec FRA recon-sandhed-1 med Claude.ai-medforfatter (build-vs-ønsker + krav⊨vision) + matrix (genbrug af b); producerer krav-hash. recon-hash skal være **64-hex** (ikke vilkårlig streng) og kan bindes mod den aktuelle S6-sandhed (`expectedReconHash`) — Codex-lukning.
 
-**Leverance 2 (recon + krav) er komplet** (S4–S7). Derefter L3 (gates: S8/S9/S10/S11/S12/S16) + L4 (e2e S14 + fuld S15).
+**Leverance 2 (recon + krav) — komplet, Codex-approved (PR #168 @ cd569e6), CI grøn.**
+
+## Leverance 3 — gates
+
+Gate-orkestratorerne der komponerer L1-kontrakterne. Bygget:
+
+- **S8 — KRAV-GATE** (`krav-gate-check.mjs`): komponerer (f) krav-troskab + (k) djævlens-advokat-pass + (j) fire-aktør-binding på krav-hash + S7 kravspec **bundet mod aktuel S6 recon-sandhed** (Codex-note, nu obligatorisk ved gaten); Mathias sidst. Kanariefugle: manglende AI-verdikt / Mathias-før-AI / stale binding / recon-hash-mismatch / ufuldt djævel-pass → afvist.
+
+Tilbage i L3: **S9** (plan-gate) · **S10** (plan-review + dispositioner) · **S11** (master-plan-konsistens) · **S12** (gate-ord) · **S16** (handoff-kanaler-wiring). Derefter L4 (e2e S14 + fuld S15).
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
