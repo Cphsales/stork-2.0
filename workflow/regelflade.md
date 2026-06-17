@@ -37,7 +37,7 @@ Ved Leverance-1-review skal disse konkrete tråde findes (ikke "noteret men ikke
 - **(c)-tråd:** Mathias-komm-kontrakt → importeret af rolle-instruks → realistisk-opgave-fixture → output holder sig til Mathias' bord (hvad/valg/spørgsmål) → kanariefugl afviser kode/hvordan.
 - **(d)-tråd:** recon-format → påvirker næste led (krav-oplæg) korrekt — fixture nu, fuld e2e i Leverance 4.
 
-**S13-wiring (kører i CI):** alle substrat-selftests samles af `scripts/workflow/selvtjek.mjs` (`pnpm workflow:selftest`) og køres som CI-step i governance-jobbet — substratets kanariefugle **kører** (ikke papirgrøn). Nye kontrakters selftests auto-opdages.
+**S13-wiring (kører i CI, hærdet):** `scripts/workflow/selvtjek.mjs` (`pnpm workflow:selftest`) gør to ting, kørt som CI-step i governance-jobbet: **(1) dæknings-tjek** — hver `*-check.mjs` SKAL have en matchende selftest, ellers FAIL (lukker silent-skip via fejlnavn/manglende test; tvinger nye kontrakter f–m med); **(2) kørsel** — alle selftests køres, CI fejler hvis nogen fejler. `selvtjek.selftest.mjs` (meta) beviser begge fail-stier mod en temp-fixture. (Codex' tre CI-punkter: CI fejler-på-fejl ✓, ingen lydløs skip ✓, nye kontrakter tvinges med ✓.)
 
 ## Klausuler (f)–(m) — bygges gennem Leverance 1
 
