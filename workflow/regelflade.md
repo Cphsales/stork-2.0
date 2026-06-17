@@ -92,6 +92,9 @@ Runtime-stationerne der bruger substratets kontrakter. Bygget:
 - **S5 — scale-router** (`workflow/scale-kontrakt.json` · `scripts/workflow/scale-check.mjs`): ruter dybde/kontrol-intensitet til pakke-scale (lav→DIRECT/høj→DELEGATED); altid-på-gulv scaler aldrig ned.
 - **S4 — start-kæde** (`workflow/start-kaede-kontrakt.json` · `scripts/workflow/start-kaede-check.mjs`): qwers → author-verificeret åbning → alle tre aktiveres → recon samlet → krav-oplæg. Kanariefugle: forkert author / ikke-alle-aktiveret / transport-auto-validerer / krav-oplæg-uden-recon → afvist.
 
-Tilbage i Leverance 2: **S6** (recon-eksekvering, 2 invokeringer) · **S7** (kravspec-skabelse + Claude.ai medforfatter). Derefter L3 (gates) + L4 (e2e + fuld S15).
+- **S6 — recon-eksekvering** (`recon-runtime-check.mjs`): komponerer (d)/(e)/(h) på begge punkter + konsoliderer til ÉN hash'et recon-sandhed.
+- **S7 — kravspec-skabelse** (`kravspec-runtime-check.mjs`): bygger kravspec FRA recon-sandhed-1 med Claude.ai-medforfatter (build-vs-ønsker + krav⊨vision) + matrix (genbrug af b); producerer krav-hash.
+
+**Leverance 2 (recon + krav) er komplet** (S4–S7). Derefter L3 (gates: S8/S9/S10/S11/S12/S16) + L4 (e2e S14 + fuld S15).
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.

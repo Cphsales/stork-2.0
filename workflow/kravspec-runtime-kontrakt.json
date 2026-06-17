@@ -1,0 +1,3 @@
+{
+  "_kontrakt": "S7 (Leverance 2): kravspec-skabelse. Claude.ai (workflow-rolle) bygger kravspec FRA den konsoliderede recon-sandhed-1 (S6), leverer build-vs-ønsker-sammenligning (krav 2) + krav⊨vision (kæde-top), og kravspec valideres via matrix (b/validateSpec). Producerer krav-hash. Krav-godkendelsen (S8) er separat (Mathias' dømmekraft)."
+}
