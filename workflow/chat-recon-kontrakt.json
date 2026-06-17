@@ -1,0 +1,11 @@
+{
+  "_kontrakt": "Regel-flade klausul (l): Claude.ai chat-recon-kontrakt (krav 2/6). Fund fra det lokale Windows-app-projekt skal citeres med chat/dato/tråd + klassificeres; aldrig en usynlig ekstra sandhed. Mekanisme = app-flade/build-recon (jf. S16).",
+  "fundFelter": ["citat", "dato", "traad", "klassifikation"],
+  "klassifikationer": [
+    "laast-beslutning",
+    "staerk-intention",
+    "mulig-praeference",
+    "gammel-superseded",
+    "modsigelse-uklarhed"
+  ]
+}

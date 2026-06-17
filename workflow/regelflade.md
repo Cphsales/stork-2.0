@@ -53,7 +53,15 @@ Autoritativ: `workflow/handoff-kontrakt.json` · checker: `scripts/workflow/hand
 
 Autoritativ: `workflow/self-validering-kontrakt.json` · checker: `scripts/workflow/self-validering-check.mjs` · bevis: `scripts/workflow/self-validering-check.selftest.mjs`. Pr. handoff skriver aktøren en blok (docs læst · holdt op mod · drift fundet · ikke verificeret · kanariefugl); FØRSTE forsvarslag, erstatter ALDRIG uafhængig review. Kanariefugl: tom/sprunget blok (manglende indhold/felt) → afvist (papirgrøn-guard).
 
-## Klausuler (f), (h), (i), (k)–(l) — bygges gennem Leverance 1
+## Klausul (k) — djævlens-advokat-kontrakt (krav 3/5) ✅ bygget
+
+Autoritativ: `workflow/djaevel-kontrakt.json` · checker: `scripts/workflow/djaevel-check.mjs` · bevis: `scripts/workflow/djaevel-check.selftest.mjs`. Pr. krav skal reviewer udfylde 6 felter (min/max-læsning · snydevej-til-grøn · kanariefugl-der-lukker · evne-ikke-færdig · ikke-gemt-bag-build-recon); en APPROVAL uden fuldt pass → afvist. Reviewer-rolle, ALDRIG Mathias; scope-routes via S5.
+
+## Klausul (l) — Claude.ai chat-recon-kontrakt (krav 2/6) ✅ bygget
+
+Autoritativ: `workflow/chat-recon-kontrakt.json` · checker: `scripts/workflow/chat-recon-check.mjs` · bevis: `scripts/workflow/chat-recon-check.selftest.mjs`. Fund fra chat-projektet skal cite med citat/dato/tråd + gyldig klassifikation (låst-beslutning/stærk-intention/mulig-præference/gammel-superseded/modsigelse-uklarhed); ukildet/uklassificeret → afvist (ingen usynlig sandhed).
+
+## Klausuler (f), (h), (i) — bygges gennem Leverance 1
 
 (f) krav-troskab-metode (matrix done b · menings-gate · dual-hash via j · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
