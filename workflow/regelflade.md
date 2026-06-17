@@ -79,6 +79,10 @@ Autoritativ: `workflow/krav-troskab-kontrakt.json` · checker: `scripts/workflow
 
 Autoritativ: `workflow/roller.json` · checker: `scripts/workflow/roller-check.mjs` · bevis: `scripts/workflow/roller-check.selftest.mjs`. Code/Codex/Claude.ai × {workflow, almindelig}. **Struktur:** alle workflow-roller importerer (c)/(d)/(e)/(h); review-rollerne (Codex-workflow, Claude.ai-workflow) også (k); Claude.ai-workflow også (f)/(l); almindelig = fri dialog. **Adfærds-tråd (Codex' krav):** kontrakten styrer rollens output i en realistisk opgave — Claude.ai-workflow importerer (c), så et krav-oplæg med kode på Mathias' bord **afvises**, et rent "hvad"-output accepteres. Kanariefugle: rolle uden krævet import / almindelig-rolle med imports → FAIL.
 
-Tilbage i Leverance 1: **S15-light inventory** (doc-grundlaget S6 forventer).
+## S15-light — seed repo-sandheds-inventory ✅ bygget
+
+Autoritativ: `workflow/doc-inventory.json` · checker: `scripts/workflow/s15-light-check.mjs` · bevis: `scripts/workflow/s15-light-check.selftest.mjs`. Kører (i) repo-hygiejne over inventory'et + verificerer at hver levende workflow-doc er inventoriseret (uinventeret doc / konkurrerende sandhed → afvist). Giver det **doc-grundlag S6 forventer** (én aktiv sandhed pr. emne). LIGHT scope = `workflow/`; **fuld `docs/`-tree-klassifikation = Leverance 4** (fuld S15-gate, Plan-2-precondition). Real-run i CI (`workflow:selftest`).
+
+**Leverance 1 (substrat) er hermed komplet:** alle 13 kontrakter (a–m) + S2 (roller) + S3 (worklog/drift) + S13 (CI-suite) + S15-light. Klar til formel Codex full-scope review.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
