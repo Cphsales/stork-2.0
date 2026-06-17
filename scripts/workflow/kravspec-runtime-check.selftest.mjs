@@ -11,7 +11,7 @@ const ok = (navn, cond) => {
 const harFejl = (res, kode) => res.fejl.some((f) => f.startsWith(kode));
 
 const god = {
-  reconHash: "abc123",
+  reconHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   spec: { krav: [{ id: "K-1", acceptkriterie: "x", step: "S1", test: "t" }], planSteps: ["S1"] },
   medforfatterBidrag: "Claude.ai hjalp med at skrive K-1",
   buildVsOensker: "nuværende build vs ønske: x",
@@ -24,6 +24,14 @@ ok("fuld kravspec-run passerer", r.ok);
 ok("producerer krav-hash", typeof r.kravHash === "string" && r.kravHash.length === 64);
 
 // Kanariefugle:
+ok(
+  "fake recon-hash (ikke 64-hex) → FAIL",
+  harFejl(validateKravspecRun({ ...god, reconHash: "not-a-real-recon-hash" }), "ugyldigReconHash"),
+);
+ok(
+  "recon-hash mismatch mod current S6-sandhed → FAIL",
+  harFejl(validateKravspecRun(god, { expectedReconHash: "f".repeat(64) }), "reconHashMismatch"),
+);
 ok(
   "ikke bygget fra recon-sandhed → FAIL",
   harFejl(validateKravspecRun({ ...god, reconHash: "" }), "ikkeByggetFraReconSandhed"),

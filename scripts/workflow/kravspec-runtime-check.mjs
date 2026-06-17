@@ -15,10 +15,14 @@ export const kravHashAf = (spec) =>
     .digest("hex");
 
 // run = { reconHash, spec, medforfatterBidrag, buildVsOensker, kravModVision }
-export function validateKravspecRun(run) {
+// expectedReconHash (valgfri): den aktuelle S6 recon-sandhed-hash — binder kravspec mod den.
+export function validateKravspecRun(run, { expectedReconHash } = {}) {
   const fejl = [];
-  // Bygget FRA den ene konsoliderede recon-sandhed (S6), ikke fra løs recon.
+  // Bygget FRA den ene konsoliderede recon-sandhed (S6) — HÅRD: skal være en 64-hex sandhed-hash,
+  // ikke en vilkårlig streng (Codex-lukning). Helst bundet mod den aktuelle S6-sandhed.
   if (tom(run?.reconHash)) fejl.push("ikkeByggetFraReconSandhed");
+  else if (!/^[0-9a-f]{64}$/.test(run.reconHash)) fejl.push("ugyldigReconHash");
+  else if (expectedReconHash && run.reconHash !== expectedReconHash) fejl.push("reconHashMismatch");
   // Matrix-gate (genbrug af b) — ingen parallel logik.
   const m = validateSpec(run?.spec);
   if (!m.ok) fejl.push(...m.fejl.map((f) => `matrix:${f}`));

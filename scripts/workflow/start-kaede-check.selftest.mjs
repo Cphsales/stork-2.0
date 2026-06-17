@@ -39,6 +39,20 @@ ok(
   harFejl(validateStartKaede({ ...god, reconSamlet: false }), "kravOplaegUdenRecon"),
 );
 
+// Codex-lukning: ufuldstændig transport må IKKE passere grøn.
+ok(
+  "uden recon samlet → FAIL",
+  harFejl(validateStartKaede({ ...god, reconSamlet: false, kravOplaegFremlagt: false }), "reconIkkeSamlet"),
+);
+ok(
+  "uden krav-oplæg fremlagt → FAIL",
+  harFejl(validateStartKaede({ ...god, kravOplaegFremlagt: false }), "kravOplaegMangler"),
+);
+ok(
+  "kun author+aktiveret (ingen transport-output) → FAIL",
+  !validateStartKaede({ authorVerificeret: true, aktiverede: ["Code", "Codex", "Claude.ai"] }).ok,
+);
+
 if (fejl) {
   console.error(`start-kaede-check selftest: ${fejl} fejl`);
   process.exit(1);

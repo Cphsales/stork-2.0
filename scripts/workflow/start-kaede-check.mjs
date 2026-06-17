@@ -19,7 +19,11 @@ export function validateStartKaede(state, def = loadDef()) {
   }
   // Grænse: transport må ikke krydse ind i dømmekraft.
   if (state?.autoValideret) fejl.push("transportAutoValiderede");
-  // Krav-oplæg må ikke fremlægges uden samlet recon.
+  // KOMPLET transport-output kræves (Codex-lukning): kæden er ikke "grøn" uden samlet recon
+  // OG fremlagt krav-oplæg — ellers kan qwers→aktivering passere uden faktisk krav-oplæg.
+  if (!state?.reconSamlet) fejl.push("reconIkkeSamlet");
+  if (!state?.kravOplaegFremlagt) fejl.push("kravOplaegMangler");
+  // Ordens-fejl: krav-oplæg fremlagt uden samlet recon.
   if (state?.kravOplaegFremlagt && !state?.reconSamlet) fejl.push("kravOplaegUdenRecon");
   return { ok: fejl.length === 0, fejl };
 }

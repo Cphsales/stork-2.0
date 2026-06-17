@@ -90,10 +90,10 @@ Autoritativ: `workflow/doc-inventory.json` · checker: `scripts/workflow/s15-lig
 Runtime-stationerne der bruger substratets kontrakter. Bygget:
 
 - **S5 — scale-router** (`workflow/scale-kontrakt.json` · `scripts/workflow/scale-check.mjs`): ruter dybde/kontrol-intensitet til pakke-scale (lav→DIRECT/høj→DELEGATED); altid-på-gulv scaler aldrig ned.
-- **S4 — start-kæde** (`workflow/start-kaede-kontrakt.json` · `scripts/workflow/start-kaede-check.mjs`): qwers → author-verificeret åbning → alle tre aktiveres → recon samlet → krav-oplæg. Kanariefugle: forkert author / ikke-alle-aktiveret / transport-auto-validerer / krav-oplæg-uden-recon → afvist.
+- **S4 — start-kæde** (`workflow/start-kaede-kontrakt.json` · `scripts/workflow/start-kaede-check.mjs`): qwers → author-verificeret åbning → alle tre aktiveres → recon samlet → krav-oplæg. Kræver **komplet transport-output** (recon samlet OG krav-oplæg fremlagt — ufuldstændig kæde passerer ikke grøn; Codex-lukning). Kanariefugle: forkert author / ikke-alle-aktiveret / transport-auto-validerer / recon-ikke-samlet / krav-oplæg-mangler → afvist.
 
 - **S6 — recon-eksekvering** (`recon-runtime-check.mjs`): komponerer (d)/(e)/(h) på begge punkter + konsoliderer til ÉN hash'et recon-sandhed.
-- **S7 — kravspec-skabelse** (`kravspec-runtime-check.mjs`): bygger kravspec FRA recon-sandhed-1 med Claude.ai-medforfatter (build-vs-ønsker + krav⊨vision) + matrix (genbrug af b); producerer krav-hash.
+- **S7 — kravspec-skabelse** (`kravspec-runtime-check.mjs`): bygger kravspec FRA recon-sandhed-1 med Claude.ai-medforfatter (build-vs-ønsker + krav⊨vision) + matrix (genbrug af b); producerer krav-hash. recon-hash skal være **64-hex** (ikke vilkårlig streng) og kan bindes mod den aktuelle S6-sandhed (`expectedReconHash`) — Codex-lukning.
 
 **Leverance 2 (recon + krav) er komplet** (S4–S7). Derefter L3 (gates: S8/S9/S10/S11/S12/S16) + L4 (e2e S14 + fuld S15).
 
