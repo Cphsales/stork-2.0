@@ -109,6 +109,19 @@ Gate-orkestratorerne der komponerer L1-kontrakterne. Bygget:
 - **S12 — gate-ord-afstemning** (`gate-ord-check.mjs`): hvert eksternt gate-ord → intern state (genbrug af a).
 - **S16 — handoff-kanaler-wiring** (`handoff-wiring-check.mjs`): hver gate-aktør har en defineret læsekanal (genbrug af j).
 
-**Leverance 3 (gates) er komplet** (S8–S12 + S16). Derefter **L4 (e2e S14 + fuld S15)**.
+**Leverance 3 (gates) — komplet** (S8–S12 + S16).
+
+## Leverance 4 — acceptance + hygiejne
+
+- **S14 — kæde-uafhængig e2e** (`e2e-check.mjs`): tråder en syntetisk pakke gennem hele front-halvdelen (start-kæde→scale→recon→kravspec→krav-gate→kode-recon→plan-gate) og **producerer en godkendt plan uden hånd-syning**; kanariefugl-suiten fanger hver seedet fejl ved sin station. Komponerer S4–S9.
+- **S15-full — repo-hygiejne over hele `docs/`** (`s15-full-check.mjs`): genbruger (i) + S15-lights kerne over hele træet; rapport-mode build-tid, `--gate` ved **Plan-2-acceptance** (Plan 2 testes på et rent repo-sæt — én aktiv sandhed pr. emne, ingen uklassificerede docs).
+
+**Leverance 4 — komplet.**
+
+---
+
+## ✅ Pakke 1 — front-halvdelen bygget (alle fire leverancer)
+
+L1 (substrat: 13 kontrakter a–m + S2/S3/S13/S15-light) · L2 (recon+krav: S4–S7) · L3 (gates: S8–S12+S16) · L4 (e2e S14 + S15-full). **28 selvforsvarende selftests**, alle stationer komponerer L1-kontrakterne (ingen parallel logik). S14-e2e beviser at front-halvdelen kan producere en godkendt plan. Klar til Codex L3+L4-review → `build OK` (Mathias) → Plan 2 produceres gennem front-halvdelen.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
