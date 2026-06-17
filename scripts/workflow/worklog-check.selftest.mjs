@@ -91,7 +91,10 @@ ok(
 // Eksplicit gate-record (Claude.ai-fund 2 — bogføring kan ikke mangle eller lyve):
 ok(
   "kravOK gatet men gateRecord mangler → FAIL",
-  harFejl(validateWorklog({ ...godWorklog, gateRecord: { planOK: { planSha, af: "Mathias" } } }, kravHash), "manglerGateRecord(kravOK)"),
+  harFejl(
+    validateWorklog({ ...godWorklog, gateRecord: { planOK: { planSha, af: "Mathias" } } }, kravHash),
+    "manglerGateRecord(kravOK)",
+  ),
 );
 ok(
   "gateRecord lyver om krav-hash → FAIL",
