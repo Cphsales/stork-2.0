@@ -1,0 +1,5 @@
+{
+  "_kontrakt": "Regel-flade klausul (m): self-validerings-kontrakt (krav 3 — aktøren selv, FØRSTE forsvarslag, erstatter ALDRIG uafhængig review). Pr. handoff skriver aktøren en self-validerings-blok. En sprунget/tom blok → FAIL (papirgrøn-guard).",
+  "indholdsFelter": ["docsLaest", "holdtOpMod", "kanariefugl"],
+  "tilstedeFelter": ["driftFundet", "ikkeVerificeret"]
+}

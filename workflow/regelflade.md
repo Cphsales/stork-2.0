@@ -49,7 +49,11 @@ Autoritativ: `workflow/review-dybde-kontrakt.json` · checker: `scripts/workflow
 
 Autoritativ: `workflow/handoff-kontrakt.json` · checker: `scripts/workflow/handoff-check.mjs` · bevis: `scripts/workflow/handoff-check.selftest.mjs`. `validateBinding()` kræver at et verdikt binder til **samme plan-SHA + krav-hash** som den aktuelle artefakt; `kanalFor()` giver hver aktørs læsekanal. Kanariefugl: stale plan-SHA / forkert el. manglende krav-hash → afvist (kan ikke binde på gammel state); general mismatch (vilkårlig SHA), ikke kun kendt-gammel. `currentFromState()` henter den aktuelle SHA+hash fra **pakke-state (S3 worklog)** — ikke en hardcodet fixture. Gaterne (S8/S9) og (f) dual-hash **genbruger `validateBinding`** uden parallel logik (Codex' (j)-checkliste).
 
-## Klausuler (f), (h), (i), (k)–(m) — bygges gennem Leverance 1
+## Klausul (m) — self-validerings-kontrakt (krav 3) ✅ bygget
+
+Autoritativ: `workflow/self-validering-kontrakt.json` · checker: `scripts/workflow/self-validering-check.mjs` · bevis: `scripts/workflow/self-validering-check.selftest.mjs`. Pr. handoff skriver aktøren en blok (docs læst · holdt op mod · drift fundet · ikke verificeret · kanariefugl); FØRSTE forsvarslag, erstatter ALDRIG uafhængig review. Kanariefugl: tom/sprunget blok (manglende indhold/felt) → afvist (papirgrøn-guard).
+
+## Klausuler (f), (h), (i), (k)–(l) — bygges gennem Leverance 1
 
 (f) krav-troskab-metode (matrix done b · menings-gate · dual-hash via j · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
