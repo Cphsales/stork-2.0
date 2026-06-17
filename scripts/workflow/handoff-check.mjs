@@ -21,6 +21,14 @@ export function validateBinding(verdikt, current, def = loadDef()) {
 
 export const kanalFor = (aktoer, def = loadDef()) => def.kanaler[aktoer] ?? null;
 
+// Henter den AUTORITATIVE aktuelle plan-SHA + krav-hash fra pakke-state (S3 worklog/ledger),
+// så binding sammenlignes mod faktisk state — ikke en hardcodet vaerdi. (f)/S8/S9 genbruger
+// validateBinding mod dette, uden parallel logik.
+export function currentFromState(statePath) {
+  const s = JSON.parse(readFileSync(statePath, "utf8"));
+  return { planSha: s.planSha, kravHash: s.kravHash };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [, , verdiktPath, currentPath] = process.argv;
   if (!verdiktPath || !currentPath) {

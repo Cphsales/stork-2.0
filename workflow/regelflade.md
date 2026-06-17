@@ -45,7 +45,7 @@ Autoritativ: `workflow/review-dybde-kontrakt.json` · checker: `scripts/workflow
 
 ## Klausul (j) — aktør-handoff / SHA-binding (krav 2/5/9) ✅ bygget
 
-Autoritativ: `workflow/handoff-kontrakt.json` · checker: `scripts/workflow/handoff-check.mjs` · bevis: `scripts/workflow/handoff-check.selftest.mjs`. `validateBinding()` kræver at et verdikt binder til **samme plan-SHA + krav-hash** som den aktuelle artefakt; `kanalFor()` giver hver aktørs læsekanal. Kanariefugl: stale plan-SHA / forkert el. manglende krav-hash → afvist (kan ikke binde på gammel state). Gaterne (S8/S9) og (f) dual-hash bygger på denne.
+Autoritativ: `workflow/handoff-kontrakt.json` · checker: `scripts/workflow/handoff-check.mjs` · bevis: `scripts/workflow/handoff-check.selftest.mjs`. `validateBinding()` kræver at et verdikt binder til **samme plan-SHA + krav-hash** som den aktuelle artefakt; `kanalFor()` giver hver aktørs læsekanal. Kanariefugl: stale plan-SHA / forkert el. manglende krav-hash → afvist (kan ikke binde på gammel state); general mismatch (vilkårlig SHA), ikke kun kendt-gammel. `currentFromState()` henter den aktuelle SHA+hash fra **pakke-state (S3 worklog)** — ikke en hardcodet fixture. Gaterne (S8/S9) og (f) dual-hash **genbruger `validateBinding`** uden parallel logik (Codex' (j)-checkliste).
 
 ## Klausuler (f), (h), (i), (k)–(m) — bygges gennem Leverance 1
 
