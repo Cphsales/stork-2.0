@@ -3,6 +3,7 @@
   "packageId": "workflow-faerdiggoerelse-pakke1",
   "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79",
   "planSha": "94c70eb5450ec5323dd4e25b5f213af070f23495",
+  "planRef": "claude/plan1-udkast",
   "gateState": { "kravOK": true, "planOK": true, "buildOK": false },
   "scale": 9,
   "artefaktRef": "claude/plan1-udkast @ 94c70eb"

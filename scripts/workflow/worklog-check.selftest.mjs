@@ -2,7 +2,12 @@
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { validateWorklog, driftModKravDok, computeKravHash } from "./worklog-check.mjs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { validateWorklog, driftModKravDok, computeKravHash, planShaFindesIGit } from "./worklog-check.mjs";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 let fejl = 0;
 const ok = (navn, cond) => {
@@ -20,6 +25,7 @@ const godWorklog = {
   packageId: "p1",
   kravHash,
   planSha: "94c70eb5450ec5323dd4e25b5f213af070f23495",
+  planRef: "claude/plan1-udkast",
   gateState: { kravOK: true, planOK: true, buildOK: false },
   scale: 9,
   artefaktRef: "branch @ sha",
@@ -27,6 +33,14 @@ const godWorklog = {
 
 // Positiv evne: korrekt worklog passerer.
 ok("korrekt worklog passerer", validateWorklog(godWorklog, kravHash).ok);
+
+// HÅRD planSha-eksistens (Codex-lukning): fabrikeret-men-format-gyldig SHA findes ikke → afvist.
+const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot }).toString().trim();
+ok("eksisterende commit (HEAD) findes i git", planShaFindesIGit(head, { cwd: repoRoot }));
+ok(
+  "fabrikeret SHA findes IKKE (hård afvisning, ingen planRef → ingen fetch)",
+  !planShaFindesIGit("a".repeat(40), { cwd: repoRoot }),
+);
 
 // Kanariefugle:
 ok(

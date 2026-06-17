@@ -30,14 +30,29 @@ export function validateWorklog(worklog, expectedKravHash, schema = loadSchema()
   return { ok: fejl.length === 0, fejl };
 }
 
-// Real-kilde: planSha skal være et faktisk commit i git (ikke kun gyldigt format).
-export function planShaFindesIGit(planSha, cwd) {
-  try {
-    execFileSync("git", ["cat-file", "-e", `${planSha}^{commit}`], { cwd, stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
+// Real-kilde: planSha skal være et FAKTISK commit i git (HÅRD; ikke kun format).
+// planSha er ofte cross-branch (plan-branchen) → ikke i en lavvandet CI-checkout. Derfor
+// hentes den autoritative plan-ref FØRST hvis objektet mangler, og så verificeres hårdt.
+// En fabrikeret-men-format-gyldig SHA findes heller ikke efter fetch → afvist.
+export function planShaFindesIGit(planSha, { planRef, cwd } = {}) {
+  const findes = () => {
+    try {
+      execFileSync("git", ["cat-file", "-e", `${planSha}^{commit}`], { cwd, stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (findes()) return true;
+  if (planRef) {
+    try {
+      execFileSync("git", ["fetch", "--quiet", "origin", planRef], { cwd, stdio: "ignore" });
+    } catch {
+      /* netværk/ref-fejl → falder igennem til hård fejl nedenfor */
+    }
+    return findes();
   }
+  return false;
 }
 
 // Real-fil: gen-beregn krav-hash fra krav-dokket og drift-tjek worklog mod den.
@@ -51,18 +66,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const kravDokPath =
     process.argv[3] ?? resolve(here, "../../docs/coordination/workflow-faerdiggoerelse-krav-og-data.md");
   const worklog = JSON.parse(readFileSync(worklogPath, "utf8"));
-  // HÅRDE checks (deterministiske, miljø-uafhængige): schema + kravHash-drift + gate-state + format.
   const res = driftModKravDok(worklog, kravDokPath);
+  // HÅRD planSha-eksistens: hent den autoritative plan-ref først hvis objektet mangler i checkout'en.
+  // En fabrikeret-men-format-gyldig planSha findes heller ikke efter fetch → afvist (ingen warning-snyd).
+  if (
+    worklog?.planSha &&
+    !planShaFindesIGit(worklog.planSha, { planRef: worklog.planRef, cwd: resolve(here, "../..") })
+  )
+    res.fejl.push(
+      `planShaIkkeIGit(${worklog.planSha}) — heller ikke efter fetch af planRef=${worklog.planRef ?? "(mangler)"}`,
+    );
   if (res.fejl.length) {
     console.error("WORKLOG DRIFT/AFVIST:\n  " + res.fejl.join("\n  "));
     process.exit(1);
   }
-  // BEST-EFFORT: planSha er ofte et cross-branch commit (plan-branchen), som en isoleret/
-  // lavvandet CI-checkout ikke har. Verificér eksistens HVOR objektet er tilgængeligt; ellers note
-  // (ikke en drift — de hårde checks ovenfor bærer integriteten).
-  if (worklog?.planSha && !planShaFindesIGit(worklog.planSha, resolve(here, "../..")))
-    console.warn(
-      `note: planSha ${worklog.planSha} ikke i denne checkout (cross-branch/lavvandet) — format + hermetiske checks gælder`,
-    );
-  console.log("worklog OK (krav-hash drift-tjekket + gate-state konsistent + planSha-format)");
+  console.log("worklog OK (krav-hash drift + planSha findes i git (evt. via fetch af planRef) + gate-state)");
 }
