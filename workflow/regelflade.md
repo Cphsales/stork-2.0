@@ -43,8 +43,12 @@ Ved Leverance-1-review skal disse konkrete tråde findes (ikke "noteret men ikke
 
 Autoritativ: `workflow/review-dybde-kontrakt.json` · checker: `scripts/workflow/review-dybde-check.mjs` · bevis: `scripts/workflow/review-dybde-check.selftest.mjs`. `decideReValidering()` afgør **deterministisk** (ikke skøn): ingen baseline → full-scope; berører en trigger (bærende kontrakt/krav-mapping/gate-semantik/rolle-instruks/recon-skema/aktør-aktivering/repo-sandhed/reviewer-miss) → full-scope; ellers diff-bundet. Kanariefugl: en trigger kan ikke gambles til diff-bundet.
 
-## Klausuler (f), (h)–(m) — bygges gennem Leverance 1
+## Klausul (j) — aktør-handoff / SHA-binding (krav 2/5/9) ✅ bygget
 
-(f) krav-troskab-metode (matrix done b · menings-gate · dual-hash · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
+Autoritativ: `workflow/handoff-kontrakt.json` · checker: `scripts/workflow/handoff-check.mjs` · bevis: `scripts/workflow/handoff-check.selftest.mjs`. `validateBinding()` kræver at et verdikt binder til **samme plan-SHA + krav-hash** som den aktuelle artefakt; `kanalFor()` giver hver aktørs læsekanal. Kanariefugl: stale plan-SHA / forkert el. manglende krav-hash → afvist (kan ikke binde på gammel state). Gaterne (S8/S9) og (f) dual-hash bygger på denne.
+
+## Klausuler (f), (h), (i), (k)–(m) — bygges gennem Leverance 1
+
+(f) krav-troskab-metode (matrix done b · menings-gate · dual-hash via j · kæde-troskab) + recon-output-skema · (e) grundig-recon-kontrakt · (f) krav-troskab-metode (+ kumulativ kæde-troskab) · (g) review-dybde-kontrakt (to faser + proportionel re-validering) · (h) recon-dybde-kontrakt · (i) repo-hygiejne-/klassifikations-kontrakt · (j) aktør-handoff-/læsekanal-kontrakt · (k) djævlens-advokat-kontrakt · (l) Claude.ai chat-recon-kontrakt · (m) self-validerings-kontrakt.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.

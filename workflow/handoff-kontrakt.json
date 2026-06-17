@@ -1,0 +1,10 @@
+{
+  "_kontrakt": "Regel-flade klausul (j): aktør-handoff-/læsekanal-kontrakt (krav 2/5/9). Hver aktør læser den kanoniske committede artefakt via sin EGEN kanal og binder sit verdikt til SAMME plan-SHA + krav-hash; stale/forkert → afvist. Ekstern aktivering (qwers), ikke kun GUI.",
+  "kanaler": {
+    "Code": "terminal-git",
+    "Codex": "terminal-git",
+    "Claude.ai": "github-connector | filesystem-rod til worktree-HEAD | SHA-pinnet raa-URL",
+    "Mathias": "app-ui"
+  },
+  "bindingFelter": ["planSha", "kravHash"]
+}
