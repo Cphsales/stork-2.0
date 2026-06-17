@@ -103,6 +103,12 @@ Gate-orkestratorerne der komponerer L1-kontrakterne. Bygget:
 
 - **S8 — KRAV-GATE** (`krav-gate-check.mjs`): komponerer (f) krav-troskab + (k) djævlens-advokat-pass + (j) fire-aktør-binding på krav-hash + S7 kravspec **bundet mod aktuel S6 recon-sandhed** (Codex-note, nu obligatorisk ved gaten); Mathias sidst. Kanariefugle: manglende AI-verdikt / Mathias-før-AI / stale binding / recon-hash-mismatch / ufuldt djævel-pass → afvist.
 
-Tilbage i L3: **S9** (plan-gate) · **S10** (plan-review + dispositioner) · **S11** (master-plan-konsistens) · **S12** (gate-ord) · **S16** (handoff-kanaler-wiring). Derefter L4 (e2e S14 + fuld S15).
+- **S9 — PLAN-GATE** (`plan-gate-check.mjs`): dual-hash fire-aktør-binding (plan-SHA + krav-hash) + (k) djævel + plan⊨vision+krav + Mathias sidst; kan ikke låses før ren krav-gate.
+- **S10 — plan-review + dispositioner** (`plan-review-check.mjs`): komponerer dispositions-vokabular (a) + proportionel re-validering (g); udisponeret/ugyldigt fund → blokerer.
+- **S11 — master-plan-konsistens** (`master-plan-check.mjs`): master-plan ændret / plan modsiger → kræver Mathias-gate (krav 10).
+- **S12 — gate-ord-afstemning** (`gate-ord-check.mjs`): hvert eksternt gate-ord → intern state (genbrug af a).
+- **S16 — handoff-kanaler-wiring** (`handoff-wiring-check.mjs`): hver gate-aktør har en defineret læsekanal (genbrug af j).
+
+**Leverance 3 (gates) er komplet** (S8–S12 + S16). Derefter **L4 (e2e S14 + fuld S15)**.
 
 Hver klausul bygges som tekst-der-ER-funktionen med en fejlende test (kanariefugl), gerne eksekverbar (primitiv-først). Codex' bindende fortolkninger fra gate-passet bæres ind: S5-routing letter **bredde/scope**, aldrig S6's fulde recon-dybde af berørt scope.
