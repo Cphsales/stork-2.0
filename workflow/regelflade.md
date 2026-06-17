@@ -55,11 +55,11 @@ Autoritativ: `workflow/self-validering-kontrakt.json` · checker: `scripts/workf
 
 ## Klausul (k) — djævlens-advokat-kontrakt (krav 3/5) ✅ bygget
 
-Autoritativ: `workflow/djaevel-kontrakt.json` · checker: `scripts/workflow/djaevel-check.mjs` · bevis: `scripts/workflow/djaevel-check.selftest.mjs`. Pr. krav skal reviewer udfylde 6 felter (min/max-læsning · snydevej-til-grøn · kanariefugl-der-lukker · evne-ikke-færdig · ikke-gemt-bag-build-recon); en APPROVAL uden fuldt pass → afvist. Reviewer-rolle, ALDRIG Mathias; scope-routes via S5.
+Autoritativ: `workflow/djaevel-kontrakt.json` · checker: `scripts/workflow/djaevel-check.mjs` · bevis: `scripts/workflow/djaevel-check.selftest.mjs`. Pr. krav skal reviewer udfylde 6 felter (min/max-læsning · snydevej-til-grøn · kanariefugl-der-lukker · evne-ikke-færdig · ikke-gemt-bag-build-recon); en APPROVAL uden fuldt pass → afvist. Reviewer-rolle, ALDRIG Mathias; scope-routes via S5 — men **scope-routing kan ikke springe et BERØRT krav over** (alle berørte krav dækkes uanset scale; kanariefugl: `beroertKravIkkeDaekket` → FAIL). (Codex-hærdning.)
 
 ## Klausul (l) — Claude.ai chat-recon-kontrakt (krav 2/6) ✅ bygget
 
-Autoritativ: `workflow/chat-recon-kontrakt.json` · checker: `scripts/workflow/chat-recon-check.mjs` · bevis: `scripts/workflow/chat-recon-check.selftest.mjs`. Fund fra chat-projektet skal cite med citat/dato/tråd + gyldig klassifikation (låst-beslutning/stærk-intention/mulig-præference/gammel-superseded/modsigelse-uklarhed); ukildet/uklassificeret → afvist (ingen usynlig sandhed).
+Autoritativ: `workflow/chat-recon-kontrakt.json` · checker: `scripts/workflow/chat-recon-check.mjs` · bevis: `scripts/workflow/chat-recon-check.selftest.mjs`. Fund fra chat-projektet skal cite med citat/dato/tråd + gyldig klassifikation (låst-beslutning/stærk-intention/mulig-præference/gammel-superseded/modsigelse-uklarhed); ukildet/uklassificeret → afvist (ingen usynlig sandhed). **Modsiger låste docs** (el. klassifikation `modsigelse-uklarhed`) → skal til **Mathias/FEEDBACK** (`tilMathias`), **aldrig anvendt som auto-sandhed** (`anvendtSomSandhed` → FAIL). (Codex-hærdning: Claude.ai vælger ikke selv.)
 
 ## Klausuler (f), (h), (i) — bygges gennem Leverance 1
 

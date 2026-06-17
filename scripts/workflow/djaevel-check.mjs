@@ -23,6 +23,15 @@ export function validateDjaevelPass(pass, def = loadDef()) {
       }
     }
   }
+  // Scope-routing må aldrig bruges til at undgå et BERØRT krav: alle berørte krav skal dækkes,
+  // uanset scale (scale letter kun om IKKE-berørte krav også tages, ikke om berørte springes).
+  const daekkede = new Set(krav.map((k) => k?.id));
+  for (const id of Array.isArray(pass?.beroerte) ? pass.beroerte : []) {
+    if (!daekkede.has(id)) {
+      fejl.push(`beroertKravIkkeDaekket(${id})`);
+      alleFulde = false;
+    }
+  }
   if (pass?.approval && !alleFulde) fejl.push("approvalUdenFuldtPass");
   return { ok: fejl.length === 0, fejl };
 }

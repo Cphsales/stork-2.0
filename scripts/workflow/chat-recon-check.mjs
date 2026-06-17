@@ -22,6 +22,12 @@ export function validateChatRecon(recon, def = loadDef()) {
     }
     if (f?.klassifikation && !def.klassifikationer.includes(f.klassifikation))
       fejl.push(`ukendtKlassifikation(${f.klassifikation}): ${hvor}`);
+    // Modsiger låste docs → FEEDBACK/Mathias-bord, ALDRIG auto-sandhed (Claude.ai vælger ikke selv).
+    const modsiger = f?.modsigerLaasteDocs === true || f?.klassifikation === "modsigelse-uklarhed";
+    if (modsiger) {
+      if (f?.tilMathias !== true) fejl.push(`modsigelseUdenMathiasRute: ${hvor}`);
+      if (f?.anvendtSomSandhed === true) fejl.push(`modsigelseAnvendtSomSandhed: ${hvor}`);
+    }
   }
   return { ok: fejl.length === 0, fejl };
 }
