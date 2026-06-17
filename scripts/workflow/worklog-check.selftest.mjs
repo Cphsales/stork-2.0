@@ -29,10 +29,45 @@ const godWorklog = {
 ok("korrekt worklog passerer", validateWorklog(godWorklog, kravHash).ok);
 
 // Kanariefugle:
-ok("hand-edited krav-hash → DRIFT", harFejl(validateWorklog({ ...godWorklog, kravHash: "lognet" }, kravHash), "DRIFT(kravHash)"));
-ok("manglende felt → FAIL", harFejl(validateWorklog({ ...godWorklog, planSha: undefined }, kravHash), "manglerFelt(planSha)"));
+ok(
+  "hand-edited krav-hash → DRIFT",
+  harFejl(validateWorklog({ ...godWorklog, kravHash: "lognet" }, kravHash), "DRIFT(kravHash)"),
+);
+ok(
+  "manglende felt → FAIL",
+  harFejl(validateWorklog({ ...godWorklog, planSha: undefined }, kravHash), "manglerFelt(planSha)"),
+);
 ok("ugyldig plan-SHA → FAIL", harFejl(validateWorklog({ ...godWorklog, planSha: "xyz!" }, kravHash), "ugyldigPlanSha"));
-ok("forkert schemaVersion → FAIL", harFejl(validateWorklog({ ...godWorklog, schemaVersion: 99 }, kravHash), "schemaVersionMismatch"));
+ok(
+  "forkert schemaVersion → FAIL",
+  harFejl(validateWorklog({ ...godWorklog, schemaVersion: 99 }, kravHash), "schemaVersionMismatch"),
+);
+
+// Gate-state-løgn (point 2 — drift fejler på løgn i gate-state, ikke kun krav-hash):
+ok(
+  "planOK uden kravOK → FAIL",
+  harFejl(
+    validateWorklog({ ...godWorklog, gateState: { kravOK: false, planOK: true, buildOK: false } }, kravHash),
+    "gateStateLoegn(planOK uden kravOK)",
+  ),
+);
+ok(
+  "buildOK uden planOK → FAIL",
+  harFejl(
+    validateWorklog({ ...godWorklog, gateState: { kravOK: true, planOK: false, buildOK: true } }, kravHash),
+    "gateStateLoegn(buildOK uden planOK)",
+  ),
+);
+ok(
+  "planOK uden planSha → FAIL",
+  harFejl(
+    validateWorklog(
+      { ...godWorklog, planSha: undefined, gateState: { kravOK: true, planOK: true, buildOK: false } },
+      kravHash,
+    ),
+    "gateStateLoegn(planOK uden planSha)",
+  ),
+);
 
 // Real-fil drift-gate: gen-beregner krav-hash fra fil.
 const dir = mkdtempSync(join(tmpdir(), "wf-worklog-"));
