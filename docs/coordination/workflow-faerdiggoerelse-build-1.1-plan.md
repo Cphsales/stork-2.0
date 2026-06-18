@@ -17,6 +17,33 @@
 - **Eksisterende infra (verificeret):** `scripts/kaede/adapters/codex.sh` (`codex exec … < /dev/null`, frossen @ SHA), `code.sh` + `claude-ai-rolle.sh` (`claude -p … < /dev/null`); `codex` CLI på PATH. → **Code kan køre Codex headless fra sin terminal nu.**
 - Build 1.1 laves **manuelt**, ikke gennem den brudte front-halvdel.
 
+## Formål
+
+> **Anker-note (H-pakke-pragmatik):** Build 1.1 er ren intern tooling med Mathias som eneste stakeholder → **ingen separat låst krav-dok**. Dette `## Formål` + `Done-kriterier` + `Scope-lås` (øverst) **ER det låste anker** (Mathias-låst 2026-06-18). Skabelonens "Formål 1:1 fra krav-dok" gælder ikke, fordi der bevidst ikke er en krav-dok.
+
+Gør Pakke 1's front-halvdel til et **reelt runtime/acceptance-substrat (M2)**: trigger → aktører → recon-sandhed → krav-oplæg → gates skal kunne køres som en **committet testpakke uden fixtures** og **uden app-chat-recon** (→ Build 1.2), gennem de reelle CLI-aktørkanaler (Code/Codex/`claude -p`). **Mål-tilstand:** ingen rød eller syntetisk test kan længere give "færdig"; acceptance er runtime-bevist på committet pakke (F01–F26). Build 1.1-grøn = **M2**, ikke fuld Plan 1.
+
+## Preconditions (§3.2 + §3.3)
+
+### Verificerede DB-objekter
+
+**N/A** — Build 1.1 er workflow/CLI-runtime (`scripts/kaede` + `workflow/`-JSON-state + git-committede aktør-artefakter). **Ingen Supabase/DB-objekter, RPC'er eller policies i scope** → intet DB-state-dump. Front-kæden persisterer state i git/JSON, ikke i DB.
+
+### End-to-end-spor (§3.3)
+
+**N/A som write-RPC-spor** — ingen write-RPC/DB-vej. Det reelle end-to-end-spor er **trigger → aktør → committet artefakt (`computedArtifactSha`) → gate** og bevises eksplicit af **A10 / F01–F26** (én pakke gennem hele kæden uden fixtures).
+
+### G/H-opslag (§3.2 — manuel bro, jf. H028)
+
+Åbne G/H filtreret på Løses-i mod dette scope:
+
+| G/H | Løses-i | Rører Build 1.1-scope? | Håndtering |
+| --- | ------- | ---------------------- | ---------- |
+| **G063** (LAV) — midlertidig governance-check-allowlist for `v4-slettede-docs` | gov-6 | Nej — governance-check-housekeeping, ikke front-runtime/acceptance | **Bevidst udskudt** (gov-6 folder dir'en → fjern allowlist). Ingen berøring med A1–A10. |
+| **H028** (åben) — mekanisk G/H-opslag i recon-mekanismen | gov-5-automation / partnerskabs-runde | Delvist — A5 (reel recon) er beslægtet | **Bevidst udskudt** til mekanisering; Build 1.1's A5 bruger reel CLI-recon, og §3.2's **MANUELLE** G/H-opslag (denne tabel) ER broen indtil da. Ingen mekaniseret opslag bygges i 1.1. |
+
+Ingen øvrige åbne G/H rammer dette scope.
+
 ## Grundprincip (bindende)
 
 En test der ikke virker bliver præcist ÉN af fire: **A)** bygget i 1.1 (rød runtime-test) · **B)** omklassificeret som unit/structural og fjernet fra acceptance (syntetisk falsk-grøn) · **C)** hærdet mod papirgrøn (semantisk felt-tjek) · **D)** eksplicit udskudt med ejer + begrundelse (ikke færdig). **Ingen rød eller syntetisk test må længere give "færdig".**
@@ -61,11 +88,24 @@ Hvert reelt aktør-output (Codex recon/review/verdikt; senere de øvrige) commit
 
 ---
 
+## Patch-først pr. ændret flade (§3.1)
+
+A1/A2/A7 **genbruger** eksisterende flader som transport-MOTOR; de **bevares 1:1** (intet gate/kommentar/spor fjernes). Tilføjelsen er **kobling til `workflow/`-runtime-facit + reel aktør-fødning**, ikke omskrivning. Nuværende bodies (ankre):
+
+- **`scripts/kaede/dirigent.mjs`** — qwers-aktivering (l.62–72, bindende format), dispatch-log (l.34 `.dispatch-log.jsonl`; idempotens i `udfoer()` l.332+), fail-closed (l.48/70/253/353/395/448/525/615), transport-commit (l.359/425), parallel dispatch (l.180–184). **Bevares uændret som motor.** A1 tilføjer kun kobling: kaede-state ↔ `workflow/`-runtime-facit; **divergens → BLOKER**.
+- **`scripts/kaede/kaede-regler.json`** — author-check (l.8–10: `gate_author:"mgrubak"`, `bot:"stork-code-bot"`). **Bevares.**
+- **`scripts/kaede/adapters/codex.sh`** — headless-mønster (l.61–63: `codex exec --skip-git-repo-check … < /dev/null`, frossen @ SHA). **A2 genbruger mønstret 1:1**; intet ændres i adapteren.
+- **`workflow/gate-def.json`** — gate-ord + dispositioner (l.7–16). **Definitionen bevares (ejet af `disciplin.md`, `governance-owns` disciplin.md:3).** A7 ændrer IKKE gate-ord/dispositioner; den tilføjer kun **runtime-fødning** fra reelle aktør-artefakter.
+- **`workflow/acceptance-register.json`** — **NET-NY fil** (findes ikke i dag) → ingen eksisterende body at bevare; ren tilføjelse. State-of-record for **runtime-acceptance-facit** (ikke definitioner).
+- **Læseflade** — `CLAUDE.md` (l.6–7 → LÆSEFØLGE), `docs/LÆSEFØLGE.md` (l.1–44, 6-kilders orden), `docs/coordination/aktiv-plan.md` (l.1–6, pointer-doc, i dag `aktiv-pakke: ingen`). **Trigger-/kilde-strukturen bevares;** A1 tilføjer kun en peger til ÉN runtime-sandhed (Build-1-flowet), så frisk aktør finder kæden uden gæt.
+
+---
+
 ## A — Røde runtime-tests (bygges i 1.1)
 
 _Afhængigheds-ordnet; hvert step kræver **runtime-effekt**, ikke selftest._
 
-- **A1 — Integrér `scripts/kaede` ↔ `workflow/` til ÉN runtime-sandhed; Code = runtime-orkestrator/transport.** Genbrug qwers, author-check, dispatch-log, fail-closed, transport-commit, parallel dispatch. **`scripts/kaede` må være transport-MOTOR, men `workflow/` er AUTORITATIVT for gates, state, test-klassifikation og acceptance — ikke to parallelle systemer.** Divergerer kaede-state og workflow-state → **BLOKER**. Opdatér læsefladen (CLAUDE.md / LÆSEFØLGE / aktiv-plan / disciplin) → frisk aktør finder Build 1-flowet (én sandhed). Code orkestrerer **kun transport** (opgave/SHA), aldrig dømmekraft. **Skarp rolle-adskillelse (Codex-fund):** Code-**transport/orkestrator** må ALDRIG skrive eller ændre actor-verdikter — den flytter kun opgave/SHA. Code-**workflow-aktøren** er en separat rolle, der producerer sit eget committede actor-artefakt (A7/M2) på samme vilkår som Codex/Claude.ai. _Bevis:_ `qwers <pakke>` → aktivering deterministisk; kaede↔workflow-state-divergens → BLOKER; orkestrator-fabrikeret Code-verdikt → BLOKER (F23).
+- **A1 — Integrér `scripts/kaede` ↔ `workflow/` til ÉN runtime-sandhed; Code = runtime-orkestrator/transport.** Genbrug qwers, author-check, dispatch-log, fail-closed, transport-commit, parallel dispatch. **Ejer-afgrænsning (§8.1):** `scripts/kaede` er transport-MOTOR. **`disciplin.md` forbliver DEFINITIONS-HJEM for gates, test-klassifikation og severities** (`governance-owns`, disciplin.md:3 — "eneste rolle- og proces-hjem"). **`workflow/` er den AUTORITATIVE RUNTIME-FACIT** — det committede state-register for hvad der faktisk er bestået/klassificeret på committet state — **IKKE et andet definitions-hjem.** Ikke to parallelle systemer. Divergerer kaede-state og workflow-state → **BLOKER**. Opdatér læsefladen (CLAUDE.md / LÆSEFØLGE / aktiv-plan / disciplin) → frisk aktør finder Build 1-flowet (én sandhed). Code orkestrerer **kun transport** (opgave/SHA), aldrig dømmekraft. **Skarp rolle-adskillelse (Codex-fund):** Code-**transport/orkestrator** må ALDRIG skrive eller ændre actor-verdikter — den flytter kun opgave/SHA. Code-**workflow-aktøren** er en separat rolle, der producerer sit eget committede actor-artefakt (A7/M2) på samme vilkår som Codex/Claude.ai. _Bevis:_ `qwers <pakke>` → aktivering deterministisk; kaede↔workflow-state-divergens → BLOKER; orkestrator-fabrikeret Code-verdikt → BLOKER (F23).
 
 - **A2 — Code→Codex CLI = første reelle aktørkanal (broen fra substrat til levende workflow).** Code starter Codex **headless** (`codex exec … < /dev/null`, frossen @ SHA — `codex.sh`-mønsteret) med **committet prompt + committet expected-output-format**. Codex' svar gemmes som **reelt, committet aktør-artefakt** i det kanoniske format; **gaten beregner selv `computedArtifactSha` fra den committede fil** og binder den til state — aldrig selvrapporteret SHA eller håndlavet fixture/literal. Build 1.1 beskriver IKKE længere Codex-verdikter som JSON-literals. _Gate-kanariefugle:_ F03 · F04 · F05 · F06 (se F-ID-liste).
 
@@ -182,6 +222,7 @@ S1l-chat-recon-**kontrakten** (citat/dato/tråd + klassifikation) findes allered
 - **Codex runde 1 (paste):** F01–F22 + computedArtifactSha + én runtime-sandhed + rolle-adskilt fremgangsmåde.
 - **Codex runde 2 (egen git-læsning, PR #172):** Code-aktør-artefakt adskilt fra Code-orkestrator (F23) · F24–F26 tilføjet · A10/S1l-ordlyd præciseret.
 - **Mathias-split (2026-06-18):** S1l flyttet fra løs M3 → **Build 1.2** (egen build, reel kanal); Build 1.1 omdøbt **M2 uden app-chat-recon** (ikke fuld Plan 1); **stop-regel** tilføjet (Plan 2 efter 1.1 M2 + 1.2 S1l). Autoritativt recon-fund: Compliance API (Enterprise) vs struktureret eksport (Pro/Max).
+- **Codex runde 1 på split-PR #173 (egen git-læsning, 2026-06-18):** KRITISK ×3 + MANGLENDE-EKSISTERENDE-BEVARELSE → **V2** tilføjer `## Formål`-anker (H-pakke-pragmatik: ingen separat krav-dok, Mathias eneste stakeholder), `## Preconditions` (DB N/A · §3.3 N/A · G063/H028-opslag), `## Patch-først pr. ændret flade` (kaede/workflow/læseflade-ankre), og **afgrænser gate-ejerskab** (disciplin.md = definitions-hjem · workflow/ = runtime-facit; §8.1 MODSIGELSE → INGEN). Gate-ejerskab Mathias-bekræftet 2026-06-18 (option A: reglen bliver i disciplin.md).
 
 ## Doc-currency
 
