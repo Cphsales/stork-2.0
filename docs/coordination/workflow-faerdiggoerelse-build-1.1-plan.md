@@ -12,7 +12,7 @@
 
 **Grundlag:**
 
-- Build 1 `origin/main @ 97a650d` · Plan 1 v26 `@ 87652387`.
+- **Build-1-substrat leveret @ `97a650d`** (#168 — baseline, IKKE current main) · **current `origin/main = 9ad386c`** (efter #172-merge) · **Plan 1 = v27 `@ 94c70eb`** (bundet i `workflow/worklog.json`/`gate-def.json`/`regelflade.md`, krav-hash `c964826…b79`).
 - Konsolideret funktionstest (Code + Codex, 2026-06-18): strukturel kontraktlogik **stærk** (**S8/S9 = strukturelt PASS / runtime DELVIS**); runtime front-halvdel **RØD**; S14 acceptance **syntetisk**; **S15-full RØD**; `scripts/kaede` har **reel** transport, men er **ikke koblet** til `workflow/`.
 - **Eksisterende infra (verificeret):** `scripts/kaede/adapters/codex.sh` (`codex exec … < /dev/null`, frossen @ SHA), `code.sh` + `claude-ai-rolle.sh` (`claude -p … < /dev/null`); `codex` CLI på PATH. → **Code kan køre Codex headless fra sin terminal nu.**
 - Build 1.1 laves **manuelt**, ikke gennem den brudte front-halvdel.
@@ -230,7 +230,8 @@ S1l-chat-recon-**kontrakten** (citat/dato/tråd + klassifikation) findes allered
 - **Mathias-split (2026-06-18):** S1l flyttet fra løs M3 → **Build 1.2** (egen build, reel kanal); Build 1.1 omdøbt **M2 uden app-chat-recon** (ikke fuld Plan 1); **stop-regel** tilføjet (Plan 2 efter 1.1 M2 + 1.2 S1l). Autoritativt recon-fund: Compliance API (Enterprise) vs struktureret eksport (Pro/Max).
 - **Codex runde 1 på split-PR #173 (egen git-læsning, 2026-06-18):** KRITISK ×3 + MANGLENDE-EKSISTERENDE-BEVARELSE → **V2** tilføjer `## Formål`-anker (H-pakke-pragmatik: ingen separat krav-dok, Mathias eneste stakeholder), `## Preconditions` (DB N/A · §3.3 N/A · G063/H028-opslag), `## Patch-først pr. ændret flade` (kaede/workflow/læseflade-ankre), og **afgrænser gate-ejerskab** (disciplin.md = definitions-hjem · workflow/ = runtime-facit; §8.1 MODSIGELSE → INGEN). Gate-ejerskab Mathias-bekræftet 2026-06-18 (option A: reglen bliver i disciplin.md).
 - **Codex runde 2 på #173 (egen git-læsning, 2026-06-18):** KRITISK (gate-vokabular tre steder/divergens) + MANGLENDE-BEVARELSE (`tilstand.mjs` ikke ankret) → **V3** dokumenterer den konkrete tre-vejs gate-ord-divergens (`krav→plan→build` i workflow/ vs `krav→slut` i kæde/disciplin), gør A1 til **reconcile-til-disciplin.md** (ikke bevar), ankrer `scripts/kaede/tilstand.mjs` (`findDivergens`/`laesTilstand`/`afledEvents`), og udskyder det kanoniske gate-ord-sæt til **Mathias-lås ved A1** (gates sidst).
+- **Codex runde 3 på #173 (egen git-læsning, 2026-06-18):** §8.1 **INGEN-MODSIGELSE** ✓; sidste fund KRITISK stale doc-currency → **V4** opdaterer Grundlag/Doc-currency til faktisk state: Build-1-substrat `@97a650d` (#168, baseline) · current `origin/main = 9ad386c` · Plan 1 **v27 `@94c70eb`** (bundet i workflow-state).
 
 ## Doc-currency
 
-Build 1 `@97a650d` · Plan 1 v26 `@87652387` — current. Bootstrap-/fix-artefakt; arkiveres når Build 1.1 er leveret og acceptance er sand.
+Build-1-substrat `@97a650d` (#168, baseline) · current `origin/main = 9ad386c` · Plan 1 **v27 `@94c70eb`** (bundet i workflow-state). Bootstrap-/fix-artefakt; arkiveres når Build 1.1 er leveret og acceptance er sand.
