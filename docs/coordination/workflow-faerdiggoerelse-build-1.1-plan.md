@@ -1,6 +1,12 @@
-# Plan — Build 1.1 (front-halvdel: runtime + acceptance)
+# Plan — Build 1.1 (M2 runtime/acceptance) + Build 1.2 (S1l app-chat-recon)
 
-> **Acceptance (done-kriterie):** Build 1.1 er først færdig, når en **reel, committet testpakke** kan køres gennem front-halvdelen **uden fixtures**: trigger → aktører → recon-sandhed → krav-oplæg → gates. **Ingen ny Plan 2 før den er sand.**
+> **Scope-lås (Mathias 2026-06-18 — split):** **Build 1.1 = M2 runtime/acceptance UDEN Claude.ai app-chat-recon** — **IKKE** fuld Plan 1-front-halvdel. **Build 1.2 = S1l Claude.ai app-chat-recon** (den rigtige kanal), før Build 2/Plan 2. "Den rigtige løsning vinder over den hurtige": S1l løses ikke med løs copy/paste-bro.
+>
+> **Done-kriterier:**
+>
+> - **Build 1.1 (M2):** grøn når en **reel, committet testpakke** kan køres gennem front-halvdelen **uden fixtures** (trigger → aktører → recon-sandhed → krav-oplæg → gates) — **uden app-chat-recon**. Grøn for **M2**, ikke fuld Plan 1.
+> - **Build 1.2 (S1l):** grøn når **reel Claude.ai app-chat-recon** kører (se Build 1.2-sektion).
+> - **STOP-REGEL (bindende):** **Plan 2 / Build 2 må IKKE starte før BÅDE (a) Build 1.1 M2-acceptance er grøn OG (b) Build 1.2 S1l-acceptance er grøn** — hvis Plan 2 skal være fuld Plan-1-front-halvdel-test.
 
 **Pakke:** workflow-færdiggørelse · **Del:** Build 1.1 (fix-pakke for Pakke 1's front-halvdel) · **Forfatter:** Code · **Status:** UDKAST (ingen commit/build før Mathias godkender)
 
@@ -93,14 +99,14 @@ Gælder **S1c, S1d, S1e, S1f (menings-gate), S1k (djævel), S1m, S6/S7 (krav⊨v
 
 _Mathias-accepteret 2026-06-18 som **"ikke færdige, uden for Build 1.1" — IKKE som løst.** Tagges `deferred`; må aldrig fremstå som leveret._
 
-| Test                              | Ejer           | Begrundelse                                                                                                                 |
-| --------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| S10 reel PR-review-runner         | Pakke 2        | Gate-integritet dækket af A7+C; review-eksekvering blokerer ikke front-bevis.                                               |
-| build-tids cost-levers            | Pakke 2        | Byg-fase, ikke front-halvdel.                                                                                               |
-| multi-schema ledger               | Pakke 2        | Worklog v1 rækker; kun hvis Plan 2 beviser behov.                                                                           |
-| S5 cost-synlighed                 | Pakke 2        | Blokerer ikke front-bevis.                                                                                                  |
-| S5 livscyklus (prov.→signal→lock) | Pakke 2        | **BESLUTTET udskudt:** resolved scale (routeren, grøn) er nok for front-proof; fuld livscyklus-state ikke runtime-critical. |
-| S1l chat-recon (claude.ai-app)    | M3 (app-kanal) | **Uløst, app-bundet:** `claude -p` dækker IKKE app-chathistorik. Markeret åben; aldrig faket grøn.                          |
+| Test                              | Ejer          | Begrundelse                                                                                                                 |
+| --------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| S10 reel PR-review-runner         | Pakke 2       | Gate-integritet dækket af A7+C; review-eksekvering blokerer ikke front-bevis.                                               |
+| build-tids cost-levers            | Pakke 2       | Byg-fase, ikke front-halvdel.                                                                                               |
+| multi-schema ledger               | Pakke 2       | Worklog v1 rækker; kun hvis Plan 2 beviser behov.                                                                           |
+| S5 cost-synlighed                 | Pakke 2       | Blokerer ikke front-bevis.                                                                                                  |
+| S5 livscyklus (prov.→signal→lock) | Pakke 2       | **BESLUTTET udskudt:** resolved scale (routeren, grøn) er nok for front-proof; fuld livscyklus-state ikke runtime-critical. |
+| S1l chat-recon (claude.ai-app)    | **Build 1.2** | **IKKE løs M3:** egen build (Build 1.2) med reel kanal — se Build 1.2-sektion. Blokerer fuld Plan-1-test til den er grøn.   |
 
 ## Rækkefølge
 
@@ -108,9 +114,9 @@ A1 → A2 → A3 → A4 → A5 → A6 (C hærder A5–A7) → A7 → A8 → A9 �
 
 ## A10 — Acceptance-test (erstatter syntetisk e2e)
 
-**Reel, committet testpakke gennem hele kæden uden fixtures** (trigger → aktører → recon-sandhed → krav-oplæg → gates). Acceptance-grøn = front-halvdelen producerer godkendt plan uden hånd-syning, **og hver kanariefugl (F-ID) fanges af sin station med `runtimeProof`**. **Først da: Plan 2.**
+**Reel, committet testpakke gennem hele kæden uden fixtures** (trigger → aktører → recon-sandhed → krav-oplæg → gates). Acceptance-grøn = front-halvdelen producerer godkendt plan uden hånd-syning, **og hver kanariefugl (F-ID) fanges af sin station med `runtimeProof`**. Dette er **M2-acceptance** (Build 1.1) — **Plan 2 først efter M2 OG Build 1.2 S1l (stop-reglen).**
 
-**Afgrænsning (Codex-fund):** A10 er den **fulde M2-runtime-suite (F01–F26)** — **ikke** "fuld Plan 1-suite". **S1l chat-recon** (claude.ai-app) er en **eksplicit Mathias-godkendt M3-udskydelse** og tæller **ikke som løst**; den er ikke en del af M2-acceptance (spores i D-tabellen).
+**Afgrænsning (bindende):** A10 er den **fulde M2-runtime-suite (F01–F26)** — **ikke** "fuld Plan 1-suite". **S1l chat-recon** (claude.ai-app) er **ikke en løs M3-udskydelse**: den er **Build 1.2** (egen build, reel kanal, før Build 2/Plan 2) og tæller **ikke som løst** før Build 1.2-acceptance er grøn.
 
 **Kanariefugl-suite (eksplicit F01–F26 — ingen "~20"; hver mappes i acceptance-register):**
 
@@ -143,19 +149,39 @@ A1 → A2 → A3 → A4 → A5 → A6 (C hærder A5–A7) → A7 → A8 → A9 �
 | F25  | invalid kravspec-matrix (K-ID uden step/test · plan-step uden krav · Pakke-2 uden begrundelse)            | A6      | BLOKER         |
 | F26  | handoff uden self-valideringsrapport bundet til artefakt/SHA                                              | A7/C    | FAIL           |
 
-**Milepæls-fasing:** (M1) **Code↔Codex** reel kæde uden fixtures = første sande bevis på broen. (M2) **alle tre** verdikt-kanaler reelle (Code + Codex + `claude -p`, jf. A3). (M3) **chat-recon (S1l)** når claude.ai-app-kanalen er løst — separat, uløst, blokerer ikke M2. **Acceptance-grøn = M2.**
+**Milepæls-fasing:** (M1) **Code↔Codex** reel kæde uden fixtures = første sande bevis på broen. (M2 = Build 1.1) **alle tre** verdikt-kanaler reelle (Code + Codex + `claude -p`, jf. A3). (**Build 1.2 = S1l**) reel claude.ai-app-chat-recon-kanal — egen build før Build 2/Plan 2. **Build 1.1 acceptance-grøn = M2** (ikke fuld Plan 1).
 
 ## Beslutninger (LÅST — Mathias 2026-06-18)
 
 1. **A3:** headless `claude -p` (claude-ai-rolle.sh) tæller som **Claude.ai-workflow-aktør for gate-verdikter** → alle tre reelle (M2). Ingen afvigelse fra "alle tre".
-2. **Afgrænsning:** `claude -p` tæller **IKKE** som S1l chat-recon fra Claude.ai Windows-app'ens chathistorik → **S1l uløst/M3**.
+2. **Afgrænsning:** `claude -p` tæller **IKKE** som S1l chat-recon fra Claude.ai Windows-app'ens chathistorik.
 3. **S5 livscyklus:** eksplicit udskudt; resolved scale er nok for Build 1.1 front-proof.
 4. **C/D:** accepteret som **"ikke færdige, uden for Build 1.1" — ikke som løst.**
+5. **Split (den rigtige løsning vinder over den hurtige):** S1l er **ikke** løs M3 — den er **Build 1.2** (reel kanal). **Build 1.1 = M2 uden app-chat-recon; Build 1.2 = S1l; Plan 2 først efter begge** (stop-reglen øverst).
+
+## Build 1.2 — S1l Claude.ai app chat-recon (den rigtige kanal, før Build 2/Plan 2)
+
+S1l-chat-recon-**kontrakten** (citat/dato/tråd + klassifikation) findes allerede som validator (Build 1). Build 1.2 tilføjer den manglende **reelle KILDE-kanal** + binding. Recon-fund (autoritativt, citeret, 2026-06-18):
+
+**Kanal-muligheder (rangeret — afgøres af konto-tier):**
+
+- **(A) Compliance API — den rigtige, automatiserede kanal · KRÆVER Claude Enterprise.** `/v1/compliance/apps/chats` + `/messages`; Compliance Access Key (`read:compliance_user_data`). Kilde-ankret (chat-id, title, created_at, stabil `https://claude.ai/chat/…`-href, project_id), dato-filtrerbar, inkrementel. **Findes ikke på Free/Pro/Max.**
+- **(B) Struktureret eksport-reader — reel, semi-manuel · virker på Pro/Max.** claude.ai → Settings → Privacy → Export → ZIP m. JSON (chat-id, title, timestamps, tråde, **stabil chat-URL pr. samtale**). Struktureret + kilde-markeret + reproducerbar (≠ copy/paste). Begrænsning: manuel trigger, fuldt snapshot. Privatliv: rå-arkiv **lokalt**; kun kilde-ankrede fund + content-hash committes.
+- **Afvist:** `/remote-control`, `/teleport` (kun Claude Code-session), løs copy/paste (ingen kildeanker).
+- **ÅBEN FAKTA (Mathias):** Er jeres claude.ai **Enterprise** (→ A) eller **Pro/Max** (→ B)? Afgør den rigtige kanal.
+
+**Build 1.2 acceptance (grøn kræver):**
+
+- reel Claude.ai app/export/MCP/connector-kanal (A eller B) — ikke løs relay.
+- kilde/dato/tråd (eller tilsvarende stabil reference, fx chat-href) pr. fund.
+- committet S1l actor-artefakt (kanonisk format), gate-SHA-bundet.
+- **Kanariefugle:** ukildet chat-påstand → **FAIL** · chat-beslutning ignoreret → **FEEDBACK/FAIL** · modsigelse mod låst doc uden `tilMathias` → **FAIL** · fund ikke bundet til den reelle kilde (paraphrase/hukommelse) → **FAIL** (relay-snyd).
 
 ## Review-spor (forbedringer → fund)
 
 - **Codex runde 1 (paste):** F01–F22 + computedArtifactSha + én runtime-sandhed + rolle-adskilt fremgangsmåde.
-- **Codex runde 2 (egen git-læsning, PR #172):** Code-aktør-artefakt adskilt fra Code-orkestrator (F23) · F24–F26 tilføjet · A10/S1l-ordlyd præciseret (M2-suite, S1l = M3-udskydelse, ikke løst).
+- **Codex runde 2 (egen git-læsning, PR #172):** Code-aktør-artefakt adskilt fra Code-orkestrator (F23) · F24–F26 tilføjet · A10/S1l-ordlyd præciseret.
+- **Mathias-split (2026-06-18):** S1l flyttet fra løs M3 → **Build 1.2** (egen build, reel kanal); Build 1.1 omdøbt **M2 uden app-chat-recon** (ikke fuld Plan 1); **stop-regel** tilføjet (Plan 2 efter 1.1 M2 + 1.2 S1l). Autoritativt recon-fund: Compliance API (Enterprise) vs struktureret eksport (Pro/Max).
 
 ## Doc-currency
 
