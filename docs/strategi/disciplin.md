@@ -116,6 +116,8 @@ Hver pakke har ét FORMÅL (krav-dok §Formål). Når Mathias har godkendt det, 
 
 For HVER eksisterende funktion/policy/tabel der ændres: plan inkluderer NUVÆRENDE body 1:1 med file:linje + markerer DIFF eksplicit (hvad fjernes/tilføjes, hvilke gates/kommentarer/kolonner/audit-spor bevares) + migration starter med diff-summary. Tab af gate/kommentar/kolonne uden begrundelse = `MANGLENDE-EKSISTERENDE-BEVARELSE` (KRITISK).
 
+**Altitude-afgrænsning (Mathias 2026-06-18):** §3.1 patch-først gælder plan/build-artefakter, der **godkender konkrete ændringer** til eksisterende kode, policies, tabeller eller governance-docs. **Split-, scope- og sequencing-amendments** må afgrænse patch-først til de efterfølgende build-PR'er — **men kun hvis de eksplicit gør §3.1 til merge-blocker dér**. Uden den eksplicitte merge-blocker-binding er afgrænsningen en skjult build-approval, og fuld 1:1-body+diff kræves i artefaktet selv.
+
 ### 3.2 DB-state-dump som plan-pre-condition
 
 Code må ikke skrive plan før konkret DB-state er dumpet via Supabase MCP (RPC-bodies via `pg_get_functiondef`, kolonner+constraints, policies, grants) og lagt i plan under "Verificerede DB-objekter" som råt output. Ingen gæt, ingen cached state.
