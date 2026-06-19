@@ -1,387 +1,267 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST — intet bygges. Til fælles grundig læsning (Mathias + Code) + løbende Codex-hole-shooting. Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v2 — Codex runde 1 foldet ind. Intet bygges. Til fælles grundig læsning (Mathias + Code) + løbende Codex-hole-shooting. Step 2 = hvordan hvert element sættes op.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
-**Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret (hvem/hvad aktiveres · hvad det aktiverer · hvad det samler · hvad det skal kunne), og kæden hænger sammen uden huller.
+**Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
 
 ## Læsenøgle (felter pr. step)
 
-- **Aktiveres af** — hvad sætter dette step i gang
-- **Hvem/hvad** — aktøren/elementet der kører
-- **Aktiverer** — hvad dette step selv sætter i gang
-- **Gør / samler** — hvad der sker / hvad det producerer eller konsoliderer
-- **Skal kunne** — kravet (hvad elementet skal kunne — krav-reference)
-- **Mekanisme** — hvad guider + håndhæver (mekanisk = deterministisk · dømmekraft = bundet til mekanisk gate)
-- **Anti-snyd** — hvad gør falsk-grøn / kæde-hop umuligt her
-- **→ næste** — hvad det giver videre
+- **Aktiveres af** · **Hvem/hvad** · **Aktiverer** · **Gør / samler** · **Skal kunne** (krav-ref) · **Mekanisme** (mekanisk=deterministisk · dømmekraft=bundet til mekanisk gate) · **Anti-snyd** · **→ næste**
 
-Aktør-noter: **Code** = lokal builder/driver i terminal · **Codex** = lokal, kørt af Code (`codex exec --ephemeral`, model_reasoning_effort=xhigh) · **Claude.ai** = `claude -p`-rolle under recon + app'en (Mathias' hånd) ved krav · **Mathias** = gates + definerer hensigt.
+Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Code (`codex exec --ephemeral`, reasoning=xhigh) · **Claude.ai** = `claude -p`-rolle under recon + app'en (Mathias' hånd) ved krav · **Mathias** = gates + definerer hensigt.
+
+**Gennemgående anti-tavsheds-regel (Codex #4/#24):** intet step godkendes ved *fravær* af indvending. Hvert gate har et **forventet antal positive, hash-bundne verdikter**; manglende verdikt / timeout / forkert hash = **fail-closed (BLOKER)**, aldrig auto-grønt. Tavshed er ikke et ja.
+
+**Gennemgående læsebevis-regel (Codex #13):** en aktørs verdikt tæller kun hvis det **citerer den SHA/hash den læste via egen kanal** (bundet artefakt). Kan gate-checken ikke se hvilken SHA aktøren bandt til → BLOKER (ingen bind på stale/indirekte kontekst).
 
 ---
 
 ## FASE 0 — Åbning
 
 ### S0.1 — qwers
-- **Aktiveres af:** Mathias.
-- **Hvem/hvad:** Mathias skriver `qwers <pakke>` på kæde-issue #126.
-- **Aktiverer:** GitHub-event på #126 → dirigenten.
-- **Gør:** registrerer pakke-åbning.
-- **Skal kunne:** starte hele workflowet med ÉN simpel prompt (krav 9).
-- **Mekanisme:** GitHub issue-event (mekanisk) + author-verificering (kun `mgrubak`).
-- **Anti-snyd:** forkert author → IGNORÉR (fail-closed); ingen anden kan åbne pakken.
-- **→ næste:** dirigent-dispatch (S0.2).
+- **Aktiveres af:** Mathias. **Hvem/hvad:** `qwers <pakke>` på #126. **Aktiverer:** GitHub-event → dirigent.
+- **Skal kunne:** starte workflowet med ÉN prompt (krav 9). **Mekanisme:** issue-event + author-verificering (kun `mgrubak`).
+- **Anti-snyd:** forkert author → IGNORÉR (fail-closed). **→** S0.2.
 
 ### S0.2 — Dirigent dispatcher
-- **Aktiveres af:** #126-event.
-- **Hvem/hvad:** dirigent (`scripts/kaede/dirigent.mjs` + `kaede-regler.json`).
-- **Aktiverer:** de tre lokale AI-aktører via adaptere.
-- **Gør:** sætter aktiv pakke; loader pakke-kontekst (krav-dok som forretnings-doc for pakken); sætter read-only recon-mode.
-- **Skal kunne:** aktivere ALLE tre aktører (ikke kun én) deterministisk (krav 9).
-- **Mekanisme:** deklarativ event-transport, fail-closed; `gate_ord`-genkendelse.
-- **Anti-snyd:** `qwers` aktiverer ikke alle tre → FAIL; transport auto-validerer (krydser ind i dømmekraft) → FAIL.
-- **→ næste:** recon-fase (S1.x).
+- **Aktiveres af:** #126-event. **Hvem/hvad:** dirigent. **Aktiverer:** de tre lokale AI-aktører.
+- **Gør:** sætter aktiv pakke + pakke-kontekst + read-only recon-mode. **Skal kunne:** aktivere ALLE tre deterministisk (krav 9).
+- **Mekanisme:** deklarativ event-transport, fail-closed. **Anti-snyd:** ikke alle tre aktiveret → FAIL; transport auto-validerer → FAIL. **→** S0.3.
 
-### S0.3 — Aktørerne vågner (frisk pr. bid)
-- **Aktiveres af:** dirigent-dispatch.
-- **Hvem/hvad:** Code · Codex (`codex exec --ephemeral` via Code) · Claude.ai (`claude -p`), hver i frisk, statsløs session.
-- **Aktiverer:** hver aktør loader sin **workflow-rolle-tekst** (fra sin skill) frisk.
-- **Gør:** etablerer roller + grænser før arbejde.
-- **Skal kunne:** to rolle-typer pr. AI-aktør (workflow / almindelig), Mathias styrer via prompt (krav 7).
-- **Mekanisme:** rolle-tekst i skill (frisk-load) + **capability-tjek ved session-start** (er skills/hooks/loop aktive? `/skills` `/doctor`) + hook der garanterer rigtig rolle/freshness.
-- **Anti-snyd:** forkert-rolle-kanariefugl (forkert rolle-tekst → aktøren SKAL afvise/fejle højt); manglende capability → fejl højt, ingen tavs antagelse.
-- **→ næste:** recon-indsamling.
+### S0.3 — Aktørerne vågner (frisk)
+- **Hvem/hvad:** Code · Codex (`--ephemeral`) · Claude.ai (`claude -p`), hver frisk/statsløs. **Aktiverer:** frisk load af workflow-rolle-tekst.
+- **Skal kunne:** to rolle-typer pr. AI (workflow/almindelig), Mathias styrer (krav 7).
+- **Mekanisme:** rolle-tekst i skill + **capability-tjek ved session-start** (`/skills`/`/doctor`) + hook der garanterer rolle/freshness.
+- **Anti-snyd:** forkert-rolle-kanariefugl (forkert rolle → afvis/fejl højt); manglende capability → fejl højt. **→** S1.x.
 
 ---
 
-## FASE 1 — Recon (forretnings-grundlag, FØR krav)
+## FASE 1 — Recon (FØR krav)
 
-### S1.1 — Kode-recon #1 (Code)
-- **Aktiveres af:** S0.3.
-- **Hvem/hvad:** Code.
-- **Gør / samler:** kortlægger hvad koden faktisk gør i den berørte flade; producerer recon-fund i recon-output-skema `{kilde, kategori, emne, evidens-ref, aktør, klassifikation}`.
-- **Skal kunne:** fuld recon — kortlægger HELE scope, stopper ikke ved første fund (krav 4).
-- **Mekanisme:** read-only mode + grundig-recon-kontrakt.
-- **Anti-snyd:** recon der stopper for tidligt / mangler kilde → FAIL.
-- **→ næste:** konsolidering (S1.4).
-
-### S1.2 — Kode-recon #2 (Codex)
-- **Aktiveres af:** S0.3.
-- **Hvem/hvad:** Codex (lokal, `--ephemeral`). **Bemærk: 2× kode-recon (Code + Codex), ikke angreb** — fordi koden er stor og kompleks, giver to uafhængige kode-recons (cross-vendor) bedre dækning end én recon + ét angreb.
-- **Gør / samler:** uafhængig kode-recon i samme skema; cross-vendor dækning.
-- **Skal kunne:** uafhængig af Code's recon (egen frisk session, eget blik).
-- **Mekanisme:** `codex exec --ephemeral` (frisk pr. kald, ingen state-genbrug).
-- **Anti-snyd:** resumed/stale Codex-session → rød (frisk-princip brudt).
-- **→ næste:** konsolidering (S1.4).
+### S1.1 + S1.2 — 2× kode-recon (Code + Codex)
+- **Hvem/hvad:** Code og Codex laver hver **uafhængig kode-recon** (ikke angreb — koden er stor/kompleks, to cross-vendor-recons giver bedre dækning).
+- **Gør / samler:** fund i recon-output-skema `{kilde, kategori, emne, evidens-ref, aktør, klassifikation}`.
+- **Skal kunne:** fuld recon, kortlæg HELE scope (krav 4). **Mekanisme:** read-only + grundig-recon-kontrakt + `--ephemeral` (Codex).
+- **Anti-snyd:** stopper-for-tidligt/uden kilde → FAIL. **Dækningsmål (Codex #6):** recon-komplethed måles mod **coverage-matrix** (forretningsdele × viewpoints) — "fuld" = hvert kendt viewpoint dækket, ikke aktørens skøn. **→** S1.4.
 
 ### S1.3 — Docs-/forretnings-recon (Claude.ai)
-- **Aktiveres af:** S0.3.
-- **Hvem/hvad:** Claude.ai via `claude -p` (recon-rolle).
-- **Gør / samler:** læser styrende docs (vision, forretning, masterplan-relevante dele, krav-historik, aktive Mathias-afgørelser); forretnings-vinklen.
-- **Skal kunne:** ramme "hvad Stork skal være", ikke kun "hvad koden gør" (krav 4); levere i samme skema.
-- **Mekanisme:** `claude -p` frisk rolle + dokument-recon mod aktive sandheder (ikke hele historik — støjbudget).
-- **Anti-snyd:** recon uden dokument-recon af styrende docs → FAIL.
-- **→ næste:** konsolidering (S1.4).
+- **Hvem/hvad:** Claude.ai (`claude -p`). **Gør:** læser vision/forretning/masterplan-relevante dele/krav-historik/Mathias-afgørelser.
+- **Skal kunne:** ramme "hvad Stork skal være" (krav 4). **Anti-snyd:** recon uden dokument-recon → FAIL. **→** S1.4.
 
 ### S1.4 — Konsolidering til ÉN sandhed
-- **Aktiveres af:** alle tre recons færdige.
-- **Hvem/hvad:** transport (mekanisk fletning).
-- **Aktiverer:** angrebs-funktionen (først NU brugbar — S1.5).
-- **Gør / samler:** fletter de tre aktør-recons via recon-output-skemaet → dedup + støjbudget → **ÉN committet, hash-bundet recon-sandhed**.
-- **Skal kunne:** ingen pakke bygger på divergent grundlag; alle aktører binder til recon-hash'en (krav 4).
-- **Mekanisme:** mekanisk fletning + hash-binding.
-- **Anti-snyd:** u-konsolideret / divergent recon (ikke recon-hash-bundet) → BLOKER; aktør bundet til anden recon-version → BLOKER.
-- **→ næste:** omission-angreb (S1.5).
+- **Aktiveres af:** alle tre recons færdige (positivt — anti-tavshed). **Aktiverer:** angrebs-funktionen (først NU).
+- **Gør / samler:** fletter de tre recons → **ÉN committet, hash-bundet recon-sandhed**.
+- **Skal kunne:** ingen pakke på divergent grundlag; alle binder til recon-hash (krav 4).
+- **Mekanisme:** mekanisk fletning + hash-binding. **Konflikt-bevaring HÅRD (Codex #5):** divergenser mellem aktør-recons **bevares eksplicit** (ikke dedupet væk); kun *ægte dubletter* dedupes; støjbudget må aldrig kassere en uenighed. Kasseret/ikke-bevaret divergens → BLOKER.
+- **Anti-snyd:** u-konsolideret/divergent recon → BLOKER; aktør bundet til anden recon-version → BLOKER. **→** S1.5.
 
 ### S1.5 — Omission-angreb (første brug af angreb)
-- **Aktiveres af:** S1.4 (én sandhed eksisterer).
-- **Hvem/hvad:** Codex (angriber-rolle).
-- **Gør:** finder hvad reconen MISSEDE (dæknings-huller) på den konsoliderede sandhed.
-- **Skal kunne:** krympe unknown-unknown; afgrænse komplethed (kan ikke bevises, kun afgrænses).
-- **Mekanisme:** adversarisk review + struktureret coverage-mapping (forretningsdele × viewpoints).
-- **Anti-snyd:** fund → tilbage til S1.4 (re-konsolidér); residual ukendt-ukendt navngives ærligt, ikke skjules.
-- **→ næste:** Mathias-præsentation (S1.6).
+- **Hvem/hvad:** Codex (angriber). **Gør:** finder hvad reconen MISSEDE på den konsoliderede sandhed.
+- **Mekanisme:** adversarisk review + coverage-mapping. **Anti-snyd:** fund → tilbage til S1.4; residual ukendt-ukendt navngives ærligt. **→** S1.6.
 
-### S1.6 — Recon præsenteres for Mathias (3-bøtte)
-- **Aktiveres af:** konsolideret + angrebet recon.
-- **Hvem/hvad:** Claude.ai oversætter; Mathias validerer.
-- **Gør / samler:** fremlægger "pakken berører disse forretningsdele" i tre bøtter: **nuværende kode** ("x er bygget sådan — korrekt?") · **ikke bygget/dokument-info** ("x bygges, doc siger y — korrekt?") · **intet data** ("x berøres, intet data — hvad skal x kunne?").
-- **Skal kunne:** Mathias dømmer på forretning, ikke kode (krav 6); recon i præcis tre kategorier.
-- **Mekanisme:** Mathias-kommunikationskontrakt (kun "hvad") + recon-præsentationskontrakt.
-- **Anti-snyd:** hvordan/kode til Mathias → FAIL; ikke-3-kategori-output → FAIL.
-- **→ næste:** krav-skrivning (S2.x).
+### S1.6 — Recon → Mathias (3-bøtte)
+- **Hvem/hvad:** Claude.ai oversætter; Mathias validerer. **Gør:** "pakken berører disse forretningsdele" i tre bøtter (nuværende kode / ikke-bygget / intet-data).
+- **Skal kunne:** Mathias dømmer forretning, ikke kode (krav 6). **Mekanisme:** Mathias-komm-kontrakt + recon-præsentationskontrakt.
+- **Anti-snyd:** kode til Mathias → FAIL; ikke-3-kategori → FAIL. **Handover-binding (Codex #7):** hvert recon-fund får en **disposition** (behandlet i krav / udskudt / ikke-relevant), bundet til recon-hash → senere gates kan bevise at intet fund blev sprunget over. **→** S2.x.
 
 ---
 
 ## FASE 2 — Krav (Mathias + Claude.ai på app'en)
 
 ### S2.1 — Claude.ai-app aktiveres frisk
-- **Aktiveres af:** Mathias (efter recon-validering).
-- **Hvem/hvad:** Mathias åbner Claude.ai i app'en, ny chat.
-- **Aktiverer:** auto-sync fra GitHub-marketplace.
-- **Gør / samler:** app'en henter docs + skills automatisk (testet 2026-06-18).
-- **Skal kunne:** Claude.ai er kontekst-frisk uden manuel paste.
-- **Mekanisme:** `.claude-plugin/marketplace.json` + app-sync (forudsætter app har repo-adgang — privat repo kræver re-grant).
-- **Anti-snyd:** manglende sync → app fejler synligt ("manifest not found"), ikke tavs gammel kontekst.
-- **→ næste:** krav-medforfatterskab (S2.2).
+- **Hvem/hvad:** Mathias åbner Claude.ai, ny chat. **Aktiverer:** auto-sync fra GitHub-marketplace.
+- **Gør:** app'en henter docs+skills (testet 2026-06-18). **Mekanisme:** `.claude-plugin/marketplace.json` + app-sync.
+- **Anti-snyd (Codex #8):** sync skal **verificere at den hentede state = aktuel committet SHA/branch** (ikke kun "manifest present") — stale/forkert-branch/delvis sync → synlig fejl, ikke tavs gammel kontekst. **→** S2.2.
 
 ### S2.2 — Krav skrives (kun HVAD)
-- **Aktiveres af:** S2.1.
-- **Hvem/hvad:** Mathias + Claude.ai sammen.
-- **Gør / samler:** skriver krav-doc: **funktioner tydeligt beskrevet ved HVAD de skal kunne** + acceptkriterie + krav-ID (`K-n`). HVORDAN (teknisk) er Code/Codex' bord — ikke i kravet.
-- **Skal kunne:** Claude.ai's fornemmeste opgave — medforfatter + nuværende-build-vs-ønsker-sammenligning (krav 2); alt i forretnings-sprog (krav 6).
-- **Mekanisme:** krav-medforfatter-kontrakt; krav holdt mod LÅSTE vision/forretning ved SKABELSE.
-- **Anti-snyd:** krav der driver fra vision/forretning → FEEDBACK til Mathias; kode/hvordan i kravet → hører ikke hjemme; krav-ID uden acceptkriterie → FAIL.
-- **→ næste:** Mathias-godkendelse pre-upload (S2.3).
+- **Hvem/hvad:** Mathias + Claude.ai. **Gør:** krav-doc med **funktioner tydeligt beskrevet ved HVAD de skal kunne** + acceptkriterie + krav-ID. HVORDAN = Code/Codex' bord, ikke i kravet.
+- **Skal kunne:** Claude.ai medforfatter + build-vs-ønsker-sammenligning (krav 2); forretnings-sprog (krav 6).
+- **Mekanisme:** krav-medforfatter-kontrakt; krav holdt mod LÅSTE vision/forretning ved SKABELSE. **Recon-binding (Codex #7):** krav-doc binder til recon-hash; hvert recon-fund skal være disponeret.
+- **Anti-snyd:** krav driver fra vision/forretning → FEEDBACK; kode i kravet → hører ikke hjemme; krav-ID uden acceptkriterie → FAIL. **→** S2.3.
 
 ### S2.3 — Mathias godkender + Claude.ai uploader
-- **Aktiveres af:** færdigt krav-udkast.
-- **Hvem/hvad:** Mathias + Claude.ai.
-- **Gør:** Mathias og Claude.ai **godkender krav-doc sammen FØR upload** (= Mathias' godkendelse, krav 5); Claude.ai **uploader** krav-doc til GitHub.
-- **Skal kunne:** Mathias' ord er overordnet og kan altid overrule (krav 5, ny model).
-- **Mekanisme:** upload = committet artefakt (krav-hash); upload-event.
-- **Anti-snyd:** ingen krav-doc kan gå videre uden Mathias' pre-godkendelse.
-- **→ næste:** indvendings-vindue (S3.x).
+- **Hvem/hvad:** Mathias + Claude.ai. **Gør:** Mathias + Claude.ai godkender krav-doc FØR upload (= Mathias' godkendelse, krav 5); Claude.ai uploader.
+- **Mekanisme + anti-snyd (Codex #3):** Mathias godkender en **konkret hash** af krav-doc; **upload skal matche den godkendte hash** — ellers BLOKER (Claude/app kan ikke regenerere/ændre en anden version ind uden at kæden ser det). Mathias' ord overruler altid (krav 5). **→** S3.x.
 
 ---
 
-## FASE 3 — Krav-godkendelse (indvendings-vindue)
+## FASE 3 — Krav-godkendelse (positivt indvendings-vindue)
 
 ### S3.1 — Upload trigger kode-aktørerne
-- **Aktiveres af:** krav-upload-event.
-- **Hvem/hvad:** GitHub Action → Code (+ Codex via Code).
-- **Gør:** aktiverer Code/Codex til at læse krav-doc via egen kanal, bundet til krav-hash.
-- **Skal kunne:** ekstern aktivering, kører af sig selv (krav 9).
-- **Mekanisme:** GitHub event→Action (cloud, abonnement/OAuth for Claude); committet artefakt = uforfalskeligt.
-- **Anti-snyd:** aktør uden egen læsekanal → gate BLOKERET (ikke bind på stale state).
-- **→ næste:** djævel + indvending (S3.2).
+- **Hvem/hvad:** GitHub Action → Code (+ Codex via Code), bundet til krav-hash via egen kanal.
+- **Skal kunne:** ekstern aktivering, kører selv (krav 9). **Mekanisme:** GitHub event→Action; committet artefakt uforfalskeligt.
+- **Anti-snyd:** aktør uden egen læsekanal (citeret SHA) → gate BLOKERET. **⚙️ Step-2 (Codex #9):** runner-/auth-/workspace-/artefakt-protokol så cloud-event og lokal aktør beviseligt rammer SAMME krav-hash. **→** S3.2.
 
-### S3.2 — Djævel + indvendings-vindue
-- **Aktiveres af:** S3.1.
-- **Hvem/hvad:** Code + Codex (djævlens-advokat-rolle).
-- **Gør:** djævlens-advokat-pass pr. berørt krav FØR evt. indvending (minimumslæsning · stærkeste læsning · kan planen snyde sig til grønt · hvilken canary forhindrer snyd · hvad "ikke færdig" betyder).
-- **Skal kunne:** mekaniske krav-huller fanges af en anden aktør, ikke af Mathias (krav 3/5).
-- **Mekanisme:** djævlens-advokat-kontrakt; **ingen-indvendinger = fuldt godkendt** (Mathias' pre-godkendelse står); indvendinger → tilbage til Mathias (+ Claude.ai retter).
-- **Anti-snyd:** approval/lukning uden registreret djævel-artefakt → hook BLOKERER; hash-mismatch → BLOKER.
-- **→ næste:** krav-gate lukkes (S3.3).
+### S3.2 — Djævel + POSITIVT verdikt
+- **Hvem/hvad:** Code + Codex (djævlens-advokat). **Gør:** djævel-pass pr. berørt krav (minimums-/stærkeste læsning · kan planen snyde sig grøn · hvilken canary forhindrer snyd · hvad "ikke færdig" betyder).
+- **Skal kunne:** krav-huller fanges af anden aktør, ikke Mathias (krav 3/5).
+- **Mekanisme + anti-snyd (Codex #4/#24):** **begge aktører skal afgive et positivt, hash-bundet verdikt** ("ingen indvending" ELLER konkret fund) bundet til krav-hash + djævel-artefakt. **Manglende verdikt / timeout / forkert hash = BLOKER** (fail-closed). Ingen indvending betyder her: *begge har positivt registreret det* — ikke tavshed. Indvending → tilbage til Mathias (+ Claude.ai retter). **→** S3.3.
 
 ### S3.3 — krav OK (gate-state)
-- **Aktiveres af:** ingen indvendinger (eller Mathias lukker efter rettelse).
-- **Hvem/hvad:** Mathias (ord) + dirigent (registrering).
-- **Gør:** gate-state sættes `krav-laast`; krav-hash er den immutable gatede identitet.
-- **Skal kunne:** næste led må ikke fortsætte før ordet er registreret.
-- **Mekanisme:** committet gate-state + dirigent læser `gate_ord` (**forudsætter `krav OK` i gate_ord — findes**).
-- **Anti-snyd:** spring forbi gate uden registreret ord → blokeret.
-- **→ næste:** plan-fasen (S4.x).
+- **Hvem/hvad:** Mathias (ord) + dirigent (registrering). **Gør:** gate-state `krav-laast`; krav-hash = immutable gatet identitet.
+- **Mekanisme:** committet gate-state + dirigent læser `gate_ord` (`krav OK` findes). **Anti-snyd:** spring uden registreret ord → blokeret. **→** S4.x.
 
 ---
 
 ## FASE 4 — Plan (kode-recon FØR plan, så plan)
 
 ### S4.1 — Kode-recon #2 (før plan)
-- **Aktiveres af:** `krav OK`.
-- **Hvem/hvad:** Code + Codex (2× kode-recon igen, mod krav-hash).
-- **Gør / samler:** kodepåvirkning + dokument-recon af krav + vision/forretning + masterplan + S15-inventory → konsolideret recon-sandhed-2 (rummer recon-1 + krav + kode-recon).
-- **Skal kunne:** plan passer vision+forretning+krav, ikke kun kodebasen (krav 4).
-- **Mekanisme:** samme recon-funktion + konsolidering + hash-binding.
-- **Anti-snyd:** kode-recon mangler før plan (plan skrevet uden den) → FAIL.
-- **→ næste:** plan-skrivning (S4.2).
+- **Hvem/hvad:** Code + Codex (2× kode-recon, mod krav-hash). **Gør:** kodepåvirkning + dokument-recon (krav + vision/forretning + masterplan + **repo-sandheds-inventory**) → konsolideret recon-sandhed-2.
+- **Skal kunne:** plan passer vision+forretning+krav, ikke kun koden (krav 4).
+- **Anti-snyd:** kode-recon mangler før plan → FAIL. **⚙️ Step-2 (Codex #10):** "repo-sandheds-inventory" defineres som et hash-bundet led i kæden (hvor det kommer fra, hvordan det valideres) — ikke en antaget ekstern dependency. **→** S4.2.
 
 ### S4.2 — Plan skrives (hele kæden, 1:1 med build)
-- **Aktiveres af:** S4.1.
-- **Hvem/hvad:** Code skriver; Codex angriber.
-- **Gør / samler:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling af build besluttes HER (plan-udbygning)**.
-- **Skal kunne:** **plan 1:1 med build** (Mathias-krav); hver tekstbåren funktion → test der følger tråden til slut-effekt, ikke artefakt-eksistens.
-- **Mekanisme:** ingen-byg-før-plan-OK via **hook** (PreToolUse exit-2 — plan-mode er ikke pålidelig offentlig gate); **krav-ID-matrix** (hvert `K-n` → plan-step + test) + **løfte↔bevis-bijektion** (hvert plan-løfte → præcis én canary/prover).
-- **Anti-snyd:** byg-forsøg før plan OK → hook BLOKERER; `K-n` uden step/test → FAIL; plan-løfte uden bevisende canary → rød; build-adfærd uden plan-løfte → "rogue".
-- **→ næste:** Codex troskabs-angreb (S4.3).
+- **Hvem/hvad:** Code skriver; Codex angriber. **Gør:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling besluttes HER**.
+- **Skal kunne:** **plan 1:1 med build**; hver funktion → test der følger tråden til slut-effekt (ikke artefakt-eksistens).
+- **Mekanisme:** ingen-byg-før-plan-OK via **hook** (PreToolUse exit-2); **krav-ID-matrix** (`K-n` → step + test) + **løfte↔bevis-bijektion**.
+- **Anti-snyd:** byg før plan OK → hook BLOKERER; `K-n` uden step/test → FAIL; plan-løfte uden canary → rød; build uden plan-løfte → "rogue". **Canary-styrke (Codex #11):** en canary tæller kun hvis den tester **slut-effekt** (ikke triviel eksistens); reviewer + dybde-meta-canary vurderer styrke (residual dømmekraft, se "svage led"). **→** S4.3.
 
 ### S4.3 — Troskabs-angreb på planen
-- **Aktiveres af:** plan-udkast.
-- **Hvem/hvad:** Codex (+ Claude.ai menings-troskab).
-- **Gør:** finder hvor plan modsiger krav / krav modsiger vision/forretning; overclaim; teknisk-løsning-forklædt-som-kravopfyldelse.
-- **Skal kunne:** **Code/Codex ejer at deres plan/kode leverer hensigten** (deres bord); Claude.ai kryds-tjekker mening; Mathias endelig.
-- **Mekanisme:** troskabs-angriber-kontrakt + Claude.ai sætning-for-sætning mod låste docs; **troskabs-meta-canary** (plant modsigelse mod vision/forretning → SKAL fanges, ellers tjek selv falsk-grøn).
-- **Anti-snyd:** uadresseret troskabs-fund → BLOKER.
-- **→ næste:** plan-gate (S5.x).
+- **Hvem/hvad:** Codex (+ Claude.ai menings-troskab). **Gør:** finder hvor plan modsiger krav / krav modsiger vision; overclaim; teknik-forklædt-som-kravopfyldelse.
+- **Skal kunne:** **Code/Codex ejer at deres plan/kode leverer hensigten** (deres bord); Claude.ai kryds-tjekker; Mathias endelig.
+- **Mekanisme:** troskabs-angriber + Claude.ai sætning-for-sætning mod låste docs; **troskabs-meta-canary** (plant modsigelse → SKAL fanges). **Anti-snyd:** uadresseret troskabs-fund → BLOKER (positivt verdikt krævet). **→** S5.x.
 
 ---
 
 ## FASE 5 — Plan-gate
 
 ### S5.1 — Plan frosset + 4-aktør-binding
-- **Aktiveres af:** plan klar.
 - **Hvem/hvad:** Code + Codex + Claude.ai på samme plan-SHA; Mathias sidst.
-- **Gør:** plan frosset som plan-SHA; tre AI-verdikter binder til plan-SHA + krav-hash via egen kanal; djævel-pass FØR hver approval.
+- **Gør:** plan frosset som plan-SHA; tre AI-verdikter binder til plan-SHA + krav-hash **via egen kanal med citeret SHA**; djævel-pass FØR hver approval.
 - **Skal kunne:** kumulativ kæde-troskab — plan⊨vision+forretning+krav (krav 2).
-- **Mekanisme:** plan-SHA-binding; gate-check (approval matcher aktuel SHA); stale-stop.
-- **Anti-snyd:** stale-SHA → BLOKER; aktør uden egen kanal → BLOKER.
-- **→ næste:** Mathias plan OK (S5.2).
+- **Mekanisme:** plan-SHA-binding + gate-check (approval matcher SHA) + stale-stop. **Anti-snyd:** stale-SHA → BLOKER; verdikt uden citeret SHA → BLOKER; manglende verdikt/timeout → fail-closed. **→** S5.2.
 
 ### S5.2 — plan OK (gate-state)
-- **Aktiveres af:** tre AI-approvals.
-- **Hvem/hvad:** Mathias (sidst).
-- **Gør:** Mathias `plan OK`; gate-state `plan-laast`. Modsigelse mod krav/vision/forretning → **STOP → Mathias + Claude.ai retter** før videre.
-- **Skal kunne:** Mathias godkender sidst på plan (krav 5).
-- **Mekanisme:** committet gate-state + dirigent (**forudsætter `plan OK` afstemt ind i `gate_ord` — mangler i dag**).
-- **Anti-snyd:** AI retter aldrig selv en modsigelse mod styrende docs.
-- **→ næste:** build OK (S6).
+- **Hvem/hvad:** Mathias (sidst). **Gør:** `plan OK`; gate-state `plan-laast`. Modsigelse mod krav/vision/forretning → **STOP → Mathias + Claude.ai retter**.
+- **Mekanisme:** committet gate-state + dirigent (**⚠️ forudsætning: `plan OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** AI retter aldrig selv en modsigelse mod styrende docs. **→** S6.
 
 ---
 
 ## FASE 6 — Build OK
 
 ### S6.1 — build OK (eksplicit, før byg)
-- **Aktiveres af:** `plan OK`.
-- **Hvem/hvad:** Mathias.
-- **Gør:** Mathias `build OK` eksplicit, før byg; gate-state `build-laast`.
-- **Skal kunne:** intet bygges/merges før dette ord (krav 9).
-- **Mekanisme:** committet gate-state + **hook** (byg-tool-kald før `build OK` → exit-2 BLOKERER); **forudsætter `build OK` afstemt ind i `gate_ord` — mangler i dag** (kun i `workflow/gate-def.json`).
-- **Anti-snyd:** byg-forsøg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER.
-- **→ næste:** build-bider (S7.x).
+- **Hvem/hvad:** Mathias. **Gør:** `build OK` før byg; gate-state `build-laast`.
+- **Skal kunne:** intet bygges/merges før ordet (krav 9). **Mekanisme:** committet gate-state + **hook** (byg-tool-kald før `build OK` → exit-2).
+- **Anti-snyd:** byg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER. **⚙️ Step-2 (Codex #14):** **eksplicit definition af hvad der tæller som "byg-tool-kald"** (kommando-/fil-/path-mønstre) — ellers kan byg ske via almindelige shell-/doc-kommandoer uden om gaten. **→** S7.x.
 
 ---
 
 ## FASE 7 — Build (bid-for-bid pr. skive)
 
 ### S7.1 — Friskhed pr. bid
-- **Aktiveres af:** `build OK` / forrige bid færdig.
-- **Hvem/hvad:** Code (+ freshness-skill).
-- **Gør:** loader tynd pakke-kontrakt frisk (ikke hele korpus).
-- **Skal kunne:** kvalitet = input; ingen drift fra lange docs.
-- **Mekanisme:** freshness-skill + hook der garanterer kontrakt present (mangler/stale → bid fejler højt).
-- **→ næste:** angrebs-spec (S7.2).
+- **Hvem/hvad:** Code + freshness-skill. **Gør:** loader tynd pakke-kontrakt frisk.
+- **Mekanisme + anti-snyd (Codex #15):** kontrakten er **hash-bundet** (pakke + krav-hash + plan-SHA + bid-ID), ikke kun "present" — forkert/gammel kontrakt der er "present" → fail (ingen falsk friskhed). **→** S7.2.
 
-### S7.2 — Codex skriver angrebs-spec FØR byg (test-first)
-- **Aktiveres af:** S7.1.
-- **Hvem/hvad:** Codex.
-- **Gør:** definerer "done" op-front som de hårde canaries skiven skal overleve.
-- **Skal kunne:** input, ikke review (bryder turn-skift; kører parallelt).
-- **Anti-snyd:** byg uden forudgående angrebs-spec → ingen defineret "done".
-- **→ næste:** byg (S7.3).
+### S7.2 — Codex skriver angrebs-spec FØR byg (HÅRD gate)
+- **Hvem/hvad:** Codex. **Gør:** definerer "done" op-front = de hårde canaries skiven skal overleve.
+- **Mekanisme + anti-snyd (Codex #16):** **byg-tool-kald uden registreret angrebs-spec for bid'en → hook BLOKERER** (ikke bare "ingen defined done"). Hård gate. **→** S7.3.
 
 ### S7.3 — Code bygger skiven
-- **Aktiveres af:** angrebs-spec.
-- **Hvem/hvad:** Code.
-- **Gør:** bygger for at dræbe canaries; HVORDAN er Code's bord, men koden skal levere kravets HVAD efter hensigten.
-- **Skal kunne:** funktioner skal VIRKE og være gode, ikke kun se gode ud (krav 1).
-- **→ næste:** prover + angreb (S7.4–S7.6).
+- **Hvem/hvad:** Code. **Gør:** bygger for at dræbe canaries; HVORDAN er Code's bord, men koden skal levere kravets HVAD efter hensigten.
+- **Skal kunne:** funktioner skal VIRKE, ikke kun se gode ud (krav 1).
+- **Anti-snyd (Codex #17):** **Code må IKKE ændre prover, hooks, gates, fixtures eller canary-defs** (sine egne målepunkter) — uautoriseret ændring af måle-laget → hook BLOKERER/STOP. Byggeren kan ikke flytte egne mål. **→** S7.4.
 
 ### S7.4 — Codex angriber forrige skives reelle kør (async)
-- **Aktiveres af:** forrige skive committet.
-- **Hvem/hvad:** Codex (lokal, `--ephemeral`), parallelt.
-- **Gør:** adversarisk review + snydevej-check på den reelle kør (via #126-artefakt-bus).
-- **Mekanisme:** pipeline — skive N bygges mens N-1 angribes; eneste sync = prover-verdikt + Mathias-gate.
-- **→ næste:** prover (S7.5).
+- **Hvem/hvad:** Codex (lokal, `--ephemeral`), parallelt. **Gør:** adversarisk review + snydevej-check på reel kør (via #126).
+- **Mekanisme:** pipeline (N bygges mens N-1 angribes). **Anti-snyd (Codex #18):** **N-1's prover skal være grøn (positivt bevist) før N's base bygger ovenpå** — N må ikke arve uafsluttet/rødt grundlag. **→** S7.5.
 
 ### S7.5 — To-sidet prover (model-frit verdikt)
-- **Aktiveres af:** byg færdig.
 - **Hvem/hvad:** prover (deterministisk, ingen model); Codex planter, Mathias ser rød.
 - **Gør:** reel kør der **(a) går RØD på den plantede hårde (dybe) fejl OG (b) GRØN på baseline** — samme kør.
-- **Skal kunne:** grøn = reel konsekvens, ikke påstand; fangsten af fejl afgør korrekthed (krav 3).
-- **Mekanisme:** to-sidet bevis + **meta-canary** (plantet fejl i selve prover-mekanikken → skal fanges); Code rører aldrig egen prover; **CI kører mod RIGTIGE committede artefakter, ikke fixtures/selftests** (Build 1's synd).
-- **Anti-snyd:** en prover der aldrig kan gå rød → meta-canary afslører den; syntetisk/fixture-bevis → forbudt.
-- **→ næste:** dybde-tjek (S7.6).
+- **Skal kunne:** grøn = reel konsekvens (krav 3). **Mekanisme:** to-sidet bevis + **meta-canary** + **CI mod RIGTIGE committede artefakter, ikke fixtures** (Build 1's synd).
+- **Prover-isolation (Codex #19):** **Codex ejer + planter proveren i egen isoleret worktree/branch; Code har ikke skriveadgang til prover/fixtures/mutations** — "Code rører aldrig egen prover" er dermed *håndhævet*, ikke en regel. **⚙️ Step-2:** præcis ownership/permissions/CI-isolation. **Anti-snyd:** prover der ikke kan gå rød → meta-canary; syntetisk bevis → forbudt. **→** S7.6.
 
 ### S7.6 — Dybde-tjek (krav bid-for-bid ned gennem hele koden)
-- **Aktiveres af:** prover grøn.
-- **Hvem/hvad:** Code + Codex (deres bord).
-- **Gør:** tager kravet **bid for bid** og løber **ned gennem hele koden** til slut-effekt — ikke kun kodens første lag.
-- **Skal kunne:** helheden af funktion/kode tjekkes mod krav, ikke artefakt-eksistens.
-- **Mekanisme:** test-dybde-kontrakt; **SHA-bundet dybde-artefakt pr. krav** (hvad blev fulgt ned, hvilken slut-effekt bekræftet); **dybde-meta-canary** (fejl plantet DYBT → SKAL fanges, ellers kiggede tjekket kun på lag 1 = selv falsk-grøn).
-- **Anti-snyd:** "doc-/første-lags-check grøn" beviser ikke funktion → afvises.
-- **→ næste:** troskab + advance (S7.7).
+- **Hvem/hvad:** Code + Codex (deres bord). **Gør:** tager kravet **bid for bid** og løber **ned gennem hele koden** til slut-effekt — ikke kun første lag.
+- **Mekanisme:** test-dybde-kontrakt; **SHA-bundet dybde-artefakt pr. krav** + **dybde-meta-canary** (fejl plantet DYBT → SKAL fanges, ellers kiggede tjekket kun på lag 1).
+- **Anti-snyd:** "doc-/første-lags-check grøn" beviser ikke funktion → afvises. **Residual (Codex #20):** fuld gren-/sti-dækning kan ikke gøres rent deterministisk — dybde-meta-canary + (⚙️ step-2) coverage-kriterier mindsker det; rest = dømmekraft (se "svage led"). **→** S7.7.
 
 ### S7.7 — Kontinuerlig troskab (build ⊨ hele kæden)
-- **Aktiveres af:** løbende, hver ændring.
-- **Hvem/hvad:** Codex troskabs-angriber + Claude.ai menings-troskab.
-- **Gør:** build⊨plan · plan⊨krav · krav⊨vision/forretning, diff-bundet ved hver ændring.
-- **Skal kunne:** tro hele vejen (krav 2); modsigelse → **STOP → Mathias + Claude.ai retter** (ikke AI alene).
-- **Mekanisme:** diff-bundet re-validering + troskabs-meta-canary; **always-on-floor** (SHA-binding/egen kanal/krav-ID/gate-state/stale-stop) scaler aldrig ned.
-- **→ næste:** advance / fix-loop (S7.8).
+- **Hvem/hvad:** Codex troskabs-angriber + Claude.ai menings-troskab. **Gør:** build⊨plan · plan⊨krav · krav⊨vision/forretning, diff-bundet ved hver ændring.
+- **Skal kunne:** tro hele vejen (krav 2); modsigelse → **STOP → Mathias + Claude.ai retter**.
+- **Mekanisme:** diff-bundet re-validering + troskabs-meta-canary; **always-on-floor** scaler aldrig ned. **→** S7.8.
 
 ### S7.8 — Loop-driver + fix-loop
-- **Aktiveres af:** prover-verdikt.
-- **Hvem/hvad:** `/loop` (intra-bid driver), Code.
-- **Gør:** grøn+bevist → advance; fejl → afgrænset fix-loop (`/loop` driver, bound = `/goal` "stop efter ~N ture", **hård success = proveren** — ikke /loops bløde "done"); uløst → `/rewind` til sidst-beviste state, eskalér.
-- **Skal kunne:** drive biderne uden at agenten selv-erklærer "færdig".
-- **Mekanisme:** `/loop` (bundlet skill — capability-tjek) + `/goal` turn-cap + `Stop`-hook (hård) + prover som success.
-- **Anti-snyd:** loop der stopper på egen blød "done" → forbudt; success ER proveren.
-- **→ næste:** næste skive eller acceptance.
+- **Hvem/hvad:** `/loop` (intra-bid driver), Code. **Gør:** grøn+bevist → advance; fejl → afgrænset fix-loop (`/loop` driver, bound = `/goal` "stop efter N", **hård success = proveren**); uløst → `/rewind` + eskalér.
+- **Mekanisme:** `/loop` (bundlet skill — capability-tjek) + `/goal` turn-cap + `Stop`-hook (hård) + prover som success. **Anti-snyd:** loop der stopper på egen blød "done" → forbudt; success ER proveren. **→** næste skive / acceptance.
 
 ---
 
 ## FASE 8 — Acceptance / slut-gate
 
 ### S8.1 — Fuld-kæde reel kør
-- **Aktiveres af:** sidste skive bevist.
-- **Hvem/hvad:** Code + Codex; prover.
-- **Gør:** kører hele kæden på reel committet testpakke **UDEN fixtures**; alle hårde canaries døde; **integrations-canary** (plantet brud i en håndover mellem to mekanismer — recon→krav, krav→plan, kæde↔workflow, skill↔hook, gate→advance — SKAL fanges).
-- **Skal kunne:** beviser at gearene griber ind i hinanden, ikke kun at hvert gear virker isoleret.
-- **Mekanisme:** reel acceptance (structural ≠ acceptance); alle F-ID med runtimeProof.
-- **Anti-snyd:** syntetisk acceptance (fixtures) → forbudt (Build 1's fejl); ufanget canary → BLOKER.
-- **→ næste:** slut-verdikt (S8.2).
+- **Hvem/hvad:** Code + Codex; prover. **Gør:** hele kæden på reel committet testpakke **UDEN fixtures**; alle hårde canaries døde; **integrations-canary** (plantet brud i en håndover SKAL fanges).
+- **Skal kunne:** beviser gearene griber ind i hinanden. **Anti-snyd (Codex #21):** **kriterier for "reel" testpakke** — committet, afledt af *faktisk* brug/data, IKKE skrevet til at tilfredsstille workflowet; en omdøbt fixture tæller ikke. (⚙️ step-2: konkrete reel-kriterier.) Ufanget canary → BLOKER. **→** S8.2.
 
 ### S8.2 — slut OK
-- **Aktiveres af:** acceptance grøn.
-- **Hvem/hvad:** Code + Codex + Claude.ai (slut-troskab) → Mathias sidst.
-- **Gør:** slut⊨vision+forretning+krav+plan; **krav-rammen tjekkes opfyldt** (alle `K-n` leveret + bevist — det er definitionen på "v5 færdigt"); Mathias `slut OK`.
-- **Skal kunne:** færdig = krav-rammen opfyldt, bevist på et reelt trin.
-- **Mekanisme:** committet gate-state `slut`; promise↔proof-bijektion lukket.
-- **Anti-snyd:** krav-rammen ikke fuldt opfyldt → ikke slut OK.
-- **→ næste:** doks efter build (S9).
+- **Hvem/hvad:** Code + Codex + Claude.ai (slut-troskab) → Mathias sidst. **Gør:** slut⊨vision+forretning+krav+plan; **krav-rammen tjekkes opfyldt** (alle `K-n` leveret + bevist = "v5 færdigt"); Mathias `slut OK`.
+- **Mekanisme:** committet gate-state; promise↔proof-bijektion lukket. **Anti-snyd:** krav-rammen ikke fuldt opfyldt → ikke slut OK. **Residual (Codex #22):** en internt komplet bijektion kan stadig være *eksternt* forkert (krav forkert splittet/udvandet) — fanges ikke rent mekanisk; **Mathias + Claude.ai menings-troskab er den ultimative fangst** (se "svage led"). **→** S9.
 
 ---
 
 ## FASE 9 — Doks efter build
 
-### S9.1 — Opdater afledte docs
-- **Aktiveres af:** `slut OK`.
-- **Hvem/hvad:** Code.
-- **Gør:** opdaterer **masterplan + tekniske docs** (kode-gæld / G-numre / andet) til at afspejle det byggede; repo-hygiejne (én aktiv sandhed; midlertidige artefakter arkiveres).
-- **Skal kunne:** main efterlades som fuldt spor (krav 8); masterplan styrer retning og opdateres (krav 10, ændringer = Mathias-gate).
-- **Anti-snyd:** **dine sandheds-docs (vision + forretning) rettes ALDRIG her** — de er ankeret; konkurrerende aktiv sandhed → BLOKER.
-- **→ næste:** pakke lukket.
+### S9.1 — Opdater afledte docs (under gate)
+- **Hvem/hvad:** Code. **Gør:** opdaterer **masterplan + tekniske docs** (kode-gæld/G-numre) til at afspejle det byggede; repo-hygiejne.
+- **Skal kunne:** main = fuldt spor (krav 8); masterplan opdateres (krav 10).
+- **Mekanisme + anti-snyd (Codex #23):** doc-diffet efter build er **ikke fri** — masterplan-/styrings-ændring = **Mathias-gate** (krav 10), så aktive styrings-docs ikke ender ude af trit med det beviste build. **Dine sandheds-docs (vision + forretning) rettes ALDRIG her** (strukturelt håndhævet, se mappe-struktur). Konkurrerende aktiv sandhed → BLOKER. **→** pakke lukket.
 
 ---
 
-## TVÆRGÅENDE — gælder hele forløbet
+## MAPPE-STRUKTUR (doc-taksonomi — selv en mekanisme)
 
-**Mekaniske håndhævere (deterministiske):**
-- Hooks (PreToolUse/Stop exit-2; kritiske i org-`managed-settings`).
-- GitHub event→Action (aktivering/transport; committet artefakt uforfalskeligt).
-- Author-verificering på gate-ord (kun `mgrubak`).
-- Gate-state + dirigent (`gate_ord`).
-- Hash/SHA-binding (krav-hash · plan-SHA · recon-hash · låste vision/forretning-SHAs).
-- Divergens-tjek (`gate_ord`↔`gate-def` · repo↔repo).
-- `codex exec --ephemeral` (friskhed).
-- CI mod rigtige committede artefakter.
+Mappe-grænsen **håndhæver** bord-delingen: en hook/CODEOWNERS blokerer AI-skrivning til sandheds-mappen (kun Mathias via PR), mens teknik-mappen er AI-opdaterbar under gate. Strukturen gør "sandheds-docs rettes aldrig af AI" til en *mekanisk* regel, ikke en hensigt.
 
-**Dømmekrafts-lag (bundet til mekanisk gate):** Codex omission/djævel/troskab · Claude.ai menings-troskab · recon-grundighed. Regel: uadresseret fund / manglende artefakt → hook BLOKERER.
+```
+docs/
+  sandhed/            # LÅST — Mathias' bord. AI retter ALDRIG (kun Mathias via PR + CODEOWNERS)
+    vision-og-principper.md
+    forretningsforstaaelse.md
+    <pakke>-krav.md          # krav pr. pakke (HVAD, tydeligt beskrevet + acceptkriterie)
+  teknik/             # opdaterbar EFTER build af AI — masterplan-ændring = Mathias-gate (krav 10)
+    master-plan.md
+    teknisk-gaeld.md         # G-numre / kode-gæld
+    fremtid/                 # idé-docs til senere beslutninger
+  plan-build/         # pr. pakke: plan (1:1 med build) + build-rapport/artefakter
+    <pakke>-plan.md
+    <pakke>-build-rapport.md
+  proces/             # workflow-regler, rolle-instrukser, kontrakter, gate-defs (aktør-flade — Mathias læser ikke)
+  arkiv/              # lukkede artefakter (læsbar reference, ikke aktiv kilde)
+```
 
-**Bord-deling:** krav = HVAD (Mathias) · HVORDAN = Code/Codex' bord · **Code/Codex ejer at deres HVORDAN leverer HVAD'et (efter hensigten)** · Claude.ai = uafhængigt menings-kryds · Mathias = endelig + definerer hensigt.
-
-**Drivkraft + økonomi:** `/loop` intra-bid (turn-cap, hård success = prover) · friskhed pr. bid · billigste model der bærer (mekanik billigt, angreb/byg/prover dyrt) · abonnement ikke API (Codex lokal, Claude OAuth).
-
----
-
-## FORUDSÆTNINGS-FIX (mekanismer der mangler/er røde i dag)
-
-1. **`gate_ord`↔`gate-def`-afstemning:** `plan OK` + `build OK` findes kun i `workflow/gate-def.json`, ikke i dirigentens `kaede-regler.json gate_ord` → motoren kan ikke se front-/build-gaterne. Skal afstemmes + divergens-vogtes.
-2. **CI mod rigtige artefakter:** i dag kører validatorerne som selftests/fixtures, ikke mod den committede kæde. Skal vendes (Build 1's falsk-grøn).
-3. **Codex command/værktøjs-setup** verificeret for korrekt opsætning (`codex exec`, `--ephemeral`, reasoning_effort, sandbox, adapter).
-4. **`workflow:selftest`-rød på `main`** (pre-eksisterende) skal fikses for sig selv — blokerer ellers PR'er.
-5. **App-/GitHub-adgang ved privat repo:** Actions koster minutter; apps (Claude Action + marketplace-sync) skal re-grantes adgang til privat repo.
+- **Håndhævelse:** `docs/sandhed/` → CODEOWNERS=mgrubak + hook blokerer ikke-Mathias-skrivning (S9's "rettes aldrig" bliver strukturelt). `docs/teknik/master-plan.md`-diff → Mathias-gate.
+- **Migration er én bevægelse** (gov-6-princip): flyt + opdater alle referencer (hooks/CI/CLAUDE.md/LÆSEFØLGE) i ét, ikke gradvist. **→ step 2/3** (den faktiske flytning er ikke gjort her; dette er målstrukturen).
 
 ---
 
-## KENDTE SVAGE LED (til Codex-angreb, step 6 / løbende)
+## KENDTE SVAGE LED (ærlige residualer — fake-fixes IKKE)
 
-- **Forretnings-recon-komplethed** — irreducibel ukendt-ukendt; mitigeret af coverage-mapping + 3-aktør-connect + Mathias-validering, men residual.
+- **Forretnings-recon-komplethed** — irreducibel ukendt-ukendt; coverage-matrix + 3-aktør-connect + Mathias krymper den, men residual.
+- **Forretnings-troskab (Codex #12)** — semantisk; troskabs-meta-canary beviser tjekket *fyrer*, ikke at *subtil* drift fanges. Ultimativ garant = Mathias + Claude.ai (krav 2/5).
+- **Dybde-fuldstændighed (Codex #20)** — fuld gren-dækning ikke rent deterministisk; dybde-meta-canary + coverage-kriterier mindsker, rest = dømmekraft.
+- **Internt-komplet vs. eksternt-forkert (Codex #22)** — en lukket bijektion kan stadig misse krav forkert splittet/udvandet. Mathias-vs-krav + Claude.ai-mening er den eneste fangst.
 - **Claude.ai-app som menneske-led** — kan ikke automatiseres; afhænger af Mathias' hånd + sync (privat-repo-adgang).
-- **Forretnings-troskab** — semantisk dømmekraft, ikke ren mekanik; gjort ikke-springbar + meta-canary-bevist, men ultimativ garant er Mathias.
-- **Håndover-koblingerne** (recon→krav, krav→plan, plan→build, kæde↔workflow) — hvor kæden kan "hoppe"; integrations-canary skal dække hver.
+- **Canary-styrke (Codex #11)** — bijektion beviser eksistens, ikke styrke; afbødet af slut-effekt-krav + meta-canary, rest = reviewer-dømmekraft.
 
 ---
 
-*Slut på step-1-kortlægning. Næste: løbende Codex-angreb fase-for-fase → fold fund ind → Mathias holder mod krav → ingen feedback = klar til godkendelse.*
+## FORUDSÆTNINGS-FIX + STEP-2-DETALJER
+
+**Røde i dag (skal fikses før workflowet håndhæver):**
+1. `gate_ord`↔`gate-def`-afstemning (`plan OK`/`build OK` ind i motoren) + divergens-vogter.
+2. CI mod rigtige committede artefakter (ikke selftests/fixtures) — Build 1's falsk-grøn.
+3. `workflow:selftest`-rød på `main` (pre-eksisterende) — fikses for sig.
+4. App-/GitHub-adgang ved privat repo (Actions-minutter + app re-grant).
+
+**⚙️ Step-2 (hvordan sættes op — Codex-flaggede detaljer):** GitHub-Action→lokal aktør protokol (#9) · definition af "byg-tool-kald" (#14) · prover-isolations-mekanik (#19) · repo-sandheds-inventory som kæde-led (#10) · reel-acceptance-kriterier (#21) · dybde-coverage-kriterier (#20) · mappe-migration (én bevægelse).
+
+---
+
+## CODEX RUNDE 1 — DISPOSITIONER
+
+24 fund. **Foldet ind (mekanisk hardening):** #3,#4,#5,#7,#8,#13,#15,#16,#17,#18,#19(delvis),#21,#23,#24 + anti-tavshed/læsebevis som gennemgående regler. **Markeret ⚙️ step-2:** #9,#10,#14,#19(detalje),#20(kriterier). **Ærlige residualer (ikke fake-fixet):** #6(delvis),#11,#12,#20,#22. **Allerede i forudsætnings-fix:** #1,#2.
+
+---
+
+*Slut på step-1-kortlægning v2. Næste: Mathias holder mod krav + evt. runde 2 Codex → ingen feedback = klar til godkendelse.*
