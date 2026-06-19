@@ -1,9 +1,20 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v9 — + angriber-runde (B-test) foldet: substrat-exploit-audit i forudsætnings-fix · top-til-tå "kode = Mathias' sandhed"-test · angriber-lins som standard-djævel. Krav 5+9-amendementer afventer Mathias. Intet bygges. Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v10 — + skarpt FORMÅL + 5 bærende principper (forge-filter · defense-in-depth · non-LLM=primær dommer · lær-af-hvert-mål · top-til-tå). Klar til Mathias' grundige gennemgang + godkendelse. Krav 5+9-amendementer afventer Mathias. Intet bygges.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
+
+## FORMÅL + BÆRENDE PRINCIPPER
+
+**Formål (skarpt):** Ét byg-workflow der sikrer at **hvert Stork-step bygges korrekt og efter hensigten** — og som er **fri af den vane der ødelagde gov-1…5: at gå med den første løsning der *ser* grøn ud.** Grøn = **reel konsekvens, aldrig påstand.** Workflowet er **fabrikken, ikke varen**; samme workflow genbruges på hver produkt-pakke i masterplanen.
+
+**Fem bærende principper (filteret for hvad der kommer ind):**
+1. **Hjælper vs. ser-godt-ud:** *kan en motiveret snyder forfalske eller bypasse det?* Kan han → det ser godt ud (drop). Kan han ikke → det **hjælper**. Vi bygger kun det u-forfalskelige.
+2. **Defense-in-depth — ikke-flugtende huller:** ingen mekanisme står alene. Hvert lag har huller; en falsk-grøn slipper kun forbi hvis hullerne i ALLE lag **flugter samtidig**. Sammenhold = medspillere med **forskellige** blinde vinkler.
+3. **Non-LLM deterministisk = primær dommer · LLM = input:** alle AI-aktører (Code · Code-reviewer · Codex · Claude.ai) deler LLM-blinde-vinkler (selvsikkert-forkert). Derfor afgøres grøn/rød af det **deterministiske, non-LLM lag** (reel kør · prover-exit · types · DB-constraints · property/fuzz); LLM'er er **input, aldrig sidste ord**.
+4. **Lær af hvert mål:** slipper en falsk-grøn igennem (fanget af en medspiller, af dig, eller i produktion), konverteres den til en **permanent canary** — forsvaret bliver stærkere for hver kamp.
+5. **Top-til-tå: kode = Mathias' sandhed:** den endelige dom er **reel kode-kør mod din sandhed ved fuld dybde** — ikke at ordene/docs findes (doc-grøn ≠ dybde).
 
 ## Læsenøgle (felter pr. step)
 
@@ -179,6 +190,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Hvem/hvad:** prover (deterministisk, ingen model); Codex planter, Mathias ser rød.
 - **Gør:** reel kør der **(a) går RØD på den plantede hårde (dybe) fejl OG (b) GRØN på baseline** — samme kør.
 - **Skal kunne:** grøn = reel konsekvens (krav 3). **Mekanisme:** to-sidet bevis + **meta-canary** + **CI mod RIGTIGE committede artefakter, ikke fixtures** (Build 1's synd).
+- **Non-LLM = primær dommer (princip 3):** grøn/rød afgøres af det **deterministiske, non-LLM lag** — reel kør · prover-exit · types · DB-constraints · property/fuzz. **LLM-aktører (Code/Codex/Claude.ai) er INPUT, aldrig sidste ord** (de deler blinde vinkler; den deterministiske dommer har andre). Promovér de eksisterende deterministiske checks (fitness/RLS/constraints/real-CI) til primær dommer; **køb property-based + fuzz** som nykøb.
 - **Prover-isolation (Codex #3/#19 — Mathias-dom: Codex kan få skrive):** **Codex ejer + har SKRIVE-adgang til prover + canaries + angrebs-spec** (måle-laget); **Code har INGEN skrive-adgang til sit eget måle-lag** (prover/hooks/gates/fixtures). Den der måler ≠ den der bygger — *håndhævet*, ikke en regel. **⚙️ Step-2:** præcis permissions/CI-isolation. **Anti-snyd:** prover der ikke kan gå rød → meta-canary; syntetisk bevis → forbudt. **→** S7.6.
 
 ### S7.6 — Dybde-tjek (krav bid-for-bid ned gennem hele koden)
