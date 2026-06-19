@@ -1,9 +1,21 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v10 — + skarpt FORMÅL + 5 bærende principper (forge-filter · defense-in-depth · non-LLM=primær dommer · lær-af-hvert-mål · top-til-tå). Klar til Mathias' grundige gennemgang + godkendelse. Krav 5+9-amendementer afventer Mathias. Intet bygges.
+**Status:** UDKAST v18 — komplet kortlægning `qwers`→`slut OK`. Klar til Mathias' grundige gennemgang + godkendelse. Krav 5+9-amendementer afventer Mathias. Intet bygges.
+**Læs sådan her (anti-træthed):** FORMÅL + 5 principper (nedenfor) → **SENESTE ÆNDRINGER** (kun deltaet) → dyk KUN i de sektioner der er ændret. Ingen grund til at genlæse hele doc'en hver gang.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
+
+## SENESTE ÆNDRINGER (læs deltaet, ikke hele doc'en)
+
+*Transient læse-stillads — nyeste øverst, ældre beskæres (git har fuld historik). Slettes når step 1 er godkendt.*
+
+- **v18** — anti-træthed: denne delta-log + "læs sådan her" + batch-push (færre versioner) → *toppen*.
+- **v17** — auto-fix-makroer (`issue_to_fix_workflow` o.l.) hegnet ude af build-allowlisten → *FASE 6 / default-deny-boks*.
+- **v16** — rolle: Codex' bord = kode-vurdering (**blind for Windows-app'en**); Claude.ai = frisk chat pr. gate via skill/GitHub-plugin → *ROLLER / Aktør-noter*.
+- **v15** — FASE 9 rettet: arbejdsdoks løbende, repo-docs **efter** build 1:1 fra plan, lukke-PR sletter arbejdsdoks → *FASE 9 / S9.1*.
+- **v14** — krav OK = **S3.3** (Mathias sidst = original krav 5); Codex ikke aktiv ved S2.3 → *FASE 2–3*.
+- **v13** — gennemgående: **spørg ved uklarhed, antag ALDRIG** → *Gennemgående regler*.
 
 ## FORMÅL + BÆRENDE PRINCIPPER
 
