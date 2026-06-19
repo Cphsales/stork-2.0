@@ -37,13 +37,13 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 ## FASE 0 — Åbning
 
 ### S0.1 — qwers
-- **Aktiveres af:** Mathias. **Hvem/hvad:** `qwers <pakke>` på #126. **Aktiverer:** GitHub-event → dirigent.
+- **Aktiveres af:** Mathias. **Hvem/hvad:** Mathias skriver `qwers <anker>` på #126 — **anker = pakke-navn (masterplan-trin) ELLER doc-navn fra `teknik/`** (når det er gæld eller nyt uden for planen der skal bygges). **Aktiverer:** Code-terminal åbner pakken.
 - **Skal kunne:** starte workflowet med ÉN prompt (krav 9). **Mekanisme:** issue-event + author-verificering (kun `mgrubak`).
 - **Anti-snyd:** forkert author → IGNORÉR (fail-closed). **→** S0.2.
 
 ### S0.2 — Dirigent dispatcher
-- **Aktiveres af:** #126-event. **Hvem/hvad:** dirigent. **Aktiverer:** de tre lokale AI-aktører.
-- **Gør:** binder pakke-navnet til et **hash-bundet masterplan-anker** (pakken = et masterplan-trin/-område) + sætter read-only recon-mode. **Skal kunne:** aktivere ALLE tre deterministisk (krav 9); recon-scope kommer fra masterplanen (krav findes ikke endnu for en ny pakke).
+- **Aktiveres af:** #126-event. **Hvem/hvad:** **Code-terminal** (ikke en separat dirigent-maskine — Code-terminal er miljøet for **både åbning (FASE 0) og recon (FASE 1)**; ingen separat transport imellem). **Aktiverer:** de tre lokale AI-aktører.
+- **Gør:** binder ankeret til et **hash-bundet udgangspunkt — masterplan-trin ELLER `teknik/`-doc** (gæld / nyt uden for planen) + sætter read-only recon-mode. **Skal kunne:** aktivere ALLE tre deterministisk (krav 9); recon-scope kommer fra **ankeret** (masterplan-trin eller teknik-doc), da krav ikke findes endnu for en ny pakke.
 - **BRO 0→1 (masterplan-anker):** ankeret ER broen mellem åbning og recon — recon (FASE 1) digger FRA ankeret + de låste vision/forretning + nuværende kode, ikke fra et gæt. Det gør 3-bøtten meningsfuld (hvad-skal-være vs. hvad-er).
 - **Mekanisme:** deklarativ event-transport, fail-closed. **Anti-snyd:** ikke alle tre aktiveret → FAIL; transport auto-validerer → FAIL; **forkert/manglende masterplan-anker → integrations-canary fanger (recon kører ikke på vilkårlig flade).** **→** S0.3.
 
@@ -244,7 +244,7 @@ Hver AI-aktør har **to rolle-typer** (workflow / almindelig, krav 7) og **én e
 | Aktør | Rolle / grænse | Hvad gør den rød | Aktiverings-kanal | Skill |
 |---|---|---|---|---|
 | **Mathias** | Dømme-gates (krav/plan/slut OK) + definerer hensigt. Eneste dommer. | — | `qwers`/gate-ord på #126 (author-verificeret) + pull (#126/`/remote-control`) | — |
-| **Code** | Builder/driver (kontinuerlig i fasen); ejer at koden leverer hensigten. Aldrig dømmekraft over eget måle-lag. | rører prover/hooks/gates · bygger før plan OK · falsk-grøn | dirigent-dispatch + GitHub-Action på #126 | **bygges** (rolle+freshness) |
+| **Code** | Builder/driver (kontinuerlig i fasen); ejer at koden leverer hensigten + **bestemmer/opretter PR**. Aldrig dømmekraft over eget måle-lag. | rører prover/hooks/gates · bygger før plan OK · falsk-grøn | **Code-terminal** (åbning+recon) + GitHub-Action på #126 | **bygges** (rolle+freshness) |
 | **Code-reviewer** | FRISK Code-agent, frisk rolle: kode-/dybde-troskab (build⊨plan). | overser dyb fejl (dybde-meta-canary) | frisk session pr. review (≠ byggerens) | **bygges** |
 | **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. **Afgiver positivt verdikt (clearance) ved krav/plan/slut** (krav 5) — dømmer ikke som autoritet, men bidrager sin aktør-godkendelse. | resumed/stale session · ikke-skarpt angreb · tavshed-som-ja | `codex exec --ephemeral` (lokal, via Code) | **bygges** (`stork-adversarial-review`) |
 | **Claude.ai** | Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + forretnings-mening. Ikke kode. | kode-vurdering (Codex' bord) · usynlig sandhed | app (Mathias' hånd) + `claude -p` (recon-rolle) | `claude-ai/SKILL.md` (findes) |
