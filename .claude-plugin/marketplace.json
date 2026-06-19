@@ -1,0 +1,12 @@
+{
+  "name": "stork-2-0",
+  "owner": { "name": "Copenhagen Sales", "email": "mg@copenhagensales.dk" },
+  "description": "Stork 2.0 workflow-plugins (proof-first byg-workflow). Placeholder-plugin nu; erstattes af den rigtige Stork-plugin (freshness + rolle-tekster + prover-wrapper) naar den bygges.",
+  "plugins": [
+    {
+      "name": "stork-sync-test",
+      "source": "./plugins/stork-sync-test",
+      "description": "Minimal placeholder der verificerer at app-sync fra Cphsales/stork-2.0 virker end-to-end. Ikke en workflow-mekanisme."
+    }
+  ]
+}

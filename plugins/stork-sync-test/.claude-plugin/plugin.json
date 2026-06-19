@@ -1,0 +1,6 @@
+{
+  "name": "stork-sync-test",
+  "description": "Placeholder der beviser plugin-marketplace-sync fra Cphsales/stork-2.0 virker. Ikke en workflow-mekanisme; erstattes af den rigtige Stork-plugin.",
+  "version": "0.1.0",
+  "author": { "name": "Copenhagen Sales", "email": "mg@copenhagensales.dk" }
+}
