@@ -60,13 +60,17 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 ### S1.1 + S1.2 — 2× kode-recon (Code + Codex)
 - **Hvem/hvad:** Code og Codex laver hver **uafhængig kode-recon** (ikke angreb — koden er stor/kompleks, to cross-vendor-recons giver bedre dækning).
 - **Gør / samler:** fund i recon-output-skema `{kilde, kategori, emne, evidens-ref, aktør, klassifikation}`.
-- **Skal kunne:** fuld recon over **alle fire kilder — kode · docs · nettet · hver aktørs egne indstillinger** (krav 4 + byggeregel "Sådan skal det bygges"; web + settings = capability-funktioner der rammer alle aktører), kortlæg HELE scope. **Mekanisme:** read-only + grundig-recon-kontrakt + `--ephemeral` (Codex).
-- **Anti-snyd (Codex krav-brud #5):** recon der kun rammer kode+docs (springer web + aktør-indstillinger over) → FAIL — to kilder mangler.
-- **Anti-snyd:** stopper-for-tidligt/uden kilde → FAIL. **Dækningsmål (Codex #6):** recon-komplethed måles mod **coverage-matrix** (forretningsdele × viewpoints) — "fuld" = hvert kendt viewpoint dækket, ikke aktørens skøn. **→** S1.4.
+- **Skal kunne:** fuld recon over **kode + docs (din sandhed)** + aktørernes egne indstillinger (capability-info). **IKKE nettet (Mathias):** web i recon skaber **forvirring + nye forkerte sandheder**. Kortlæg HELE scope. **Mekanisme:** read-only + grundig-recon-kontrakt + `--ephemeral` (Codex).
+- **RECON-DYBDE — tre u-forfalskelige anchors (dybde BEVIST, ikke påstået):**
+  1. **Dybde-canary** *(meta-canary for recon):* plant et kendt DYBT forhold i koden → recon SKAL surface det, ellers FAIL. (Beviser ikke at ALT blev fundet, men at den ville finde et plantet dybt forhold.)
+  2. **Evidens-trace pr. fund:** hvert fund citerer konkret kode-lokation (fil:linje/symbol); intet citat = overfladisk = FAIL. Dybde = sporbar, ikke påstand.
+  3. **Deterministisk scope (non-LLM):** statisk analyse udleder de berørte symboler/filer → recon skal gøre rede for HVERT; "dækkede recon X?" er **mekanisk**, ikke LLM-skøn.
+- **Loop-bund:** dybde-først-loopet dykker til de tre anchors passerer — IKKE til LLM'en *føler* sig færdig.
+- **Anti-snyd:** stopper-for-tidligt/uden kilde → FAIL · web som recon-kilde → FAIL · fund uden evidens-trace → FAIL · berørt symbol ikke gjort rede for → FAIL. **Residual:** ukendt-ukendt-komplethed forbliver irreducibel (du + forretnings-recon fanger). *(Coverage-matrix forretningsdele × viewpoints = bredde-laget; den deterministiske scope er den hårde version. Web kun i separat capability-discovery, verificeret — aldrig i pakke-recon.)* **→** S1.4.
 
 ### S1.3 — Docs-/forretnings-recon (Claude.ai)
 - **Hvem/hvad:** Claude.ai (`claude -p`). **Gør:** læser vision/forretning/masterplan-relevante dele/krav-historik/Mathias-afgørelser.
-- **Skal kunne:** ramme "hvad Stork skal være" (krav 4). **Anti-snyd:** recon uden dokument-recon → FAIL. **→** S1.4.
+- **Skal kunne:** ramme "hvad Stork skal være" (krav 4) — **forretnings-/docs-kontekst, IKKE dybden.** Claude.ai's recon-grundighed/dybde er svag (Mathias); **dybden + grundigheden kommer fra Code/Codex' 2× kode-recon + coverage-matrix + omission-angreb** (S1.1/S1.2/S1.5), der backstopper. **Anti-snyd:** recon uden dokument-recon → FAIL; Claude.ai-recon taget som dybde-kilde → FAIL. **→** S1.4.
 
 ### S1.4 — Konsolidering til ÉN sandhed
 - **Aktiveres af:** alle tre recons færdige (positivt — anti-tavshed). **Aktiverer:** angrebs-funktionen (først NU).
@@ -87,8 +91,9 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Aktiveres af:** recon-sandhed klar (FASE 1). **Hvem/hvad:** Mathias åbner Stork 2.0-projektet i Claude.ai-app'en (ny chat).
 - **Gør / samler:** app'en bygger en **lokal repo** af **(a) jeres docs** (synket fra GitHub) + **(b) Mathias↔Claude.ai-chatsene** i projektet (chat-beslutninger) + **(c) den konsoliderede recon-sandhed** (hash-bundet). = Claude.ai's kontekst til krav.
 - **Skal kunne:** Claude.ai har docs + chat-historik + recon frisk, uden manuel paste (chat-recon-kilden, krav 2).
-- **Mekanisme:** app-sync af docs (`.claude-plugin/marketplace.json`) + app'ens egne projekt-chats (native i app'en) + recon-sandhed-hash ind.
-- **Anti-snyd (Codex #8):** sync skal **verificere at hentet state = aktuel committet SHA/branch** OG at recon-konteksten er **recon-hash'en** (ikke en gammel/anden recon) — stale/forkert → synlig fejl, ikke tavs gammel kontekst. **→** S2.1.
+- **Mekanisme:** **GitHub-adgang + auto-opdatering ved PR (bekræftet virker — Mathias 2026-06-19)** synker docs; app'ens projekt-chats er native; **recon-sandhed-hash ind.** App'en **TILFØJER ikke recon-dybde** — den **konsumerer** den allerede-dybe, committede recon-sandhed (dybden er Code/Codex' i FASE 1; Claude.ai's egen recon-grundighed/dybde er svag → backstoppet).
+- **KRITISK led (Mathias): fejler dette handover, er FASE 1's recon spildt.** Værn: recon-sandhed er **committet/durabel** → går IKKE tabt hvis app-session fejler (re-synkes). App'en SKAL **verificere binding til recon-hash'en FØR krav** — binder den ikke (stale/forkert/overfladisk) → **HALT** (krav skrives aldrig på tabt/overfladisk recon; recon gen-køres ikke, re-synkes blot).
+- **Anti-snyd (Codex #8):** stale/forkert sync → synlig fejl, ikke tavs gammel kontekst. **→** S2.1.
 
 ### S2.1 — Recon præsenteres for Mathias (3-bøtte) — FASE 2's åbning
 - **Hvem/hvad:** Claude.ai oversætter den konsoliderede recon; Mathias validerer eller spørger.
@@ -96,8 +101,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
   - **Nuværende kode:** "x er bygget på denne måde i koden — er det korrekt?"
   - **Ikke bygget endnu / dokument-info:** "pakken bygger x, og dokument y siger dette — er det korrekt?"
   - **Intet data:** "pakken berører x, og der er intet data — hvad skal x kunne?"
-- **Skal kunne:** Mathias dømmer forretning, ikke kode (krav 6); recon i præcis tre kategorier; han kan validere ELLER spørge.
-- **Mekanisme:** Mathias-komm-kontrakt + recon-præsentationskontrakt; præsentationen bundet til **recon-hash**.
+- **Skal kunne:** Mathias dømmer forretning, ikke kode (krav 6); recon i præcis tre kategorier; validér ELLER spørg. **Scope (Mathias): KUN pakke-relevant** — ingen støj, kun hvad pakken berører. **Komplethed på dit bord (Mathias): HVERT forretnings-/bord-område pakken berører SKAL valideres** — intet sprunget over.
+- **Mekanisme:** Mathias-komm-kontrakt + recon-præsentationskontrakt; bundet til **recon-hash**. **Hvert berørt bord-område udledes fra den deterministiske recon-scope** (anchor #3, S1.1/S1.2) → mappet til et forretnings-område → SKAL i 3-bøtten. **Anti-snyd:** berørt bord-område der ikke præsenteres for Mathias → FAIL (ufuldstændig validerings-flade); ikke-pakke-relevant støj → trim.
 - **Anti-snyd:** kode til Mathias → FAIL; ikke-3-kategori → FAIL. **Handover-binding (Codex #7):** hvert recon-fund får en **disposition** (behandlet i krav / udskudt / ikke-relevant), bundet til recon-hash → senere gates kan bevise at intet fund blev sprunget over. **→** S2.2.
 
 ### S2.2 — Krav skrives (kun HVAD)
