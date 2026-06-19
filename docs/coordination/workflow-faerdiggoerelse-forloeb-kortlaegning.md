@@ -1,7 +1,7 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v8 — + Codex krav-brud-runde (krav-aware) foldet: recon-kilder (web+settings) · doc-updates løbende · Codex positivt verdikt · fire-aktør tydelig · rolle-skift-prompt. Krav 5+9-amendementer afventer Mathias. Intet bygges. Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v9 — + angriber-runde (B-test) foldet: substrat-exploit-audit i forudsætnings-fix · top-til-tå "kode = Mathias' sandhed"-test · angriber-lins som standard-djævel. Krav 5+9-amendementer afventer Mathias. Intet bygges. Step 2 = hvordan hvert element sættes op.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
 
@@ -15,7 +15,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 **Gennemgående: kun Mathias' dømme-gates stopper FOR Mathias** (= **krav OK · plan OK · slut OK**; build OK er mekanisk, S7.9). Kæden kan **halte mekanisk** (fail-closed) når som helst — modsigelse / uadresseret fund / divergens → **HALT = kæden STOPPER med det samme** (bygger IKKE videre; der akkumuleres aldrig et stort u-godkendt build) + durabelt flag på #126. Modsigelser fanges **løbende pr. bid** (diff-bundet, S7.7) → tidligt, ikke efter et stort build. Det **eneste** der udskydes er at **push-afbryde Mathias** (det dræner friskhed, krav 9) — IKKE stoppet, IKKE detektionen: han ser flaget ved sin **næste gate** eller når han selv **pull'er** (#126 / `/remote-control`), dømmer, og derefter retter han + Claude.ai. Mekanisk halt ≠ at afbryde Mathias. Broerne mellem gates er ren transport. **Uløselig krav-/sandheds-modsigelse → plan OG build STOPPES** (terminal, ikke kun halt): kan en modsigelse mod krav/de låste docs **ikke løses**, er plan/build ugyldig og standses, til Mathias (+ Claude.ai) revurderer krav/vision. Halt = midlertidig (mens fix forsøges); STOP = terminal (uløselig).
 
-**Gennemgående: djævlens-advokat skyder med skarpt.** Angriberen står med **krav-doc / kode / recon i hånden** og fyrer **specifikt**, ikke generisk: *"løser du K-7? hvorfor ikke sådan her? har du husket X?"* — målrettet konkrete K-ID'er, kodepunkter, recon-fund. **Guardrail (mod V26-nit-spiral):** hvert skud lukkes **binært** — forsvares med konkret bevis (canary / prover / citat) ELLER indrømmes. Direkte + bevis-krævende, ikke bare højere stemme.
+**Gennemgående: djævlens-advokat skyder med skarpt.** Angriberen står med **krav-doc / kode / recon i hånden** og fyrer **specifikt**, ikke generisk: *"løser du K-7? hvorfor ikke sådan her? har du husket X?"* — målrettet konkrete K-ID'er, kodepunkter, recon-fund. **Guardrail (mod V26-nit-spiral):** hvert skud lukkes **binært** — forsvares med konkret bevis (canary / prover / citat) ELLER indrømmes. Direkte + bevis-krævende, ikke bare højere stemme. **Standard-djævel-metode (A/B-lært 2026-06-19): angriber-lins > compliance-lins.** Den stærkeste djævel spiller en *uærlig aktør der vil snige falsk-grøn forbi* OG **inspicerer den faktiske kode/substrat** (ikke kun dokumentet) — det fanger design↔virkelighed-gabet, hvor en ren compliance-reviewer kun fanger design↔krav.
 
 **Gennemgående anti-tavsheds-regel (Codex #4/#24):** intet step godkendes ved *fravær* af indvending. Hvert gate har et **forventet antal positive, hash-bundne verdikter**; manglende verdikt / timeout / forkert hash = **fail-closed (BLOKER)**, aldrig auto-grønt. Tavshed er ikke et ja.
 
@@ -207,7 +207,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ### S8.1 — Fuld-kæde reel kør
 - **Hvem/hvad:** Code + Codex; prover. **Gør:** hele kæden på reel committet testpakke **UDEN fixtures**; alle hårde canaries døde; **integrations-canary** (plantet brud i en håndover SKAL fanges).
-- **Skal kunne:** beviser gearene griber ind i hinanden. **Anti-snyd (Codex #21):** **kriterier for "reel" testpakke** — committet, afledt af *faktisk* brug/data, IKKE skrevet til at tilfredsstille workflowet; en omdøbt fixture tæller ikke. (⚙️ step-2: konkrete reel-kriterier.) Ufanget canary → BLOKER. **→** S8.2.
+- **Skal kunne:** beviser gearene griber ind i hinanden. **TOP-TIL-TÅ: kode = Mathias' sandhed (Mathias 2026-06-19):** den ultimative test kører HELE kæden top-til-tå og verificerer at **koden faktisk leverer din sandhed** (krav/vision/forretning) ved **fuld dybde** — IKKE at ordene/docs er til stede. *Doc-/ordret-checks er altid grønne (ordene ER der); dybde/kontekst kan mangle — derfor er den reelle kode-kør dommeren, ikke teksten.*
+- **Anti-snyd (Codex #21):** **kriterier for "reel" testpakke** — committet, afledt af *faktisk* brug/data, IKKE skrevet til at tilfredsstille workflowet; en omdøbt fixture tæller ikke. (⚙️ step-2: konkrete reel-kriterier.) Ufanget canary / kun-ordret-grøn (dybde mangler) → BLOKER. **→** S8.2.
 
 ### S8.2 — slut OK
 - **Hvem/hvad:** Code + Codex + Claude.ai (slut-troskab) → Mathias sidst. **Gør:** slut⊨vision+forretning+krav+plan; **krav-rammen tjekkes opfyldt** (alle `K-n` leveret + bevist = "v5 færdigt"); Mathias `slut OK`.
@@ -296,6 +297,15 @@ docs/
 3. `workflow:selftest`-rød på `main` (pre-eksisterende) — fikses for sig.
 4. App-/GitHub-adgang ved privat repo (Actions-minutter + app re-grant).
 
+**Substrat-exploits (angriber-runde / B-test 2026-06-19 — design siger X, koden gør ikke X i dag; substratet SKAL håndhæve):**
+5. **Verdikter content-afledte, ikke marker-match** — i dag matcher kæden `APPROVAL`/`PASS`/`Plan-SHA` i markdown (`tilstand.mjs`); falske verdikter kan fabrikeres. Anti-tavshed/læsebevis er IKKE i kode.
+6. **CI: skipped ≠ OK · doc-grøn ≠ dybde** — aggregatoren tæller skipped som grøn (`ci.yml`); doc-checks er altid grønne fordi *ordene er der*, men dybde/kontekst mangler → derfor top-til-tå-testen (S8.1).
+7. **Per-gate-id-afgørelse** — i dag åbner ét `GODKENDT` ALLE åbne gates (`dirigent.mjs`); skal bindes til konkret gate-id/fund-hash.
+8. **Code uden write til måle-laget** — i dag `--dangerously-skip-permissions` (`code.sh`); prover/hooks/fixtures uden for Code's skriveadgang.
+9. **Beskyttet/committet trace** — `.dispatch-log`/`.kaede-stop` er gitignored/lokale; trace + STOP skal være committet/signeret.
+10. **Ownerless-sti-beskyttelse** — aktive sandheds-artefakter i `docs/coordination/*` kan omskrives via alm. PR (`CODEOWNERS`); skal gates.
+11. **Reelle gates + dækning:** `plan OK`/`build OK` reelle gates · recon-syntese kræver dækning (ikke bare "to filer findes") · krav-merge kræver buildability-verdikt · async cascade håndhævet.
+
 **⚙️ Step-2 (hvordan sættes op — Codex-flaggede detaljer):** GitHub-Action→lokal aktør protokol (#9) · definition af "byg-tool-kald" (#14) · prover-isolations-mekanik (#19) · repo-sandheds-inventory som kæde-led (#10) · reel-acceptance-kriterier (#21) · dybde-coverage-kriterier (#20) · mappe-migration (én bevægelse).
 
 ---
@@ -306,4 +316,4 @@ docs/
 
 ---
 
-*Slut på step-1-kortlægning v7. Næste: Mathias holder mod krav → ingen feedback = klar til godkendelse → step 2.*
+*Slut på step-1-kortlægning v9. Næste: Mathias holder mod krav → ingen feedback = klar til godkendelse → step 2.*
