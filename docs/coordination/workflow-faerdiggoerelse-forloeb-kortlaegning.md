@@ -145,7 +145,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Anti-snyd:** kode-recon mangler før plan → FAIL. **⚙️ Step-2 (Codex #10):** "repo-sandheds-inventory" defineres som et hash-bundet led i kæden (hvor det kommer fra, hvordan det valideres) — ikke en antaget ekstern dependency. **→** S4.2.
 
 ### S4.2 — Plan skrives (hele kæden, 1:1 med build)
-- **Hvem/hvad:** Code skriver; Codex angriber. **Gør:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling besluttes HER** — og **doc-opdateringerne planlægges som bids** (masterplan/teknisk-gæld/status), så de ikke fabrikeres til sidst (H).
+- **Hvem/hvad:** Code skriver; Codex angriber. **Gør:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling besluttes HER** — og **planen definerer repo-doc-teksten 1:1** (masterplan/tekniske), så den efter build kun **anvendes**, ikke fabrikeres (krav 8 / H).
 - **Bid-opdelings-kontrakt (build-biderne vurderet korrekt + logisk i planen):** hver bid navngiver (a) hvilke `K-n`/løfter den leverer · (b) afhængigheds-orden (ingen bid afhænger af en senere) · (c) en størrelse dens prover KAN bevise · (d) sin canary up-front. **Codex angriber opdelingen:** ulogisk orden / hul mellem bids / ikke-bevisbar bid / for stor bid → BLOKER. Gyldig FØRST når hver bid er bevisbar OG bid-kæden dækker alle `K-n` uden huller.
 - **Skal kunne:** **plan 1:1 med build**; hver funktion → test der følger tråden til slut-effekt (ikke artefakt-eksistens).
 - **Mekanisme:** ingen-byg-før-plan-OK via **hook** (PreToolUse exit-2); **krav-ID-matrix** (`K-n` → step + test) + **løfte↔bevis-bijektion**.
@@ -186,7 +186,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ### S7.3 — Code bygger skiven
 - **Hvem/hvad:** Code. **Gør:** bygger for at dræbe canaries; HVORDAN er Code's bord, men koden skal levere kravets HVAD efter hensigten.
-- **Skal kunne:** funktioner skal VIRKE, ikke kun se gode ud (krav 1).
+- **Skal kunne:** funktioner skal VIRKE, ikke kun se gode ud (krav 1). **Build-fokus (Mathias): fokus under build SKAL være build.** Ændringer der opstår → **større issue = gæld** (løses KORREKT senere, ikke hurtigt/hacket) · **mindre = bilag** for ændringen. Kun arbejdsdoks/worklog løbende; repo-docs røres ikke her (se FASE 9).
 - **Anti-snyd (Codex #17):** **Code må IKKE ændre prover, hooks, gates, fixtures eller canary-defs** (sine egne målepunkter) — uautoriseret ændring af måle-laget → hook BLOKERER/STOP. Byggeren kan ikke flytte egne mål. **→** S7.4.
 
 ### S7.4 — Codex angriber forrige skives reelle kør (async)
@@ -235,12 +235,14 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ---
 
-## FASE 9 — Main = fuldt spor (docs ført LØBENDE under build, ikke efter)
+## FASE 9 — Doc-spor (arbejdsdoks løbende · repo-docs efter build, 1:1 fra plan)
 
-### S9.1 — Doc-opdatering sker LØBENDE som bids (ikke efter slut OK)
-- **Hvem/hvad:** Code. **Gør:** masterplan + tekniske docs opdateres **som planlagte bids UNDER build** (FASE 6 / H) — så ved `slut OK` er **main allerede det fulde spor**. Ingen dokumentering skrives oven på en allerede-sket validering (krav 8, Codex-brud #8).
-- **Skal kunne:** main = fuldt spor (krav 8); masterplan opdateres **løbende** (krav 10, Codex-brud #9), ikke samlet til sidst.
-- **Mekanisme + anti-snyd:** masterplan-/styrings-doc-diff = **Mathias-gate** (krav 10), ført som bid med egen canary; **sandheds-docs (vision+forretning) rettes ALDRIG** (mappe-hook); konkurrerende aktiv sandhed → BLOKER; doc-opdatering der først sker EFTER slut OK → FAIL. **→** pakke lukket.
+### S9.1 — Repo-docs efter build, 1:1 med planens tekst (Mathias)
+- **Under build (FASE 6):** kun **arbejdsdoks** (worklog/status/bid-trace) føres løbende. **Repo-docs røres IKKE under build** — det er farligt; **fokus under build SKAL være build.**
+- **Build-ændringer:** opstår der ændringer under build → **større issue = gæld** (logges, løses KORREKT senere, ikke hurtigt/hacket) · **mindre = bilag** for ændringen (registreret). Build-fokus bevaret.
+- **Efter build:** Code opdaterer **repo-docs (masterplan + tekniske) 1:1 med tekst FRA PLANEN** — IKKE fabrikeret. Teksten blev besluttet + godkendt ved plan OK; den **anvendes** nu (krav 8 OK: ingen NY dokumentering oven på valideringen — kun forud-godkendt plan-tekst påføres). Masterplan opdateres pr. pakke (krav 10).
+- **Lukke-PR (rent repo, krav 8):** den lukkende PR (Code bestemmer/opretter) **sletter arbejdsdoksene** (worklog/status/bid-trace) — **alt står i PR'en** (commits + git-historik = det permanente spor). Arbejdsdoks var transient stillads; main efterlades **rent** = det fulde spor, ikke efterladt skrald.
+- **Anti-snyd:** repo-doc-tekst der IKKE er 1:1 fra planen (fabrikeret efter build) → FAIL; **arbejdsdoks efterladt i repo efter lukke-PR → FAIL** (ikke rent); masterplan-diff = **Mathias-gate** (krav 10); **sandheds-docs (vision+forretning) rettes ALDRIG** (mappe-hook); konkurrerende aktiv sandhed → BLOKER. **→** pakke lukket.
 
 ---
 
