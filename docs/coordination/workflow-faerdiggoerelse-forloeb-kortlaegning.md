@@ -28,8 +28,9 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 
 ### S0.2 — Dirigent dispatcher
 - **Aktiveres af:** #126-event. **Hvem/hvad:** dirigent. **Aktiverer:** de tre lokale AI-aktører.
-- **Gør:** sætter aktiv pakke + pakke-kontekst + read-only recon-mode. **Skal kunne:** aktivere ALLE tre deterministisk (krav 9).
-- **Mekanisme:** deklarativ event-transport, fail-closed. **Anti-snyd:** ikke alle tre aktiveret → FAIL; transport auto-validerer → FAIL. **→** S0.3.
+- **Gør:** binder pakke-navnet til et **hash-bundet masterplan-anker** (pakken = et masterplan-trin/-område) + sætter read-only recon-mode. **Skal kunne:** aktivere ALLE tre deterministisk (krav 9); recon-scope kommer fra masterplanen (krav findes ikke endnu for en ny pakke).
+- **BRO 0→1 (masterplan-anker):** ankeret ER broen mellem åbning og recon — recon (FASE 1) digger FRA ankeret + de låste vision/forretning + nuværende kode, ikke fra et gæt. Det gør 3-bøtten meningsfuld (hvad-skal-være vs. hvad-er).
+- **Mekanisme:** deklarativ event-transport, fail-closed. **Anti-snyd:** ikke alle tre aktiveret → FAIL; transport auto-validerer → FAIL; **forkert/manglende masterplan-anker → integrations-canary fanger (recon kører ikke på vilkårlig flade).** **→** S0.3.
 
 ### S0.3 — Aktørerne vågner (frisk)
 - **Hvem/hvad:** Code · Codex (`--ephemeral`) · Claude.ai (`claude -p`), hver frisk/statsløs. **Aktiverer:** frisk load af workflow-rolle-tekst.
@@ -60,21 +61,28 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 
 ### S1.5 — Omission-angreb (første brug af angreb)
 - **Hvem/hvad:** Codex (angriber). **Gør:** finder hvad reconen MISSEDE på den konsoliderede sandhed.
-- **Mekanisme:** adversarisk review + coverage-mapping. **Anti-snyd:** fund → tilbage til S1.4; residual ukendt-ukendt navngives ærligt. **→** S1.6.
-
-### S1.6 — Recon → Mathias (3-bøtte)
-- **Hvem/hvad:** Claude.ai oversætter; Mathias validerer. **Gør:** "pakken berører disse forretningsdele" i tre bøtter (nuværende kode / ikke-bygget / intet-data).
-- **Skal kunne:** Mathias dømmer forretning, ikke kode (krav 6). **Mekanisme:** Mathias-komm-kontrakt + recon-præsentationskontrakt.
-- **Anti-snyd:** kode til Mathias → FAIL; ikke-3-kategori → FAIL. **Handover-binding (Codex #7):** hvert recon-fund får en **disposition** (behandlet i krav / udskudt / ikke-relevant), bundet til recon-hash → senere gates kan bevise at intet fund blev sprunget over. **→** S2.x.
+- **Mekanisme:** adversarisk review + coverage-mapping. **Anti-snyd:** fund → tilbage til S1.4; residual ukendt-ukendt navngives ærligt. **→** FASE 2 (S2.0). *(Her slutter recon-fasen: ÉN hash-bundet recon-sandhed.)*
 
 ---
 
-## FASE 2 — Krav (Mathias + Claude.ai på app'en)
+## FASE 2 — Krav (åbnes med recon-præsentation · Mathias + Claude.ai på app'en)
 
-### S2.1 — Claude.ai-app aktiveres frisk
-- **Hvem/hvad:** Mathias åbner Claude.ai, ny chat. **Aktiverer:** auto-sync fra GitHub-marketplace.
-- **Gør:** app'en henter docs+skills (testet 2026-06-18). **Mekanisme:** `.claude-plugin/marketplace.json` + app-sync.
-- **Anti-snyd (Codex #8):** sync skal **verificere at den hentede state = aktuel committet SHA/branch** (ikke kun "manifest present") — stale/forkert-branch/delvis sync → synlig fejl, ikke tavs gammel kontekst. **→** S2.2.
+### S2.0 — Claude.ai-app bygger lokal projekt-kontekst
+- **Aktiveres af:** recon-sandhed klar (FASE 1). **Hvem/hvad:** Mathias åbner Stork 2.0-projektet i Claude.ai-app'en (ny chat).
+- **Gør / samler:** app'en bygger en **lokal repo** af **(a) jeres docs** (synket fra GitHub) + **(b) Mathias↔Claude.ai-chatsene** i projektet (chat-beslutninger) + **(c) den konsoliderede recon-sandhed** (hash-bundet). = Claude.ai's kontekst til krav.
+- **Skal kunne:** Claude.ai har docs + chat-historik + recon frisk, uden manuel paste (chat-recon-kilden, krav 2).
+- **Mekanisme:** app-sync af docs (`.claude-plugin/marketplace.json`) + app'ens egne projekt-chats (native i app'en) + recon-sandhed-hash ind.
+- **Anti-snyd (Codex #8):** sync skal **verificere at hentet state = aktuel committet SHA/branch** OG at recon-konteksten er **recon-hash'en** (ikke en gammel/anden recon) — stale/forkert → synlig fejl, ikke tavs gammel kontekst. **→** S2.1.
+
+### S2.1 — Recon præsenteres for Mathias (3-bøtte) — FASE 2's åbning
+- **Hvem/hvad:** Claude.ai oversætter den konsoliderede recon; Mathias validerer eller spørger.
+- **Gør:** "**Pakken berører disse forretningsdele**" i tre bøtter (verbatim krav 6-formen):
+  - **Nuværende kode:** "x er bygget på denne måde i koden — er det korrekt?"
+  - **Ikke bygget endnu / dokument-info:** "pakken bygger x, og dokument y siger dette — er det korrekt?"
+  - **Intet data:** "pakken berører x, og der er intet data — hvad skal x kunne?"
+- **Skal kunne:** Mathias dømmer forretning, ikke kode (krav 6); recon i præcis tre kategorier; han kan validere ELLER spørge.
+- **Mekanisme:** Mathias-komm-kontrakt + recon-præsentationskontrakt; præsentationen bundet til **recon-hash**.
+- **Anti-snyd:** kode til Mathias → FAIL; ikke-3-kategori → FAIL. **Handover-binding (Codex #7):** hvert recon-fund får en **disposition** (behandlet i krav / udskudt / ikke-relevant), bundet til recon-hash → senere gates kan bevise at intet fund blev sprunget over. **→** S2.2.
 
 ### S2.2 — Krav skrives (kun HVAD)
 - **Hvem/hvad:** Mathias + Claude.ai. **Gør:** krav-doc med **funktioner tydeligt beskrevet ved HVAD de skal kunne** + acceptkriterie + krav-ID. HVORDAN = Code/Codex' bord, ikke i kravet.
