@@ -113,9 +113,9 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Mekanisme:** krav-medforfatter-kontrakt; krav holdt mod LÅSTE vision/forretning ved SKABELSE. **Recon-binding (Codex #7):** krav-doc binder til recon-hash; hvert recon-fund skal være disponeret.
 - **Anti-snyd:** krav driver fra vision/forretning → FEEDBACK; kode i kravet → hører ikke hjemme; krav-ID uden acceptkriterie → FAIL. **→** S2.3.
 
-### S2.3 — Mathias godkender + Claude.ai uploader
-- **Hvem/hvad:** Mathias + Claude.ai. **Gør:** Mathias + Claude.ai godkender krav-doc FØR upload (= Mathias' godkendelse, krav 5); Claude.ai uploader.
-- **Mekanisme + anti-snyd (Codex #3):** Mathias godkender en **konkret hash** af krav-doc; **upload skal matche den godkendte hash** — ellers BLOKER (Claude/app kan ikke regenerere/ændre en anden version ind uden at kæden ser det). Mathias' ord overruler altid (krav 5). **→** S3.x.
+### S2.3 — Krav færdiggøres + Claude.ai uploader (krav OK kommer SIDST, S3.3)
+- **Hvem/hvad:** Mathias + Claude.ai. **Gør:** Mathias + Claude.ai **færdiggør** krav-doc; Claude.ai **uploader**. **Ingen krav OK her** — Mathias' godkendelse er SIDST (S3.3, efter Code/Codex). **Codex er IKKE aktiv her** (kun Code aktiverer Codex, og ikke for så små opgaver).
+- **Mekanisme + anti-snyd:** **hash-binding** — det Mathias+Claude.ai færdiggjorde har en konkret hash; **upload skal matche den hash** (Claude/app kan ikke regenerere/ændre en anden version ind uden at kæden ser det). Mathias' ord overruler altid (krav 5). **→** S3.x.
 
 ---
 
@@ -131,9 +131,9 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Skal kunne:** Code/Codex ejer buildability (deres bord); krav-huller fanges af dem, ikke Mathias (krav 3/5). **Fire-aktør-dækning (krav 5, Codex-brud #3):** Mathias + Claude.ai (pre-upload, S2.3) + Code + Codex (her) = alle fire godkender kravet; Claude.ai's godkendelse ER pre-upload-trinnet.
 - **Mekanisme + anti-snyd (Codex #4/#24):** **begge aktører skal afgive et positivt, hash-bundet verdikt** ("ingen indvending" ELLER konkret fund) bundet til krav-hash + djævel-artefakt. **Manglende verdikt / timeout / forkert hash = BLOKER** (fail-closed). Ingen indvending betyder her: *begge har positivt registreret det* — ikke tavshed. Indvending → tilbage til Mathias (+ Claude.ai retter). **→** S3.3.
 
-### S3.3 — krav OK (gate-state)
-- **Hvem/hvad:** Mathias (ord) + dirigent (registrering). **Gør:** gate-state `krav-laast`; krav-hash = immutable gatet identitet.
-- **Mekanisme:** committet gate-state + dirigent læser `gate_ord` (`krav OK` findes). **Anti-snyd:** spring uden registreret ord → blokeret. **→** S4.x.
+### S3.3 — krav OK (Mathias SIDST — gate-state)
+- **Hvem/hvad:** **Mathias' krav OK SIDST** — efter de tre AI har clearet (Claude.ai-medforfatter S2.2 + Code+Codex buildability S3.2) = **original krav 5** ("Mathias godkender sidst, efter de tre andre"). + dirigent (registrering). **Gør:** gate-state `krav-laast`; krav-hash = immutable gatet identitet.
+- **Mekanisme:** committet gate-state + dirigent læser `gate_ord` (`krav OK` findes). **Anti-snyd:** spring uden registreret ord → blokeret; krav OK før de tre AI har cleared → BLOKER. **→** S4.x.
 
 ---
 
@@ -253,7 +253,7 @@ Hver AI-aktør har **to rolle-typer** (workflow / almindelig, krav 7) og **én e
 | **Mathias** | Dømme-gates (krav/plan/slut OK) + definerer hensigt. Eneste dommer. | — | `qwers`/gate-ord på #126 (author-verificeret) + pull (#126/`/remote-control`) | — |
 | **Code** | Builder/driver (kontinuerlig i fasen); ejer at koden leverer hensigten + **bestemmer/opretter PR**. Aldrig dømmekraft over eget måle-lag. | rører prover/hooks/gates · bygger før plan OK · falsk-grøn | **Code-terminal** (åbning+recon) + GitHub-Action på #126 | **bygges** (rolle+freshness) |
 | **Code-reviewer** | FRISK Code-agent, frisk rolle: kode-/dybde-troskab (build⊨plan). | overser dyb fejl (dybde-meta-canary) | frisk session pr. review (≠ byggerens) | **bygges** |
-| **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. **Afgiver positivt verdikt (clearance) ved krav/plan/slut** (krav 5) — dømmer ikke som autoritet, men bidrager sin aktør-godkendelse. | resumed/stale session · ikke-skarpt angreb · tavshed-som-ja | `codex exec --ephemeral` (lokal, via Code) | **bygges** (`stork-adversarial-review`) |
+| **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. **Afgiver positivt verdikt (clearance) ved krav/plan/slut** (krav 5) — dømmer ikke som autoritet, men bidrager sin aktør-godkendelse. | resumed/stale session · ikke-skarpt angreb · tavshed-som-ja | `codex exec --ephemeral` — **kun Code aktiverer Codex, kun ved reelt behov (ikke små opgaver)** | **bygges** (`stork-adversarial-review`) |
 | **Claude.ai** | Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + forretnings-mening. Ikke kode. | kode-vurdering (Codex' bord) · usynlig sandhed | app (Mathias' hånd) + `claude -p` (recon-rolle) | `claude-ai/SKILL.md` (findes) |
 
 **Aktivering — to spor:** (1) **lokalt** (dirigent · `codex exec` · `claude -p`) til recon + build; (2) **GitHub-Action på #126-event** (krav-upload · gate-ord) → committet artefakt. Begge author/SHA-bundet.
