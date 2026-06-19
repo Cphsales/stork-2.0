@@ -1,7 +1,7 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v7 — Codex runde 1+2 + Mathias-domme (build OK mekanisk · roller/skills · kontrol-dok · doc-bids · mappe-dækning) foldet ind. Intet bygges. Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v8 — + Codex krav-brud-runde (krav-aware) foldet: recon-kilder (web+settings) · doc-updates løbende · Codex positivt verdikt · fire-aktør tydelig · rolle-skift-prompt. Krav 5+9-amendementer afventer Mathias. Intet bygges. Step 2 = hvordan hvert element sættes op.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
 
@@ -38,8 +38,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ### S0.3 — Aktørerne vågner (frisk)
 - **Hvem/hvad:** Code · Codex (`--ephemeral`) · Claude.ai (`claude -p`), hver frisk/statsløs. **Aktiverer:** frisk load af workflow-rolle-tekst.
-- **Skal kunne:** to rolle-typer pr. AI (workflow/almindelig), Mathias styrer (krav 7).
-- **Mekanisme:** rolle-tekst i skill + **capability-tjek ved session-start** (`/skills`/`/doctor`) + hook der garanterer rolle/freshness.
+- **Skal kunne:** to rolle-typer pr. AI (workflow/almindelig); **Mathias skifter aktiv rolle via ÉN simpel prompt** (krav 7) — et rolle-ord der loader den rette skill (workflow vs. almindelig).
+- **Mekanisme:** rolle-skift-prompt → skill-load + **capability-tjek ved session-start** (`/skills`/`/doctor`) + hook der garanterer rigtig rolle/freshness (forkert/manglende → fejl højt).
 - **Anti-snyd:** forkert-rolle-kanariefugl (forkert rolle → afvis/fejl højt); manglende capability → fejl højt. **→** S1.x.
 
 ---
@@ -49,7 +49,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 ### S1.1 + S1.2 — 2× kode-recon (Code + Codex)
 - **Hvem/hvad:** Code og Codex laver hver **uafhængig kode-recon** (ikke angreb — koden er stor/kompleks, to cross-vendor-recons giver bedre dækning).
 - **Gør / samler:** fund i recon-output-skema `{kilde, kategori, emne, evidens-ref, aktør, klassifikation}`.
-- **Skal kunne:** fuld recon, kortlæg HELE scope (krav 4). **Mekanisme:** read-only + grundig-recon-kontrakt + `--ephemeral` (Codex).
+- **Skal kunne:** fuld recon over **alle fire kilder — kode · docs · nettet · hver aktørs egne indstillinger** (krav 4 + byggeregel "Sådan skal det bygges"; web + settings = capability-funktioner der rammer alle aktører), kortlæg HELE scope. **Mekanisme:** read-only + grundig-recon-kontrakt + `--ephemeral` (Codex).
+- **Anti-snyd (Codex krav-brud #5):** recon der kun rammer kode+docs (springer web + aktør-indstillinger over) → FAIL — to kilder mangler.
 - **Anti-snyd:** stopper-for-tidligt/uden kilde → FAIL. **Dækningsmål (Codex #6):** recon-komplethed måles mod **coverage-matrix** (forretningsdele × viewpoints) — "fuld" = hvert kendt viewpoint dækket, ikke aktørens skøn. **→** S1.4.
 
 ### S1.3 — Docs-/forretnings-recon (Claude.ai)
@@ -109,7 +110,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ### S3.2 — Djævel + POSITIVT verdikt
 - **Hvem/hvad:** Code + Codex (krav-buildability-review). **Gør:** vurderer kravet ad ÉN akse — **"kan det lade sig gøre at kode?"** + **er der huller?** (gaps/uklarheder der blokerer kodning). De dømmer IKKE forretnings-merit (Mathias + Claude.ai's bord). **Afvis KUN ved NEJ (ikke kodebart) eller HUL** — ellers positivt verdikt.
-- **Skal kunne:** Code/Codex ejer buildability (deres bord); krav-huller fanges af dem, ikke Mathias (krav 3/5).
+- **Skal kunne:** Code/Codex ejer buildability (deres bord); krav-huller fanges af dem, ikke Mathias (krav 3/5). **Fire-aktør-dækning (krav 5, Codex-brud #3):** Mathias + Claude.ai (pre-upload, S2.3) + Code + Codex (her) = alle fire godkender kravet; Claude.ai's godkendelse ER pre-upload-trinnet.
 - **Mekanisme + anti-snyd (Codex #4/#24):** **begge aktører skal afgive et positivt, hash-bundet verdikt** ("ingen indvending" ELLER konkret fund) bundet til krav-hash + djævel-artefakt. **Manglende verdikt / timeout / forkert hash = BLOKER** (fail-closed). Ingen indvending betyder her: *begge har positivt registreret det* — ikke tavshed. Indvending → tilbage til Mathias (+ Claude.ai retter). **→** S3.3.
 
 ### S3.3 — krav OK (gate-state)
@@ -214,12 +215,12 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ---
 
-## FASE 9 — Doks efter build
+## FASE 9 — Main = fuldt spor (docs ført LØBENDE under build, ikke efter)
 
-### S9.1 — Opdater afledte docs (under gate)
-- **Hvem/hvad:** Code. **Gør:** opdaterer **masterplan + tekniske docs** (kode-gæld/G-numre) til at afspejle det byggede; repo-hygiejne.
-- **Skal kunne:** main = fuldt spor (krav 8); masterplan opdateres (krav 10).
-- **Mekanisme + anti-snyd (Codex #23):** doc-diffet efter build er **ikke fri** — masterplan-/styrings-ændring = **Mathias-gate** (krav 10), så aktive styrings-docs ikke ender ude af trit med det beviste build. **Dine sandheds-docs (vision + forretning) rettes ALDRIG her** (strukturelt håndhævet, se mappe-struktur). Konkurrerende aktiv sandhed → BLOKER. **→** pakke lukket.
+### S9.1 — Doc-opdatering sker LØBENDE som bids (ikke efter slut OK)
+- **Hvem/hvad:** Code. **Gør:** masterplan + tekniske docs opdateres **som planlagte bids UNDER build** (FASE 6 / H) — så ved `slut OK` er **main allerede det fulde spor**. Ingen dokumentering skrives oven på en allerede-sket validering (krav 8, Codex-brud #8).
+- **Skal kunne:** main = fuldt spor (krav 8); masterplan opdateres **løbende** (krav 10, Codex-brud #9), ikke samlet til sidst.
+- **Mekanisme + anti-snyd:** masterplan-/styrings-doc-diff = **Mathias-gate** (krav 10), ført som bid med egen canary; **sandheds-docs (vision+forretning) rettes ALDRIG** (mappe-hook); konkurrerende aktiv sandhed → BLOKER; doc-opdatering der først sker EFTER slut OK → FAIL. **→** pakke lukket.
 
 ---
 
@@ -232,7 +233,7 @@ Hver AI-aktør har **to rolle-typer** (workflow / almindelig, krav 7) og **én e
 | **Mathias** | Dømme-gates (krav/plan/slut OK) + definerer hensigt. Eneste dommer. | — | `qwers`/gate-ord på #126 (author-verificeret) + pull (#126/`/remote-control`) | — |
 | **Code** | Builder/driver (kontinuerlig i fasen); ejer at koden leverer hensigten. Aldrig dømmekraft over eget måle-lag. | rører prover/hooks/gates · bygger før plan OK · falsk-grøn | dirigent-dispatch + GitHub-Action på #126 | **bygges** (rolle+freshness) |
 | **Code-reviewer** | FRISK Code-agent, frisk rolle: kode-/dybde-troskab (build⊨plan). | overser dyb fejl (dybde-meta-canary) | frisk session pr. review (≠ byggerens) | **bygges** |
-| **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. Godkender intet. | resumed/stale session · ikke-skarpt angreb | `codex exec --ephemeral` (lokal, via Code) | **bygges** (`stork-adversarial-review`) |
+| **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. **Afgiver positivt verdikt (clearance) ved krav/plan/slut** (krav 5) — dømmer ikke som autoritet, men bidrager sin aktør-godkendelse. | resumed/stale session · ikke-skarpt angreb · tavshed-som-ja | `codex exec --ephemeral` (lokal, via Code) | **bygges** (`stork-adversarial-review`) |
 | **Claude.ai** | Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + forretnings-mening. Ikke kode. | kode-vurdering (Codex' bord) · usynlig sandhed | app (Mathias' hånd) + `claude -p` (recon-rolle) | `claude-ai/SKILL.md` (findes) |
 
 **Aktivering — to spor:** (1) **lokalt** (dirigent · `codex exec` · `claude -p`) til recon + build; (2) **GitHub-Action på #126-event** (krav-upload · gate-ord) → committet artefakt. Begge author/SHA-bundet.
