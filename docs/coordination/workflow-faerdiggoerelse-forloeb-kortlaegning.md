@@ -147,21 +147,14 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Mekanisme:** plan-SHA-binding + gate-check (approval matcher SHA) + stale-stop. **Anti-snyd:** stale-SHA → BLOKER; verdikt uden citeret SHA → BLOKER; manglende verdikt/timeout → fail-closed. **→** S5.2.
 
 ### S5.2 — plan OK (gate-state)
-- **Hvem/hvad:** **Mathias sidst — MED Claude.ai ved sin side** (partner/oversætter; 2v2-menneske-siden, ikke en separat dommer). **Gør (flow som krav-gaten):** **Claude.ai OK først** (forretnings-mening) → **Mathias vurderer + giver `plan OK`** → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres** til næste fase; gate-state `plan-laast`. **Modsigelse mod krav/vision/forretning → kæden halter; uløselig → terminal STOP af plan+build** (jf. gennemgående regel).
+- **Hvem/hvad:** **Mathias sidst — MED Claude.ai ved sin side** (partner/oversætter; 2v2-menneske-siden, ikke en separat dommer). **Gør (flow som krav-gaten):** **Claude.ai OK først** (forretnings-mening) → **Mathias vurderer + giver `plan OK`** → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres**; gate-state `plan-laast`. **`plan OK` autoriserer build** — intet bygges før plan OK (default-deny hook). Build kører herefter (FASE 6); **`build OK` kommer FØRST EFTER build** (S7.9), så plan OK og build OK ikke ligger ryg-mod-ryg uden aktivitet. **Modsigelse mod krav/vision/forretning → kæden halter; uløselig → terminal STOP af plan+build** (jf. gennemgående regel).
 - **Mekanisme:** committet gate-state + dirigent (**⚠️ forudsætning: `plan OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** AI retter aldrig selv en modsigelse mod styrende docs. **→** S6.
 
 ---
 
-## FASE 6 — Build OK
+## FASE 6 — Build (bid-for-bid pr. skive)
 
-### S6.1 — build OK (eksplicit, før byg)
-- **Hvem/hvad:** Mathias + Claude.ai (ved sin side). **Gør (flow som krav/plan-gaten):** **Claude.ai OK først** → **Mathias vurderer + giver `build OK`** (før byg) → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres** (build starter); gate-state `build-laast`.
-- **Skal kunne:** intet bygges/merges før ordet (krav 9). **Mekanisme:** committet gate-state + **hook** (byg-tool-kald før `build OK` → exit-2).
-- **Anti-snyd:** byg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER. **Default-deny (Codex #2/#14):** gaten er **default-deny** — før `build OK` er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres. IKKE en blocklist af "byg-kommandoer" der kan omgås. (⚙️ step-2: den konkrete allowlist.) **→** S7.x.
-
----
-
-## FASE 7 — Build (bid-for-bid pr. skive)
+> Autoriseret af **`plan OK`** (intet bygges før plan OK). **Default-deny hook (Codex #2/#14):** før plan OK er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres — IKKE en omgåelig blocklist; `gate_ord`↔`gate-def` divergens → BLOKER (⚙️ step-2: konkret allowlist). **`build OK` kommer FØRST EFTER build** (S7.9) — ellers lå plan OK og build OK ryg-mod-ryg uden aktivitet imellem (Mathias 2026-06-19). *(Build-bid-stepsene beholder S7.x-mærker; renummerering = step-2-kosmetik.)*
 
 ### S7.1 — Friskhed pr. bid
 - **Hvem/hvad:** Code + freshness-skill. **Gør:** loader tynd pakke-kontrakt frisk.
@@ -198,7 +191,12 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ### S7.8 — Loop-driver + fix-loop
 - **Hvem/hvad:** `/loop` (intra-bid driver), Code. **Gør:** grøn+bevist → advance; fejl → afgrænset fix-loop (`/loop` driver, bound = `/goal` "stop efter N", **hård success = proveren**); uløst → `/rewind` + eskalér.
-- **Mekanisme:** `/loop` (bundlet skill — capability-tjek) + `/goal` turn-cap + `Stop`-hook (hård) + prover som success. **Anti-snyd:** loop der stopper på egen blød "done" → forbudt; success ER proveren. **→** næste skive / acceptance.
+- **Mekanisme:** `/loop` (bundlet skill — capability-tjek) + `/goal` turn-cap + `Stop`-hook (hård) + prover som success. **Anti-snyd:** loop der stopper på egen blød "done" → forbudt; success ER proveren. **→** S7.9 (når alle skiver er bygget).
+
+### S7.9 — build OK (EFTER build, før acceptance)
+- **Hvem/hvad:** Mathias + Claude.ai (ved sin side). **Gør (flow som krav/plan-gaten):** **Claude.ai OK først** → **Mathias vurderer + giver `build OK`** på det FÆRDIGE build → gate-teksten i docs → **GitHub-trigger → Code aktiveres** til acceptance; gate-state `build-laast`.
+- **Skal kunne:** godkende det byggede resultat (krav 9). **Aktivitet mellem gates:** plan OK→build OK = selve build'et; build OK→slut OK = acceptance — ingen tomme dobbelt-godkendelser.
+- **Mekanisme:** committet gate-state + dirigent (**⚠️ `build OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** `build OK` uden at alle skivers per-bid-prover er grønne → afvises. **→** FASE 8 (acceptance).
 
 ---
 
