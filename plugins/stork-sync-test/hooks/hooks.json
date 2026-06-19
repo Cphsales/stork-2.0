@@ -1,0 +1,15 @@
+{
+  "description": "stork-sync-test trigger-demo: beviser at en plugin-shipped hook fyrer deterministisk. SessionStart injicerer en markoer i kontekst (det er praecis hvor den rigtige Stork-plugin vil injicere rolle-tekst + freshness).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'STORK-HOOK-DEMO: SessionStart-hook fra stork-sync-test fyrede deterministisk (plugin-shipped, synket fra Cphsales/stork-2.0). Her injicerer den rigtige Stork-plugin rolle-tekst + freshness.'"
+          }
+        ]
+      }
+    ]
+  }
+}
