@@ -32,6 +32,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 **Gennemgående læsebevis-regel (Codex #4/#13):** en aktørs verdikt tæller kun hvis det er **indholds-afledt** — bundet til konkrete fund/citater der kun kan komme af faktisk læsning (eller: aktøren henter selv artefaktet via egen kanal, og hentningen ER beviset) + citerer den læste SHA. Bare at *nævne* en SHA tæller ikke (stale/fabrikeret SHA-citat → BLOKER).
 
+**Gennemgående: spørg ved uklarhed — antag ALDRIG (Mathias).** Støder en aktør på en del af **krav eller plan** den **ikke forstår** eller som **skal uddybes** → den **HALTER og spørger** (flag), den **antager aldrig**. Business-/bord-spørgsmål → til Mathias (ved hans rytme, jf. kun-gates-stopper-ham); teknisk uklarhed → til den relevante ejer. **En antagelse om en uklar krav/plan = en drift-kilde = forbudt.** Uafklaret → ingen videre-byg før spørgsmålet er besvaret. (Anti-snyd: bygget oven på en uafklaret/antaget tolkning → FAIL.)
+
 ---
 
 ## FASE 0 — Åbning
