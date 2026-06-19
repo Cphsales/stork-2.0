@@ -9,9 +9,13 @@
 
 - **Aktiveres af** · **Hvem/hvad** · **Aktiverer** · **Gør / samler** · **Skal kunne** (krav-ref) · **Mekanisme** (mekanisk=deterministisk · dømmekraft=bundet til mekanisk gate) · **Anti-snyd** · **→ næste**
 
-Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Code (`codex exec --ephemeral`, reasoning=xhigh) · **Claude.ai** = `claude -p`-rolle under recon + app'en (Mathias' hånd) ved krav · **Mathias** = gates + definerer hensigt.
+Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-reviewer** = FRISK Code-agent m. frisk rolle, til **kode-troskab/dybde-review** (Claude forstår kode langt bedre end app'en — Mathias 2026-06-19) · **Codex** = lokal **cross-vendor** angriber (`codex exec --ephemeral`, xhigh) — bærer uafhængigheden · **Claude.ai** = Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + **forretnings**-menings-troskab (ikke kode-forståelse) · **Mathias** = gates + definerer hensigt.
 
 **Gennemgående: dybde-først-loop + Code-kontinuitet.** Recon og dybde-tjek (S1.x, S7.6) kører en **dybde-først-loop**: *ny info → vurdér → dyk ned (brugbar?) → dyk dybere → ved X nej (dead-ends) → loop til næste info.* **Dybden af et fund giver konteksten, ikke fundet selv** — loopen er **selv-rensende** (dead-ends droppes efter X nej; kun dybt-verificeret bæres frem). Derfor: **Code = kontinuerlig driver inden for en fase** (bærer dybde-kontekst, ikke flade fund), **nulstilles ved fase-nulpunkter** (anti-session-rot). Anti-drift afhænger IKKE af Code's friskhed, men af mekanismerne + de friske uafhængige angribere (Codex `--ephemeral` · Claude.ai `claude -p`) + frisk kontrakt pr. bid. (Loopen er **metode**, ikke en ny mekanisme — tænderne er dybde-meta-canary + prover.)
+
+**Gennemgående: kun Mathias' fire gates stopper FOR Mathias.** Kæden kan **halte mekanisk** (fail-closed) når som helst — modsigelse / uadresseret fund / divergens → **HALT = kæden STOPPER med det samme** (bygger IKKE videre; der akkumuleres aldrig et stort u-godkendt build) + durabelt flag på #126. Modsigelser fanges **løbende pr. bid** (diff-bundet, S7.7) → tidligt, ikke efter et stort build. Det **eneste** der udskydes er at **push-afbryde Mathias** (det dræner friskhed, krav 9) — IKKE stoppet, IKKE detektionen: han ser flaget ved sin **næste gate** eller når han selv **pull'er** (#126 / `/remote-control`), dømmer, og derefter retter han + Claude.ai. Mekanisk halt ≠ at afbryde Mathias. Broerne mellem gates er ren transport. **Uløselig krav-/sandheds-modsigelse → plan OG build STOPPES** (terminal, ikke kun halt): kan en modsigelse mod krav/de låste docs **ikke løses**, er plan/build ugyldig og standses, til Mathias (+ Claude.ai) revurderer krav/vision. Halt = midlertidig (mens fix forsøges); STOP = terminal (uløselig).
+
+**Gennemgående: djævlens-advokat skyder med skarpt.** Angriberen står med **krav-doc / kode / recon i hånden** og fyrer **specifikt**, ikke generisk: *"løser du K-7? hvorfor ikke sådan her? har du husket X?"* — målrettet konkrete K-ID'er, kodepunkter, recon-fund. **Guardrail (mod V26-nit-spiral):** hvert skud lukkes **binært** — forsvares med konkret bevis (canary / prover / citat) ELLER indrømmes. Direkte + bevis-krævende, ikke bare højere stemme.
 
 **Gennemgående anti-tavsheds-regel (Codex #4/#24):** intet step godkendes ved *fravær* af indvending. Hvert gate har et **forventet antal positive, hash-bundne verdikter**; manglende verdikt / timeout / forkert hash = **fail-closed (BLOKER)**, aldrig auto-grønt. Tavshed er ikke et ja.
 
@@ -104,8 +108,8 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 - **Anti-snyd:** aktør uden egen læsekanal (citeret SHA) → gate BLOKERET. **⚙️ Step-2 (Codex #9):** runner-/auth-/workspace-/artefakt-protokol så cloud-event og lokal aktør beviseligt rammer SAMME krav-hash. **→** S3.2.
 
 ### S3.2 — Djævel + POSITIVT verdikt
-- **Hvem/hvad:** Code + Codex (djævlens-advokat). **Gør:** djævel-pass pr. berørt krav (minimums-/stærkeste læsning · kan planen snyde sig grøn · hvilken canary forhindrer snyd · hvad "ikke færdig" betyder).
-- **Skal kunne:** krav-huller fanges af anden aktør, ikke Mathias (krav 3/5).
+- **Hvem/hvad:** Code + Codex (krav-buildability-review). **Gør:** vurderer kravet ad ÉN akse — **"kan det lade sig gøre at kode?"** + **er der huller?** (gaps/uklarheder der blokerer kodning). De dømmer IKKE forretnings-merit (Mathias + Claude.ai's bord). **Afvis KUN ved NEJ (ikke kodebart) eller HUL** — ellers positivt verdikt.
+- **Skal kunne:** Code/Codex ejer buildability (deres bord); krav-huller fanges af dem, ikke Mathias (krav 3/5).
 - **Mekanisme + anti-snyd (Codex #4/#24):** **begge aktører skal afgive et positivt, hash-bundet verdikt** ("ingen indvending" ELLER konkret fund) bundet til krav-hash + djævel-artefakt. **Manglende verdikt / timeout / forkert hash = BLOKER** (fail-closed). Ingen indvending betyder her: *begge har positivt registreret det* — ikke tavshed. Indvending → tilbage til Mathias (+ Claude.ai retter). **→** S3.3.
 
 ### S3.3 — krav OK (gate-state)
@@ -128,22 +132,22 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 - **Anti-snyd:** byg før plan OK → hook BLOKERER; `K-n` uden step/test → FAIL; plan-løfte uden canary → rød; build uden plan-løfte → "rogue". **Canary-styrke (Codex #11):** en canary tæller kun hvis den tester **slut-effekt** (ikke triviel eksistens); reviewer + dybde-meta-canary vurderer styrke (residual dømmekraft, se "svage led"). **→** S4.3.
 
 ### S4.3 — Troskabs-angreb på planen
-- **Hvem/hvad:** Codex (+ Claude.ai menings-troskab). **Gør:** finder hvor plan modsiger krav / krav modsiger vision; overclaim; teknik-forklædt-som-kravopfyldelse.
-- **Skal kunne:** **Code/Codex ejer at deres plan/kode leverer hensigten** (deres bord); Claude.ai kryds-tjekker; Mathias endelig.
-- **Mekanisme:** troskabs-angriber + Claude.ai sætning-for-sætning mod låste docs; **troskabs-meta-canary** (plant modsigelse → SKAL fanges). **Anti-snyd:** uadresseret troskabs-fund → BLOKER (positivt verdikt krævet). **→** S5.x.
+- **Hvem/hvad:** **frisk Code-reviewer** (kode-/plan-troskab — forstår koden) + **Codex** (cross-vendor angreb) + **Claude.ai** (forretnings-menings-troskab mod vision/forretning). **Gør:** finder hvor plan modsiger krav / krav modsiger vision; overclaim; teknik-forklædt-som-kravopfyldelse.
+- **Skal kunne:** **Code/Codex ejer at deres plan/kode leverer hensigten** (deres bord); Claude.ai kryds-tjekker forretnings-meningen; Mathias endelig.
+- **Mekanisme:** kode-troskab (frisk Code-reviewer) + cross-vendor angreb (Codex) + Claude.ai sætning-for-sætning mod låste docs (forretning); **troskabs-meta-canary** (plant modsigelse → SKAL fanges). **Anti-snyd:** uadresseret troskabs-fund → BLOKER (positivt verdikt krævet). **→** S5.x.
 
 ---
 
 ## FASE 5 — Plan-gate
 
-### S5.1 — Plan frosset + 4-aktør-binding
-- **Hvem/hvad:** Code + Codex + Claude.ai på samme plan-SHA; Mathias sidst.
-- **Gør:** plan frosset som plan-SHA; tre AI-verdikter binder til plan-SHA + krav-hash **via egen kanal med citeret SHA**; djævel-pass FØR hver approval.
+### S5.1 — Plan frosset + binding
+- **Hvem/hvad:** plan frosset som plan-SHA. **Uafhængige tekniske verdikter:** frisk Code-reviewer (kode-troskab) + Codex (cross-vendor) binder til plan-SHA + krav-hash **via egen kanal med citeret SHA**; djævel-pass FØR. **Claude.ai binder samme plan-SHA** (læser samme plan), men dens rolle er forretnings-mening + at være HOS Mathias ved gaten (ikke en separat dommer).
+- **Gør:** de tekniske verdikter (Code-reviewer + Codex) afgives positivt og hash-bundet før gaten.
 - **Skal kunne:** kumulativ kæde-troskab — plan⊨vision+forretning+krav (krav 2).
 - **Mekanisme:** plan-SHA-binding + gate-check (approval matcher SHA) + stale-stop. **Anti-snyd:** stale-SHA → BLOKER; verdikt uden citeret SHA → BLOKER; manglende verdikt/timeout → fail-closed. **→** S5.2.
 
 ### S5.2 — plan OK (gate-state)
-- **Hvem/hvad:** Mathias (sidst). **Gør:** `plan OK`; gate-state `plan-laast`. Modsigelse mod krav/vision/forretning → **STOP → Mathias + Claude.ai retter**.
+- **Hvem/hvad:** **Mathias sidst — MED Claude.ai ved sin side** (partner/oversætter; 2v2-menneske-siden, ikke en separat dommer). **Gør (flow som krav-gaten):** **Claude.ai OK først** (forretnings-mening) → **Mathias vurderer + giver `plan OK`** → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres** til næste fase; gate-state `plan-laast`. **Modsigelse mod krav/vision/forretning → kæden halter; uløselig → terminal STOP af plan+build** (jf. gennemgående regel).
 - **Mekanisme:** committet gate-state + dirigent (**⚠️ forudsætning: `plan OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** AI retter aldrig selv en modsigelse mod styrende docs. **→** S6.
 
 ---
@@ -151,7 +155,7 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 ## FASE 6 — Build OK
 
 ### S6.1 — build OK (eksplicit, før byg)
-- **Hvem/hvad:** Mathias. **Gør:** `build OK` før byg; gate-state `build-laast`.
+- **Hvem/hvad:** Mathias + Claude.ai (ved sin side). **Gør (flow som krav/plan-gaten):** **Claude.ai OK først** → **Mathias vurderer + giver `build OK`** (før byg) → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres** (build starter); gate-state `build-laast`.
 - **Skal kunne:** intet bygges/merges før ordet (krav 9). **Mekanisme:** committet gate-state + **hook** (byg-tool-kald før `build OK` → exit-2).
 - **Anti-snyd:** byg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER. **Default-deny (Codex #2/#14):** gaten er **default-deny** — før `build OK` er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres. IKKE en blocklist af "byg-kommandoer" der kan omgås. (⚙️ step-2: den konkrete allowlist.) **→** S7.x.
 
@@ -188,8 +192,8 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 - **Anti-snyd:** "doc-/første-lags-check grøn" beviser ikke funktion → afvises. **Residual (Codex #20):** fuld gren-/sti-dækning kan ikke gøres rent deterministisk — dybde-meta-canary + (⚙️ step-2) coverage-kriterier mindsker det; rest = dømmekraft (se "svage led"). **→** S7.7.
 
 ### S7.7 — Kontinuerlig troskab (build ⊨ hele kæden)
-- **Hvem/hvad:** Codex troskabs-angriber + Claude.ai menings-troskab. **Gør:** build⊨plan · plan⊨krav · krav⊨vision/forretning, diff-bundet ved hver ændring.
-- **Skal kunne:** tro hele vejen (krav 2); modsigelse → **STOP → Mathias + Claude.ai retter**.
+- **Hvem/hvad:** **frisk Code-reviewer** (kode-troskab) + **Codex** (cross-vendor) + **Claude.ai** (forretnings-mening). **Gør:** build⊨plan · plan⊨krav · krav⊨vision/forretning, diff-bundet ved hver ændring.
+- **Skal kunne:** tro hele vejen (krav 2); modsigelse → **kæden HALTER + flag på #126** (Mathias kaldes ikke ind mid-stream — han pull'er / ser ved gate, jf. gennemgående regel).
 - **Mekanisme:** diff-bundet re-validering + troskabs-meta-canary; **always-on-floor** scaler aldrig ned. **→** S7.8.
 
 ### S7.8 — Loop-driver + fix-loop
