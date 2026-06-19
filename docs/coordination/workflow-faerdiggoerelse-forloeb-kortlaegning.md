@@ -1,7 +1,7 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v3 — Codex runde 1 + runde 2 (retssag, Mathias-dømt) foldet ind. Intet bygges. Til fælles grundig læsning (Mathias + Code). Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v7 — Codex runde 1+2 + Mathias-domme (build OK mekanisk · roller/skills · kontrol-dok · doc-bids · mappe-dækning) foldet ind. Intet bygges. Step 2 = hvordan hvert element sættes op.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
 
@@ -9,11 +9,11 @@
 
 - **Aktiveres af** · **Hvem/hvad** · **Aktiverer** · **Gør / samler** · **Skal kunne** (krav-ref) · **Mekanisme** (mekanisk=deterministisk · dømmekraft=bundet til mekanisk gate) · **Anti-snyd** · **→ næste**
 
-Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-reviewer** = FRISK Code-agent m. frisk rolle, til **kode-troskab/dybde-review** (Claude forstår kode langt bedre end app'en — Mathias 2026-06-19) · **Codex** = lokal **cross-vendor** angriber (`codex exec --ephemeral`, xhigh) — bærer uafhængigheden · **Claude.ai** = Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + **forretnings**-menings-troskab (ikke kode-forståelse) · **Mathias** = gates + definerer hensigt.
+Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-reviewer** = FRISK Code-agent m. frisk rolle, til **kode-troskab/dybde-review** (Claude forstår kode langt bedre end app'en — Mathias 2026-06-19) · **Codex** = lokal **cross-vendor** angriber (`codex exec --ephemeral`, xhigh) — bærer uafhængigheden · **Claude.ai** = Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + **forretnings**-menings-troskab (ikke kode-forståelse) · **Mathias** = dømme-gates (**krav OK · plan OK · slut OK**) + definerer hensigt (build OK er mekanisk, ikke hans bord).
 
 **Gennemgående: dybde-først-loop + Code-kontinuitet.** Recon og dybde-tjek (S1.x, S7.6) kører en **dybde-først-loop**: *ny info → vurdér → dyk ned (brugbar?) → dyk dybere → ved X nej (dead-ends) → loop til næste info.* **Dybden af et fund giver konteksten, ikke fundet selv** — loopen er **selv-rensende** (dead-ends droppes efter X nej; kun dybt-verificeret bæres frem). Derfor: **Code = kontinuerlig driver inden for en fase** (bærer dybde-kontekst, ikke flade fund), **nulstilles ved fase-nulpunkter** (anti-session-rot). Anti-drift afhænger IKKE af Code's friskhed, men af mekanismerne + de friske uafhængige angribere (Codex `--ephemeral` · Claude.ai `claude -p`) + frisk kontrakt pr. bid. (Loopen er **metode**, ikke en ny mekanisme — tænderne er dybde-meta-canary + prover.)
 
-**Gennemgående: kun Mathias' fire gates stopper FOR Mathias.** Kæden kan **halte mekanisk** (fail-closed) når som helst — modsigelse / uadresseret fund / divergens → **HALT = kæden STOPPER med det samme** (bygger IKKE videre; der akkumuleres aldrig et stort u-godkendt build) + durabelt flag på #126. Modsigelser fanges **løbende pr. bid** (diff-bundet, S7.7) → tidligt, ikke efter et stort build. Det **eneste** der udskydes er at **push-afbryde Mathias** (det dræner friskhed, krav 9) — IKKE stoppet, IKKE detektionen: han ser flaget ved sin **næste gate** eller når han selv **pull'er** (#126 / `/remote-control`), dømmer, og derefter retter han + Claude.ai. Mekanisk halt ≠ at afbryde Mathias. Broerne mellem gates er ren transport. **Uløselig krav-/sandheds-modsigelse → plan OG build STOPPES** (terminal, ikke kun halt): kan en modsigelse mod krav/de låste docs **ikke løses**, er plan/build ugyldig og standses, til Mathias (+ Claude.ai) revurderer krav/vision. Halt = midlertidig (mens fix forsøges); STOP = terminal (uløselig).
+**Gennemgående: kun Mathias' dømme-gates stopper FOR Mathias** (= **krav OK · plan OK · slut OK**; build OK er mekanisk, S7.9). Kæden kan **halte mekanisk** (fail-closed) når som helst — modsigelse / uadresseret fund / divergens → **HALT = kæden STOPPER med det samme** (bygger IKKE videre; der akkumuleres aldrig et stort u-godkendt build) + durabelt flag på #126. Modsigelser fanges **løbende pr. bid** (diff-bundet, S7.7) → tidligt, ikke efter et stort build. Det **eneste** der udskydes er at **push-afbryde Mathias** (det dræner friskhed, krav 9) — IKKE stoppet, IKKE detektionen: han ser flaget ved sin **næste gate** eller når han selv **pull'er** (#126 / `/remote-control`), dømmer, og derefter retter han + Claude.ai. Mekanisk halt ≠ at afbryde Mathias. Broerne mellem gates er ren transport. **Uløselig krav-/sandheds-modsigelse → plan OG build STOPPES** (terminal, ikke kun halt): kan en modsigelse mod krav/de låste docs **ikke løses**, er plan/build ugyldig og standses, til Mathias (+ Claude.ai) revurderer krav/vision. Halt = midlertidig (mens fix forsøges); STOP = terminal (uløselig).
 
 **Gennemgående: djævlens-advokat skyder med skarpt.** Angriberen står med **krav-doc / kode / recon i hånden** og fyrer **specifikt**, ikke generisk: *"løser du K-7? hvorfor ikke sådan her? har du husket X?"* — målrettet konkrete K-ID'er, kodepunkter, recon-fund. **Guardrail (mod V26-nit-spiral):** hvert skud lukkes **binært** — forsvares med konkret bevis (canary / prover / citat) ELLER indrømmes. Direkte + bevis-krævende, ikke bare højere stemme.
 
@@ -126,7 +126,8 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Anti-snyd:** kode-recon mangler før plan → FAIL. **⚙️ Step-2 (Codex #10):** "repo-sandheds-inventory" defineres som et hash-bundet led i kæden (hvor det kommer fra, hvordan det valideres) — ikke en antaget ekstern dependency. **→** S4.2.
 
 ### S4.2 — Plan skrives (hele kæden, 1:1 med build)
-- **Hvem/hvad:** Code skriver; Codex angriber. **Gør:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling besluttes HER**.
+- **Hvem/hvad:** Code skriver; Codex angriber. **Gør:** plan-kontrakt, hele kæden gennemtænkt; **bid-opdeling besluttes HER** — og **doc-opdateringerne planlægges som bids** (masterplan/teknisk-gæld/status), så de ikke fabrikeres til sidst (H).
+- **Bid-opdelings-kontrakt (build-biderne vurderet korrekt + logisk i planen):** hver bid navngiver (a) hvilke `K-n`/løfter den leverer · (b) afhængigheds-orden (ingen bid afhænger af en senere) · (c) en størrelse dens prover KAN bevise · (d) sin canary up-front. **Codex angriber opdelingen:** ulogisk orden / hul mellem bids / ikke-bevisbar bid / for stor bid → BLOKER. Gyldig FØRST når hver bid er bevisbar OG bid-kæden dækker alle `K-n` uden huller.
 - **Skal kunne:** **plan 1:1 med build**; hver funktion → test der følger tråden til slut-effekt (ikke artefakt-eksistens).
 - **Mekanisme:** ingen-byg-før-plan-OK via **hook** (PreToolUse exit-2); **krav-ID-matrix** (`K-n` → step + test) + **løfte↔bevis-bijektion**.
 - **Anti-snyd:** byg før plan OK → hook BLOKERER; `K-n` uden step/test → FAIL; plan-løfte uden canary → rød; build uden plan-løfte → "rogue". **Canary-styrke (Codex #11):** en canary tæller kun hvis den tester **slut-effekt** (ikke triviel eksistens); reviewer + dybde-meta-canary vurderer styrke (residual dømmekraft, se "svage led"). **→** S4.3.
@@ -147,7 +148,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Mekanisme:** plan-SHA-binding + gate-check (approval matcher SHA) + stale-stop. **Anti-snyd:** stale-SHA → BLOKER; verdikt uden citeret SHA → BLOKER; manglende verdikt/timeout → fail-closed. **→** S5.2.
 
 ### S5.2 — plan OK (gate-state)
-- **Hvem/hvad:** **Mathias sidst — MED Claude.ai ved sin side** (partner/oversætter; 2v2-menneske-siden, ikke en separat dommer). **Gør (flow som krav-gaten):** **Claude.ai OK først** (forretnings-mening) → **Mathias vurderer + giver `plan OK`** → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres**; gate-state `plan-laast`. **`plan OK` autoriserer build** — intet bygges før plan OK (default-deny hook). Build kører herefter (FASE 6); **`build OK` kommer FØRST EFTER build** (S7.9), så plan OK og build OK ikke ligger ryg-mod-ryg uden aktivitet. **Modsigelse mod krav/vision/forretning → kæden halter; uløselig → terminal STOP af plan+build** (jf. gennemgående regel).
+- **Hvem/hvad:** **Mathias sidst — MED Claude.ai ved sin side** (partner/oversætter; 2v2-menneske-siden, ikke en separat dommer). **Gør (flow som krav-gaten):** **Claude.ai OK først** (forretnings-mening) → **Mathias vurderer + giver `plan OK`** → gate-teksten skrives i docs → **GitHub-trigger → Code aktiveres**; gate-state `plan-laast`. **`plan OK` autoriserer build** — intet bygges før plan OK (default-deny hook). Build kører herefter (FASE 6); **`build OK` er MEKANISK** (build⊨plan 1:1, S7.9) — IKKE en Mathias-gate (build er ikke dit bord når det er tro mod den godkendte plan). **Modsigelse mod krav/vision/forretning → kæden halter; uløselig → terminal STOP af plan+build** (jf. gennemgående regel).
 - **Mekanisme:** committet gate-state + dirigent (**⚠️ forudsætning: `plan OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** AI retter aldrig selv en modsigelse mod styrende docs. **→** S6.
 
 ---
@@ -193,10 +194,11 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 - **Hvem/hvad:** `/loop` (intra-bid driver), Code. **Gør:** grøn+bevist → advance; fejl → afgrænset fix-loop (`/loop` driver, bound = `/goal` "stop efter N", **hård success = proveren**); uløst → `/rewind` + eskalér.
 - **Mekanisme:** `/loop` (bundlet skill — capability-tjek) + `/goal` turn-cap + `Stop`-hook (hård) + prover som success. **Anti-snyd:** loop der stopper på egen blød "done" → forbudt; success ER proveren. **→** S7.9 (når alle skiver er bygget).
 
-### S7.9 — build OK (EFTER build, før acceptance)
-- **Hvem/hvad:** Mathias + Claude.ai (ved sin side). **Gør (flow som krav/plan-gaten):** **Claude.ai OK først** → **Mathias vurderer + giver `build OK`** på det FÆRDIGE build → gate-teksten i docs → **GitHub-trigger → Code aktiveres** til acceptance; gate-state `build-laast`.
-- **Skal kunne:** godkende det byggede resultat (krav 9). **Aktivitet mellem gates:** plan OK→build OK = selve build'et; build OK→slut OK = acceptance — ingen tomme dobbelt-godkendelser.
-- **Mekanisme:** committet gate-state + dirigent (**⚠️ `build OK` afstemt ind i `gate_ord` — mangler i dag**). **Anti-snyd:** `build OK` uden at alle skivers per-bid-prover er grønne → afvises. **→** FASE 8 (acceptance).
+### S7.9 — build OK (MEKANISK — ikke Mathias' bord)
+- **Hvem/hvad:** **ingen Mathias-dom.** Er build 1:1 med den godkendte plan, har Mathias intet at godkende (HVORDAN = Code/Codex' bord). **`build OK` = den maskinelle bekræftelse af `build ⊨ plan` 1:1** (løfte↔bevis-bijektion + alle skivers prover grønne + troskab), **meta-canary-bevist** så 1:1-checket ikke selv kan være falsk-grøn.
+- **Gør:** verifikationen passerer → gate-state `build-laast` **auto-sættes** → **GitHub-trigger → acceptance**. Mathias kan SE/pull'e (#126) men gater ikke.
+- **Skal kunne:** byggeren har intet at "godkende" hos Mathias når build er tro mod den godkendte plan (krav 2 + Mathias-dom 2026-06-19). Aktivitet plan OK→slut OK = build + acceptance (ingen tom dobbelt-godkendelse).
+- **Mekanisme + anti-snyd:** committet gate-state, auto-sat KUN når bijektion + alle prover + troskab er grønne (**⚠️ `build OK` afstemt ind i `gate_ord` — mangler i dag**); manglende/rød verifikation → ingen build OK. **NB krav-amendement:** krav 9 har build OK som Mathias-gate → rettes til mekanisk (dit ord overruler). **→** FASE 8 (acceptance).
 
 ---
 
@@ -221,29 +223,56 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ---
 
-## MAPPE-STRUKTUR (doc-taksonomi — selv en mekanisme)
+## ROLLER + AKTIVERING (pr. aktør: rolle · grænse · hvad-gør-rød · kanal · skill)
 
-Mappe-grænsen **håndhæver** bord-delingen: en hook/CODEOWNERS blokerer AI-skrivning til sandheds-mappen (kun Mathias via PR), mens teknik-mappen er AI-opdaterbar under gate. Strukturen gør "sandheds-docs rettes aldrig af AI" til en *mekanisk* regel, ikke en hensigt.
+Hver AI-aktør har **to rolle-typer** (workflow / almindelig, krav 7) og **én egen skill** (rolle-tekst, frisk-loadet pr. bid). *Flere skills mangler i dag — markeret "bygges".*
+
+| Aktør | Rolle / grænse | Hvad gør den rød | Aktiverings-kanal | Skill |
+|---|---|---|---|---|
+| **Mathias** | Dømme-gates (krav/plan/slut OK) + definerer hensigt. Eneste dommer. | — | `qwers`/gate-ord på #126 (author-verificeret) + pull (#126/`/remote-control`) | — |
+| **Code** | Builder/driver (kontinuerlig i fasen); ejer at koden leverer hensigten. Aldrig dømmekraft over eget måle-lag. | rører prover/hooks/gates · bygger før plan OK · falsk-grøn | dirigent-dispatch + GitHub-Action på #126 | **bygges** (rolle+freshness) |
+| **Code-reviewer** | FRISK Code-agent, frisk rolle: kode-/dybde-troskab (build⊨plan). | overser dyb fejl (dybde-meta-canary) | frisk session pr. review (≠ byggerens) | **bygges** |
+| **Codex** | Cross-vendor angriber; ejer prover+canaries+angrebs-spec. Godkender intet. | resumed/stale session · ikke-skarpt angreb | `codex exec --ephemeral` (lokal, via Code) | **bygges** (`stork-adversarial-review`) |
+| **Claude.ai** | Mathias' forretnings-partner: krav-medforfatter + Mathias-flade + forretnings-mening. Ikke kode. | kode-vurdering (Codex' bord) · usynlig sandhed | app (Mathias' hånd) + `claude -p` (recon-rolle) | `claude-ai/SKILL.md` (findes) |
+
+**Aktivering — to spor:** (1) **lokalt** (dirigent · `codex exec` · `claude -p`) til recon + build; (2) **GitHub-Action på #126-event** (krav-upload · gate-ord) → committet artefakt. Begge author/SHA-bundet.
+
+## RØDE TRÅD + KONTROL-DOK (hvordan forløbet holdes tro)
+
+Den røde tråd (vision = forretning = krav = plan = slut) holdes på **tre niveauer:**
+1. **Pr. handling — lokal disciplin:** hooks/skills/gate-state (deterministisk, men kun pr. handling).
+2. **Pr. gate — kæde-troskab:** krav-ID-matrix + løfte↔bevis-bijektion + troskabs-angreb + Claude.ai-mening.
+3. **Forløbs-troskab — KONTROL-DOK:** lokal disciplin fanger IKKE om *hele kørslen fulgte workflowet*. Derfor et **kontrol-dok 1:1 med workflowet — og DETTE forløbs-kort ER kontrol-dokket.** Kørslen producerer en **worklog/trace** der holdes **1:1 op mod kontrol-dokket**: sprunget step / fase ude af spec / gate uden positivt verdikt = **forløbs-drift → halt/flag**. Tjekkes **løbende** (pr. fase — ikke kun til sidst, ellers akkumulerer drift) **+ final** (ved slut OK). Workflowets egen "plan⊨build" på meta-niveau.
+
+## MAPPE-STRUKTUR (doc-taksonomi — dækkende for NUVÆRENDE docs)
+
+Mappe-grænsen **håndhæver** bord-delingen (PreToolUse-hook blokerer AI-skrivning til `sandhed/`; CODEOWNERS gater merge). Dækker ALLE nuværende docs:
 
 ```
 docs/
-  sandhed/            # LÅST — Mathias' bord. AI retter ALDRIG (kun Mathias via PR + CODEOWNERS)
-    vision-og-principper.md
-    forretningsforstaaelse.md
-    <pakke>-krav.md          # krav pr. pakke (HVAD, tydeligt beskrevet + acceptkriterie)
-  teknik/             # opdaterbar EFTER build af AI — masterplan-ændring = Mathias-gate (krav 10)
-    master-plan.md
-    teknisk-gaeld.md         # G-numre / kode-gæld
-    fremtid/                 # idé-docs til senere beslutninger
-  plan-build/         # pr. pakke: plan (1:1 med build) + build-rapport/artefakter
-    <pakke>-plan.md
-    <pakke>-build-rapport.md
-  proces/             # workflow-regler, rolle-instrukser, kontrakter, gate-defs (aktør-flade — Mathias læser ikke)
-  arkiv/              # lukkede artefakter (læsbar reference, ikke aktiv kilde)
+  sandhed/      # LÅST — Mathias' bord; AI retter ALDRIG (hook + CODEOWNERS)
+    vision-og-principper.md · forretningsforstaaelse.md
+    krav/<pakke>-krav.md        # workflow-faerdiggoerelse · gov-5 · rette-til ...
+    domaene/                    # PRODUKT-krav: lag-e-beregningsmotor · lag-e-tidsregistrering · org-rettigheds-model · permission-matrix
+  teknik/       # AI opdaterer EFTER build, under Mathias-gate (krav 10)
+    master-plan.md · teknisk-gaeld.md · cutover-checklist.md · doc-redegoerelse.md
+    fremtid/                    # gov-6-forslag-og-udskudte · huskeliste
+    reference/                  # claude-code-egenskaber · codex-sandbox-opsaetning
+  plan-build/   # pr. pakke: plan + recon + status + rapport
+    <pakke>-{plan,recon,status}.md · seneste-rapport.md · aktiv-plan.md
+    rapport-historik/
+  proces/       # workflow-regler + roller + kontrakter (aktør-flade — Mathias læser ikke)
+    disciplin.md · governance-vagt.md · LÆSEFØLGE.md
+    roller/                     # claude-ai/SKILL · codex-rolle · code-rolle
+    workflow/                   # gate-def + kontrakter + *-check (substrat)
+  arkiv/        # lukkede artefakter: gov-4 · gov-docs-renhed · mathias-afgoerelser-historik
 ```
 
-- **Håndhævelse (Codex #12):** lokal skrivning til `docs/sandhed/` blokeres af en **PreToolUse-hook** (deterministisk, lokalt — CODEOWNERS gater kun *merge*, ikke lokal redigering). CODEOWNERS=mgrubak er merge-gaten på PR-siden. **Hooken er mekanismen; mappen alene er ikke.** `docs/teknik/master-plan.md`-diff → Mathias-gate.
-- **Migration er én bevægelse** (gov-6-princip): flyt + opdater alle referencer (hooks/CI/CLAUDE.md/LÆSEFØLGE) i ét, ikke gradvist. **→ step 2/3** (den faktiske flytning er ikke gjort her; dette er målstrukturen).
+**Nuværende → mål (intet hjemløst):** `strategi/{vision,forretning}`→`sandhed/` · `strategi/master-plan`→`teknik/` · `strategi/disciplin`→`proces/` · `coordination/<pakke>-krav`→`sandhed/krav/` · `coordination/<pakke>-{plan,recon,status}`+`seneste-rapport`+`aktiv-plan`→`plan-build/` · `coordination/rapport-historik`→`plan-build/` · `coordination/gov-6-forslag`→`teknik/fremtid/` · `coordination/governance-vagt`→`proces/` · `coordination/arkiv`→`arkiv/` · `teknisk/{gaeld,cutover,doc-redegoerelse}`→`teknik/` · `teknisk/{lag-e-*,permission-matrix,org-rettigheds}`→`sandhed/domaene/` · `teknisk/claude-code-egenskaber`+`codex/`+`claude-ai/`→`teknik/reference/`+`proces/roller/` · `LÆSEFØLGE`→`proces/`.
+
+- **Håndhævelse:** PreToolUse-hook blokerer AI-skrivning til `sandhed/` (lokalt); CODEOWNERS=mgrubak = merge-gate. Hooken er mekanismen, ikke mappen.
+- **Migration = ÉN bevægelse** (gov-6): flyt + opdater alle referencer (hooks/CI/CLAUDE.md/LÆSEFØLGE) i ét. **→ step 2/3** (målstruktur, ikke gjort her).
+- **Åbent valg (dit bord):** produkt-krav (`lag-e-*`) i `sandhed/domaene/` vs. egen `produkt/`-rod — afgør ved migration.
 
 ---
 
@@ -276,4 +305,4 @@ docs/
 
 ---
 
-*Slut på step-1-kortlægning v2. Næste: Mathias holder mod krav + evt. runde 2 Codex → ingen feedback = klar til godkendelse.*
+*Slut på step-1-kortlægning v7. Næste: Mathias holder mod krav → ingen feedback = klar til godkendelse → step 2.*
