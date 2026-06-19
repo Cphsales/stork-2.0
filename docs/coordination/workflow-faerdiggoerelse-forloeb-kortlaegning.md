@@ -174,7 +174,7 @@ Aktør-noter: **Code** = lokal builder/driver (kontinuerlig i fasen) · **Code-r
 
 ## FASE 6 — Build (bid-for-bid pr. skive)
 
-> Autoriseret af **`plan OK`** (intet bygges før plan OK). **Default-deny hook (Codex #2/#14):** før plan OK er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres — IKKE en omgåelig blocklist; `gate_ord`↔`gate-def` divergens → BLOKER (⚙️ step-2: konkret allowlist). **`build OK` kommer FØRST EFTER build** (S7.9) — ellers lå plan OK og build OK ryg-mod-ryg uden aktivitet imellem (Mathias 2026-06-19). *(Build-bid-stepsene beholder S7.x-mærker; renummerering = step-2-kosmetik.)*
+> Autoriseret af **`plan OK`** (intet bygges før plan OK). **Default-deny hook (Codex #2/#14):** før plan OK er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres — IKKE en omgåelig blocklist; `gate_ord`↔`gate-def` divergens → BLOKER (⚙️ step-2: konkret allowlist). **Auto-fix/“issue→PR”-makroer (fx `issue_to_fix_workflow`) er ALDRIG i allowlisten:** en fix-PR genereret direkte fra en problem-beskrivelse springer hele den gatede kæde over (krav→plan→prover→troskab) = præcis falsk-grøn-generatoren → BLOKER. **`build OK` kommer FØRST EFTER build** (S7.9) — ellers lå plan OK og build OK ryg-mod-ryg uden aktivitet imellem (Mathias 2026-06-19). *(Build-bid-stepsene beholder S7.x-mærker; renummerering = step-2-kosmetik.)*
 
 ### S7.1 — Friskhed pr. bid
 - **Hvem/hvad:** Code + freshness-skill. **Gør:** loader tynd pakke-kontrakt frisk.
