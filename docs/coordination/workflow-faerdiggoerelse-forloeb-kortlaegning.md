@@ -1,7 +1,7 @@
 # Workflow-færdiggørelse — forløbs-kortlægning (Step 1)
 
 **Type:** Step 1 — kortlægning af HELE byg-workflowet, bid-for-bid, fra `qwers` til `slut OK`.
-**Status:** UDKAST v2 — Codex runde 1 foldet ind. Intet bygges. Til fælles grundig læsning (Mathias + Code) + løbende Codex-hole-shooting. Step 2 = hvordan hvert element sættes op.
+**Status:** UDKAST v3 — Codex runde 1 + runde 2 (retssag, Mathias-dømt) foldet ind. Intet bygges. Til fælles grundig læsning (Mathias + Code). Step 2 = hvordan hvert element sættes op.
 **Grundlag:** krav-dok (de 11 krav) · vision + forretning (låste) · masterplan. Aftalt krav 5-model står som sandhed via Mathias' ord (PR #178 ikke merget — vi fortsætter uden merge).
 **Acceptkriterie for step 1:** alle elementer er med, hvert lille step står konkret, og kæden hænger sammen uden huller (positivt bevist, ikke ved tavshed).
 
@@ -11,9 +11,11 @@
 
 Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Code (`codex exec --ephemeral`, reasoning=xhigh) · **Claude.ai** = `claude -p`-rolle under recon + app'en (Mathias' hånd) ved krav · **Mathias** = gates + definerer hensigt.
 
+**Gennemgående: dybde-først-loop + Code-kontinuitet.** Recon og dybde-tjek (S1.x, S7.6) kører en **dybde-først-loop**: *ny info → vurdér → dyk ned (brugbar?) → dyk dybere → ved X nej (dead-ends) → loop til næste info.* **Dybden af et fund giver konteksten, ikke fundet selv** — loopen er **selv-rensende** (dead-ends droppes efter X nej; kun dybt-verificeret bæres frem). Derfor: **Code = kontinuerlig driver inden for en fase** (bærer dybde-kontekst, ikke flade fund), **nulstilles ved fase-nulpunkter** (anti-session-rot). Anti-drift afhænger IKKE af Code's friskhed, men af mekanismerne + de friske uafhængige angribere (Codex `--ephemeral` · Claude.ai `claude -p`) + frisk kontrakt pr. bid. (Loopen er **metode**, ikke en ny mekanisme — tænderne er dybde-meta-canary + prover.)
+
 **Gennemgående anti-tavsheds-regel (Codex #4/#24):** intet step godkendes ved *fravær* af indvending. Hvert gate har et **forventet antal positive, hash-bundne verdikter**; manglende verdikt / timeout / forkert hash = **fail-closed (BLOKER)**, aldrig auto-grønt. Tavshed er ikke et ja.
 
-**Gennemgående læsebevis-regel (Codex #13):** en aktørs verdikt tæller kun hvis det **citerer den SHA/hash den læste via egen kanal** (bundet artefakt). Kan gate-checken ikke se hvilken SHA aktøren bandt til → BLOKER (ingen bind på stale/indirekte kontekst).
+**Gennemgående læsebevis-regel (Codex #4/#13):** en aktørs verdikt tæller kun hvis det er **indholds-afledt** — bundet til konkrete fund/citater der kun kan komme af faktisk læsning (eller: aktøren henter selv artefaktet via egen kanal, og hentningen ER beviset) + citerer den læste SHA. Bare at *nævne* en SHA tæller ikke (stale/fabrikeret SHA-citat → BLOKER).
 
 ---
 
@@ -143,7 +145,7 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 ### S6.1 — build OK (eksplicit, før byg)
 - **Hvem/hvad:** Mathias. **Gør:** `build OK` før byg; gate-state `build-laast`.
 - **Skal kunne:** intet bygges/merges før ordet (krav 9). **Mekanisme:** committet gate-state + **hook** (byg-tool-kald før `build OK` → exit-2).
-- **Anti-snyd:** byg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER. **⚙️ Step-2 (Codex #14):** **eksplicit definition af hvad der tæller som "byg-tool-kald"** (kommando-/fil-/path-mønstre) — ellers kan byg ske via almindelige shell-/doc-kommandoer uden om gaten. **→** S7.x.
+- **Anti-snyd:** byg før `build OK` → hook BLOKERER; `gate_ord`↔`gate-def` divergens → BLOKER. **Default-deny (Codex #2/#14):** gaten er **default-deny** — før `build OK` er KUN eksplicit tilladte tool-kald lovlige; alt andet (shell/fil-skrivning/scripts/formattere) blokeres. IKKE en blocklist af "byg-kommandoer" der kan omgås. (⚙️ step-2: den konkrete allowlist.) **→** S7.x.
 
 ---
 
@@ -164,13 +166,13 @@ Aktør-noter: **Code** = lokal builder/driver · **Codex** = lokal, kørt af Cod
 
 ### S7.4 — Codex angriber forrige skives reelle kør (async)
 - **Hvem/hvad:** Codex (lokal, `--ephemeral`), parallelt. **Gør:** adversarisk review + snydevej-check på reel kør (via #126).
-- **Mekanisme:** pipeline (N bygges mens N-1 angribes). **Anti-snyd (Codex #18):** **N-1's prover skal være grøn (positivt bevist) før N's base bygger ovenpå** — N må ikke arve uafsluttet/rødt grundlag. **→** S7.5.
+- **Mekanisme:** pipeline — N bygger på N-1's **prover-grønne** base (ikke ubevist grundlag); Codex' adversariale angreb på N-1 kører **async som en anden gate**. **Anti-snyd (Codex #10/#18):** finder det sene angreb en fejl i N-1 → **cascade-STOP/rewind** der også invaliderer N. Altså: byg på prover-grøn, aldrig på uafsluttet. **→** S7.5.
 
 ### S7.5 — To-sidet prover (model-frit verdikt)
 - **Hvem/hvad:** prover (deterministisk, ingen model); Codex planter, Mathias ser rød.
 - **Gør:** reel kør der **(a) går RØD på den plantede hårde (dybe) fejl OG (b) GRØN på baseline** — samme kør.
 - **Skal kunne:** grøn = reel konsekvens (krav 3). **Mekanisme:** to-sidet bevis + **meta-canary** + **CI mod RIGTIGE committede artefakter, ikke fixtures** (Build 1's synd).
-- **Prover-isolation (Codex #19):** **Codex ejer + planter proveren i egen isoleret worktree/branch; Code har ikke skriveadgang til prover/fixtures/mutations** — "Code rører aldrig egen prover" er dermed *håndhævet*, ikke en regel. **⚙️ Step-2:** præcis ownership/permissions/CI-isolation. **Anti-snyd:** prover der ikke kan gå rød → meta-canary; syntetisk bevis → forbudt. **→** S7.6.
+- **Prover-isolation (Codex #3/#19 — Mathias-dom: Codex kan få skrive):** **Codex ejer + har SKRIVE-adgang til prover + canaries + angrebs-spec** (måle-laget); **Code har INGEN skrive-adgang til sit eget måle-lag** (prover/hooks/gates/fixtures). Den der måler ≠ den der bygger — *håndhævet*, ikke en regel. **⚙️ Step-2:** præcis permissions/CI-isolation. **Anti-snyd:** prover der ikke kan gå rød → meta-canary; syntetisk bevis → forbudt. **→** S7.6.
 
 ### S7.6 — Dybde-tjek (krav bid-for-bid ned gennem hele koden)
 - **Hvem/hvad:** Code + Codex (deres bord). **Gør:** tager kravet **bid for bid** og løber **ned gennem hele koden** til slut-effekt — ikke kun første lag.
@@ -230,7 +232,7 @@ docs/
   arkiv/              # lukkede artefakter (læsbar reference, ikke aktiv kilde)
 ```
 
-- **Håndhævelse:** `docs/sandhed/` → CODEOWNERS=mgrubak + hook blokerer ikke-Mathias-skrivning (S9's "rettes aldrig" bliver strukturelt). `docs/teknik/master-plan.md`-diff → Mathias-gate.
+- **Håndhævelse (Codex #12):** lokal skrivning til `docs/sandhed/` blokeres af en **PreToolUse-hook** (deterministisk, lokalt — CODEOWNERS gater kun *merge*, ikke lokal redigering). CODEOWNERS=mgrubak er merge-gaten på PR-siden. **Hooken er mekanismen; mappen alene er ikke.** `docs/teknik/master-plan.md`-diff → Mathias-gate.
 - **Migration er én bevægelse** (gov-6-princip): flyt + opdater alle referencer (hooks/CI/CLAUDE.md/LÆSEFØLGE) i ét, ikke gradvist. **→ step 2/3** (den faktiske flytning er ikke gjort her; dette er målstrukturen).
 
 ---
