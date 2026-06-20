@@ -1,22 +1,17 @@
 {
   "schemaVersion": 1,
   "packageId": "workflow-faerdiggoerelse-pakke1",
-  "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79",
+  "kravHash": "ccb60da82af8319fd62f7546286a0bc3b295ce49b4cca4dd8c54e0728cf625c7",
   "planSha": "94c70eb5450ec5323dd4e25b5f213af070f23495",
   "planRef": "claude/plan1-udkast",
-  "gateState": { "kravOK": true, "planOK": true, "buildOK": false },
+  "gateState": { "kravOK": true, "planOK": false, "buildOK": false },
   "gateRecord": {
     "kravOK": {
-      "kravHash": "c964826c5d12ab512723071ac0b6dd627047451af216764510d92eb896b87b79",
+      "kravHash": "ccb60da82af8319fd62f7546286a0bc3b295ce49b4cca4dd8c54e0728cf625c7",
       "af": "Mathias",
-      "note": "krav OK givet på dette krav-indhold (c964826). Krav-dokket er den immutable hash-bundne body; dens status-linje er snapshot ved gate-tid. Gate-state læses HER, ikke i krav-body'en (S3-design)."
-    },
-    "planOK": {
-      "planSha": "94c70eb5450ec5323dd4e25b5f213af070f23495",
-      "af": "Mathias",
-      "note": "plan OK givet på denne plan-SHA (94c70eb). Plan-doc'en er foldet ind på main-sporet; plan-SHA er den immutable gatede identitet."
+      "note": "krav OK givet på dette krav-indhold (ccb60da). v5: krav 5 udvidet (Mathias' ord kan overrule + modsigelse→stop+Mathias/Claude.ai retter), Mathias-godkendt 2026-06-20. Gate-state læses HER, ikke i krav-body'en (S3-design)."
     }
   },
   "scale": 9,
-  "artefaktRef": "claude/plan1-udkast @ 94c70eb"
+  "artefaktRef": "claude/plan1-udkast @ 94c70eb (plan1-udkast superseded af v5-genstart; planOK=false indtil step 2 bygger ny plan)"
 }
