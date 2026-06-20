@@ -32,7 +32,9 @@ Fejl fanges løbende under hele workflowet, ikke til sidst. Et brud fanges mekan
 Før krav og plan skrives, laver workflowet fuld recon af hvad pakken berører. Reconen stopper ikke ved første fund — den kortlægger det hele.
 
 **5. Fire-aktør-godkendelse**
-Krav, plan og slut godkendes hver af alle fire aktører. Mathias godkender sidst — hans godkendelse sker først efter de tre andre har godkendt.
+Krav, plan og slut godkendes af alle fire aktører, og **Mathias godkender sidst** — hans godkendelse sker først efter de tre andre har godkendt. Mathias' ord er overordnet og kan altid overrule (ny information eller en bedre idé kan opstå undervejs).
+
+Opstår der i plan eller build en modsigelse mod krav, vision eller forretning, stopper forløbet, og Mathias retter det sammen med Claude.ai før videre godkendelse. AI-aktørerne retter aldrig selv en modsigelse mod de styrende dokumenter.
 
 **6. Mathias' bord**
 Mathias' bord er ikke kode. Det er udelukkende hvad systemet skal kunne — ikke hvordan/kode. Mathias tager stilling til krav-dok, og derfor skal alle spørgsmål til ham omhandle hans bord. Alt i krav-dok skal være tydeligt godkendt af Mathias.
