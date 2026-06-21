@@ -118,7 +118,7 @@ For HVER eksisterende funktion/policy/tabel der ændres: plan inkluderer NUVÆRE
 
 **Altitude-afgrænsning (Mathias 2026-06-18):** §3.1 patch-først gælder plan/build-artefakter, der **godkender konkrete ændringer** til eksisterende kode, policies, tabeller eller governance-docs. **Split-, scope- og sequencing-amendments** må afgrænse patch-først til de efterfølgende build-PR'er — **men kun hvis de eksplicit gør §3.1 til merge-blocker dér**. Uden den eksplicitte merge-blocker-binding er afgrænsningen en skjult build-approval, og fuld 1:1-body+diff kræves i artefaktet selv.
 
-**Kæde-troskab (uændret af afgrænsningen):** Altitude-afgrænsningen flytter kun *placeringen* af §3.1 1:1 body+diff. Den flytter **aldrig** kæde-troskabsbeviset. Enhver split-/scope-/plan-amendment skal stadig dokumentere, at den ikke modsiger låst krav, vision eller forretning. Enhver build-PR skal dokumentere, at konkrete ændringer ikke modsiger den låste plan. Manglende kæde-troskabsbevis er stadig **merge-blocker** (jf. §8 modsigelses-disciplin — `build ⊨ plan ⊨ krav ⊨ vision + forretning`).
+**Kæde-troskab (uændret af afgrænsningen):** Altitude-afgrænsningen flytter kun _placeringen_ af §3.1 1:1 body+diff. Den flytter **aldrig** kæde-troskabsbeviset. Enhver split-/scope-/plan-amendment skal stadig dokumentere, at den ikke modsiger låst krav, vision eller forretning. Enhver build-PR skal dokumentere, at konkrete ændringer ikke modsiger den låste plan. Manglende kæde-troskabsbevis er stadig **merge-blocker** (jf. §8 modsigelses-disciplin — `build ⊨ plan ⊨ krav ⊨ vision + forretning`).
 
 ### 3.2 DB-state-dump som plan-pre-condition
 
