@@ -6,14 +6,14 @@
 
 ## Kilder (det vi bygger MOD — låst sandhed øverst)
 
-- **Løsning (kortet):** [`workflow-faerdiggoerelse-forloeb-kortlaegning.md`](./workflow-faerdiggoerelse-forloeb-kortlaegning.md) (merget #179) — HELE workflowet `qwers`→`slut OK`, mekanisme for mekanisme. Denne plan implementerer det.
-- **Krav (rammen):** [`workflow-faerdiggoerelse-krav-og-data.md`](./workflow-faerdiggoerelse-krav-og-data.md) (merget #180) — de 11 krav `K1`–`K11`. Mathias' bord. Hver plan-sektion fodnoter det/de `K-n` den opfylder.
+- **Løsning (kortet):** [`workflow/forloeb-kortlaegning.md`](./forloeb-kortlaegning.md) — HELE workflowet `qwers`→`slut OK`, mekanisme for mekanisme. Denne plan implementerer det.
+- **Krav (rammen):** [`mathias-doks/krav-og-data.md`](../mathias-doks/krav-og-data.md) — de 11 krav `K1`–`K11`. Mathias' bord. Hver plan-sektion fodnoter det/de `K-n` den opfylder.
 - **Låst sandhed:** `docs/strategi/vision-og-principper.md` · `docs/strategi/forretningsforstaaelse.md` · `docs/strategi/stork-2-0-master-plan.md`.
 
 ## Metode (fast, jf. step-2-beslutninger)
 
 1. **Slet intet endnu** — kondemneret substrat omdøbes `…-slet` (beholdes som recon; brugbare dele høstes ind i det nye). Hard-delete først til allersidst, når det nye dækker.
-2. **Byg eller behold — lap ikke** — falsk-grøn lappes aldrig (det gentager opsætningen); det erstattes friskt. Ægte u-forfalskeligt substrat beholdes som fundament, men skal stå på egne ben i det nye.
+2. **Byg friskt — behold ikke, lap ikke** — alt gammelt (også det der ser ud til at virke) er **substrat** (recon → `-slet`), ikke fundament. Falsk-grøn lappes aldrig (det gentager opsætningen). Enkelte dele kan **høstes ind i FRISKE mekanismer**, men kun efter forge-filter (bevist u-forfalskeligt) og genbygget — intet gammelt bæres uændret med.
 3. **Grøn = reel konsekvens** — hver mekanisme er enten (a) en **deterministisk check der kører mod RIGTIG kæde/artefakt** (kan gå rød på en plantet reel fejl), eller (b) en **per-aktør-skill** (kontekst-levering). Aldrig en selftest der kun beviser egne fixtures.
 4. **Krav-sporbarhed, maskin-checkbar begge veje** — hver sektion bærer `[K-n]`-fodnote; et coverage-check kræver: hvert `K-n` refereret af ≥1 sektion (intet krav glemt) **og** hver sektion sporer til et `K-n` (intet rogue-indhold uden krav-hjemmel). Forfalskelig prosa alene tæller ikke.
 
@@ -27,7 +27,7 @@
 
 ### S0.1 — `qwers <anker>` (trigger) `[K9, K2]`
 
-**Hvad sker:** Mathias skriver `qwers <anker>` på issue #126. `<anker>` = masterplan-trin (pakke) **eller** `teknik/`-doc-navn (gæld / nyt uden for planen). Det åbner Code-terminalen på pakken. Én prompt = hele starten.
+**Hvad sker:** Mathias skriver `qwers <anker>` på issue #126. `<anker>` = masterplan-trin (pakke) **eller** `plan-gaeld-kode/`-doc-navn (gæld / nyt uden for planen). Det åbner Code-terminalen på pakken. Én prompt = hele starten.
 
 **Hvad har vi:**
 
@@ -43,19 +43,19 @@
 
 ### S0.2 — Dispatcher + anker-binding (BRO 0→1) `[K9, K10, K4]`
 
-**Hvad sker:** #126-eventet dispatcher i **Code-terminalen** (samme miljø for åbning FASE 0 **og** recon FASE 1 — ingen separat transport imellem). Ankeret bindes til et **hash-bundet udgangspunkt** (masterplan-trin eller `teknik/`-doc), og **read-only recon-mode** sættes. Ankeret ER broen til recon: FASE 1 digger FRA ankeret + låst vision/forretning + nuværende kode — ikke fra et gæt.
+**Hvad sker:** #126-eventet dispatcher i **Code-terminalen** (samme miljø for åbning FASE 0 **og** recon FASE 1 — ingen separat transport imellem). Ankeret bindes til et **hash-bundet udgangspunkt** (masterplan-trin eller `plan-gaeld-kode/`-doc), og **read-only recon-mode** sættes. Ankeret ER broen til recon: FASE 1 digger FRA ankeret + låst vision/forretning + nuværende kode — ikke fra et gæt.
 
 **Hvad har vi:**
 
 - `kaede-regler.json` `qwers-aabning`-routing (`code: recon-kode`, `codex: recon-research`) — data findes, men inert + ufuldstændig (claude-ai mangler).
-- Ingen eksisterende hash-binding af ankeret til masterplan-trin/`teknik/`-doc — det er nyt.
+- Ingen eksisterende hash-binding af ankeret til masterplan-trin/`plan-gaeld-kode/`-doc — det er nyt.
 
 **Hvad bygges:**
 
-- Anker-binding: `<anker>` → hash-bundet masterplan-trin **eller** `teknik/`-doc. Forkert/manglende anker → **integrations-canary** fanger (recon må aldrig køre på vilkårlig flade).
+- Anker-binding: `<anker>` → hash-bundet masterplan-trin **eller** `plan-gaeld-kode/`-doc. Forkert/manglende anker → **integrations-canary** fanger (recon må aldrig køre på vilkårlig flade).
 - Read-only recon-mode sættes deterministisk ved åbning (default-deny hook: skrive-/byg-værktøjer blokeret i recon-fasen).
 
-**Mekanisme (deterministisk):** ankeret opslås mod masterplan-/`teknik/`-inventory → hash bindes → recon-scope = ankeret. **Anti-snyd:** anker uden gyldigt mål → BLOKER (integrations-canary); værktøjs-kald der skriver i recon-mode → hook BLOKERER.
+**Mekanisme (deterministisk):** ankeret opslås mod masterplan-/`plan-gaeld-kode/`-inventory → hash bindes → recon-scope = ankeret. **Anti-snyd:** anker uden gyldigt mål → BLOKER (integrations-canary); værktøjs-kald der skriver i recon-mode → hook BLOKERER.
 
 ### S0.3 — Aktørerne vågner friske + rolle-korrekte `[K7, K9]`
 
