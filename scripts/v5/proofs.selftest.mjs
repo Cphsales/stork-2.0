@@ -1,0 +1,207 @@
+#!/usr/bin/env node
+// proofs.selftest.mjs — red-team af verifyProof-laget (plan DEL VI (a)).
+// recon-coverage testes mod et RIGTIGT git-repo (ægte flade-derivation) OG
+// ende-til-ende gennem evaluateGate (recon-gaten åbner kun med en ægte proof).
+// Routeren skal fail-lukke for endnu-ikke-byggede proof-kinds.
+
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { evaluateGate } from "./gates.mjs";
+import { makeGit, resolveRef } from "./git.mjs";
+import { deriveSurface } from "./coverage.mjs";
+import { verifyReconCoverageProof, makeProofVerifier } from "./proofs.mjs";
+
+const RECON_ACTORS = ["code", "codex", "claude-ai"];
+let failed = 0;
+const ok = (n) => console.log(`  ✓ ${n}`);
+const bad = (n, d) => {
+  console.error(`  ✗ ${n} — ${d}`);
+  failed++;
+};
+const expectGreen = (n, r) => (r.ok === true ? ok(n) : bad(n, `rød: ${r.reasons.join(" | ")}`));
+const expectRed = (n, r, needle) => {
+  const hit = r.reasons.some((x) => new RegExp(needle).test(x));
+  !r.ok && hit
+    ? ok(n)
+    : bad(n, r.ok ? "GRØN (falsk-grøn slap igennem)" : `rød men uden '${needle}': ${r.reasons.join(" | ")}`);
+};
+
+// ---------- fixture: rigtigt repo med migrations (så fladen har punkter) ----------
+const ROOT = mkdtempSync(join(tmpdir(), "v5-proofs-"));
+process.on("exit", () => rmSync(ROOT, { recursive: true, force: true }));
+execFileSync("git", ["init", "-q", ROOT]);
+const git = makeGit(ROOT);
+git("config", "user.name", "selftest");
+git("config", "user.email", "selftest@local");
+
+const FILES = {
+  "turbo.json": "{}\n",
+  "launch/launch.json": JSON.stringify({ anker: "pakke-x", pakke: "pakke-x" }) + "\n",
+  "recon/bundle.json": JSON.stringify({ docs: ["vision.md"] }) + "\n",
+  "recon/recon.md": "# recon — pakke-x\n\n3 bøtter, konsolideret.\n",
+  "supabase/migrations/0001.sql":
+    "alter table salg enable row level security;\n" +
+    'create policy "salg_egen_org" on salg for select using (org_id = auth_org());\n',
+};
+for (const [p, c] of Object.entries(FILES)) {
+  mkdirSync(join(ROOT, dirname(p)), { recursive: true });
+  writeFileSync(join(ROOT, p), c);
+}
+git("add", "-A");
+git("commit", "-qm", "fixture");
+const COMMIT = git("rev-parse", "HEAD");
+const ref = (p) => resolveRef(git, COMMIT, p);
+
+const recon = ref("recon/recon.md");
+const launch = ref("launch/launch.json");
+const bundle = ref("recon/bundle.json");
+
+// grøn bucket_map: dækker HVERT deriveret flade-punkt
+const fullBucketMap = () => {
+  const surface = deriveSurface({ git, commitSha: COMMIT });
+  const m = {};
+  for (const p of surface.points) m[p.id] = p.kind === "config" ? "dokument" : "nuvaerende-kode";
+  return m;
+};
+const greenProof = () => ({
+  ok: true,
+  gate_id: "recon",
+  proof_kind: "recon-coverage",
+  artifact_oid: recon.oid,
+  bindings_oids: { anker: launch.oid, bundle: bundle.oid },
+  bucket_map: fullBucketMap(),
+  independence: {
+    bundle_oid: bundle.oid,
+    actors: RECON_ACTORS.map((a) => ({
+      aktor: a,
+      workdir_attest: true,
+      web_forbud_attest: true,
+      read_forbud_attest: true,
+    })),
+  },
+  conflicts_preserved: true,
+  omission_devil: { conclusion: "PASS" },
+});
+const snap = (proof) => ({
+  commit_sha: COMMIT,
+  artifact: recon,
+  bindings: { anker: launch, bundle },
+  proof_result: proof,
+  verdicts: [],
+  approval: null,
+  predecessor: null,
+});
+const verify = (proof) => verifyReconCoverageProof(proof, snap(proof), { git });
+// muter en grøn proof
+const mutated = (fn) => {
+  const p = greenProof();
+  fn(p);
+  return p;
+};
+
+console.log("verifyReconCoverageProof — grøn sti:");
+expectGreen("fuld dækning + 3 blinde attester + omission PASS", verify(greenProof()));
+
+console.log("\nmekanisk kerne — frisk flade-re-derivation (kan ikke påstås):");
+expectRed(
+  "misset flade-punkt (uklassificeret i recon)",
+  verify(mutated((p) => delete p.bucket_map["rls_policy:salg:salg_egen_org"])),
+  "uklassificeret i recon",
+);
+expectRed(
+  "kode-punkt klassificeret intet-data",
+  verify(mutated((p) => (p.bucket_map["rls_enabled:salg"] = "intet-data"))),
+  "koden findes",
+);
+expectRed("bucket_map mangler", verify(mutated((p) => delete p.bucket_map)), "bucket_map mangler");
+
+console.log("\n3-blind struktur:");
+expectRed(
+  "forkert bundle_oid (ikke samme input)",
+  verify(mutated((p) => (p.independence.bundle_oid = recon.oid))),
+  "matcher ikke det gatede bundle",
+);
+expectRed(
+  "manglende recon-aktør (kun 2)",
+  verify(mutated((p) => (p.independence.actors = p.independence.actors.slice(0, 2)))),
+  "manglende recon-aktør",
+);
+expectRed(
+  "attest ikke eksplicit true",
+  verify(mutated((p) => (p.independence.actors[0].web_forbud_attest = false))),
+  "web_forbud_attest ikke eksplicit true",
+);
+expectRed(
+  "manglende attest-felt (arvet/fraværende)",
+  verify(mutated((p) => delete p.independence.actors[1].read_forbud_attest)),
+  "read_forbud_attest ikke eksplicit true",
+);
+expectRed(
+  "dublet recon-aktør",
+  verify(mutated((p) => (p.independence.actors[1].aktor = "code"))),
+  "dublet recon-aktør",
+);
+expectRed(
+  "ukendt recon-aktør",
+  verify(mutated((p) => (p.independence.actors[0].aktor = "hacker"))),
+  "ukendt/ugyldig recon-aktør",
+);
+
+console.log("\nkonflikt-bevaring + omission-devil:");
+expectRed(
+  "kasseret uenighed (conflicts_preserved ikke true)",
+  verify(mutated((p) => (p.conflicts_preserved = false))),
+  "kasseret uenighed",
+);
+expectRed(
+  "omission-devil ikke PASS",
+  verify(mutated((p) => (p.omission_devil.conclusion = "FAIL"))),
+  "omission-devil ikke PASS",
+);
+
+console.log("\nrouter (makeProofVerifier) — fail-closed for endnu-ikke-byggede kinds:");
+const route = makeProofVerifier({ git });
+expectRed(
+  "build-proof ikke bygget → rød",
+  route({ proof_kind: "build-proof" }, snap(greenProof())),
+  "endnu ikke bygget",
+);
+expectRed(
+  "chain-proof ikke bygget → rød",
+  route({ proof_kind: "chain-proof" }, snap(greenProof())),
+  "endnu ikke bygget",
+);
+expectRed("ukendt proof_kind → rød", route({ proof_kind: "vrøvl" }, snap(greenProof())), "ukendt proof_kind");
+expectGreen("router leder recon-coverage til den rigtige verifikator", route(greenProof(), snap(greenProof())));
+
+console.log("\nende-til-ende gennem evaluateGate (recon-gaten):");
+{
+  const deps = { verifyProof: makeProofVerifier({ git }) };
+  const r = evaluateGate("recon", snap(greenProof()), deps);
+  r.open ? ok("recon-gaten ÅBNER med ægte recon-coverage-proof") : bad("e2e-grøn", r.reasons.join(" | "));
+}
+{
+  const deps = { verifyProof: makeProofVerifier({ git }) };
+  const p = mutated((x) => delete x.bucket_map["rls_enabled:salg"]);
+  const r = evaluateGate("recon", snap(p), deps);
+  !r.open && r.reasons.some((x) => /uklassificeret|verifyProof/.test(x))
+    ? ok("recon-gaten LUKKER når et flade-punkt mangler i recon (frisk re-kør fanger det)")
+    : bad("e2e-rød", r.open ? "ÅBNEDE" : r.reasons.join(" | "));
+}
+{
+  // et generisk {ok:true} uden binding kan ikke åbne (kernen binder proof_kind/oid FØR verifyProof)
+  const deps = { verifyProof: makeProofVerifier({ git }) };
+  const r = evaluateGate("recon", snap({ ok: true }), deps);
+  !r.open
+    ? ok("generisk {ok:true} åbner ikke recon-gaten (binding + frisk verifikation)")
+    : bad("e2e-generisk", "ÅBNEDE");
+}
+
+console.log("");
+if (failed > 0) {
+  console.error(`proofs red-team: ${failed} FEJLEDE`);
+  process.exit(1);
+}
+console.log("proofs red-team: alle cases passed");

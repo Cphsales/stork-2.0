@@ -146,4 +146,33 @@ export function checkCoverage(surface, dispositions) {
   return { ok: reasons.length === 0, reasons, uncovered };
 }
 
+// checkBucketCoverage(surface, bucketMap) → {ok, reasons, uncovered}
+// Recon-fasens variant: hvert deriveret flade-punkt SKAL være klassificeret i
+// én af de 3 bøtter (dispositioner hører til krav-fasen, ikke her). Kode-punkter
+// ≠ intet-data. Fail-closed. bucketMap: {<flade_punkt_id>: <bøtte>}.
+export function checkBucketCoverage(surface, bucketMap) {
+  const reasons = [];
+  const uncovered = [];
+  const fail = (r) => reasons.push(r);
+
+  const points = surface?.points;
+  if (!Array.isArray(points)) return { ok: false, reasons: ["surface.points mangler/ugyldig"], uncovered };
+  if (bucketMap === null || typeof bucketMap !== "object" || Array.isArray(bucketMap))
+    return { ok: false, reasons: ["bucketMap mangler/er ikke et objekt"], uncovered };
+
+  for (const p of points) {
+    if (!Object.prototype.hasOwnProperty.call(bucketMap, p.id)) {
+      uncovered.push(p.id);
+      fail(`flade-punkt uklassificeret i recon: ${p.id} (tavs udeladelse forbudt)`);
+      continue;
+    }
+    const b = bucketMap[p.id];
+    if (!BUCKETS.includes(b)) fail(`${p.id}: ugyldig bøtte '${String(b)}'`);
+    else if (CODE_KINDS.includes(p.kind) && b === "intet-data")
+      fail(`${p.id}: kode-punkt klassificeret 'intet-data' (koden findes → der ER data)`);
+  }
+
+  return { ok: reasons.length === 0, reasons, uncovered };
+}
+
 export { CODE_KINDS };
