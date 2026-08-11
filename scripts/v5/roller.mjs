@@ -33,7 +33,7 @@ export const ROLLER = Object.freeze({
     raadgivende: false,
     freshness: "frisk recon-session, blind for de andre",
     forbyg_input: "hash + forstå HELE pakke-kontekst-bundlet",
-    forbyg_output: "kortlæg hele scope (ikke første-fund) · evidens-trace pr. fund · spørg v. uklarhed",
+    forbyg_output: "komplet scope (ikke første-fund) · forstået (selv-testet) fund · OID-evidens pr. fund · kode-punkt ≠ intet-data",
   },
   "recon-codex": {
     aktoer: "codex",
@@ -42,9 +42,9 @@ export const ROLLER = Object.freeze({
     kode: true,
     ejerMaalelag: false,
     raadgivende: false,
-    freshness: "--ephemeral, blind for de andre",
+    freshness: "--ephemeral, blind for de andre (uafhængighed er strukturel, ikke en jagt)",
     forbyg_input: "hash + forstå HELE pakke-kontekst-bundlet",
-    forbyg_output: "kortlæg hele scope · evidens-trace pr. fund · cross-vendor blik",
+    forbyg_output: "komplet scope · forstået (selv-testet) fund · OID-evidens pr. fund · kode-punkt ≠ intet-data",
   },
   "recon-claude-ai": {
     aktoer: "claude-ai",
@@ -54,8 +54,8 @@ export const ROLLER = Object.freeze({
     ejerMaalelag: false,
     raadgivende: false,
     freshness: "frisk chat, blind for de andre",
-    forbyg_input: "forstå forretnings-konteksten i bundlet",
-    forbyg_output: "forretnings-flade kortlagt · spørg v. uklarhed (aldrig antag)",
+    forbyg_input: "forstå forretnings-konteksten i bundlet + byg fra committet SHA",
+    forbyg_output: "hele forretnings-flade enumereret mod docs-struktur · hvert fund doc-forankret el. intet-data-flaget · spørg v. uklarhed (aldrig antag)",
   },
   "claude-ai": {
     aktoer: "claude-ai",
@@ -66,7 +66,7 @@ export const ROLLER = Object.freeze({
     raadgivende: false,
     freshness: "frisk chat pr. gate",
     forbyg_input: "handover-HALT mod recon-hash + forstå recon",
-    forbyg_output: "fang intentionen + negativerne · kun HVAD · hvert berørt område dækket",
+    forbyg_output: "fang intentionen + negativerne · kun HVAD · hvert berørt område dækket · aldrig antag intention (HALT) · plan-verdikt OID-bundet (tavshed ≠ ja)",
   },
   "planner-code": {
     aktoer: "code",
@@ -77,7 +77,7 @@ export const ROLLER = Object.freeze({
     raadgivende: false,
     freshness: "frisk session, ≠ recon-Code og ≠ builder-Code",
     forbyg_input: "krav-hash + forstå hvert K-n inkl. negativer",
-    forbyg_output: "1:1 m. build · design fejl-klasser UD (constraints/types/RLS) · bid prover-bevisbar",
+    forbyg_output: "krav-ID-matrix (bijektion) · 1:1 m. build · design fejl-klasser UD (constraints/types/RLS) · bid prover-bevisbar",
   },
   "builder-code": {
     aktoer: "code",
@@ -99,7 +99,7 @@ export const ROLLER = Object.freeze({
     raadgivende: false,
     freshness: "frisk session ≠ byggerens",
     forbyg_input: "plan/diff ved SHA + forstå den faktiske logik/opsætning",
-    forbyg_output: "dybde-inspektion → claim_graph_refs (kun gyldig ved eksekveret + dræbt mutant)",
+    forbyg_output: "dybde-inspektion → claim_graph_refs (kun gyldig ved eksekveret + dræbt mutant) · plan⊨krav teknisk-troskab (bid leverer K's HVAD, ikke forretnings-merit)",
   },
   "codex-angreb": {
     aktoer: "codex",

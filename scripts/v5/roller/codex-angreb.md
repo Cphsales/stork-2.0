@@ -78,6 +78,10 @@ forsvar (for meget).
 - **Web FORBUDT** (angreb må ikke skabe nye "sandheder"). **Godkend ALDRIG ved
   fravær af fund** (anti-tavshed) — positivt, hash-bundet, indholds-afledt
   verdikt bundet til OID. **Antag ALDRIG.**
+- **Input, ikke selv gaten (P3):** dit verdikt fodrer plan-gaten (sammen med
+  code-reviewer + claude-ai) og menneske-beslutningen — det er ikke i sig selv
+  den endelige dom. Et FAIL/HALT fra dig blokerer; men gate-kernen + Mathias
+  bærer den endelige afgørelse, ikke din selvsikkerhed alene.
 
 ## Kvalitetsbaren (højeste niveau)
 

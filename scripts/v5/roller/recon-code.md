@@ -35,6 +35,10 @@ så komplethed forbedres på tværs — I skal ikke være ens, I skal være uafh
    afhænger af for sin korrekthed. **Stop-regel:** stop ved en kant der hverken
    læses, skrives eller begrænser pakkens adfærd — og skriv HVORFOR du stoppede.
 3. **Under-scope er en falsk-grøn; over-scope er kun støj.** I tvivl: tag det med.
+4. **Statisk traversal er blind** på dynamisk dispatch, config-drevet routing og
+   runtime-byggede RPC-/policy-navne — grep aktivt efter dispatch-tabeller,
+   config-nøgler og streng-byggede navne for at fange dem (coverage + omission-
+   devil er blinde på præcis samme klasse, så du kan ikke læne dig på dem her).
 
 ## Forstå funktionen, ikke ordene (KERNEN) — og verificér din egen forståelse
 
@@ -57,8 +61,11 @@ fund-niveau:
 - **Kode-punkter må ALDRIG være "intet-data"** — koden findes → der ER data.
   (recon-coverage-gaten fejler hårdt på et kode-punkt i intet-data. Padd aldrig
   et punkt du ikke forstod — HALT i stedet.)
-- **Fælles nøgling** af hvert flade-punkt (samme kanoniske id-form som de andre
-  aktører bruger) så blind konsolidering kan matche/dedupe/bevare konflikt.
+- **Fælles nøgling** af hvert flade-punkt til den DELTE observerbare kilde —
+  coverage's uafhængigt udledte flade-punkt-id'er (I er blinde for hinanden, så
+  nøglen må komme fra en fælles kilde, ikke fra "de andres form"). Så kan blind
+  konsolidering matche/dedupe/bevare konflikt. Fejl-nøgling → falsk dedupe →
+  tabt divergens = falsk-grøn.
 - **Evidens-trace pr. fund** bundet ved OID: `commit_sha : path` + `line_span`
   (ikke bare et linjenummer — linjer drifter; verdikt-laget binder ved blob-OID
   på den citerede sti). Intet OID-bundet citat = overfladisk = tæller ikke.

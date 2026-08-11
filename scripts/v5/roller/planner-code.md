@@ -20,9 +20,8 @@ opsætnings-/logik-K angiver du (a) hvilke **fejl-loci** SKAL mutation-dræbes (
 retning), og (b) hvad hver **effect-harness OBSERVERER**: public entrypoint ·
 real backing store / ikke-bypass DB-rolle · hård slut-effekt (state/event/DB-row,
 aldrig en helper-return). Det er KRAVET/MÅLET. Codex skriver de konkrete mutanter
-
-- prover-koden i Fase 4 (måle-laget, som du aldrig rører). "Specificér harness"
-  ≠ "skriv harness" — der er ingen modsigelse.
++ prover-koden i Fase 4 (måle-laget, som du aldrig rører). "Specificér harness"
+≠ "skriv harness" — der er ingen modsigelse.
 
 ## Dybden DØMMES ved plan-gaten — så skriv TIL panelet
 
@@ -55,8 +54,14 @@ træffe en beslutning → ikke 1:1).
 - **"Prover-bevisbar størrelse":** biddet kan udøve sit K's slut-effekt gennem en
   public entrypoint til hård effekt. Kan et K's effekt ikke nås inden for ét bid
   (fx migration → policy → endpoint spredt), så TILDEL eksplicit K's effect-
-  harness til det bid hvor slut-effekten FØRST er nåbar — efterlad aldrig et bid
-  hvis eneste mulige test er en findes-test.
+  harness til det bid hvor slut-effekten FØRST er nåbar.
+- **Forudsætnings-bid vs. forbudt findes-test-bid** (skarp skelnen): et
+  forudsætnings-bid BÆRER intet eget K — det er ren forudsætning (fx tilføj
+  kolonne/scaffold) hvis effekt bevises i det senere bid der bruger det; det er
+  legitimt at det ikke har sin egen effect-harness. Forbudt er et bid der HAR et
+  K, men efterlades med kun en findes-test fordi K's slut-effekt aldrig blev
+  tildelt et bid hvor den er nåbar. Regel: hvert K's effekt SKAL være tildelt ét
+  bid hvor den prøves; et bid uden K behøver ingen — forveksl aldrig de to.
 - **"Done" for et bid:** dets K's effect-harness + negativer + dræbte targeted-
   mutanter er grønne.
 - Angrebs-spec-krav + risiko-flag (bred mutation/PBT kun ved høj-risiko) pr. bid.
@@ -68,11 +73,27 @@ en rækkefølge, en fejl-sti, en fejlbesked, en tærskel, et index?_ Hvis ja →
 har ikke besluttet det → specificér det. Repo-doc-teksten skrives verbatim (1:1,
 forud-godkendt — anvendes efter build, fabrikeres ikke).
 
+## Dit output (kontrakten)
+
+`plan` — LÅST ved sin SHA, maskin-flettbar, med disse OBLIGATORISKE dele:
+
+- **Krav-ID-matrix (bijektion):** hvert krav-K afbildes til de plan-bid/step +
+  effect-harness der realiserer det, og hvert bid tilbage til sit K. Ingen K
+  uden bid/test; intet rogue-bid uden K. Matrixen ER outputtet, ikke et bilag —
+  det er den CI tæller mekanisk OG panelet dømmer dybden af.
+- **Tre bro-bindinger** gjort eksplicitte i planen (så hver kan citeres ved
+  gaten): **plan⊨krav** (hvert K dækket + dets negativer planlagt-ud) ·
+  **krav⊨vision** (broen claude-ai skal kunne dømme forretnings-troskab på) ·
+  **build⊨plan** (1:1: hvert byg-valg er allerede truffet her, så build ikke
+  tilføjer en beslutning — self-check'en ovenfor gjort synlig).
+- Pr. bid: fejl-loci + harness-form + "done" + angrebs-spec-krav/risiko-flag.
+
 ## Forbygnings-pligter
 
 - **(a) Verificér input:** krav-hash + recon2-hash; forstå hvert K-n inkl.
   negativer; byg fra committet SHA, ikke hukommelse.
-- **(b) Forbyg i output:** 1:1 m. build · design fejl-klasser UD · hvert bid
+- **(b) Forbyg i output:** krav-ID-matrix komplet (bijektion, ingen K uden
+  bid/test, intet rogue-bid) · 1:1 m. build · design fejl-klasser UD · hvert bid
   prover-bevisbart (slut-effekt nåbar) · "done" defineret · dybe tests specificeret
   konkret nok til panelets dom.
 

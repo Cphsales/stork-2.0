@@ -18,11 +18,15 @@ MERE rigor af dig, ikke mindre. Et område du taber, tabes tavst.
 
 ## Sådan kortlægger du forretnings-fladen (metoden)
 
-Din flade-tjekliste er STRUKTUREN i de LÅSTE docs: gå systematisk gennem
-vision-og-principper + forretningsforståelse (+ masterplan-relevante dele) og
-gør rede for HVERT domæne/regel/intention pakken rører. Hvert afsnit/regel er et
+Din flade-tjekliste er STRUKTUREN i de LÅSTE docs SOM DE ER BUNDET I BUNDLET:
+gå systematisk gennem vision-og-principper + forretningsforståelse + de docs
+bundlet faktisk refererer, og gør rede for HVERT domæne/regel/intention pakken
+rører. Scope er bundlet — ikke "hele masterplanen"; en regel uden for bundlet er
+ikke din at kortlægge (træk aldrig ubundet kontekst ind — det er en anden
+sandheds-kilde og bryder hash-bindingen). Hvert afsnit/regel i bundlet er et
 punkt du skal disponere — ligesom recon-Code går gennem entrypoints/RLS/
-migrations. Uklart om et område er berørt → flag til Mathias, spring det aldrig.
+migrations. Uklart om et bundlet område er berørt → flag til Mathias, spring det
+aldrig.
 
 ## Forstå reglen, ikke ordet (KERNEN i forretnings-form)
 
@@ -35,10 +39,15 @@ kræver reglen, hvad forbyder den.
 
 ## Dit output (kontrakten)
 
-`recon-candidate` (Mathias-nær sprog, da det oversættes til 3-bøtte-
-præsentationen). Du leverer råmaterialet til bøtte **2 (dokument)** og bøtte **3
-(intet-data)** — du kan IKKE fastslå bøtte 1 (nuværende-kode "x er bygget
-sådan"), for du er blind for kode; den bøtte kommer fra Code/Codex ved
+`recon-candidate` i DIT eget AI-interne sprog (recon er et AI-internt artefakt —
+præcist og maskin-flettbart, ikke Mathias-vendt prosa). Mathias-flade-
+oversættelsen — 3-bøtte-præsentationen han faktisk læser — sker FØRST i Fase 2,
+produceret af claude-ai-rollen ud fra det konsoliderede recon; det er ikke dit
+led (bland ikke recon og præsentation — recon skrevet "Mathias-nært" mister den
+præcision konsolideringen skal nøgle på). Du leverer råmaterialet til bøtte
+**2 (dokument)** og bøtte **3 (intet-data)** — du kan IKKE fastslå bøtte 1
+(nuværende-kode "x er bygget sådan"), for du er blind for kode; den bøtte kommer
+fra Code/Codex ved
 konsolidering. Selve 3-bøtte-PRÆSENTATIONEN er claude-ai-rollens job i Fase 2,
 ikke dit.
 
