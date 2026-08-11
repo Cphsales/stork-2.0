@@ -32,9 +32,30 @@ const isHuman = (gateId) => HUMAN_GATES.includes(gateId);
 //   "inconsistent"  — en gate er åben uden at forgængeren er (stale/manipuleret
 //                     check-runs) → fail-closed
 export function decideNext(state) {
-  if (state === null || typeof state !== "object") return { action: "inconsistent", reason: "state mangler" };
+  if (state === null || typeof state !== "object" || Array.isArray(state))
+    return { action: "inconsistent", reason: "state mangler/ugyldig" };
+  // streng type-validering (fail-closed): malformeret/manipuleret state må
+  // ALDRIG tavst blive til et normalt flow — halt-bypass eller falsk 'done'.
+  if (state.halt !== undefined && typeof state.halt !== "boolean")
+    return { action: "inconsistent", reason: "halt er ikke boolean (fail-closed)" };
+  if (state.launched !== undefined && typeof state.launched !== "boolean")
+    return { action: "inconsistent", reason: "launched er ikke boolean" };
   const open = state.open ?? {};
-  const isOpen = (id) => open[id] === true;
+  if (open === null || typeof open !== "object" || Array.isArray(open))
+    return { action: "inconsistent", reason: "open er ikke et objekt" };
+  // plain object kun: en ikke-standard prototype (Object.create(...)) er
+  // manipuleret input — afvis frem for at gætte (arvede "true" ignoreres alligevel).
+  const proto = Object.getPrototypeOf(open);
+  if (proto !== Object.prototype && proto !== null)
+    return { action: "inconsistent", reason: "open har ikke-standard prototype (manipuleret)" };
+  for (const k of Object.keys(open))
+    if (!CHAIN.includes(k)) return { action: "inconsistent", reason: `ukendt gate i open: '${k}'` };
+  for (const id of CHAIN)
+    if (Object.prototype.hasOwnProperty.call(open, id) && typeof open[id] !== "boolean")
+      return { action: "inconsistent", reason: `open['${id}'] er ikke boolean` };
+
+  // egne felter (ikke arvede) + eksplicit true
+  const isOpen = (id) => Object.prototype.hasOwnProperty.call(open, id) && open[id] === true;
 
   if (state.halt === true) return { action: "halt", reason: "durabelt HALT-flag sat — kæden bygger ikke videre" };
   if (state.launched !== true) return { action: "await-qwers", reason: "ikke åbnet (afventer qwers)" };

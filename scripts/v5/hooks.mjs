@@ -7,9 +7,14 @@
 // der er måle-lag / sandhed / produkt — samme definition genbruges senere af
 // ruleset-genereringen, så hook og platform ikke kan divergere.
 //
-// Kernen er ren path-klassificering: robust normalisering (relativ/absolut/..)
-// + SEGMENT-sikker prefix-match (scripts/v5 rammer ikke scripts/v5x). En
-// tekstuel sti klassificeres; symlink-escape er sandboxens bord (jf. prover).
+// Kernen er ren path-klassificering: robust normalisering (relativ/absolut/.. ·
+// backslash→separator) + SEGMENT-sikker prefix-match (scripts/v5 rammer ikke
+// scripts/v5x). En tekstuel sti klassificeres; symlink-escape er sandboxens
+// bord (jf. prover).
+//
+// PLATFORM (bevidst): klassificeringen er case-SENSITIV og POSIX — det matcher
+// præcis hvad git/GitHub håndhæver på vores stak (Linux/WSL2). En case-fold
+// ville DIVERGERE fra platformen. Windows-runtime er uden for scope.
 
 import { isAbsolute, relative, resolve, sep } from "node:path";
 
@@ -35,8 +40,11 @@ const underAny = (relPath, prefixes) => prefixes.some((p) => underPrefix(relPath
 export function toRepoRel(rawPath, repoRoot) {
   if (typeof rawPath !== "string" || rawPath.length === 0) return { relPath: null, escapes: true };
   if (typeof repoRoot !== "string" || repoRoot.length === 0) return { relPath: null, escapes: true };
+  // backslash → separator FØR klassificering: 'scripts\v5\x' skal ikke slippe
+  // forbi måle-lags-matchen som et "produkt"-filnavn (fail-closed).
+  const posixRaw = rawPath.replaceAll("\\", "/");
   const root = resolve(repoRoot);
-  const abs = isAbsolute(rawPath) ? resolve(rawPath) : resolve(root, rawPath);
+  const abs = isAbsolute(posixRaw) ? resolve(posixRaw) : resolve(root, posixRaw);
   const rel = relative(root, abs);
   // uden for repo: relative giver "" (= roden selv, ok) eller starter med ".."
   if (rel === "") return { relPath: "", escapes: false };
@@ -61,7 +69,12 @@ export function pathZone(rawPath, repoRoot) {
 // - produkt, før plan-laast → deny (default-deny: intet produkt bygges før plan OK)
 // - produkt, efter plan-laast → allow (build-fasen; de finere attack-spec-/
 //   driver-routing-regler tilføjes med driver-biddet)
-export function writeDecision({ rawPath, repoRoot, planLocked = false }) {
+export function writeDecision(input) {
+  // fail-closed på malformeret input: en hook-API skal returnere deny, aldrig
+  // kaste (en wrapper der fejlhåndterer en exception kunne blive fail-open).
+  if (input === null || typeof input !== "object")
+    return { decision: "deny", zone: "udenfor", reason: "ugyldigt input (fail-closed)" };
+  const { rawPath, repoRoot, planLocked } = input;
   const zone = pathZone(rawPath, repoRoot);
   switch (zone) {
     case "udenfor":
@@ -71,7 +84,8 @@ export function writeDecision({ rawPath, repoRoot, planLocked = false }) {
     case "maale-lag":
       return { decision: "deny", zone, reason: "måle-laget ejes af Codex/CI (der måler ≠ der bygger)" };
     case "produkt":
-      return planLocked
+      // eksplicit true — en truthy string/tal/objekt må ALDRIG åbne produkt-skriv.
+      return planLocked === true
         ? { decision: "allow", zone, reason: "produkt-skriv tilladt efter plan-laast (build-fasen)" }
         : { decision: "deny", zone, reason: "default-deny: intet produkt bygges før plan OK (plan-laast)" };
     default:

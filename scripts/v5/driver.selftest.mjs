@@ -76,6 +76,28 @@ expect(
   "inconsistent",
 );
 
+console.log("\nCodex P2-regressioner — malformeret state fail-lukker (2026-08-11):");
+expect(
+  "arvede open-felter (prototype) → inconsistent",
+  { launched: true, open: Object.create({ recon: true, krav: true, plan: true, build: true, slut: true }) },
+  "inconsistent",
+);
+expect(
+  "ekstra ukendt gate i open → inconsistent",
+  { launched: true, open: { recon: true, krav: true, plan: true, build: true, slut: true, fake: true } },
+  "inconsistent",
+);
+expect("non-boolean open-værdi → inconsistent", { launched: true, open: { recon: 1 } }, "inconsistent");
+expect("open som tal → inconsistent", { launched: true, open: 42 }, "inconsistent");
+expect(
+  "non-boolean halt (string) → inconsistent (ingen bypass)",
+  { launched: true, halt: "true", open: { recon: true } },
+  "inconsistent",
+);
+expect("non-boolean launched → inconsistent", { launched: 1, open: {} }, "inconsistent");
+expect("state som array → inconsistent", [], "inconsistent");
+expect("manglende open (frisk start) → advance-auto/recon", { launched: true }, "advance-auto", "recon");
+
 console.log("");
 if (failed > 0) {
   console.error(`driver red-team: ${failed} FEJLEDE`);

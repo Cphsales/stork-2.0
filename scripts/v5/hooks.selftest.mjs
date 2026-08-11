@@ -76,6 +76,32 @@ denies("produkt før plan-laast deny (default-deny)", {
 allows("produkt efter plan-laast allow", { rawPath: "apps/web/src/x.ts", repoRoot: ROOT, planLocked: true });
 denies("produkt default planLocked (udeladt = false)", { rawPath: "apps/web/src/x.ts", repoRoot: ROOT });
 
+console.log("\nCodex P2-regressioner (2026-08-11):");
+eqZone("scripts\\v5\\gates.mjs", "maale-lag"); // backslash → separator (fail-closed)
+eqZone("docs\\sandhed\\vision.md", "sandhed");
+eqZone(".github\\workflows\\ci.yml", "maale-lag");
+denies("backslash måle-lag deny (efter plan)", { rawPath: "scripts\\v5\\x.mjs", repoRoot: ROOT, planLocked: true });
+denies('planLocked="false" (truthy string) → deny', { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: "false" });
+denies("planLocked=1 (truthy tal) → deny", { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: 1 });
+denies("planLocked={} (truthy objekt) → deny", { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: {} });
+allows("planLocked===true (ægte) → allow", { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: true });
+for (const [label, arg] of [
+  ["null", null],
+  ["undefined", undefined],
+  ["streng", "scripts/v5/x"],
+  ["tal", 42],
+]) {
+  let r, threw;
+  try {
+    r = writeDecision(arg);
+  } catch {
+    threw = true;
+  }
+  !threw && r?.decision === "deny"
+    ? ok(`writeDecision(${label}) → deny (kaster ikke, fail-closed)`)
+    : bad(`ugyldigt-input-${label}`, threw ? "kastede" : r?.decision);
+}
+
 console.log("");
 if (failed > 0) {
   console.error(`hooks red-team: ${failed} FEJLEDE`);
