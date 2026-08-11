@@ -48,9 +48,72 @@ const normIdent = (raw) =>
     .map((part) => (part.startsWith('"') ? part.slice(1, -1).replaceAll('""', '"') : part))
     .join(".");
 
-// fjern SQL-kommentarer (linje -- og block /* */) FØR scanning, så
-// udkommenteret DDL ikke tælles og kommentarer mellem tokens ikke skjuler DDL.
-const stripSqlComments = (sql) => sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+// Fjern SQL-kommentarer FØR scanning, så udkommenteret DDL ikke tælles og
+// kommentarer mellem tokens ikke skjuler DDL — men KONTEKST-AWARE: en lineær
+// scanner der forstår string-literals ('' -escape), dollar-quotes ($tag$),
+// quoted identifiers ("" -escape) og NESTEDE block-kommentarer. En regex kan
+// ikke: kommentar-syntaks INDE i en streng ('/* ...') må ALDRIG strippes, da
+// det ellers ville sluge en efterfølgende reel enable-RLS-statement (Codex-
+// fund). Kommentarer → ét mellemrum (tokens smelter ikke sammen).
+function stripSqlComments(sql) {
+  let out = "";
+  let i = 0;
+  const n = sql.length;
+  const scanQuoted = (q) => {
+    // q allerede ét quote-tegn ind; kopiér til afsluttende q ('' / "" = escape)
+    while (i < n) {
+      if (sql[i] === q && sql[i + 1] === q) {
+        out += q + q;
+        i += 2;
+        continue;
+      }
+      if (sql[i] === q) {
+        out += q;
+        i++;
+        return;
+      }
+      out += sql[i];
+      i++;
+    }
+  };
+  while (i < n) {
+    const c = sql[i];
+    const c2 = sql[i + 1];
+    if (c === "-" && c2 === "-") {
+      // line comment → mellemrum, dropp resten af linjen
+      i += 2;
+      while (i < n && sql[i] !== "\n") i++;
+      out += " ";
+    } else if (c === "/" && c2 === "*") {
+      // block comment (nested) → mellemrum
+      let depth = 1;
+      i += 2;
+      while (i < n && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") ((depth += 1), (i += 2));
+        else if (sql[i] === "*" && sql[i + 1] === "/") ((depth -= 1), (i += 2));
+        else i++;
+      }
+      out += " ";
+    } else if (c === "'" || c === '"') {
+      out += c;
+      i++;
+      scanQuoted(c); // string-literal / quoted identifier — bevares urørt
+    } else {
+      const dq = /^\$([A-Za-z_][A-Za-z0-9_]*|)\$/.exec(sql.slice(i));
+      if (dq) {
+        const tag = dq[0];
+        const end = sql.indexOf(tag, i + tag.length);
+        const stop = end === -1 ? n : end + tag.length;
+        out += sql.slice(i, stop); // dollar-quote-krop bevares urørt
+        i = stop;
+      } else {
+        out += c;
+        i++;
+      }
+    }
+  }
+  return out;
+}
 
 const uniqPush = (arr, seen, point) => {
   if (!seen.has(point.id)) {

@@ -235,6 +235,38 @@ console.log("\nCodex-fund (genangreb) — RLS-regex krydser ikke statement-græn
     : bad("only-tolerance", id3.join(", "));
 }
 
+console.log("\nCodex-fund (final) — kommentar-syntaks i string-literal skjuler ikke reel DDL:");
+{
+  const R4 = mkdtempSync(join(tmpdir(), "v5-coverage-str-"));
+  process.on("exit", () => rmSync(R4, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", R4]);
+  const g4 = makeGit(R4);
+  g4("config", "user.name", "selftest");
+  g4("config", "user.email", "selftest@local");
+  mkdirSync(join(R4, "supabase/migrations"), { recursive: true });
+  writeFileSync(
+    join(R4, "supabase/migrations/0001.sql"),
+    "select '/* ikke en kommentar, bare en streng-literal';\n" +
+      "alter table public.accounts enable row level security;\n" +
+      "select '*/ også bare en streng-literal';\n",
+  );
+  // + nested block-kommentar der SKAL strippe (rigtig kommentar)
+  writeFileSync(
+    join(R4, "supabase/migrations/0002.sql"),
+    "/* ydre /* indre */ stadig kommentar */\nalter table public.rigtig enable row level security;\n",
+  );
+  g4("add", "-A");
+  g4("commit", "-qm", "string-literal + nested comment");
+  const C4 = g4("rev-parse", "HEAD");
+  const id4 = deriveSurface({ git: g4, commitSha: C4 }).points.map((p) => p.id);
+  id4.includes("rls_enabled:public.accounts")
+    ? ok("reel enable-RLS mellem to '/*'-streng-literals deriveret (ikke slugt)")
+    : bad("string-literal-skjul", id4.join(", "));
+  id4.includes("rls_enabled:public.rigtig")
+    ? ok("statement efter NESTET block-kommentar deriveret korrekt")
+    : bad("nested-comment", id4.join(", "));
+}
+
 console.log("\nCodex-fund — git-show-fejl er fail-closed (ingen tavs tom SQL):");
 {
   const fakeGit = (...args) => {
