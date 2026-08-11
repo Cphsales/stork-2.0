@@ -1,0 +1,153 @@
+#!/usr/bin/env node
+// gate-eval.selftest.mjs — red-team af server-side dommer-broen (plan DEL VI (a)).
+// Beviser at buildSnapshot resolver artefakt+bindinger fra RÅ git via layoutet
+// (inkl. <pakke>-substitution) og integrerer med evaluateGate ende-til-ende.
+
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { buildSnapshot, DEFAULT_LAYOUT } from "./gate-eval.mjs";
+import { evaluateGate } from "./gates.mjs";
+import { makeGit, resolveRef } from "./git.mjs";
+import { deriveSurface } from "./coverage.mjs";
+import { makeProofVerifier } from "./proofs.mjs";
+
+let failed = 0;
+const ok = (n) => console.log(`  ✓ ${n}`);
+const bad = (n, d) => {
+  console.error(`  ✗ ${n} — ${d}`);
+  failed++;
+};
+
+// ---------- fixture ----------
+const ROOT = mkdtempSync(join(tmpdir(), "v5-gate-eval-"));
+process.on("exit", () => rmSync(ROOT, { recursive: true, force: true }));
+execFileSync("git", ["init", "-q", ROOT]);
+const git = makeGit(ROOT);
+git("config", "user.name", "selftest");
+git("config", "user.email", "selftest@local");
+
+const PAKKE = "pakke-x";
+const FILES = {
+  "launch/launch.json": JSON.stringify({ anker: PAKKE, pakke: PAKKE }) + "\n",
+  "recon/bundle.json": JSON.stringify({ docs: ["vision.md"] }) + "\n",
+  "recon/recon.md": "# recon\n",
+  [`plan-build/${PAKKE}/recon2.md`]: "# recon2\n",
+  [`docs/sandhed/krav/${PAKKE}-krav.md`]: "# krav\n## K-1\nAcceptkriterie: negativ.\n",
+  [`plan-build/${PAKKE}/plan.md`]: "# plan\n",
+  "supabase/migrations/0001.sql":
+    "alter table salg enable row level security;\n" +
+    'create policy "salg_egen" on salg for select using (org_id = auth_org());\n',
+};
+for (const [p, c] of Object.entries(FILES)) {
+  mkdirSync(join(ROOT, dirname(p)), { recursive: true });
+  writeFileSync(join(ROOT, p), c);
+}
+git("add", "-A");
+git("commit", "-qm", "fixture");
+const COMMIT = git("rev-parse", "HEAD");
+
+// recon-coverage-proof-input (fuld dækning), som i proofs.selftest
+const bundle = resolveRef(git, COMMIT, "recon/bundle.json");
+const launch = resolveRef(git, COMMIT, "launch/launch.json");
+const recon = resolveRef(git, COMMIT, "recon/recon.md");
+const reconProof = () => {
+  const bucket_map = {};
+  for (const p of deriveSurface({ git, commitSha: COMMIT }).points)
+    bucket_map[p.id] = p.kind === "config" ? "dokument" : "nuvaerende-kode";
+  return {
+    ok: true,
+    gate_id: "recon",
+    proof_kind: "recon-coverage",
+    artifact_oid: recon.oid,
+    bindings_oids: { anker: launch.oid, bundle: bundle.oid },
+    bucket_map,
+    independence: {
+      bundle_oid: bundle.oid,
+      actors: ["code", "codex", "claude-ai"].map((a) => ({
+        aktor: a,
+        workdir_attest: true,
+        web_forbud_attest: true,
+        read_forbud_attest: true,
+      })),
+    },
+    conflicts_preserved: true,
+    omission_devil: { conclusion: "PASS" },
+  };
+};
+
+console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
+{
+  const snap = buildSnapshot("recon", { git, commitSha: COMMIT, pakke: PAKKE, proofResult: reconProof() });
+  snap.artifact?.path === "recon/recon.md"
+    ? ok("recon-artefakt resolvet fra git")
+    : bad("recon-artifact", JSON.stringify(snap.artifact));
+  snap.bindings.anker?.path === "launch/launch.json" && snap.bindings.bundle?.path === "recon/bundle.json"
+    ? ok("recon-bindinger (anker+bundle) resolvet")
+    : bad("recon-bindings", JSON.stringify(snap.bindings));
+}
+{
+  // <pakke>-substitution i krav/plan-stier
+  const snap = buildSnapshot("krav", { git, commitSha: COMMIT, pakke: PAKKE });
+  snap.artifact?.path === `docs/sandhed/krav/${PAKKE}-krav.md`
+    ? ok("krav-artefakt-sti <pakke>-substitueret korrekt")
+    : bad("krav-path", JSON.stringify(snap.artifact));
+  snap.bindings.recon?.path === "recon/recon.md" && snap.bindings.anker?.path === "launch/launch.json"
+    ? ok("krav-bindinger resolvet")
+    : bad("krav-bindings", JSON.stringify(snap.bindings));
+}
+{
+  const snap = buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE });
+  snap.bindings.recon2?.path === `plan-build/${PAKKE}/recon2.md`
+    ? ok("plan-binding recon2 <pakke>-substitueret")
+    : bad("recon2", JSON.stringify(snap.bindings.recon2));
+}
+
+console.log("\nende-til-ende — buildSnapshot + evaluateGate (recon-gaten):");
+{
+  const snap = buildSnapshot("recon", { git, commitSha: COMMIT, pakke: PAKKE, proofResult: reconProof() });
+  const r = evaluateGate("recon", snap, { verifyProof: makeProofVerifier({ git }) });
+  r.open ? ok("recon-gaten ÅBNER via gate-eval-broen") : bad("e2e-grøn", r.reasons.join(" | "));
+}
+{
+  // manglende binding-fil (layout peger forkert) → rød
+  const layout = { ...DEFAULT_LAYOUT, bundle: "findes/ikke.json" };
+  const snap = buildSnapshot("recon", { git, commitSha: COMMIT, pakke: PAKKE, layout, proofResult: reconProof() });
+  const r = evaluateGate("recon", snap, { verifyProof: makeProofVerifier({ git }) });
+  !r.open && r.reasons.some((x) => /binding 'bundle'/.test(x))
+    ? ok("manglende binding-fil → gaten lukker (fail-closed)")
+    : bad("e2e-manglende-binding", r.open ? "ÅBNEDE" : r.reasons.join(" | "));
+}
+{
+  // ukendt pakke → artefakt findes ikke → rød (ikke kast)
+  const snap = buildSnapshot("krav", { git, commitSha: COMMIT, pakke: "findes-ikke" });
+  snap.artifact === null
+    ? ok("ukendt pakke → artefakt-ref null (evaluateGate fail-lukker)")
+    : bad("ukendt-pakke", JSON.stringify(snap.artifact));
+}
+
+console.log("\nfail-closed input-validering:");
+const throws = (n, fn, needle) => {
+  try {
+    fn();
+    bad(n, "kastede ikke");
+  } catch (e) {
+    new RegExp(needle).test(e.message) ? ok(n) : bad(n, `forkert fejl: ${e.message}`);
+  }
+};
+throws("ukendt gate → kast", () => buildSnapshot("vrøvl", { git, commitSha: COMMIT, pakke: PAKKE }), "ukendt gate");
+throws(
+  "pakke med traversal → kast",
+  () => buildSnapshot("krav", { git, commitSha: COMMIT, pakke: "../etc" }),
+  "ugyldig pakke",
+);
+throws("tom commitSha → kast", () => buildSnapshot("recon", { git, commitSha: "", pakke: PAKKE }), "commitSha mangler");
+throws("git-dep mangler → kast", () => buildSnapshot("recon", { commitSha: COMMIT, pakke: PAKKE }), "git-dep mangler");
+
+console.log("");
+if (failed > 0) {
+  console.error(`gate-eval red-team: ${failed} FEJLEDE`);
+  process.exit(1);
+}
+console.log("gate-eval red-team: alle cases passed");
