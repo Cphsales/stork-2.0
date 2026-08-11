@@ -163,6 +163,81 @@ expectGreen(
   ),
 );
 
+// ---------- Codex P2-regressioner (2026-08-11) ----------
+console.log("\nCodex-fund — SQL-former der før slap forbi derivationen:");
+{
+  const R2 = mkdtempSync(join(tmpdir(), "v5-coverage-sql-"));
+  process.on("exit", () => rmSync(R2, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", R2]);
+  const g2 = makeGit(R2);
+  g2("config", "user.name", "selftest");
+  g2("config", "user.email", "selftest@local");
+  mkdirSync(join(R2, "supabase/migrations"), { recursive: true });
+  writeFileSync(
+    join(R2, "supabase/migrations/0001.sql"),
+    "alter table if exists public.accounts enable row level security;\n" +
+      "create /* vigtig */ policy block_comment_policy on public.accounts for select using (true);\n" +
+      'create policy quoted_qualified on "public"."accounts" for insert with check (true);\n' +
+      'create policy "quoted""navn" on public.accounts for update using (true);\n' +
+      "alter policy altered_policy on public.accounts using (true);\n",
+  );
+  g2("add", "-A");
+  g2("commit", "-qm", "sql-kanter");
+  const C2 = g2("rev-parse", "HEAD");
+  const s2 = deriveSurface({ git: g2, commitSha: C2 });
+  const id2 = s2.points.map((p) => p.id);
+  const h2 = (id) => id2.includes(id);
+
+  h2("rls_enabled:public.accounts")
+    ? ok("ENABLE RLS med 'if exists' + skema.tabel")
+    : bad("if-exists-rls", id2.join(", "));
+  h2("rls_policy:public.accounts:block_comment_policy")
+    ? ok("CREATE POLICY med block-kommentar mellem tokens")
+    : bad("block-comment-policy", id2.join(", "));
+  h2("rls_policy:public.accounts:quoted_qualified")
+    ? ok('quoted-qualified tabel "public"."accounts" normaliseret korrekt')
+    : bad("quoted-qualified", id2.join(", "));
+  h2('rls_policy:public.accounts:quoted"navn')
+    ? ok('citeret policy-navn med ""-escape')
+    : bad("quoted-escape", id2.join(", "));
+  h2("rls_policy:public.accounts:altered_policy")
+    ? ok("ALTER POLICY deriveres (ikke kun CREATE)")
+    : bad("alter-policy", id2.join(", "));
+}
+
+console.log("\nCodex-fund — git-show-fejl er fail-closed (ingen tavs tom SQL):");
+{
+  const fakeGit = (...args) => {
+    if (args[0] === "ls-tree") return "supabase/migrations/0001.sql";
+    if (args[0] === "show") throw new Error("simuleret læsefejl (fx > maxBuffer)");
+    return "";
+  };
+  let threw = false;
+  try {
+    deriveSurface({ git: fakeGit, commitSha: "deadbeef" });
+  } catch (e) {
+    threw = /fail-closed/.test(e.message);
+  }
+  threw
+    ? ok("ulæselig migration → deriveSurface kaster (fail-closed, ikke tom SQL)")
+    : bad("git-show-fail-closed", "slugte fejlen");
+}
+
+console.log("\nCodex-fund — checkCoverage afviser arvede disposition-felter:");
+expectRed(
+  "disposition med prototype-felter → rød",
+  checkCoverage(
+    surface,
+    (() => {
+      const d = fullDisp();
+      const anyId = surface.points[0].id;
+      d[anyId] = Object.create({ bøtte: "dokument", disposition: "behandlet" });
+      return d;
+    })(),
+  ),
+  "egne felter",
+);
+
 console.log("");
 if (failed > 0) {
   console.error(`coverage red-team: ${failed} FEJLEDE`);

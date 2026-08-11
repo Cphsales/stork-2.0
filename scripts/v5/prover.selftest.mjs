@@ -47,8 +47,13 @@ expectRed(
   judgeTestSummary({ total: 2, passed: 3, failed: -1, skipped: 0 }),
   "ikke et ikke-negativt heltal",
 );
-expectRed("manglende felt", judgeTestSummary({ total: 2, passed: 2 }), "ikke et ikke-negativt heltal");
+expectRed("manglende felt", judgeTestSummary({ total: 2, passed: 2 }), "mangler egent felt");
 expectRed("ikke et objekt", judgeTestSummary(null), "mangler");
+expectRed(
+  "arvede felter (prototype) = rød",
+  judgeTestSummary(Object.create({ total: 1, passed: 1, failed: 0, skipped: 0 })),
+  "mangler egent felt",
+);
 expectRed(
   "streng-tal (ingen coercion)",
   judgeTestSummary({ total: "4", passed: "4", failed: "0", skipped: "0" }),
@@ -148,8 +153,66 @@ expectRed(
 expectRed(
   "ukendt commit-sha",
   runProver({ repoRoot: ROOT, commitSha: "0".repeat(40), cmd: CMD, resultRelPath: "result.json", git }),
-  "kan ikke arkivere",
+  "kan ikke checke commit",
 );
+expectRed(
+  "resultRelPath med .. (escape) → rød",
+  runProver({ repoRoot: ROOT, commitSha: cCommittedGreen, cmd: CMD, resultRelPath: "../escape.json", git }),
+  "inde i worktree",
+);
+
+// ---------- Codex P2-regressioner (2026-08-11) ----------
+console.log("\nCodex-fund — git worktree tager HELE committede tree (ikke export-ignore-filtreret):");
+{
+  // .gitattributes export-ignore på en committet FEJL-markør. git archive ville
+  // udelade t/FAIL → runner ser den ikke → falsk-grøn. worktree tager den med.
+  writeFileSync(
+    join(ROOT, "t/run.mjs"),
+    `import { existsSync, writeFileSync } from "node:fs";\n` +
+      `const failing = existsSync("t/FAIL");\n` +
+      `writeFileSync("result.json", JSON.stringify({ total: 1, passed: failing ? 0 : 1, failed: failing ? 1 : 0, skipped: 0 }));\n` +
+      `process.exit(failing ? 1 : 0);\n`,
+  );
+  writeFileSync(join(ROOT, "t/FAIL"), "en committet fejlende test\n");
+  writeFileSync(join(ROOT, ".gitattributes"), "t/FAIL export-ignore\n");
+  const cIgnore = commitAll("export-ignore på committet fejl-markør");
+  expectRed(
+    "export-ignoreret committet fejl ses stadig (worktree, ikke archive)",
+    runProver({ repoRoot: ROOT, commitSha: cIgnore, cmd: CMD, resultRelPath: "result.json", git }),
+    "fejlede|exit",
+  );
+  // ryd op så senere cases ikke arver FAIL/.gitattributes
+  rmSync(join(ROOT, "t/FAIL"), { force: true });
+  rmSync(join(ROOT, ".gitattributes"), { force: true });
+}
+
+console.log("\nCodex-fund — committet/stale result-fil tæller ikke (slettes før kør):");
+{
+  writeRunner(`{ total: 2, passed: 2, failed: 0, skipped: 0 }`); // committer OGSÅ en grøn result.json
+  writeFileSync(join(ROOT, "result.json"), JSON.stringify({ total: 9, passed: 9, failed: 0, skipped: 0 }));
+  // men runneren SKRIVER intet (kun exit 0) — så kun den committede stale fil ville findes
+  writeFileSync(join(ROOT, "t/run.mjs"), `process.exit(0);\n`);
+  const cStale = commitAll("committet stale result.json + runner der intet skriver");
+  expectRed(
+    "committet grøn result.json kan ikke overleve (slettet før kør)",
+    runProver({ repoRoot: ROOT, commitSha: cStale, cmd: CMD, resultRelPath: "result.json", git }),
+    "kunne ikke læses",
+  );
+  rmSync(join(ROOT, "result.json"), { force: true });
+}
+
+console.log("\nCodex-fund — submodules fail-closed (ufuldstændig committet testflade):");
+{
+  writeRunner(`{ total: 1, passed: 1, failed: 0, skipped: 0 }`);
+  writeFileSync(join(ROOT, ".gitmodules"), '[submodule "vendor"]\n  path = vendor\n  url = ../x\n');
+  const cSub = commitAll("committet .gitmodules");
+  expectRed(
+    "repo med .gitmodules → rød",
+    runProver({ repoRoot: ROOT, commitSha: cSub, cmd: CMD, resultRelPath: "result.json", git }),
+    "submodules understøttes ikke",
+  );
+  rmSync(join(ROOT, ".gitmodules"), { force: true });
+}
 
 console.log("");
 if (failed > 0) {

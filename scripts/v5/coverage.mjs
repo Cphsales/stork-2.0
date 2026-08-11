@@ -21,9 +21,34 @@ export const DISPOSITIONS = Object.freeze(["behandlet", "udskudt", "ikke-relevan
 const CONFIG_PATHS = Object.freeze(["turbo.json", "pnpm-workspace.yaml", "supabase/config.toml", "tsconfig.base.json"]);
 
 const MIGRATION_RE = /(^|\/)(supabase\/)?migrations\/[^/]+\.sql$/i;
-// Struktureret SQL → regex-robust. Fanger citeret/uciteret navn + skema.table.
-const POLICY_RE = /create\s+policy\s+(?:"([^"]+)"|([a-z0-9_]+))\s+on\s+(?:"?([a-z0-9_.]+)"?)/gi;
-const RLS_ENABLE_RE = /alter\s+table\s+(?:"?([a-z0-9_.]+)"?)\s+enable\s+row\s+level\s+security/gi;
+// Regex-derivation af struktureret SQL er heuristisk; den vejer bevidst mod
+// OVER-derivation (en ekstra falsk-flade koster kun en billig disposition),
+// ALDRIG mod at MISSE (en misset RLS-flade = tavs udeladelse = falsk-grøn).
+// En identifikator: uciteret (a-z0-9_) ELLER citeret med ""-escape.
+const IDENT = String.raw`(?:"(?:[^"]|"")+"|[a-z0-9_]+)`;
+// evt. skema-kvalificeret: schema.tabel (hver del citeret/uciteret)
+const QUALIFIED = `${IDENT}(?:\\.${IDENT})?`;
+// CREATE/ALTER POLICY <navn> ON <tabel>  (IF NOT EXISTS tolereret)
+const POLICY_RE = new RegExp(
+  String.raw`\b(?:create|alter)\s+policy\s+(?:if\s+not\s+exists\s+)?(${IDENT})\s+on\s+(${QUALIFIED})`,
+  "gi",
+);
+// ALTER TABLE [IF EXISTS] <tabel> ... ENABLE ROW LEVEL SECURITY
+const RLS_ENABLE_RE = new RegExp(
+  String.raw`\balter\s+table\s+(?:if\s+exists\s+)?(${QUALIFIED})[\s\S]*?enable\s+row\s+level\s+security`,
+  "gi",
+);
+
+// normalisér identifikator: strip citations-tegn + ""-escape → stabilt id.
+const normIdent = (raw) =>
+  raw
+    .split(".")
+    .map((part) => (part.startsWith('"') ? part.slice(1, -1).replaceAll('""', '"') : part))
+    .join(".");
+
+// fjern SQL-kommentarer (linje -- og block /* */) FØR scanning, så
+// udkommenteret DDL ikke tælles og kommentarer mellem tokens ikke skjuler DDL.
+const stripSqlComments = (sql) => sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 
 const uniqPush = (arr, seen, point) => {
   if (!seen.has(point.id)) {
@@ -49,21 +74,22 @@ export function deriveSurface({ git, commitSha }) {
 
     if (MIGRATION_RE.test(path)) {
       uniqPush(points, seen, { id: `migration:${path}`, kind: "migration", ref: path, detail: path });
+      // fail-closed: kan migrationen ikke læses fuldt, må vi ikke fortsætte med
+      // tom SQL (ville tavst misse RLS-fladen) — kast, så gaten går rød.
       let sql;
       try {
         sql = git("show", `${commitSha}:${path}`);
-      } catch {
-        sql = "";
+      } catch (e) {
+        throw new Error(`deriveSurface: kan ikke læse migration ${path} (fail-closed): ${e?.message ?? e}`);
       }
-      // strip linje-kommentarer så udkommenteret DDL ikke tælles som flade
-      const stripped = sql.replace(/--[^\n]*/g, "");
+      const stripped = stripSqlComments(sql);
       for (const m of stripped.matchAll(RLS_ENABLE_RE)) {
-        const table = m[1];
+        const table = normIdent(m[1]);
         uniqPush(points, seen, { id: `rls_enabled:${table}`, kind: "rls_enabled", ref: path, detail: table });
       }
       for (const m of stripped.matchAll(POLICY_RE)) {
-        const name = m[1] ?? m[2];
-        const table = m[3];
+        const name = normIdent(m[1]);
+        const table = normIdent(m[2]);
         uniqPush(points, seen, {
           id: `rls_policy:${table}:${name}`,
           kind: "rls_policy",
@@ -99,8 +125,13 @@ export function checkCoverage(surface, dispositions) {
       fail(`flade-punkt uden disposition: ${p.id} (tavs udeladelse forbudt)`);
       continue;
     }
-    if (d === null || typeof d !== "object") {
+    if (d === null || typeof d !== "object" || Array.isArray(d)) {
       fail(`disposition for ${p.id} er ikke et objekt`);
+      continue;
+    }
+    // egne felter (ikke arvede): en disposition skal bære sine egne data.
+    if (!Object.prototype.hasOwnProperty.call(d, "bøtte") || !Object.prototype.hasOwnProperty.call(d, "disposition")) {
+      fail(`${p.id}: disposition mangler egne felter bøtte/disposition (arvet/manglende = rød)`);
       continue;
     }
     if (!BUCKETS.includes(d.bøtte)) fail(`${p.id}: ugyldig bøtte '${String(d.bøtte)}'`);

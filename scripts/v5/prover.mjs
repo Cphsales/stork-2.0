@@ -7,22 +7,36 @@
 // og var de grønne uden at snyde med skips") — IKKE et dybde-bevis; om testene
 // udøver den faktiske logik afgøres af build-proof's effect-harness +
 // config-mutant-kill (KERNEN), ikke her.
+//
+// ERKLÆRET GRÆNSE (ikke prøverens løfte): test-kommandoen kører vilkårlig
+// committet kode, så host-isolation (symlink-escape, net, env, læsning uden
+// for checkouten) er CI-SANDBOXENS ansvar (plan 2.E + DEL V), ikke proverens.
+// Proveren garanterer: reel kør mod den FULDE committede tilstand (git
+// worktree — ikke `git archive`, som filtrerer via export-ignore) + at et
+// resultat afspejler en FRISK skrivning (committet stale-resultat slettes før
+// kør) + fail-closed dom.
 
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, isAbsolute, normalize } from "node:path";
 
 const isNonNegInt = (n) => Number.isInteger(n) && n >= 0;
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 // judgeTestSummary(summary) — PURE dom over et struktureret test-resultat.
-// Fail-closed: manglende/ikke-heltal/inkonsistent felt = rød.
+// Fail-closed: manglende/arvet/ikke-heltal/inkonsistent felt = rød.
 export function judgeTestSummary(summary) {
   const reasons = [];
   const fail = (r) => reasons.push(r);
 
   if (summary === null || typeof summary !== "object" || Array.isArray(summary))
     return { ok: false, reasons: ["test-resumé mangler/er ikke et objekt"] };
+
+  // egne felter (ikke arvede): et resumé skal bære sine egne data.
+  for (const k of ["total", "passed", "failed", "skipped"])
+    if (!hasOwn(summary, k)) fail(`resumé mangler egent felt '${k}' (arvet/manglende = rød)`);
+  if (reasons.length) return { ok: false, reasons };
 
   const { total, passed, failed, skipped } = summary;
   for (const [k, v] of [
@@ -46,32 +60,59 @@ export function judgeTestSummary(summary) {
 }
 
 // runProver({repoRoot, commitSha, cmd, resultRelPath, git, env}) — reel kør.
-// Arkiverer den COMMITTEDE træ-tilstand til en frisk temp-workdir og kører cmd
+// Checker den COMMITTEDE tilstand ud til en frisk temp-worktree og kører cmd
 // DÉR — så et grønt arbejdstræ aldrig kan snige en ucommittet sandhed ind.
+// git worktree (ikke `git archive`) bruges bevidst: archive filtrerer filer
+// via `.gitattributes export-ignore`, så en committet fejlende test kunne
+// mangle → falsk-grøn. worktree giver den FULDE committede tree.
 // cmd forventes at skrive et JSON-resumé {total,passed,failed,skipped} til
-// resultRelPath (relativ til workdir). Returnerer {ok, reasons, summary}.
+// resultRelPath (relativ til worktree). Returnerer {ok, reasons, summary}.
 export function runProver({ repoRoot, commitSha, cmd, resultRelPath, git, env }) {
-  if (typeof git !== "function" || typeof git.bytes !== "function")
-    return { ok: false, reasons: ["git-dep mangler/ufuldstændig (fail-closed)"], summary: null };
+  if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"], summary: null };
+  if (typeof repoRoot !== "string" || repoRoot.length === 0)
+    return { ok: false, reasons: ["repoRoot mangler"], summary: null };
   if (!Array.isArray(cmd) || cmd.length === 0 || !cmd.every((s) => typeof s === "string" && s.length > 0))
     return { ok: false, reasons: ["cmd skal være et ikke-tomt array af strenge"], summary: null };
   if (typeof resultRelPath !== "string" || resultRelPath.length === 0)
     return { ok: false, reasons: ["resultRelPath mangler"], summary: null };
+  // resultRelPath må ikke escape worktree (intern config, men fail-closed).
+  if (isAbsolute(resultRelPath) || normalize(resultRelPath).split(/[\\/]/).includes(".."))
+    return { ok: false, reasons: ["resultRelPath skal være en relativ sti inde i worktree"], summary: null };
 
-  const work = mkdtempSync(join(tmpdir(), "v5-prover-"));
+  // submodules: worktree tager ikke submodule-INDHOLD med → committet testflade
+  // ville være ufuldstændig. Fail-closed frem for falsk-grøn.
   try {
-    // git archive <sha> | tar -x -C work  → nøjagtig den committede tilstand
-    let tarball;
+    git("cat-file", "-e", `${commitSha}:.gitmodules`);
+    return {
+      ok: false,
+      reasons: [".gitmodules findes — submodules understøttes ikke (ufuldstændig committet testflade, fail-closed)"],
+      summary: null,
+    };
+  } catch {
+    /* ingen submodules — forventet */
+  }
+
+  const parent = mkdtempSync(join(tmpdir(), "v5-prover-"));
+  const work = join(parent, "wt"); // git worktree add opretter selv stien
+  let added = false;
+  try {
     try {
-      tarball = git.bytes("archive", commitSha);
+      execFileSync("git", ["-C", repoRoot, "worktree", "add", "--detach", "--force", work, commitSha], {
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+      added = true;
     } catch (e) {
       return {
         ok: false,
-        reasons: [`kan ikke arkivere commit ${String(commitSha)}: ${e?.message ?? e}`],
+        reasons: [`kan ikke checke commit ${String(commitSha)} ud: ${e?.message ?? e}`],
         summary: null,
       };
     }
-    execFileSync("tar", ["-x", "-C", work], { input: tarball, stdio: ["pipe", "ignore", "pipe"] });
+
+    // committet/stale resultat-fil må ALDRIG tælle: fjern den før kør, så kun
+    // en frisk skrivning fra denne kør kan læses.
+    const resultAbs = join(work, resultRelPath);
+    rmSync(resultAbs, { force: true });
 
     const reasons = [];
     let cmdExit = 0;
@@ -88,11 +129,13 @@ export function runProver({ repoRoot, commitSha, cmd, resultRelPath, git, env })
 
     let summary = null;
     try {
-      summary = JSON.parse(readFileSync(join(work, resultRelPath), "utf8"));
+      summary = JSON.parse(readFileSync(resultAbs, "utf8"));
     } catch {
       return {
         ok: false,
-        reasons: [`test-resumé kunne ikke læses/parses fra ${resultRelPath} (kørte testene reelt?)`],
+        reasons: [
+          `test-resumé kunne ikke læses/parses fra ${resultRelPath} (kørte testene reelt + skrev friskt resultat?)`,
+        ],
         summary: null,
       };
     }
@@ -105,7 +148,19 @@ export function runProver({ repoRoot, commitSha, cmd, resultRelPath, git, env })
 
     return { ok: reasons.length === 0, reasons, summary };
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    if (added) {
+      try {
+        execFileSync("git", ["-C", repoRoot, "worktree", "remove", "--force", work], { stdio: "ignore" });
+      } catch {
+        /* remove kan fejle hvis worktree er dirty; prune + rmSync rydder op */
+      }
+    }
+    rmSync(parent, { recursive: true, force: true });
+    try {
+      execFileSync("git", ["-C", repoRoot, "worktree", "prune"], { stdio: "ignore" });
+    } catch {
+      /* best-effort oprydning af worktree-metadata */
+    }
   }
 }
 
