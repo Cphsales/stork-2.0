@@ -173,7 +173,12 @@ throws(
   () => buildSnapshot("krav", { git, commitSha: COMMIT, pakke: "../etc" }),
   "ugyldig pakke",
 );
-throws("tom commitSha → kast", () => buildSnapshot("recon", { git, commitSha: "", pakke: PAKKE }), "commitSha mangler");
+throws("tom commitSha → kast", () => buildSnapshot("recon", { git, commitSha: "", pakke: PAKKE }), "pinned commit-OID");
+throws(
+  "ikke-pinned ref (HEAD) → kast",
+  () => buildSnapshot("recon", { git, commitSha: "HEAD", pakke: PAKKE }),
+  "pinned commit-OID",
+);
 throws("git-dep mangler → kast", () => buildSnapshot("recon", { commitSha: COMMIT, pakke: PAKKE }), "git-dep mangler");
 
 console.log("");

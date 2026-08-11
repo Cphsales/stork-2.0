@@ -97,6 +97,11 @@ expect(
 expect("non-boolean launched → inconsistent", { launched: 1, open: {} }, "inconsistent");
 expect("state som array → inconsistent", [], "inconsistent");
 expect("manglende open (frisk start) → advance-auto/recon", { launched: true }, "advance-auto", "recon");
+expect(
+  "top-level prototype-state (Object.create) → inconsistent",
+  Object.create({ launched: true, open: { recon: true } }),
+  "inconsistent",
+);
 
 console.log("");
 if (failed > 0) {

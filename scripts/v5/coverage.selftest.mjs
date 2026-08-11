@@ -205,6 +205,36 @@ console.log("\nCodex-fund — SQL-former der før slap forbi derivationen:");
     : bad("alter-policy", id2.join(", "));
 }
 
+console.log("\nCodex-fund (genangreb) — RLS-regex krydser ikke statement-grænser:");
+{
+  const R3 = mkdtempSync(join(tmpdir(), "v5-coverage-stmt-"));
+  process.on("exit", () => rmSync(R3, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", R3]);
+  const g3 = makeGit(R3);
+  g3("config", "user.name", "selftest");
+  g3("config", "user.email", "selftest@local");
+  mkdirSync(join(R3, "supabase/migrations"), { recursive: true });
+  writeFileSync(
+    join(R3, "supabase/migrations/0001.sql"),
+    "alter table public.not_rls add column marker integer;\n" +
+      "alter table public.real_rls enable row level security;\n" +
+      "alter table only public.tredje enable row level security;\n",
+  );
+  g3("add", "-A");
+  g3("commit", "-qm", "stmt-grænser");
+  const C3 = g3("rev-parse", "HEAD");
+  const id3 = deriveSurface({ git: g3, commitSha: C3 }).points.map((p) => p.id);
+  id3.includes("rls_enabled:public.real_rls")
+    ? ok("real_rls deriveret (regex krydser ikke ; fra forrige statement)")
+    : bad("stmt-krydsning", id3.join(", "));
+  !id3.includes("rls_enabled:public.not_rls")
+    ? ok("not_rls IKKE fejltilskrevet (den enabler ikke RLS)")
+    : bad("fejltilskrivning", id3.join(", "));
+  id3.includes("rls_enabled:public.tredje") && !id3.some((x) => x === "rls_enabled:only")
+    ? ok("ALTER TABLE ONLY: tabellen deriveret, ikke 'only'")
+    : bad("only-tolerance", id3.join(", "));
+}
+
 console.log("\nCodex-fund — git-show-fejl er fail-closed (ingen tavs tom SQL):");
 {
   const fakeGit = (...args) => {

@@ -50,6 +50,11 @@ expectRed(
 expectRed("manglende felt", judgeTestSummary({ total: 2, passed: 2 }), "mangler egent felt");
 expectRed("ikke et objekt", judgeTestSummary(null), "mangler");
 expectRed(
+  "usikkert JSON-tal (> 2^53) → rød (JSON.parse-afrunding)",
+  judgeTestSummary(JSON.parse('{"total":9007199254740992,"passed":9007199254740993,"failed":0,"skipped":0}')),
+  "ikke et ikke-negativt heltal",
+);
+expectRed(
   "arvede felter (prototype) = rød",
   judgeTestSummary(Object.create({ total: 1, passed: 1, failed: 0, skipped: 0 })),
   "mangler egent felt",
@@ -159,6 +164,11 @@ expectRed(
   "resultRelPath med .. (escape) → rød",
   runProver({ repoRoot: ROOT, commitSha: cCommittedGreen, cmd: CMD, resultRelPath: "../escape.json", git }),
   "inde i worktree",
+);
+expectRed(
+  "ikke-pinned ref (HEAD) → rød (Codex-fund: dom skal bindes til OID)",
+  runProver({ repoRoot: ROOT, commitSha: "HEAD", cmd: CMD, resultRelPath: "result.json", git }),
+  "pinned commit-OID",
 );
 
 // ---------- Codex P2-regressioner (2026-08-11) ----------

@@ -33,9 +33,11 @@ const POLICY_RE = new RegExp(
   String.raw`\b(?:create|alter)\s+policy\s+(?:if\s+not\s+exists\s+)?(${IDENT})\s+on\s+(${QUALIFIED})`,
   "gi",
 );
-// ALTER TABLE [IF EXISTS] <tabel> ... ENABLE ROW LEVEL SECURITY
+// ALTER TABLE [IF EXISTS] [ONLY] <tabel> [*] ENABLE ROW LEVEL SECURITY
+// [^;]*? (ikke [\s\S]*?) → må ALDRIG spænde over en statement-grænse (;), så
+// 'alter table A add col; alter table B enable rls' ikke fejltilskriver A.
 const RLS_ENABLE_RE = new RegExp(
-  String.raw`\balter\s+table\s+(?:if\s+exists\s+)?(${QUALIFIED})[\s\S]*?enable\s+row\s+level\s+security`,
+  String.raw`\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(${QUALIFIED})[^;]*?enable\s+row\s+level\s+security`,
   "gi",
 );
 

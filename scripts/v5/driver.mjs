@@ -34,6 +34,9 @@ const isHuman = (gateId) => HUMAN_GATES.includes(gateId);
 export function decideNext(state) {
   if (state === null || typeof state !== "object" || Array.isArray(state))
     return { action: "inconsistent", reason: "state mangler/ugyldig" };
+  const stp = Object.getPrototypeOf(state);
+  if (stp !== Object.prototype && stp !== null)
+    return { action: "inconsistent", reason: "state har ikke-standard prototype (manipuleret)" };
   // streng type-validering (fail-closed): malformeret/manipuleret state må
   // ALDRIG tavst blive til et normalt flow — halt-bypass eller falsk 'done'.
   if (state.halt !== undefined && typeof state.halt !== "boolean")

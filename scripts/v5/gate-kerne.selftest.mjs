@@ -736,6 +736,40 @@ try {
   ok("digestOf kaster på utilladt værdi (intet tavst drop)");
 }
 
+console.log("\nCodex-genangreb — top-level snapshot-prototype:");
+{
+  const { snapshot, deps } = greenKrav();
+  const protoSnap = Object.create(snapshot); // arvede felter, egne = []
+  const r = evaluateGate("krav", protoSnap, deps);
+  !r.open && r.reasons.some((x) => /ikke-standard prototype/.test(x))
+    ? ok("Object.create(snapshot) → gaten lukker (fail-closed)")
+    : bad("snapshot-prototype", r.open ? "ÅBNEDE" : r.reasons.join(" | "));
+}
+
+console.log("\nCodex-genangreb — læsebevis bevarer UTF-8 BOM (rå bytes):");
+{
+  const RB = mkdtempSync(join(tmpdir(), "v5-bom-"));
+  process.on("exit", () => rmSync(RB, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", RB]);
+  const gb = makeGit(RB);
+  gb("config", "user.name", "selftest");
+  gb("config", "user.email", "selftest@local");
+  writeFileSync(join(RB, "bom.md"), "﻿Kravlinje\nlinje2\n"); // BOM foran linje 1
+  gb("add", "-A");
+  gb("commit", "-qm", "bom");
+  const CB = gb("rev-parse", "HEAD");
+  const oid = resolveRef(gb, CB, "bom.md").oid;
+  const lines = readBlobLines(gb, oid).lines;
+  lines[0] === "﻿Kravlinje"
+    ? ok("readBlobLines bevarer BOM i linje 1 (strippes ikke)")
+    : bad("bom-bevaring", JSON.stringify(lines[0]));
+  // et citat beregnet UDEN BOM må IKKE matche de rå bytes
+  const excerptMedBom = excerptAt(lines, [1, 1]);
+  sha256(excerptMedBom) !== sha256("Kravlinje")
+    ? ok("citat uden BOM ≠ rå bytes (BOM-stripping ville have givet falsk match)")
+    : bad("bom-hash", "BOM blev strippet — falsk match muligt");
+}
+
 console.log("\nregistry-sanitet:");
 GATE_REGISTRY.every((g) => g.predecessor === null || GATE_REGISTRY.some((p) => p.id === g.predecessor))
   ? ok("alle forgængere findes i registry (DAG intakt)")

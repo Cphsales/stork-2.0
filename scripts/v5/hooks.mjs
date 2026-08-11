@@ -72,8 +72,11 @@ export function pathZone(rawPath, repoRoot) {
 export function writeDecision(input) {
   // fail-closed på malformeret input: en hook-API skal returnere deny, aldrig
   // kaste (en wrapper der fejlhåndterer en exception kunne blive fail-open).
-  if (input === null || typeof input !== "object")
+  if (input === null || typeof input !== "object" || Array.isArray(input))
     return { decision: "deny", zone: "udenfor", reason: "ugyldigt input (fail-closed)" };
+  const ip = Object.getPrototypeOf(input);
+  if (ip !== Object.prototype && ip !== null)
+    return { decision: "deny", zone: "udenfor", reason: "input har ikke-standard prototype (manipuleret)" };
   const { rawPath, repoRoot, planLocked } = input;
   const zone = pathZone(rawPath, repoRoot);
   switch (zone) {

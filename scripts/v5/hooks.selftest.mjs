@@ -102,6 +102,16 @@ for (const [label, arg] of [
     : bad(`ugyldigt-input-${label}`, threw ? "kastede" : r?.decision);
 }
 
+console.log("\nCodex-fund (genangreb) — top-level prototype-input:");
+{
+  const gyldig = { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: true };
+  const proto = Object.create(gyldig); // arvede felter, egne = []
+  const r = writeDecision(proto);
+  r.decision === "deny"
+    ? ok("Object.create(gyldig-input) → deny (ikke-standard prototype)")
+    : bad("proto-input", r.decision);
+}
+
 console.log("");
 if (failed > 0) {
   console.error(`hooks red-team: ${failed} FEJLEDE`);

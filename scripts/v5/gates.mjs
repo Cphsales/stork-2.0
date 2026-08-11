@@ -172,8 +172,13 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
 
   const gate = GATE_REGISTRY.find((g) => g.id === gateId);
   if (!gate) return { open: false, gate_id: gateId, reasons: [`ukendt gate_id: ${String(gateId)}`] };
-  if (snapshot === null || typeof snapshot !== "object")
-    return { open: false, gate_id: gateId, reasons: ["snapshot mangler"] };
+  if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot))
+    return { open: false, gate_id: gateId, reasons: ["snapshot mangler/ugyldig"] };
+  // plain object KUN: en ikke-standard prototype (Object.create(...)) kan bære
+  // gyldigt-udseende felter arvet — afvis (fail-closed; JSON/gate-eval er plain).
+  const sp = Object.getPrototypeOf(snapshot);
+  if (sp !== Object.prototype && sp !== null)
+    return { open: false, gate_id: gateId, reasons: ["snapshot har ikke-standard prototype (manipuleret)"] };
 
   // 1) pinned commit + artefakt + bindinger findes (OID + type fra rå git)
   if (!isNonEmptyString(snapshot.commit_sha)) fail("commit_sha mangler/tom");

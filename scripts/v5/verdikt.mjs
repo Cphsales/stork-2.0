@@ -154,7 +154,9 @@ export function readBlobLines(git, oid) {
   }
   let content;
   try {
-    content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    // ignoreBOM: behandl en evt. UTF-8 BOM som ALMINDELIGE bytes (strip den
+    // IKKE) → excerpt-hash matcher de RÅ blob-bytes eksakt (rå-byte-kontrakt).
+    content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return { error: `blob ${oid} er ikke gyldig UTF-8 (binært/ikke-tekst citat)` };
   }

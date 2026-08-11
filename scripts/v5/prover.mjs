@@ -20,8 +20,11 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, isAbsolute, normalize } from "node:path";
+import { isOid } from "./gates.mjs";
 
-const isNonNegInt = (n) => Number.isInteger(n) && n >= 0;
+// SAFE integer: JSON.parse runder tal > 2^53-1 af → et usikkert 'passed' kunne
+// falde sammen med 'total' og narre sum-checket. Kræv safe integers.
+const isNonNegInt = (n) => Number.isSafeInteger(n) && n >= 0;
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 // judgeTestSummary(summary) — PURE dom over et struktureret test-resultat.
@@ -71,6 +74,14 @@ export function runProver({ repoRoot, commitSha, cmd, resultRelPath, git, env })
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"], summary: null };
   if (typeof repoRoot !== "string" || repoRoot.length === 0)
     return { ok: false, reasons: ["repoRoot mangler"], summary: null };
+  // pinned commit-OID kræves — dommen skal bindes til én commit, ikke 'HEAD'/
+  // et branch-navn (som ændrer sig og gør reel-kør-resultatet ikke-deterministisk).
+  if (!isOid(commitSha))
+    return {
+      ok: false,
+      reasons: [`commitSha skal være en pinned commit-OID (fik '${String(commitSha)}')`],
+      summary: null,
+    };
   if (!Array.isArray(cmd) || cmd.length === 0 || !cmd.every((s) => typeof s === "string" && s.length > 0))
     return { ok: false, reasons: ["cmd skal være et ikke-tomt array af strenge"], summary: null };
   if (typeof resultRelPath !== "string" || resultRelPath.length === 0)
