@@ -91,17 +91,28 @@ export function runProver({ repoRoot, commitSha, cmd, resultRelPath, git, env })
     return { ok: false, reasons: ["resultRelPath skal være en relativ sti inde i worktree"], summary: null };
 
   // submodules: worktree tager ikke submodule-INDHOLD med → committet testflade
-  // ville være ufuldstændig. Fail-closed frem for falsk-grøn.
+  // ville være ufuldstændig. Fail-closed frem for falsk-grøn. Tjek BÅDE
+  // .gitmodules OG gitlink-entries (mode 160000) — en gitlink kan eksistere
+  // uden .gitmodules (Codex-fund).
+  let treeListing;
   try {
-    git("cat-file", "-e", `${commitSha}:.gitmodules`);
+    treeListing = git("ls-tree", "-r", commitSha);
+  } catch (e) {
+    return { ok: false, reasons: [`kan ikke liste træet for ${String(commitSha)}: ${e?.message ?? e}`], summary: null };
+  }
+  const lines = treeListing.split("\n");
+  if (lines.some((line) => line.startsWith("160000 ") || / commit [0-9a-f]/.test(line)))
     return {
       ok: false,
-      reasons: [".gitmodules findes — submodules understøttes ikke (ufuldstændig committet testflade, fail-closed)"],
+      reasons: ["gitlink/submodule (mode 160000) i træet — ufuldstændig committet testflade (fail-closed)"],
       summary: null,
     };
-  } catch {
-    /* ingen submodules — forventet */
-  }
+  if (lines.some((line) => /\t\.gitmodules$/.test(line)))
+    return {
+      ok: false,
+      reasons: [".gitmodules i træet — submodules understøttes ikke (ufuldstændig committet testflade, fail-closed)"],
+      summary: null,
+    };
 
   const parent = mkdtempSync(join(tmpdir(), "v5-prover-"));
   const work = join(parent, "wt"); // git worktree add opretter selv stien

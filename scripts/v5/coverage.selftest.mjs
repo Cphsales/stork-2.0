@@ -267,6 +267,45 @@ console.log("\nCodex-fund (final) — kommentar-syntaks i string-literal skjuler
     : bad("nested-comment", id4.join(", "));
 }
 
+console.log("\nCodex-fund (final2) — E-strenge, dollar-quotes, identifier-normalisering:");
+{
+  const R5 = mkdtempSync(join(tmpdir(), "v5-coverage-final2-"));
+  process.on("exit", () => rmSync(R5, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", R5]);
+  const g5 = makeGit(R5);
+  g5("config", "user.name", "selftest");
+  g5("config", "user.email", "selftest@local");
+  mkdirSync(join(R5, "supabase/migrations"), { recursive: true });
+  // E-streng med \'-escape må ikke lukke for tidligt og sluge efterfølgende DDL
+  writeFileSync(
+    join(R5, "supabase/migrations/0001.sql"),
+    "select E'har en \\' escaped quote og /* falsk kommentar';\n" +
+      "alter table public.real_rls enable row level security;\n",
+  );
+  // dollar-quote function-body med RLS-lignende tekst → må IKKE over-derivere
+  writeFileSync(
+    join(R5, "supabase/migrations/0002.sql"),
+    "create function f() returns void language plpgsql as $$\n" +
+      "begin\n  -- alter table public.fake enable row level security;\n  perform 1;\nend;\n$$;\n" +
+      "alter table public.ægte enable row level security;\n",
+  );
+  // identifier: unquoted uppercase → lowercase; unicode bevaret
+  writeFileSync(join(R5, "supabase/migrations/0003.sql"), "alter table Public.Café enable row level security;\n");
+  g5("add", "-A");
+  g5("commit", "-qm", "final2-kanter");
+  const C5 = g5("rev-parse", "HEAD");
+  const id5 = deriveSurface({ git: g5, commitSha: C5 }).points.map((p) => p.id);
+  id5.includes("rls_enabled:public.real_rls")
+    ? ok("E-streng med \\'-escape sluger ikke efterfølgende DDL")
+    : bad("e-string-miss", id5.join(", "));
+  id5.includes("rls_enabled:public.ægte") && !id5.some((x) => /fake/.test(x))
+    ? ok("dollar-quote-body over-deriverer ikke (fake ikke deriveret); top-level ægte deriveret")
+    : bad("dollar-overderive", id5.join(", "));
+  id5.includes("rls_enabled:public.café")
+    ? ok("unquoted identifier: uppercase→lowercase + unicode bevaret (Public.Café → public.café)")
+    : bad("ident-norm", id5.join(", "));
+}
+
 console.log("\nCodex-fund — git-show-fejl er fail-closed (ingen tavs tom SQL):");
 {
   const fakeGit = (...args) => {

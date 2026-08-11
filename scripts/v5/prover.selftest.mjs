@@ -158,7 +158,7 @@ expectRed(
 expectRed(
   "ukendt commit-sha",
   runProver({ repoRoot: ROOT, commitSha: "0".repeat(40), cmd: CMD, resultRelPath: "result.json", git }),
-  "kan ikke checke commit",
+  "kan ikke (liste træet|checke commit)",
 );
 expectRed(
   "resultRelPath med .. (escape) → rød",
@@ -222,6 +222,32 @@ console.log("\nCodex-fund — submodules fail-closed (ufuldstændig committet te
     "submodules understøttes ikke",
   );
   rmSync(join(ROOT, ".gitmodules"), { force: true });
+}
+
+console.log("\nCodex-fund (final2) — gitlink UDEN .gitmodules fail-closer:");
+{
+  // opret en ægte gitlink (mode 160000) uden en .gitmodules-fil
+  writeRunner(`{ total: 1, passed: 1, failed: 0, skipped: 0 }`);
+  const sub = mkdtempSync(join(tmpdir(), "v5-sub-"));
+  execFileSync("git", ["init", "-q", sub]);
+  execFileSync("git", ["-C", sub, "config", "user.name", "s"]);
+  execFileSync("git", ["-C", sub, "config", "user.email", "s@l"]);
+  writeFileSync(join(sub, "f.txt"), "x\n");
+  execFileSync("git", ["-C", sub, "add", "-A"]);
+  execFileSync("git", ["-C", sub, "commit", "-qm", "sub"]);
+  const subOid = execFileSync("git", ["-C", sub, "rev-parse", "HEAD"]).toString().trim();
+  // tilføj gitlink direkte i index (ingen .gitmodules)
+  execFileSync("git", ["-C", ROOT, "update-index", "--add", "--cacheinfo", `160000,${subOid},vendor/sub`]);
+  git("commit", "-qm", "gitlink uden .gitmodules");
+  const cLink = git("rev-parse", "HEAD");
+  expectRed(
+    "gitlink (160000) uden .gitmodules → rød",
+    runProver({ repoRoot: ROOT, commitSha: cLink, cmd: CMD, resultRelPath: "result.json", git }),
+    "gitlink/submodule",
+  );
+  execFileSync("git", ["-C", ROOT, "rm", "--cached", "-q", "vendor/sub"]);
+  git("commit", "-qm", "fjern gitlink");
+  rmSync(sub, { recursive: true, force: true });
 }
 
 console.log("");

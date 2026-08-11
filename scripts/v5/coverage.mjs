@@ -24,55 +24,106 @@ const MIGRATION_RE = /(^|\/)(supabase\/)?migrations\/[^/]+\.sql$/i;
 // Regex-derivation af struktureret SQL er heuristisk; den vejer bevidst mod
 // OVER-derivation (en ekstra falsk-flade koster kun en billig disposition),
 // ALDRIG mod at MISSE (en misset RLS-flade = tavs udeladelse = falsk-grøn).
-// En identifikator: uciteret (a-z0-9_) ELLER citeret med ""-escape.
-const IDENT = String.raw`(?:"(?:[^"]|"")+"|[a-z0-9_]+)`;
+// En identifikator: citeret ("..." med ""-escape) ELLER uciteret. Uciteret
+// tillader unicode-bogstaver (PostgreSQL-lovligt) via \p{L}; case-folding
+// sker i normIdent (uciteret → lowercase, citeret → bevaret).
+const IDENT = String.raw`(?:"(?:[^"]|"")+"|[\p{L}_][\p{L}\p{N}_$]*)`;
 // evt. skema-kvalificeret: schema.tabel (hver del citeret/uciteret)
 const QUALIFIED = `${IDENT}(?:\\.${IDENT})?`;
 // CREATE/ALTER POLICY <navn> ON <tabel>  (IF NOT EXISTS tolereret)
 const POLICY_RE = new RegExp(
   String.raw`\b(?:create|alter)\s+policy\s+(?:if\s+not\s+exists\s+)?(${IDENT})\s+on\s+(${QUALIFIED})`,
-  "gi",
+  "giu",
 );
 // ALTER TABLE [IF EXISTS] [ONLY] <tabel> [*] ENABLE ROW LEVEL SECURITY
 // [^;]*? (ikke [\s\S]*?) → må ALDRIG spænde over en statement-grænse (;), så
 // 'alter table A add col; alter table B enable rls' ikke fejltilskriver A.
 const RLS_ENABLE_RE = new RegExp(
   String.raw`\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(${QUALIFIED})[^;]*?enable\s+row\s+level\s+security`,
-  "gi",
+  "giu",
 );
 
-// normalisér identifikator: strip citations-tegn + ""-escape → stabilt id.
-const normIdent = (raw) =>
-  raw
-    .split(".")
-    .map((part) => (part.startsWith('"') ? part.slice(1, -1).replaceAll('""', '"') : part))
-    .join(".");
+// normIdent — normalisér en (evt. skema-kvalificeret) identifikator til et
+// STABILT id: split på top-level '.' (respektér "..."), un-escape "", og
+// case-fold UCITEREDE dele til lowercase (PostgreSQL-semantik) mens CITEREDE
+// dele bevarer deres case. En '.' inde i et citeret navn er en del af navnet.
+function normIdent(raw) {
+  const parts = [];
+  let cur = "";
+  let inQuote = false;
+  let wasQuoted = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '"') {
+      if (inQuote && raw[i + 1] === '"') {
+        cur += '"';
+        i++;
+        continue;
+      } // "" → literal "
+      if (!inQuote) wasQuoted = true;
+      inQuote = !inQuote;
+      continue;
+    }
+    if (ch === "." && !inQuote) {
+      parts.push(wasQuoted ? cur : cur.toLowerCase());
+      cur = "";
+      wasQuoted = false;
+      continue;
+    }
+    cur += ch;
+  }
+  parts.push(wasQuoted ? cur : cur.toLowerCase());
+  return parts.join(".");
+}
 
-// Fjern SQL-kommentarer FØR scanning, så udkommenteret DDL ikke tælles og
-// kommentarer mellem tokens ikke skjuler DDL — men KONTEKST-AWARE: en lineær
-// scanner der forstår string-literals ('' -escape), dollar-quotes ($tag$),
-// quoted identifiers ("" -escape) og NESTEDE block-kommentarer. En regex kan
-// ikke: kommentar-syntaks INDE i en streng ('/* ...') må ALDRIG strippes, da
-// det ellers ville sluge en efterfølgende reel enable-RLS-statement (Codex-
-// fund). Kommentarer → ét mellemrum (tokens smelter ikke sammen).
-function stripSqlComments(sql) {
+// normalizeForScan — gør SQL sikker for de top-level DDL-regexer ved en
+// KONTEKST-AWARE lineær scanner. Reglen: kun TOP-LEVEL DDL skal kunne matche.
+// - kommentarer (linje --, NESTEDE block /* */) → mellemrum.
+// - string-literals ('...' med ''-escape) OG E-strenge (E'...' med \-escape)
+//   → NEUTRALISERES til '' (indhold fjernet): kommentar-/DDL-syntaks inde i en
+//   streng må hverken sluge efterfølgende DDL (miss) eller matche som flade
+//   (falsk-positiv).
+// - dollar-quotes ($tag$...$tag$) → NEUTRALISERES: en funktions-krop er en
+//   definition, ikke top-level migration-flade (funktions-intern/dynamisk RLS
+//   er en ærlig residual — recon/omission-devil/menneske fanger den, ikke en
+//   statisk regex).
+// - quoted identifiers ("..." med ""-escape) → BEVARES: de ER tabel-/policy-
+//   navne (top-level flade).
+// Codex-fund lukket her: string-literal-skjul, E-string-escape-miss,
+// dollar-quote-over-derivation.
+function normalizeForScan(sql) {
   let out = "";
   let i = 0;
   const n = sql.length;
-  const scanQuoted = (q) => {
-    // q allerede ét quote-tegn ind; kopiér til afsluttende q ('' / "" = escape)
+  const skipString = () => {
+    // i peger på tegnet EFTER åbnings-quote; standard '' -escape
     while (i < n) {
-      if (sql[i] === q && sql[i + 1] === q) {
-        out += q + q;
+      if (sql[i] === "'" && sql[i + 1] === "'") {
         i += 2;
         continue;
       }
-      if (sql[i] === q) {
-        out += q;
+      if (sql[i] === "'") {
         i++;
         return;
       }
-      out += sql[i];
+      i++;
+    }
+  };
+  const skipEString = () => {
+    // E-streng: backslash escaper næste tegn; '' -escape gælder også
+    while (i < n) {
+      if (sql[i] === "\\") {
+        i += 2;
+        continue;
+      }
+      if (sql[i] === "'" && sql[i + 1] === "'") {
+        i += 2;
+        continue;
+      }
+      if (sql[i] === "'") {
+        i++;
+        return;
+      }
       i++;
     }
   };
@@ -80,12 +131,10 @@ function stripSqlComments(sql) {
     const c = sql[i];
     const c2 = sql[i + 1];
     if (c === "-" && c2 === "-") {
-      // line comment → mellemrum, dropp resten af linjen
       i += 2;
       while (i < n && sql[i] !== "\n") i++;
       out += " ";
     } else if (c === "/" && c2 === "*") {
-      // block comment (nested) → mellemrum
       let depth = 1;
       i += 2;
       while (i < n && depth > 0) {
@@ -94,18 +143,39 @@ function stripSqlComments(sql) {
         else i++;
       }
       out += " ";
-    } else if (c === "'" || c === '"') {
+    } else if ((c === "E" || c === "e") && c2 === "'") {
+      i += 2;
+      skipEString();
+      out += "''"; // neutraliseret
+    } else if (c === "'") {
+      i++;
+      skipString();
+      out += "''"; // neutraliseret
+    } else if (c === '"') {
+      // quoted identifier — BEVARES (flade-navn)
       out += c;
       i++;
-      scanQuoted(c); // string-literal / quoted identifier — bevares urørt
+      while (i < n) {
+        if (sql[i] === '"' && sql[i + 1] === '"') {
+          out += '""';
+          i += 2;
+          continue;
+        }
+        if (sql[i] === '"') {
+          out += '"';
+          i++;
+          break;
+        }
+        out += sql[i];
+        i++;
+      }
     } else {
       const dq = /^\$([A-Za-z_][A-Za-z0-9_]*|)\$/.exec(sql.slice(i));
       if (dq) {
         const tag = dq[0];
         const end = sql.indexOf(tag, i + tag.length);
-        const stop = end === -1 ? n : end + tag.length;
-        out += sql.slice(i, stop); // dollar-quote-krop bevares urørt
-        i = stop;
+        i = end === -1 ? n : end + tag.length;
+        out += " "; // dollar-quote-krop neutraliseret
       } else {
         out += c;
         i++;
@@ -148,7 +218,7 @@ export function deriveSurface({ git, commitSha }) {
       } catch (e) {
         throw new Error(`deriveSurface: kan ikke læse migration ${path} (fail-closed): ${e?.message ?? e}`);
       }
-      const stripped = stripSqlComments(sql);
+      const stripped = normalizeForScan(sql);
       for (const m of stripped.matchAll(RLS_ENABLE_RE)) {
         const table = normIdent(m[1]);
         uniqPush(points, seen, { id: `rls_enabled:${table}`, kind: "rls_enabled", ref: path, detail: table });
