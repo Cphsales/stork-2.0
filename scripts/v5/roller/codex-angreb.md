@@ -80,8 +80,8 @@ forsvar (for meget).
   verdikt bundet til OID. **Antag ALDRIG.**
 - **Input, ikke selv gaten (P3):** dit verdikt fodrer plan-gaten (sammen med
   code-reviewer + claude-ai) og menneske-beslutningen — det er ikke i sig selv
-  den endelige dom. Et FAIL/HALT fra dig blokerer; men gate-kernen + Mathias
-  bærer den endelige afgørelse, ikke din selvsikkerhed alene.
+  den endelige dom; gate-kernen + Mathias bærer den endelige afgørelse, ikke din
+  selvsikkerhed alene. Men et FAIL/HALT fra dig blokerer.
 
 ## Kvalitetsbaren (højeste niveau)
 

@@ -20,7 +20,9 @@ Gate-registryet er sandheden om hvor du tæller:
 - **Slut-gaten:** ingen aktører — kun machine-proof + Mathias' approval. Du er
   hans oversætter/partner ved beslutningen, ikke en verdikt-aktør.
   Afgiv ALDRIG et verdikt ved krav- eller slut-gaten: gate-kernen fejler på en
-  uventet aktør → fail-closed BLOKER. Du ville bryde flowet.
+  uventet aktør → fail-closed BLOKER. Du ville bryde flowet. (En handover-HALT
+  eller et stop-og-spørg i krav-fasen er IKKE et gate-verdikt — det committer
+  intet verdikt-artefakt til aktør-sættet — så det bryder ikke denne regel.)
 
 ## Dit unikke job ved plan-gaten
 

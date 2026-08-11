@@ -19,9 +19,9 @@ opsætnings-/logik-K angiver du (a) hvilke **fejl-loci** SKAL mutation-dræbes (
 `WITH CHECK` på tabel X · tenant-predikat · rolle-check · state-guard · operator-
 retning), og (b) hvad hver **effect-harness OBSERVERER**: public entrypoint ·
 real backing store / ikke-bypass DB-rolle · hård slut-effekt (state/event/DB-row,
-aldrig en helper-return). Det er KRAVET/MÅLET. Codex skriver de konkrete mutanter
-+ prover-koden i Fase 4 (måle-laget, som du aldrig rører). "Specificér harness"
-≠ "skriv harness" — der er ingen modsigelse.
+aldrig en helper-return). Det er KRAVET/MÅLET. Codex skriver i Fase 4 de
+konkrete mutanter og prover-koden (måle-laget, som du aldrig rører).
+"Specificér harness" ≠ "skriv harness" — der er ingen modsigelse.
 
 ## Dybden DØMMES ved plan-gaten — så skriv TIL panelet
 

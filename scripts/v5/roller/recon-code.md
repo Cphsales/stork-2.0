@@ -65,7 +65,9 @@ fund-niveau:
   coverage's uafhængigt udledte flade-punkt-id'er (I er blinde for hinanden, så
   nøglen må komme fra en fælles kilde, ikke fra "de andres form"). Så kan blind
   konsolidering matche/dedupe/bevare konflikt. Fejl-nøgling → falsk dedupe →
-  tabt divergens = falsk-grøn.
+  tabt divergens = falsk-grøn. (For punkter uden for coverage's mekaniske
+  derivation — fx dynamisk-dispatch-fladen fra pkt 4 — er OID-adressen selv
+  nøglen; uden delt nøgle kan de ikke falsk-dedupes, så divergens bevares.)
 - **Evidens-trace pr. fund** bundet ved OID: `commit_sha : path` + `line_span`
   (ikke bare et linjenummer — linjer drifter; verdikt-laget binder ved blob-OID
   på den citerede sti). Intet OID-bundet citat = overfladisk = tæller ikke.

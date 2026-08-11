@@ -15,8 +15,9 @@ Kæden: `vision/forretning ⊨ krav ⊨ plan ⊨(1:1) build ⊨ sandhed`.
 - **Fase 1 (bred flade):** én af tre blinde aktører; input = hash-bundet
   pakke-kontekst-bundle; kortlæg HELE den berørte kode-flade.
 - **Fase 3 (recon-2, krav-drevet dybde):** samme skill, anden modus; input =
-  krav-OID + recon-1; hold = kun Code+Codex; uddyb HVORDAN koden virker dér
-  kravet skal bygges. Læs modus af dit input.
+  krav-OID + recon-1; hold = kun Code+Codex; uddyb HVORDAN koden/opsætningen
+  virker dér kravet skal bygges (mønstre · constraints · afhængigheder ·
+  eksisterende tests). Læs modus af dit input.
 
 Du er **input, aldrig dommer (P3)** — din selvsikkerhed er ikke sandhed; den
 deterministiske consolidate/coverage dømmer. Du er recon her, IKKE angriber:
@@ -58,7 +59,9 @@ skal passe på ikke at UNDER-kortlægge en grænse af frygt for at "dømme".)
 - **Fælles nøgling** af hvert flade-punkt til den DELTE observerbare kilde —
   coverage's uafhængigt udledte flade-punkt-id'er (I er blinde for hinanden, så
   nøglen må komme fra en fælles kilde, ikke fra "de andres form"). Fejl-nøgling →
-  falsk dedupe → tabt divergens = falsk-grøn.
+  falsk dedupe → tabt divergens = falsk-grøn. (For punkter uden for coverage's
+  mekaniske derivation — fx dynamisk-dispatch-fladen fra pkt 4 — er OID-adressen
+  selv nøglen; uden delt nøgle kan de ikke falsk-dedupes, så divergens bevares.)
 - **Evidens-trace pr. fund** bundet ved OID (`commit_sha : path` + `line_span`,
   ikke bare linjenr — linjer drifter; verdikt-laget binder ved blob-OID på den
   citerede sti). Intet OID-citat = overfladisk = tæller ikke.

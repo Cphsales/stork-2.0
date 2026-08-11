@@ -18,8 +18,9 @@ bedre end forretnings-app'en; derfor bærer DU kode-dybden, ikke claude-ai.
   dybde-dom; maskinen bekræfter kun eksekvering + kill mod din plan-dom. Så et
   claim er kun gyldigt hvis kilden BLEV eksekveret OG mutanten BLEV dræbt — men
   DEN verifikation sker mekanisk i build, ikke som en påstand du kan gætte ved
-  plan-gaten. Her tjekker du også at diffen faktisk leverer K's HVAD (troskaben
-  nedenfor) og ikke er drevet fra planen.
+  plan-gaten. Her tjekker du også at diffen er 1:1 med planen (ingen drift) OG
+  faktisk leverer K's HVAD — bedømt mod K, ikke mod planens påstand (troskaben
+  nedenfor); så et under-scopet men plan-tro diff ikke rubberstamps.
 
 ## "Slut-effekt" har en præcis, operationel betydning (ikke "følg tråden")
 
