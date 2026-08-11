@@ -1,0 +1,36 @@
+name: v5 gate-dommer selftests
+
+# Kører hele v5-dommer-suiten (falsk-grøn-fri red-team) ved hvert push + PR.
+# Minimal-privilegeret (contents:read) — dette er IKKE gate-dommer-CI'en der
+# emitterer v5/gate/*-check-runs (den kræver checks:write + kommer senere).
+# Her håndhæves blot at selve fabrikkens dommere er grønne på GitHub.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  v5-selftest:
+    name: v5 dommer-selftests (falsk-grøn-fri)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: git-identitet (selftests bygger temp-git-repos)
+        run: |
+          git config --global user.name "v5-ci"
+          git config --global user.email "v5-ci@users.noreply.github.com"
+      - name: corepack (pnpm fra packageManager)
+        run: corepack enable
+      - name: v5:selftest
+        run: pnpm run v5:selftest
