@@ -3,7 +3,7 @@
 // tværgående invarianter (planens sandheder) faktisk håndhæves, så en
 // fremtidig redigering ikke tavst kan bryde dem.
 
-import { ROLLER, ROLLE_IDS, OUTPUT_TYPES, validateRolle, validateRoller } from "./roller.mjs";
+import { ROLLER, ROLLE_IDS, OUTPUT_TYPES, validateRoller } from "./roller.mjs";
 
 let failed = 0;
 const ok = (n) => console.log(`  ✓ ${n}`);
@@ -31,44 +31,59 @@ for (const id of [
 ])
   ROLLE_IDS.includes(id) ? ok(`rolle findes: ${id}`) : bad("mangler-rolle", id);
 
-console.log("\nplanens sandheder som invarianter (validateRoller fanger brud):");
-// hjælper: kopiér registry, muter, kør en isoleret invariant-tjek via validateRolle+manuelt
+console.log("\nplanens sandheder som SEMANTISKE invarianter (validateRoller fanger brud):");
+// muter en KOPI + kør PRÆCIS samme validateRoller (map-argument) — ingen
+// gen-implementering der kan divergere fra produktionslogikken.
 const brydExpectRed = (n, mutate, needle) => {
   const clone = structuredClone(ROLLER);
   mutate(clone);
-  // gen-implementér validateRoller's invariant-tjek mod clone (ren funktion på data)
-  const reasons = [];
-  const ids = Object.keys(clone);
-  for (const [id, r] of Object.entries(clone)) {
-    const v = validateRolle(id, r);
-    if (!v.ok) reasons.push(...v.reasons);
-  }
-  const ejere = ids.filter((id) => clone[id].ejerMaalelag);
-  if (JSON.stringify(ejere) !== JSON.stringify(["codex-angreb"])) reasons.push("måle-lag-ejerskab brudt");
-  for (const id of ids)
-    if (clone[id].aktoer === "claude-ai" && clone[id].kode !== false) reasons.push("claude-ai-kode brudt");
-  const webR = ids.filter((id) => clone[id].web);
-  if (JSON.stringify(webR) !== JSON.stringify(["codex-forbedring"])) reasons.push("web brudt");
-  const raad = ids.filter((id) => clone[id].raadgivende);
-  if (JSON.stringify(raad) !== JSON.stringify(["codex-forbedring"])) reasons.push("raadgivende brudt");
-  reasons.some((x) => new RegExp(needle).test(x)) ? ok(n) : bad(n, `manglede '${needle}': ${reasons.join(" | ")}`);
+  const r = validateRoller(clone);
+  !r.ok && r.reasons.some((x) => new RegExp(needle).test(x))
+    ? ok(n)
+    : bad(n, r.ok ? "GRØN (brud slap igennem)" : `manglede '${needle}': ${r.reasons.join(" | ")}`);
 };
 
+// Codex-fund 2: invarianter bundet til SEMANTIK, ikke rolle-id
 brydExpectRed(
   "Code får måle-lag-ejerskab → fanget",
   (c) => (c["builder-code"].ejerMaalelag = true),
-  "måle-lag-ejerskab",
+  "eje sit eget måle-lag|ikke codex",
 );
 brydExpectRed(
-  "måle-lag-ejer fjernet fra Codex → fanget",
-  (c) => (c["codex-angreb"].ejerMaalelag = false),
-  "måle-lag-ejerskab",
+  "måle-lag-ejer bliver Code-aktør (id uændret) → fanget",
+  (c) => (c["codex-angreb"].aktoer = "code"),
+  "ikke codex",
 );
-brydExpectRed("claude-ai får lov at vurdere kode → fanget", (c) => (c["claude-ai"].kode = true), "claude-ai-kode");
-brydExpectRed("recon får web → fanget", (c) => (c["recon-code"].web = true), "web");
-brydExpectRed("angreb bliver rådgivende → fanget", (c) => (c["codex-angreb"].raadgivende = true), "raadgivende");
+brydExpectRed(
+  "byg-rolle (planner) ejer måle-lag → fanget",
+  (c) => (c["planner-code"].ejerMaalelag = true),
+  "eje sit eget måle-lag",
+);
+brydExpectRed("ingen ejer måle-laget → fanget", (c) => (c["codex-angreb"].ejerMaalelag = false), "ingen rolle ejer");
+brydExpectRed("claude-ai får lov at vurdere kode → fanget", (c) => (c["claude-ai"].kode = true), "aldrig vurdere kode");
+brydExpectRed(
+  "recon får web (ikke rådgivende) → fanget",
+  (c) => (c["recon-code"].web = true),
+  "web kun tilladt for rådgivende",
+);
+brydExpectRed(
+  "rådgivende rolle producerer gate-verdikt → fanget",
+  (c) => (c["codex-forbedring"].producerer = ["verdikt"]),
+  "kun producere 'raad'",
+);
+brydExpectRed(
+  "gate-rolle producerer 'raad' → fanget",
+  (c) => (c["code-reviewer"].producerer = ["raad"]),
+  "kun rådgivende",
+);
 brydExpectRed("ukendt aktør → fanget", (c) => (c["planner-code"].aktoer = "hacker"), "ukendt aktør");
-brydExpectRed("ukendt output-type → fanget", (c) => (c["builder-code"].producerer = ["magi"]), "ukendt output-type");
+brydExpectRed("ukendt output-type → fanget", (c) => (c["builder-code"].producerer = ["magi"]), "kendte output-typer");
+brydExpectRed(
+  "arvet rolle (prototype) → fanget",
+  (c) => (c["planner-code"] = Object.create(ROLLER["planner-code"])),
+  "plain object",
+);
+brydExpectRed("array som rolle → fanget", (c) => (c["planner-code"] = []), "plain object");
 
 console.log("\nkonkrete rolle-fakta (planens aktør-tabel):");
 ROLLER["claude-ai"].kode === false ? ok("claude-ai vurderer ikke kode") : bad("claude-ai", "kode ≠ false");

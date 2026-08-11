@@ -128,44 +128,87 @@ export const ROLLER = Object.freeze({
 export const ROLLE_IDS = Object.freeze(Object.keys(ROLLER));
 
 const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// plain object KUN: arvede/prototype-felter må ikke maskere manglende felter,
+// og et array må ikke tælle som en rolle (fail-closed).
+const isPlainObject = (v) => {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const p = Object.getPrototypeOf(v);
+  return p === Object.prototype || p === null;
+};
+const isDenseArrayOf = (a, pred) => {
+  if (!Array.isArray(a)) return false;
+  for (let i = 0; i < a.length; i++) if (!hasOwn(a, i)) return false;
+  return a.every(pred);
+};
 
-// validateRolle(id, r) → {ok, reasons}: strukturel konsistens af ÉN rolle.
+const ROLLE_FELTER = Object.freeze([
+  "aktoer",
+  "producerer",
+  "web",
+  "kode",
+  "ejerMaalelag",
+  "raadgivende",
+  "freshness",
+  "forbyg_input",
+  "forbyg_output",
+]);
+
+// validateRolle(id, r) → {ok, reasons}: strukturel konsistens af ÉN rolle
+// (egne felter, korrekte typer). Semantik-invarianterne ligger i validateRoller.
 export function validateRolle(id, r) {
   const reasons = [];
   const fail = (m) => reasons.push(`${id}: ${m}`);
-  if (r === null || typeof r !== "object") return { ok: false, reasons: [`${id}: rolle er ikke et objekt`] };
+  if (!isPlainObject(r)) return { ok: false, reasons: [`${id}: rolle er ikke et plain object`] };
+  for (const k of Object.keys(r)) if (!ROLLE_FELTER.includes(k)) fail(`ukendt felt '${k}'`);
+  for (const k of ROLLE_FELTER) if (!hasOwn(r, k)) fail(`manglende felt '${k}' (arvet/fraværende = rød)`);
+  if (reasons.length) return { ok: false, reasons };
+
   if (!ACTOR_SLUGS.includes(r.aktoer)) fail(`ukendt aktør '${String(r.aktoer)}'`);
-  if (!Array.isArray(r.producerer) || r.producerer.length === 0) fail("producerer skal være ikke-tomt array");
-  else for (const t of r.producerer) if (!OUTPUT_TYPES.includes(t)) fail(`ukendt output-type '${t}'`);
+  if (!isDenseArrayOf(r.producerer, (t) => OUTPUT_TYPES.includes(t)) || r.producerer.length === 0)
+    fail("producerer skal være ikke-tomt, tæt array af kendte output-typer");
   for (const b of ["web", "kode", "ejerMaalelag", "raadgivende"])
     if (typeof r[b] !== "boolean") fail(`${b} skal være boolean`);
   for (const s of ["freshness", "forbyg_input", "forbyg_output"]) if (!isNonEmptyString(r[s])) fail(`${s} mangler`);
   return { ok: reasons.length === 0, reasons };
 }
 
-// validateRoller() → {ok, reasons}: hele registryet + de tværgående invarianter
-// der bærer planens sandheder (så en fremtidig redigering ikke tavst bryder dem).
-export function validateRoller() {
+// validateRoller(roller = ROLLER) → {ok, reasons}: hele registryet + planens
+// sandheder som SEMANTISKE invarianter (bundet til aktør/producerer, IKKE til
+// rolle-id) — så en fremtidig redigering (fx at ændre en rolles aktør) ikke
+// tavst kan bryde dem, og nye roller er tilladt så længe de overholder
+// semantikken. Tager et map-argument, så en test kan køre PRÆCIS samme logik
+// mod en muteret kopi (ingen gen-implementering der kan divergere).
+export function validateRoller(roller = ROLLER) {
   const reasons = [];
-  for (const [id, r] of Object.entries(ROLLER)) {
+  if (!isPlainObject(roller)) return { ok: false, reasons: ["roller-map er ikke et plain object"] };
+  for (const [id, r] of Object.entries(roller)) {
     const v = validateRolle(id, r);
     if (!v.ok) reasons.push(...v.reasons);
   }
-  // invariant 1: KUN codex-angreb ejer måle-laget (der måler ≠ der bygger).
-  const ejere = ROLLE_IDS.filter((id) => ROLLER[id].ejerMaalelag);
-  if (JSON.stringify(ejere) !== JSON.stringify(["codex-angreb"]))
-    reasons.push(`måle-lag-ejerskab skal være præcis {codex-angreb}, er {${ejere.join(", ")}}`);
-  // invariant 2: claude-ai vurderer ALDRIG kode (kode:false for begge claude-ai-roller).
-  for (const id of ROLLE_IDS)
-    if (ROLLER[id].aktoer === "claude-ai" && ROLLER[id].kode !== false)
+  if (reasons.length) return { ok: false, reasons };
+
+  for (const [id, r] of Object.entries(roller)) {
+    const producerer = r.producerer;
+    // "der måler ≠ der bygger": måle-lag-ejeren SKAL være en codex-aktør, og en
+    // rolle der PRODUCERER kode (build/plan) må ALDRIG eje sit eget måle-lag.
+    if (r.ejerMaalelag && r.aktoer !== "codex")
+      reasons.push(`${id}: ejer måle-laget men er ikke codex (der måler ≠ der bygger)`);
+    if (r.ejerMaalelag && (producerer.includes("build") || producerer.includes("plan")))
+      reasons.push(`${id}: en byg-rolle må aldrig eje sit eget måle-lag`);
+    // claude-ai vurderer ALDRIG kode.
+    if (r.aktoer === "claude-ai" && r.kode !== false)
       reasons.push(`${id}: claude-ai må aldrig vurdere kode (kode skal være false)`);
-  // invariant 3: KUN codex-forbedring har web (recon + angreb + byg er web-forbudt).
-  const webRoller = ROLLE_IDS.filter((id) => ROLLER[id].web);
-  if (JSON.stringify(webRoller) !== JSON.stringify(["codex-forbedring"]))
-    reasons.push(`web skal være præcis {codex-forbedring}, er {${webRoller.join(", ")}}`);
-  // invariant 4: KUN codex-forbedring er rådgivende (alle andre bidrager til en gate).
-  const raad = ROLLE_IDS.filter((id) => ROLLER[id].raadgivende);
-  if (JSON.stringify(raad) !== JSON.stringify(["codex-forbedring"]))
-    reasons.push(`rådgivende skal være præcis {codex-forbedring}, er {${raad.join(", ")}}`);
+    // web skaber nye 'sandheder' → kun tilladt for RÅDGIVENDE roller (ingen gate).
+    if (r.web && !r.raadgivende)
+      reasons.push(`${id}: web kun tilladt for rådgivende roller (recon/angreb/byg web-forbudt)`);
+    // en rådgivende rolle bidrager ALDRIG til en gate → producerer kun 'raad'.
+    if (r.raadgivende && !(producerer.length === 1 && producerer[0] === "raad"))
+      reasons.push(`${id}: rådgivende rolle må kun producere 'raad' (aldrig gate-bidrag)`);
+    if (!r.raadgivende && producerer.includes("raad")) reasons.push(`${id}: kun rådgivende roller må producere 'raad'`);
+  }
+  // mindst én måle-lag-ejer skal findes (ellers ejer INGEN måle-laget).
+  if (!Object.values(roller).some((r) => r.ejerMaalelag))
+    reasons.push("ingen rolle ejer måle-laget (Codex/angreb skal)");
   return { ok: reasons.length === 0, reasons };
 }

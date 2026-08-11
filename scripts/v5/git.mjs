@@ -22,13 +22,21 @@ export function makeGit(repoRoot) {
   return git;
 }
 
-// resolveRef(git, commitSha, path) → {path, oid, type} | null (findes ikke @ commit).
+// resolveRef(git, commitSha, path) → {path, oid, type} | null.
+// Returnerer null KUN når stien ikke findes @ commit (forventet fail-closed).
+// En BRUDT git (ugyldigt repo, ukendt commit) kastes videre — den skal ikke
+// maskeres som "findes ikke" (diagnostik + så en I/O-fejl ikke tavst bliver
+// til en lukket gate af forkert årsag).
 export function resolveRef(git, commitSha, path) {
+  // verificér at commit'en selv findes FØR sti-opslaget → skeln "brudt repo/
+  // ukendt commit" (kast) fra "sti findes ikke" (null).
+  git("rev-parse", "--verify", "--quiet", `${commitSha}^{commit}`); // kaster hvis commit ukendt/repo brudt
+  let oid;
   try {
-    const oid = git("rev-parse", `${commitSha}:${path}`);
-    const type = git("cat-file", "-t", oid);
-    return { path, oid, type };
+    oid = git("rev-parse", "--verify", "--quiet", `${commitSha}:${path}`);
   } catch {
-    return null;
+    return null; // sti findes ikke @ commit
   }
+  const type = git("cat-file", "-t", oid);
+  return { path, oid, type };
 }

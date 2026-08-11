@@ -13,7 +13,7 @@
 // wiring hører til fase-wiring. Kernen (resolve → evaluateGate) er ren og
 // testbar lokalt mod et git-fixture.
 
-import { GATE_REGISTRY } from "./gates.mjs";
+import { GATE_REGISTRY, isOid } from "./gates.mjs";
 import { resolveRef } from "./git.mjs";
 
 // node-navn → sti-skabelon (<pakke> substitueres). Dækker alle artefakter +
@@ -47,7 +47,11 @@ export function buildSnapshot(gateId, opts) {
   const gate = GATE_REGISTRY.find((g) => g.id === gateId);
   if (!gate) throw new Error(`gate-eval: ukendt gate '${String(gateId)}'`);
   if (typeof git !== "function") throw new Error("gate-eval: git-dep mangler");
-  if (typeof commitSha !== "string" || commitSha.length === 0) throw new Error("gate-eval: commitSha mangler");
+  // pinned commit-OID kræves — IKKE 'HEAD', et branch-navn eller en treeish;
+  // ellers er bindingen ikke-deterministisk (samme kald, andet indhold efter
+  // en ny commit). "alt bundet til ÉN pinned commit" (planens kerne).
+  if (!isOid(commitSha))
+    throw new Error(`gate-eval: commitSha skal være en pinned commit-OID (fik '${String(commitSha)}')`);
   if (typeof pakke !== "string" || !PAKKE_RE.test(pakke))
     throw new Error(`gate-eval: ugyldig pakke '${String(pakke)}'`);
 

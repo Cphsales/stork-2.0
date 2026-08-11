@@ -76,9 +76,10 @@ export function deriveSurface({ git, commitSha }) {
       uniqPush(points, seen, { id: `migration:${path}`, kind: "migration", ref: path, detail: path });
       // fail-closed: kan migrationen ikke læses fuldt, må vi ikke fortsætte med
       // tom SQL (ville tavst misse RLS-fladen) — kast, så gaten går rød.
+      // git.bytes (rå Buffer, ingen trailing-newline-trim) → eksakt indhold.
       let sql;
       try {
-        sql = git("show", `${commitSha}:${path}`);
+        sql = git.bytes("show", `${commitSha}:${path}`).toString("utf8");
       } catch (e) {
         throw new Error(`deriveSurface: kan ikke læse migration ${path} (fail-closed): ${e?.message ?? e}`);
       }
