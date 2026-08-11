@@ -127,6 +127,37 @@ console.log("\nende-til-ende — buildSnapshot + evaluateGate (recon-gaten):");
     : bad("ukendt-pakke", JSON.stringify(snap.artifact));
 }
 
+console.log("\nCodex-fund — tree (mappe) på artefakt-sti åbner IKKE gaten:");
+{
+  // byg et commit hvor 'recon/recon.md' er en MAPPE, ikke en fil
+  const R2 = mkdtempSync(join(tmpdir(), "v5-tree-"));
+  process.on("exit", () => rmSync(R2, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q", R2]);
+  const g2 = makeGit(R2);
+  g2("config", "user.name", "selftest");
+  g2("config", "user.email", "selftest@local");
+  for (const [p, c] of Object.entries({
+    "launch/launch.json": "{}\n",
+    "recon/bundle.json": "{}\n",
+    "recon/recon.md/ikke-artefaktet.txt": "recon.md er en MAPPE her\n", // tree, ikke blob
+    "supabase/migrations/0001.sql": "alter table salg enable row level security;\n",
+  })) {
+    mkdirSync(join(R2, dirname(p)), { recursive: true });
+    writeFileSync(join(R2, p), c);
+  }
+  g2("add", "-A");
+  g2("commit", "-qm", "recon.md som mappe");
+  const C2 = g2("rev-parse", "HEAD");
+  const snap = buildSnapshot("recon", { git: g2, commitSha: C2, pakke: PAKKE });
+  snap.artifact?.type === "tree"
+    ? ok("buildSnapshot resolver tree-stien (som forventet input)")
+    : bad("tree-resolve", JSON.stringify(snap.artifact));
+  const r = evaluateGate("recon", snap, { verifyProof: makeProofVerifier({ git: g2 }) });
+  !r.open && r.reasons.some((x) => /artifact-ref mangler\/ugyldig/.test(x))
+    ? ok("tree-artefakt → gaten LUKKER (blob kræves; fil-artefakt findes ikke)")
+    : bad("tree-artefakt", r.open ? "ÅBNEDE på en mappe!" : r.reasons.join(" | "));
+}
+
 console.log("\nfail-closed input-validering:");
 const throws = (n, fn, needle) => {
   try {

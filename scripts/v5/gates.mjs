@@ -120,12 +120,12 @@ export const scopeDigest = (gateId, artifactOid, bindingsOids) =>
 const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
 const OID_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/; // sha1- eller sha256-objectformat
 export const isOid = (v) => typeof v === "string" && OID_RE.test(v);
+// Kædens artefakter + bindinger er ALTID filer (recon.md · krav.md · plan.md ·
+// launch.json · *-proof.json · bundle.json · recon2.md). Kræv derfor BLOB —
+// en mappe (tree) på artefakt-/binding-stien må ALDRIG kunne åbne en gate
+// (et gyldigt fil-artefakt findes ikke, selvom stien resolver til et tree).
 const isRef = (r) =>
-  r !== null &&
-  typeof r === "object" &&
-  isNonEmptyString(r.path) &&
-  isOid(r.oid) &&
-  (r.type === "blob" || r.type === "tree");
+  r !== null && typeof r === "object" && isNonEmptyString(r.path) && isOid(r.oid) && r.type === "blob";
 
 const bindingsOidMap = (snapshotBindings, keys) => {
   const out = {};

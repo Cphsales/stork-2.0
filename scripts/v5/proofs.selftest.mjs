@@ -176,6 +176,20 @@ expectRed(
 expectRed("ukendt proof_kind → rød", route({ proof_kind: "vrøvl" }, snap(greenProof())), "ukendt proof_kind");
 expectGreen("router leder recon-coverage til den rigtige verifikator", route(greenProof(), snap(greenProof())));
 
+console.log("\nCodex-fund — prototype-proof (arvede evidens-felter) afvises:");
+{
+  // hele proofet på prototypen → Object.keys(proof) === [] (ingen egne felter)
+  const proto = greenProof();
+  const protoProof = Object.create(proto);
+  const r = verify(protoProof);
+  !r.ok
+    ? ok("Object.create(proto)-proof afvises (evidens skal være egne felter)")
+    : bad("prototype-proof", "GRØN via arvede felter");
+  // routeren må heller ikke lede det til grønt
+  const rr = makeProofVerifier({ git })(protoProof, snap(greenProof()));
+  !rr.ok ? ok("router afviser prototype-proof (ikke plain object)") : bad("router-prototype", "GRØN");
+}
+
 console.log("\nende-til-ende gennem evaluateGate (recon-gaten):");
 {
   const deps = { verifyProof: makeProofVerifier({ git }) };

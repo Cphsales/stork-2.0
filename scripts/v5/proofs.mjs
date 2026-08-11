@@ -16,8 +16,15 @@
 import { deriveSurface, checkBucketCoverage } from "./coverage.mjs";
 
 const RECON_ACTORS = Object.freeze(["code", "codex", "claude-ai"]);
-const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// plain object KUN: en ikke-standard prototype (Object.create(...)) kan maskere
+// manglende evidens-felter som arvede — afvis den (fail-closed). JSON-parset
+// evidens er altid plain; kun manipuleret/prototype-polluted JS rammes.
+const isPlainObject = (v) => {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const p = Object.getPrototypeOf(v);
+  return p === Object.prototype || p === null;
+};
 
 // verifyReconCoverageProof(proof, snapshot, {git}) → {ok, reasons}
 //
