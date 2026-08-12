@@ -3,7 +3,7 @@
 // (plan DEL VI (a)). Path-matching er et klassisk falsk-grøn-sted (traversal,
 // segment-grænser, absolut vs. relativ) — derfor hård, konkret afprøvning.
 
-import { pathZone, writeDecision, toRepoRel } from "./hooks.mjs";
+import { pathZone, writeDecision, buildWriteDecision, toRepoRel } from "./hooks.mjs";
 
 const ROOT = "/home/mathias/stork-implplan";
 let failed = 0;
@@ -110,6 +110,35 @@ console.log("\nCodex-fund (genangreb) — top-level prototype-input:");
   r.decision === "deny"
     ? ok("Object.create(gyldig-input) → deny (ikke-standard prototype)")
     : bad("proto-input", r.decision);
+}
+
+console.log("\nbuildWriteDecision — attack-spec-gate (build-fase, plan 2.E):");
+const bwAllows = (n, args) => {
+  const r = buildWriteDecision(args);
+  r.decision === "allow" ? ok(n) : bad(n, `deny: ${r.reason}`);
+};
+const bwDenies = (n, args, needle) => {
+  const r = buildWriteDecision(args);
+  const hit = !needle || new RegExp(needle).test(r.reason);
+  r.decision === "deny" && hit ? ok(n) : bad(n, r.decision === "deny" ? `deny men uden '${needle}': ${r.reason}` : "ALLOW (falsk-grøn)");
+};
+const buildOk = { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: true, driverRouted: true, bidId: "bid-1", bidAngrebsSpecCommitted: true };
+bwAllows("driver-routet produkt-skriv m. bid + committet angrebs-spec → allow", buildOk);
+bwDenies("direkte skrivevej (ikke driver-routet)", { ...buildOk, driverRouted: false }, "uden om driveren");
+bwDenies("driver-routet men uden aktiv bid", { ...buildOk, bidId: "" }, "uden aktiv bid");
+bwDenies("bid uden committet angrebs-spec (angreb foreligger ikke)", { ...buildOk, bidAngrebsSpecCommitted: false }, "committet angrebs-spec");
+bwDenies("før plan-laast (default-deny)", { ...buildOk, planLocked: false }, "plan-laast");
+bwDenies("måle-lags-skriv (uanset build-flag)", { ...buildOk, rawPath: "scripts/v5/x.mjs" }, "måle-laget");
+bwDenies("sandhed-skriv", { ...buildOk, rawPath: "docs/sandhed/x.md" }, "Mathias' bord");
+bwDenies("uden for repo", { ...buildOk, rawPath: "../etc/passwd" }, "uden for repo");
+// eksplicit true påkrævet — truthy må ALDRIG åbne (auto-fix-makro der sætter driverRouted:'ja')
+bwDenies("driverRouted truthy-men-ikke-true", { ...buildOk, driverRouted: "ja" }, "uden om driveren");
+bwDenies("bidAngrebsSpecCommitted truthy-men-ikke-true", { ...buildOk, bidAngrebsSpecCommitted: 1 }, "committet angrebs-spec");
+bwDenies("malformeret input (null)", null, "ugyldigt input");
+{
+  const proto = Object.create(buildOk);
+  const r = buildWriteDecision(proto);
+  r.decision === "deny" ? ok("Object.create(gyldig) → deny (prototype-input)") : bad("bw-proto", r.decision);
 }
 
 console.log("");

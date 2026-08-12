@@ -95,3 +95,36 @@ export function writeDecision(input) {
       return { decision: "deny", zone: "udenfor", reason: "ukendt zone (fail-closed)" };
   }
 }
+
+// buildWriteDecision(input) → {decision, zone, reason}  (plan 2.E, attack-spec-gate)
+//
+// Den FINE build-fase-gate writeDecision udskyder eksplicit "til driver-biddet".
+// Efter plan-laast er et produkt-skriv en TILSTAND-maskine, ikke et frit ja:
+// et skriv er KUN tilladt hvis det er (a) DRIVER-routet, (b) bundet til en aktiv
+// bid, og (c) den bid har en COMMITTET angrebs-spec (angrebet skal foreligge FØR
+// byg — ellers er der intet at måle dybden mod). Alt andet → deny. En positiv
+// allowlist: direkte skriveveje uden om driveren OG auto-fix-/"issue→PR"-makroer
+// (som aldrig er driver-routede bid-byg) falder automatisk i deny.
+//
+// input = { rawPath, repoRoot, planLocked, driverRouted, bidId, bidAngrebsSpecCommitted }
+export function buildWriteDecision(input) {
+  if (input === null || typeof input !== "object" || Array.isArray(input))
+    return { decision: "deny", zone: "udenfor", reason: "ugyldigt input (fail-closed)" };
+  const ip = Object.getPrototypeOf(input);
+  if (ip !== Object.prototype && ip !== null)
+    return { decision: "deny", zone: "udenfor", reason: "input har ikke-standard prototype (manipuleret)" };
+
+  // zone-gaten først (samme kanoniske klassificering; måle-lag/sandhed/udenfor
+  // afvises uanset build-fase-flag).
+  const coarse = writeDecision({ rawPath: input.rawPath, repoRoot: input.repoRoot, planLocked: input.planLocked });
+  if (coarse.decision === "deny") return coarse;
+
+  // her: zone = produkt OG planLocked === true. Anvend attack-spec-tilstanden.
+  if (input.driverRouted !== true)
+    return { decision: "deny", zone: "produkt", reason: "direkte skrivevej uden om driveren (kun driver-routede bid-byg tillades)" };
+  if (typeof input.bidId !== "string" || input.bidId.length === 0)
+    return { decision: "deny", zone: "produkt", reason: "skriv uden aktiv bid (bidId mangler)" };
+  if (input.bidAngrebsSpecCommitted !== true)
+    return { decision: "deny", zone: "produkt", reason: "bid mangler committet angrebs-spec (angrebet skal foreligge før byg)" };
+  return { decision: "allow", zone: "produkt", reason: `produkt-skriv tilladt: driver-routet bid '${input.bidId}' med committet angrebs-spec` };
+}
