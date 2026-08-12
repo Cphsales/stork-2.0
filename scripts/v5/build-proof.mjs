@@ -92,10 +92,11 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
 
   // ---------- 1) K-sæt (krav-acceptkriteriet, deklareret) ----------
   const kIds = new Set();
-  if (!isDenseArrayOf(proof.ks, (k) => isPlainObject(k)) || proof.ks.length === 0)
+  const ksArr = own(proof, "ks");
+  if (!isDenseArrayOf(ksArr, (k) => isPlainObject(k)) || ksArr.length === 0)
     fail("ks skal være et ikke-tomt, tæt array af objekter (K-sættet mangler → intet at bevise)");
   else {
-    for (const k of proof.ks) {
+    for (const k of ksArr) {
       const kId = own(k, "k_id");
       if (!isNonEmptyString(kId)) {
         fail("K uden gyldigt k_id");
@@ -110,10 +111,11 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   const testedKs = new Set(); // K'er med ≥1 gyldig effect-harness-test
   const killedKs = new Set(); // K'er med ≥1 dræbt targeted mutant
   const bidIds = new Set();
-  if (!isDenseArrayOf(proof.bids, (b) => isPlainObject(b)) || proof.bids.length === 0)
+  const bidsArr = own(proof, "bids");
+  if (!isDenseArrayOf(bidsArr, (b) => isPlainObject(b)) || bidsArr.length === 0)
     fail("bids skal være et ikke-tomt, tæt array af objekter");
   else {
-    for (const b of proof.bids) {
+    for (const b of bidsArr) {
       const bid = own(b, "bid_id");
       if (!isNonEmptyString(bid)) {
         fail("bid uden gyldigt bid_id");
@@ -203,9 +205,14 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   // falsk-grøn, Codex-fund #1; proportional undtagelse hører til plan-gaten.)
   for (const kId of kIds) if (!killedKs.has(kId)) fail(`K '${kId}' mangler ≥1 dræbt targeted mutant (mutant-kill-gulv brudt)`);
 
-  // ---------- 5) claim_graph: OBLIGATORISK, source-ankre re-verificeret mod rå git ----------
+  // ---------- 5) claim_graph: OBLIGATORISK ikke-tom, source-ankre re-verificeret mod rå git ----------
   // u-forfalskelig kerne — må ikke droppes (Codex-fund #2). Hvert anker citeres
   // OID-bundet (verifyEvidence) og skal være eksekveret + mutant-dræbt.
+  // RESIDUAL (ærlig, Codex-confirm #3): gulvet her er ≥1 git-forankret claim. Hvilke
+  // K der PROPORTIONALT skal have en claim (plan 2.C: høj-risiko + sikkerheds-/
+  // penge-/rettigheds-K) er en PLAN-gate-beslutning — den pure verifier har ingen
+  // risiko-metadata og kan ikke re-derivere den uden planen. Per-K-dækning
+  // håndhæves når plan-classification wires (ikke ensidigt overskrevet her).
   const cg = own(proof, "claim_graph");
   if (!isDenseArrayOf(cg, (c) => isPlainObject(c)) || cg.length === 0)
     fail("claim_graph skal være et ikke-tomt, tæt array (den git-forankrede kerne må ikke droppes)");
@@ -228,10 +235,11 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
 
   // ---------- 6) async-reviews: PASS pr. bid, bundet til base_oid ----------
   const reviewedBids = new Map(); // bid_id → base_oid for PASS-reviews
-  if (!isDenseArrayOf(proof.async_reviews, (r) => isPlainObject(r)))
+  const reviewsArr = own(proof, "async_reviews");
+  if (!isDenseArrayOf(reviewsArr, (r) => isPlainObject(r)))
     fail("async_reviews skal være et tæt array af objekter (manglende = anti-tavshed rød)");
   else {
-    for (const r of proof.async_reviews) {
+    for (const r of reviewsArr) {
       const rbid = own(r, "bid_id");
       if (!isNonEmptyString(rbid) || !bidIds.has(rbid)) {
         fail(`async_review for ukendt bid '${String(rbid)}'`);
@@ -249,7 +257,7 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     }
   }
   // hvert bid SKAL have et PASS-review bundet til nøjagtig dets egen base_oid
-  for (const b of Array.isArray(proof.bids) ? proof.bids : []) {
+  for (const b of Array.isArray(bidsArr) ? bidsArr : []) {
     if (!isPlainObject(b) || !isNonEmptyString(own(b, "bid_id"))) continue;
     const bBase = own(b, "base_oid");
     if (!reviewedBids.has(b.bid_id)) fail(`bid '${b.bid_id}' mangler et PASS async-review (anti-tavshed)`);

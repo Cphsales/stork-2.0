@@ -120,12 +120,24 @@ export const scopeDigest = (gateId, artifactOid, bindingsOids) =>
 const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
 const OID_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/; // sha1- eller sha256-objectformat
 export const isOid = (v) => typeof v === "string" && OID_RE.test(v);
+const hasOwn = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
+// plain object KUN: en ikke-standard prototype kan bære gyldigt-udseende arvede
+// felter — afvis (fail-closed; CI/gate-eval bygger plain objekter).
+const isPlainObj = (v) => {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const p = Object.getPrototypeOf(v);
+  return p === Object.prototype || p === null;
+};
 // Kædens artefakter + bindinger er ALTID filer (recon.md · krav.md · plan.md ·
 // launch.json · *-proof.json · bundle.json · recon2.md). Kræv derfor BLOB —
 // en mappe (tree) på artefakt-/binding-stien må ALDRIG kunne åbne en gate
 // (et gyldigt fil-artefakt findes ikke, selvom stien resolver til et tree).
+// EGNE felter kræves (Object.prototype-pollution må ikke udfylde en ref).
 const isRef = (r) =>
-  r !== null && typeof r === "object" && isNonEmptyString(r.path) && isOid(r.oid) && r.type === "blob";
+  isPlainObj(r) &&
+  hasOwn(r, "path") && isNonEmptyString(r.path) &&
+  hasOwn(r, "oid") && isOid(r.oid) &&
+  hasOwn(r, "type") && r.type === "blob";
 
 const bindingsOidMap = (snapshotBindings, keys) => {
   const out = {};
@@ -180,30 +192,35 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
   if (sp !== Object.prototype && sp !== null)
     return { open: false, gate_id: gateId, reasons: ["snapshot har ikke-standard prototype (manipuleret)"] };
 
-  // 1) pinned commit + artefakt + bindinger findes (OID + type fra rå git)
-  if (!isNonEmptyString(snapshot.commit_sha)) fail("commit_sha mangler/tom");
-  if (!isRef(snapshot.artifact)) fail("artifact-ref mangler/ugyldig (path+oid+type kræves)");
-  const bindingKeys = Object.keys(snapshot.bindings ?? {});
-  for (const k of gate.bindings) if (!isRef(snapshot.bindings?.[k])) fail(`binding '${k}' mangler/ugyldig`);
+  // 1) pinned commit + artefakt + bindinger findes (OID + type fra rå git).
+  // EGNE felter kræves overalt — Object.prototype-pollution må ikke udfylde et
+  // required snapshot-felt (snapshot={} med felter arvet fra en forurenet
+  // prototype åbnede ellers gaten).
+  if (!hasOwn(snapshot, "commit_sha") || !isNonEmptyString(snapshot.commit_sha)) fail("commit_sha mangler/tom");
+  if (!hasOwn(snapshot, "artifact") || !isRef(snapshot.artifact)) fail("artifact-ref mangler/ugyldig (path+oid+type kræves)");
+  const bindings = hasOwn(snapshot, "bindings") && isPlainObj(snapshot.bindings) ? snapshot.bindings : null;
+  if (!bindings) fail("bindings mangler/ugyldig (eget plain object kræves)");
+  const bindingKeys = bindings ? Object.keys(bindings) : [];
+  for (const k of gate.bindings) if (!(bindings && hasOwn(bindings, k) && isRef(bindings[k]))) fail(`binding '${k}' mangler/ugyldig`);
   for (const k of bindingKeys)
     if (!gate.bindings.includes(k)) fail(`uventet binding '${k}' (fail-closed: ukendt = rød)`);
   if (reasons.length) return { open: false, gate_id: gateId, reasons };
 
-  const expectedOids = bindingsOidMap(snapshot.bindings, gate.bindings);
+  const expectedOids = bindingsOidMap(bindings, gate.bindings);
   const artifactOid = snapshot.artifact.oid;
 
   // 2+3) maskine-bevis: typed binding + frisk re-verifikation
   if (gate.proofKind !== null) {
-    const p = snapshot.proof_result;
-    if (p === null || typeof p !== "object") fail(`proof_result mangler (gate kræver ${gate.proofKind})`);
+    const p = hasOwn(snapshot, "proof_result") ? snapshot.proof_result : null;
+    if (!isPlainObj(p)) fail(`proof_result mangler (gate kræver ${gate.proofKind})`);
     else {
-      if (p.ok !== true) fail("proof_result.ok er ikke eksplicit true"); // 'true'/1/undefined = rød
-      if (p.gate_id !== gateId) fail(`proof gate_id-binding brudt: ${String(p.gate_id)}`);
-      if (p.proof_kind !== gate.proofKind)
+      if (!hasOwn(p, "ok") || p.ok !== true) fail("proof_result.ok er ikke eksplicit true"); // 'true'/1/undefined/arvet = rød
+      if (!hasOwn(p, "gate_id") || p.gate_id !== gateId) fail(`proof gate_id-binding brudt: ${String(p.gate_id)}`);
+      if (!hasOwn(p, "proof_kind") || p.proof_kind !== gate.proofKind)
         fail(`proof proof_kind-binding brudt: ${String(p.proof_kind)} ≠ ${gate.proofKind}`);
-      if (p.artifact_oid !== artifactOid)
+      if (!hasOwn(p, "artifact_oid") || p.artifact_oid !== artifactOid)
         fail("proof artifact_oid-binding brudt (generisk/genbrugt bevis åbner intet)");
-      if (!sameOidMap(p.bindings_oids, expectedOids)) fail("proof bindings_oids-binding brudt");
+      if (!hasOwn(p, "bindings_oids") || !sameOidMap(p.bindings_oids, expectedOids)) fail("proof bindings_oids-binding brudt");
       if (typeof deps.verifyProof !== "function")
         fail("verifyProof-dep mangler (fail-closed: ingen frisk re-verifikation = rød)");
       else {
@@ -211,14 +228,14 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
         if (rv?.ok !== true) fail(`frisk verifyProof fejlede: ${(rv?.reasons ?? ["intet resultat"]).join("; ")}`);
       }
     }
-  } else if (snapshot.proof_result != null) {
+  } else if (hasOwn(snapshot, "proof_result") && snapshot.proof_result != null) {
     fail("uventet proof_result på gate uden proofKind (fail-closed)");
   }
 
   // 4+5) aktør-verdikter: præcis ét PASS pr. forventet aktør, hvert bundet + frisk re-verificeret
   const verdictDigests = [];
   if (gate.expectedActors.length > 0) {
-    const vs = snapshot.verdicts;
+    const vs = hasOwn(snapshot, "verdicts") ? snapshot.verdicts : undefined;
     if (!Array.isArray(vs)) fail("verdicts mangler (anti-tavshed: fuldt sæt kræves)");
     else {
       const byActor = new Map();
@@ -276,25 +293,26 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
         if (clean) verdictDigests.push(digestOf(v));
       }
     }
-  } else if (Array.isArray(snapshot.verdicts) && snapshot.verdicts.length > 0) {
+  } else if (hasOwn(snapshot, "verdicts") && Array.isArray(snapshot.verdicts) && snapshot.verdicts.length > 0) {
     fail("uventede verdikter på gate uden expectedActors (fail-closed)");
   }
 
   // 6) approver: server-verificeret login + indholds-bundet scope (anti-replay) + rækkefølge-bevis
   if (gate.approver !== null) {
-    const a = snapshot.approval;
-    if (a === null || typeof a !== "object") fail(`approval mangler (gate kræver ${gate.approver})`);
+    const a = hasOwn(snapshot, "approval") ? snapshot.approval : null;
+    if (!isPlainObj(a)) fail(`approval mangler (gate kræver ${gate.approver})`);
     else {
       const allowedKeys = ["login_server_verified", "gate_id", "scope_digest", "prerequisite_digests"];
       for (const k of Object.keys(a)) if (!allowedKeys.includes(k)) fail(`approval: uventet felt '${k}' (fail-closed)`);
-      if (a.login_server_verified !== gate.approver)
+      // egne felter kræves (arvet login/scope må ikke godkende)
+      if (!hasOwn(a, "login_server_verified") || a.login_server_verified !== gate.approver)
         fail(`approval-login er ikke ${gate.approver} (server-verificeret kræves)`);
-      if (a.gate_id !== gateId) fail("approval gate_id-binding brudt");
+      if (!hasOwn(a, "gate_id") || a.gate_id !== gateId) fail("approval gate_id-binding brudt");
       const expectedScope = scopeDigest(gateId, artifactOid, expectedOids);
-      if (a.scope_digest !== expectedScope) fail("approval scope_digest matcher ikke artefakt+bindinger (anti-replay)");
+      if (!hasOwn(a, "scope_digest") || a.scope_digest !== expectedScope) fail("approval scope_digest matcher ikke artefakt+bindinger (anti-replay)");
       if (gate.orderedApproval) {
         // krav 5: Mathias SIDST — approval SKAL referere præcis de friske verdikt-digests.
-        const pd = a.prerequisite_digests;
+        const pd = hasOwn(a, "prerequisite_digests") ? a.prerequisite_digests : undefined;
         if (!Array.isArray(pd)) fail("orderedApproval: prerequisite_digests mangler (rækkefølge ubevist)");
         else {
           const want = [...verdictDigests].sort();
@@ -308,30 +326,31 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
               "orderedApproval: prerequisite_digests matcher ikke de faktiske aktør-verdikter (krav OK før/uden verdikter er umuligt)",
             );
         }
-      } else if (a.prerequisite_digests !== undefined) {
+      } else if (hasOwn(a, "prerequisite_digests")) {
         fail("approval: prerequisite_digests uventet på ikke-ordered gate (fail-closed)");
       }
     }
-  } else if (snapshot.approval != null) {
+  } else if (hasOwn(snapshot, "approval") && snapshot.approval != null) {
     fail("uventet approval på gate uden approver (fail-closed)");
   }
 
   // 7) kæden: forgængerens check SKAL være success OG indholds-bundet til bindingen
+  // (egne felter kræves — en arvet predecessor må ikke kæde gaten videre)
   if (gate.predecessor !== null) {
-    const pre = snapshot.predecessor;
-    if (pre === null || typeof pre !== "object")
+    const pre = hasOwn(snapshot, "predecessor") ? snapshot.predecessor : null;
+    if (!isPlainObj(pre))
       fail(`predecessor-check mangler (kæde: ${gate.predecessor} → ${gateId})`);
     else {
-      if (pre.gate_id !== gate.predecessor)
+      if (!hasOwn(pre, "gate_id") || pre.gate_id !== gate.predecessor)
         fail(`predecessor gate_id er ${String(pre.gate_id)}, kræver ${gate.predecessor}`);
-      if (pre.conclusion !== "success") fail(`predecessor-check er ikke success (${String(pre.conclusion)})`);
-      const boundOid = snapshot.bindings[gate.predecessorBinding]?.oid;
-      if (!isOid(pre.artifact_oid) || pre.artifact_oid !== boundOid)
+      if (!hasOwn(pre, "conclusion") || pre.conclusion !== "success") fail(`predecessor-check er ikke success (${String(pre.conclusion)})`);
+      const boundOid = bindings && hasOwn(bindings, gate.predecessorBinding) ? bindings[gate.predecessorBinding]?.oid : undefined;
+      if (!hasOwn(pre, "artifact_oid") || !isOid(pre.artifact_oid) || pre.artifact_oid !== boundOid)
         fail(
           "predecessor artifact_oid matcher ikke bindingen (indholds-bundet kæde — {open:true} uden indhold åbner intet)",
         );
     }
-  } else if (snapshot.predecessor != null) {
+  } else if (hasOwn(snapshot, "predecessor") && snapshot.predecessor != null) {
     fail("uventet predecessor på rod-gate (fail-closed)");
   }
 

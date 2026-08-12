@@ -178,6 +178,40 @@ expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ..
   }
   expectRed("arvet non_bypass_role (prototype-pollution) fanges", r, "non_bypass_role");
 }
+// Codex-confirm #1: tomt source_anchor {} med evidens-felter på Object.prototype
+{
+  const p = mutated((x) => (x.claim_graph[0].source_anchor = {}));
+  Object.prototype.commit_sha = COMMIT;
+  Object.prototype.path = "supabase/migrations/0001.sql";
+  Object.prototype.blob_oid = ref("supabase/migrations/0001.sql").oid;
+  Object.prototype.line_span = [1, 2];
+  Object.prototype.excerpt_sha = sha256("x");
+  let r;
+  try {
+    r = verify(p);
+  } finally {
+    for (const k of ["commit_sha", "path", "blob_oid", "line_span", "excerpt_sha"]) delete Object.prototype[k];
+  }
+  expectRed("tomt source_anchor m. arvede evidens-felter fanges", r, "eget felt");
+}
+// Codex-confirm #2 (build-del): arvet ks (ikke eget felt) må ikke tælle
+{
+  const p = greenProof();
+  delete p.ks;
+  Object.prototype.ks = [{ k_id: "K-1" }, { k_id: "K-2" }];
+  let r;
+  try {
+    r = verifyBuildProof(p, snap(p), { git });
+  } finally {
+    delete Object.prototype.ks;
+  }
+  expectRed("arvet ks (prototype) fanges", r, "K-sættet mangler");
+}
+
+console.log("\nclaim_graph proportional dækning (ÆRLIG RESIDUAL — plan-gate-beslutning):");
+// build-proof kræver ≥1 git-forankret claim, IKKE én pr. K (plan 2.C: proportional
+// — høj-risiko/sikkerheds-K). Per-K-dækning håndhæves ved plan-wiring, ikke her.
+expectGreen("claim_graph dækker delmængde af K (K-1, ikke K-2) — tilladt", verify(mutated((p) => (p.claim_graph = [p.claim_graph[0]]))));
 
 console.log("\nrouter (makeProofVerifier) leder build-proof til verifikatoren:");
 const route = makeProofVerifier({ git });
@@ -203,6 +237,21 @@ console.log("\nende-til-ende gennem evaluateGate (build-gaten):");
   const bareEnvelope = { ok: true, gate_id: "build", proof_kind: "build-proof", artifact_oid: artifact.oid, bindings_oids: { plan: plan.oid } };
   const r = evaluateGate("build", snap(bareEnvelope), deps);
   !r.open ? ok("bar envelope uden bevis-payload åbner ikke build-gaten") : bad("e2e-bar", "ÅBNEDE");
+}
+{
+  // Codex-confirm #2 (gate-del): snapshot={} med ALLE required felter på
+  // Object.prototype må IKKE åbne build-gaten (arvede snapshot/envelope-felter)
+  const deps = { verifyProof: makeProofVerifier({ git }) };
+  const g = snap(greenProof());
+  const keys = ["commit_sha", "artifact", "bindings", "proof_result", "predecessor", "verdicts", "approval"];
+  for (const k of keys) Object.prototype[k] = g[k];
+  let r;
+  try {
+    r = evaluateGate("build", {}, deps);
+  } finally {
+    for (const k of keys) delete Object.prototype[k];
+  }
+  !r.open ? ok("snapshot={} m. arvede felter åbner IKKE build-gaten (prototype-pollution)") : bad("e2e-proto", "ÅBNEDE");
 }
 
 console.log("");
