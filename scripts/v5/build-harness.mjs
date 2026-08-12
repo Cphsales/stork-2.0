@@ -31,7 +31,18 @@ const isPlainObject = (v) => {
 const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 const isDenseNonEmptyArray = (a) => {
   if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype || a.length === 0) return false;
-  for (let i = 0; i < a.length; i++) if (!Object.prototype.hasOwnProperty.call(a, i)) return false;
+  const len = a.length;
+  // ingen egne symbol-/accessor-/ikke-index-nøgler (en accessor-index kunne
+  // returnere en anden værdi ved hver læsning; ekstra nøgler skjuler intention).
+  for (const k of Reflect.ownKeys(a)) {
+    if (typeof k === "symbol") return false;
+    if (k === "length") continue;
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= len) return false;
+    const d = Object.getOwnPropertyDescriptor(a, k);
+    if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false;
+  }
+  for (let i = 0; i < len; i++) if (!Object.prototype.hasOwnProperty.call(a, i)) return false;
   return true;
 };
 // læs KUN et eget DATA-felt (ingen getter/setter, ikke arvet) — så et felt arvet

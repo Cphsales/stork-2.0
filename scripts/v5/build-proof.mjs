@@ -37,10 +37,15 @@ import { isOid } from "./gates.mjs";
 import { verifyEvidence } from "./verdikt.mjs";
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-// læs KUN egne felter (Object.prototype-pollution må ikke udfylde et required
-// felt — Codex-fund #4). own(o,k) → værdien hvis egen, ellers undefined.
-const own = (o, k) => (hasOwn(o, k) ? o[k] : undefined);
-const ownTrue = (o, k) => hasOwn(o, k) && o[k] === true;
+// læs KUN et eget DATA-felt: hverken arvet (Object.prototype-pollution) ELLER en
+// accessor (en getter kunne returnere true under checket / en anden værdi bagefter).
+// own(o,k) → data-værdien hvis eget non-accessor felt, ellers undefined.
+const own = (o, k) => {
+  if (o === null || typeof o !== "object") return undefined;
+  const d = Object.getOwnPropertyDescriptor(o, k);
+  return d && typeof d.get !== "function" && typeof d.set !== "function" ? d.value : undefined;
+};
+const ownTrue = (o, k) => own(o, k) === true;
 const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
 // plain object KUN: en ikke-standard prototype kan maskere manglende felter som
 // arvede → afvis (fail-closed). JSON-parset proof er altid plain.

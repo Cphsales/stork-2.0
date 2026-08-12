@@ -151,6 +151,18 @@ console.log("\nObject.prototype-forurening må ikke udfylde tomme inputs (Codex 
   }
   eq("arvet kTests → allKilled=false", r.allKilled, false);
 }
+// Codex r4 #2: accessor-index / symbol-nøgle på kTests-array
+{
+  const kt = { k_id: "K-1", harness, mutants: [mutant] };
+  const arr = [];
+  Object.defineProperty(arr, 0, { enumerable: true, get: () => kt });
+  eq("kTests m. accessor-index → allKilled=false", runBuildProofEngine({ kTests: arr }, flip()).allKilled, false);
+}
+{
+  const arr = [{ k_id: "K-1", harness, mutants: [mutant] }];
+  arr[Symbol("x")] = 1;
+  eq("kTests m. symbol-nøgle → allKilled=false", runBuildProofEngine({ kTests: arr }, flip()).allKilled, false);
+}
 
 console.log("");
 if (failed > 0) {

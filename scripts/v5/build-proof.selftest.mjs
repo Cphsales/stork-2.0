@@ -225,6 +225,9 @@ expectRed("sparse bids-array (hul)", verify(mutated((p) => { const a = p.bids.sl
 expectRed("ks m. egen every-override → rød", verify(mutated((p) => { p.ks.every = () => true; })), "K-sættet mangler");
 expectRed("ks m. custom prototype → rød", verify(mutated((p) => { Object.setPrototypeOf(p.ks, { some: () => true }); })), "K-sættet mangler");
 expectRed("bids m. egen Symbol.iterator → rød", verify(mutated((p) => { p.bids[Symbol.iterator] = function* () {}; })), "bids skal være");
+// Codex r4 #1: accessor (getter) på et required felt må ikke tælle som data-værdi
+expectRed("mutant.killed som getter (accessor) → rød", verify(mutated((p) => { Object.defineProperty(p.bids[0].mutants[0], "killed", { enumerable: true, get: () => true }); })), "dræbt\\+restored\\+ren");
+expectRed("non_bypass_role som getter (accessor) → rød", verify(mutated((p) => { Object.defineProperty(p.bids[0].tests[0], "non_bypass_role", { enumerable: true, get: () => true }); })), "non_bypass_role");
 expectRed("build-proof på prototype (arvede felter)", verifyBuildProof(Object.create(greenProof()), snap(greenProof()), { git }), "ikke et objekt");
 expectRed("git-dep mangler", verifyBuildProof(greenProof(), snap(greenProof()), {}), "git-dep mangler");
 expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: {} }, { git }), "plan-binding");
