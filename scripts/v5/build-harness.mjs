@@ -28,7 +28,7 @@ const isPlainObject = (v) => {
   const p = Object.getPrototypeOf(v);
   return p === Object.prototype || p === null;
 };
-const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
+const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 const isDenseNonEmptyArray = (a) => {
   if (!Array.isArray(a) || a.length === 0) return false;
   for (let i = 0; i < a.length; i++) if (!Object.prototype.hasOwnProperty.call(a, i)) return false;
@@ -60,29 +60,34 @@ function safeRun(sql, text, opts) {
 //   asRole,                             // ikke-bypass DB-rolle (SET ROLE) — obligatorisk
 //   settings?,                          // session-settings (fx tenant-org)
 //   positive: { sql },                  // handling der SKAL lykkes (samme-org)
-//   negative: { sql, expectError? },    // handling der SKAL afvises (cross-org);
-//                                        // expectError = substring fejlen SKAL matche
-//                                        // (så en afvisning af FORKERT grund ikke tæller)
+//   negative: { sql, expectError },     // handling der SKAL afvises (cross-org).
+//                                        // expectError = substring fejlen SKAL matche.
+//                                        // OBLIGATORISK: uden den kan en afvisning af
+//                                        // FORKERT grund (syntax/constraint) ikke
+//                                        // skelnes fra den tilsigtede RLS-afvisning.
 // }
-// green ⟺ protokollen kørte validt OG positiv lykkes OG negativ AFVISES (af den
-// rigtige grund, hvis expectError er sat). Manglende ikke-bypass rolle → ikke green.
+// Negativ-udfaldet er TRE-vejs (ikke bare afvist true/false):
+//   negAllowed        = forbudt op LYKKEDES (ok:true) → isolationen er brudt
+//   negRejectedRight  = afvist AF DEN PINNEDE GRUND (ok:false + error ⊇ expectError)
+//   (alt andet: afvist-af-forkert-grund / protokol-fejl → hverken green ELLER kill)
+// green ⟺ protokol-valid + positiv lykkes + negRejectedRight.
 export function runEffectHarness(harness, sql) {
+  const dead = (error) => ({ green: false, protocolOk: false, positiveOk: false, negAllowed: false, negRejectedRight: false, error });
   if (!isPlainObject(harness) || !isPlainObject(harness.positive) || !isPlainObject(harness.negative))
-    return { green: false, protocolOk: false, positiveOk: false, negativeRejected: false, error: "malformet harness (positive/negative kræves)" };
-  if (!isNonEmptyString(harness.asRole))
-    return { green: false, protocolOk: false, positiveOk: false, negativeRejected: false, error: "asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)" };
+    return dead("malformet harness (positive/negative kræves)");
+  if (!isNonEmptyString(harness.asRole)) return dead("asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)");
+  if (!isNonEmptyString(harness.negative.expectError))
+    return dead("negative.expectError kræves (afvisnings-grunden skal pinnes — ellers tæller en tilfældig SQL-fejl som afvisning)");
   const opts = { role: harness.asRole, settings: isPlainObject(harness.settings) ? harness.settings : undefined };
   const pos = safeRun(sql, harness.positive.sql, opts);
   const neg = safeRun(sql, harness.negative.sql, opts);
   const protocolOk = pos.protocolOk === true && neg.protocolOk === true;
   const positiveOk = pos.protocolOk === true && pos.ok === true;
-  // negativ afvist: kørte validt OG blev afvist; hvis expectError er sat SKAL
-  // fejl-beskeden matche (ellers er "afvist" bare en tilfældig SQL-fejl).
-  let negativeRejected = neg.protocolOk === true && neg.ok === false;
-  if (negativeRejected && isNonEmptyString(harness.negative.expectError))
-    negativeRejected = isNonEmptyString(neg.error) && neg.error.includes(harness.negative.expectError);
-  const green = protocolOk && positiveOk && negativeRejected;
-  return { green, protocolOk, positiveOk, negativeRejected, detail: { pos, neg } };
+  const negAllowed = neg.protocolOk === true && neg.ok === true; // forbudt op lykkedes = isolation brudt
+  const negRejectedRight =
+    neg.protocolOk === true && neg.ok === false && isNonEmptyString(neg.error) && neg.error.includes(harness.negative.expectError);
+  const green = protocolOk && positiveOk && negRejectedRight;
+  return { green, protocolOk, positiveOk, negAllowed, negRejectedRight, detail: { pos, neg } };
 }
 
 // killMutant(mutant, harness, sql) → {killed, restored, cleanAfter, baselineGreen, detail}
@@ -113,8 +118,11 @@ export function killMutant(mutant, harness, sql) {
   const restore = safeRun(sql, mutant.restore, {});
   const cleanBaseline = runEffectHarness(harness, sql); // post-restore: er vi rene igen?
 
+  // DRÆBT ⟺ under mutanten er den forbudte op nu EKSPLICIT TILLADT (negAllowed),
+  // mens positiv stadig virker. "Afvist af forkert grund" eller en protokol-fejl
+  // er IKKE en kill (forbidden-op blev aldrig tilladt = ingen reel isolations-brud).
   const killed =
-    underMutant.protocolOk === true && underMutant.positiveOk === true && underMutant.negativeRejected === false;
+    underMutant.protocolOk === true && underMutant.positiveOk === true && underMutant.negAllowed === true;
   return {
     killed,
     restored: restore.ok === true,

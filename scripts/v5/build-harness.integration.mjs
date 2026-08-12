@@ -97,7 +97,7 @@ console.log("\neffect-harness mod rigtig RLS:");
 const baseline = runEffectHarness(harness, dockerPsql);
 eq("baseline green (samme-org OK, cross-org AFVIST)", baseline.green, true);
 eq("  positiv lykkedes", baseline.positiveOk, true);
-eq("  negativ blev afvist", baseline.negativeRejected, true);
+eq("  negativ afvist af RLS-grund", baseline.negRejectedRight, true);
 
 console.log("\nmutation-kill mod rigtig RLS:");
 const km = killMutant(mutant, harness, dockerPsql);
