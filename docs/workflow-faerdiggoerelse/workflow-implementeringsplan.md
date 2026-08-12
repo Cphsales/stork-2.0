@@ -1,6 +1,11 @@
 # Workflow — implementeringsplan (v5) · SAMLET
 
-**Status:** ÉN samlet plan (2026-08-11). Design godkendt af Mathias 2026-06-25; herefter foldet ind: Codex-endcheck (9 fund, 2026-06-26) · gate-kerne v4 · dybde-resolution (effect-harness + config-mutant-kill). **Erstatter v1/v2/v3 — denne fil er eneste sandhed.** **Design-grøn ≠ skudsikker:** en designet-men-utestet mekanisme er selv doc-grøn (KERNEN gælder også planen); skudsikker = DEL VI bestået. **Der bygges intet før Mathias siger byg.**
+**Status:** ÉN samlet plan (2026-08-11). Design godkendt af Mathias 2026-06-25; herefter foldet ind: Codex-endcheck (9 fund, 2026-06-26) · gate-kerne v4 · dybde-resolution (effect-harness + config-mutant-kill). **Erstatter v1/v2/v3 — denne fil er eneste sandhed.** **Design-grøn ≠ skudsikker:** en designet-men-utestet mekanisme er selv doc-grøn (KERNEN gælder også planen); skudsikker = DEL VI bestået.
+
+> **OVERLEVERING til frisk session (2026-08-12) — hvor vi er:**
+> **Rolleteksterne (`scripts/v5/roller/*.md`) er AAA-godkendt af Mathias.** Hele det **pakke-agnostiske fabrik-fundament er BYGGET + Codex-cross-vendor-hærdet til AAA + pushet + v5-CI grøn** (branch `claude/workflow-implementeringsplan`; `npm run v5:selftest` = 446 grønne). Bygget i `scripts/v5/`: gate-kerne · verdikt · git · prover · coverage · proofs · **build-proof-verifier** · **build-harness/mutation-framework** (bevist mod rigtig Postgres; integration i `build-harness.integration.mjs`, IKKE i CI) · hooks (+`buildWriteDecision`) · driver · roller · **actors-lock** · gate-eval · **checkrun** + selftests.
+> **Ærlig grænse (dokumenteret i modulerne):** Proxy + global built-in-prototype-mutation = runtime-integritets-antagelser (ikke nåelige af fabrik-DATA); de er bevidst IKKE lukket.
+> **NÆSTE = FØRSTE PAKKE gennem fabrikken** — låser de sidste pakke-afhængige residualer op: angrebs-spec-legitimitet end-to-end (plan-deklareret forventet-OID) · chain-proof held-out reel data · fase-mikro-orkestrering + actor-runner + CI-som-dommer der emitterer check-runs pr. gate. **Valg af masterplan-trin = Mathias' bord** (mindst muligt trin først, for at bevise flowet ende-til-ende). **Byg intet i pakke-fasen før Mathias' ord.**
 
 ---
 
