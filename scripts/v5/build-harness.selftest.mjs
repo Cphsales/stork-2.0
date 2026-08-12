@@ -101,6 +101,7 @@ eq("tom negativ-sql → ikke green", runEffectHarness({ ...harness, negative: { 
 eq("whitespace-only sql → ikke green (#3)", runEffectHarness({ ...harness, positive: { sql: "   " } }, flip()).green, false);
 eq("runner kaster → protocolOk=false", runEffectHarness(harness, () => { throw new Error("x"); }).protocolOk, false);
 eq("runner ikke {ok:boolean} → protocolOk=false", runEffectHarness(harness, () => ({ status: "ok" })).protocolOk, false);
+eq("runner m. accessor ok-felt (getter) → protocolOk=false (Codex r6)", runEffectHarness(harness, () => { const o = {}; Object.defineProperty(o, "ok", { enumerable: true, get: () => true }); return o; }).protocolOk, false);
 
 console.log("\nkillMutant — dræbt ⟺ forbudt-op bliver EKSPLICIT TILLADT:");
 eq("ægte svækkelses-mutant (NEG→tilladt) → dræbt", killMutant(mutant, harness, flip()).killed, true);

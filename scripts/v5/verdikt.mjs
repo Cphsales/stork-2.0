@@ -165,7 +165,12 @@ export function readBlobLines(git, oid) {
 
 // excerptAt(lines, line_span) → uddrag-streng | null (span uden for blob / tomt).
 export function excerptAt(lines, lineSpan) {
-  const [start, end] = isDenseArray(lineSpan) && lineSpan.length === 2 ? lineSpan : [NaN, NaN];
+  // RENT 2-element array: standard Array.prototype + læs ved INDEX (ikke destructure
+  // via iterator) — en egen Symbol.iterator kunne ellers yielde andre værdier end
+  // lineSpan[0]/[1] (Codex-fund). Ren-array-check + index-læsning lukker det.
+  if (!Array.isArray(lineSpan) || Object.getPrototypeOf(lineSpan) !== Array.prototype || lineSpan.length !== 2) return null;
+  const start = lineSpan[0];
+  const end = lineSpan[1];
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > lines.length) return null;
   const excerpt = lines.slice(start - 1, end).join("\n");
   return excerpt.length === 0 ? null : excerpt; // tomt uddrag beviser intet
@@ -191,13 +196,23 @@ export function verifyEvidence(ev, snapshot, { git }) {
     if (!d || typeof d.get === "function" || typeof d.set === "function")
       return { ok: false, reasons: [`evidens-item mangler eget DATA-felt '${k}' (arvet/accessor = fail-closed)`] };
   }
+  // TYPE-validér værdierne (verifyEvidence kaldes direkte uden schema-validering):
+  // path/commit_sha strenge (ikke et toString-objekt der coerces senere), blob_oid
+  // OID, excerpt_sha sha256, line_span et rent 2-element heltals-array.
+  if (typeof ev.commit_sha !== "string" || !isNonEmptyString(ev.path) || !isOid(ev.blob_oid) || !isSha256Hex(ev.excerpt_sha))
+    return { ok: false, reasons: ["evidens-felt forkert type (commit_sha/path streng · blob_oid OID · excerpt_sha sha256)"] };
+  if (!Array.isArray(ev.line_span) || Object.getPrototypeOf(ev.line_span) !== Array.prototype || ev.line_span.length !== 2 || !Number.isInteger(ev.line_span[0]) || !Number.isInteger(ev.line_span[1]))
+    return { ok: false, reasons: ["evidens.line_span er ikke et rent 2-element heltals-array"] };
 
-  if (ev.commit_sha !== snapshot?.commit_sha)
-    reasons.push(`evidens citerer commit ${String(ev.commit_sha)} ≠ gated commit ${String(snapshot?.commit_sha)}`);
+  // snapshot.commit_sha SKAL være et eget felt på et plain snapshot (en
+  // Object.create(...)-snapshot med arvet commit_sha må ikke matche).
+  const snapCommit = isPlainObject(snapshot) && hasOwn(snapshot, "commit_sha") ? snapshot.commit_sha : undefined;
+  if (typeof snapCommit !== "string" || ev.commit_sha !== snapCommit)
+    reasons.push(`evidens citerer commit ${String(ev.commit_sha)} ≠ gated commit ${String(snapCommit)}`);
 
   let atPath = null;
   try {
-    atPath = git("rev-parse", `${snapshot.commit_sha}:${ev.path}`);
+    atPath = git("rev-parse", `${snapCommit}:${ev.path}`);
   } catch {
     reasons.push(`path '${String(ev.path)}' findes ikke i den gatede commit`);
   }

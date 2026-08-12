@@ -79,9 +79,14 @@ function safeRun(sql, text, opts) {
   } catch (e) {
     return { ok: false, error: `runner kastede: ${e?.message ?? String(e)}`, protocolOk: false };
   }
-  if (!isPlainObject(r) || typeof r.ok !== "boolean")
-    return { ok: false, error: "runner returnerede ikke {ok:boolean} (fail-closed)", protocolOk: false, code: null };
-  return { ok: r.ok, error: typeof r.error === "string" ? r.error : null, code: typeof r.code === "string" ? r.code : null, protocolOk: true };
+  // læs r-felterne som EGNE DATA-felter (en runner der returnerer accessor-felter
+  // må ikke kunne returnere én værdi under checket og en anden bagefter).
+  const okVal = ownVal(r, "ok");
+  if (!isPlainObject(r) || typeof okVal !== "boolean")
+    return { ok: false, error: "runner returnerede ikke {ok:boolean} som eget data-felt (fail-closed)", protocolOk: false, code: null };
+  const errVal = ownVal(r, "error");
+  const codeVal = ownVal(r, "code");
+  return { ok: okVal, error: typeof errVal === "string" ? errVal : null, code: typeof codeVal === "string" ? codeVal : null, protocolOk: true };
 }
 
 // runEffectHarness(harness, sql) → {green, protocolOk, positiveOk, negativeRejected, detail}

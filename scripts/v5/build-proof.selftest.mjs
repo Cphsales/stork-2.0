@@ -11,7 +11,7 @@ import { join, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { evaluateGate } from "./gates.mjs";
 import { makeGit, resolveRef } from "./git.mjs";
-import { readBlobLines, excerptAt } from "./verdikt.mjs";
+import { readBlobLines, excerptAt, verifyEvidence } from "./verdikt.mjs";
 import { verifyBuildProof } from "./build-proof.mjs";
 import { makeProofVerifier } from "./proofs.mjs";
 
@@ -207,6 +207,14 @@ expectRed("claim_graph tom ([])", verify(mutated((p) => (p.claim_graph = []))), 
 expectRed("fabrikeret anker (excerpt_sha matcher ikke)", verify(mutated((p) => (p.claim_graph[0].source_anchor.excerpt_sha = sha256("løgn")))), "source-anker ikke git-verificeret");
 expectRed("anker fra anden commit end den gatede", verify(mutated((p) => (p.claim_graph[0].source_anchor.commit_sha = "0".repeat(40)))), "source-anker ikke git-verificeret");
 expectRed("claim ikke eksekveret", verify(mutated((p) => (p.claim_graph[0].executed = false))), "executed ikke eksplicit true");
+// Codex r6: toString-path · custom-iterator line_span · Object.create-snapshot (direkte verifyEvidence)
+expectRed("source_anchor.path som toString-objekt → rød", verify(mutated((p) => { const rp = p.claim_graph[0].source_anchor.path; p.claim_graph[0].source_anchor.path = { toString: () => rp }; })), "forkert type");
+expectRed("source_anchor.line_span m. egen Symbol.iterator → rød", verify(mutated((p) => { const a = [999, 999]; a[Symbol.iterator] = function* () { yield 1; yield 1; }; p.claim_graph[0].source_anchor.line_span = a; })), "line_span");
+{
+  const ev = mkEvidence("supabase/migrations/0001.sql", 1, 2);
+  const badSnap = Object.create({ commit_sha: COMMIT }); // arvet commit_sha
+  expectRed("verifyEvidence m. Object.create-snapshot (arvet commit_sha) → rød", verifyEvidence(ev, badSnap, { git }), "gated commit");
+}
 expectRed("claim-mutant ikke dræbt", verify(mutated((p) => (p.claim_graph[0].mutant_killed = false))), "mutant_killed ikke eksplicit true");
 
 console.log("\nasync-reviews (PASS pr. bid, bundet til base_oid):");
