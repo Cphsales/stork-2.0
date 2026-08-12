@@ -66,6 +66,17 @@ const gitObjectType = (git, oid) => {
     return null;
   }
 };
+// er `anc` en ancestor af `desc` (inkl. lig)? merge-base --is-ancestor: exit 0 =
+// ja, ≠0 (inkl. "ikke ancestor") → git() kaster → false (fail-closed). Fanger en
+// unreachable/divergent base-commit der bare tilfældigvis er et gyldigt commit-objekt.
+const isAncestor = (git, anc, desc) => {
+  try {
+    git("merge-base", "--is-ancestor", anc, desc);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 // hårde slut-effekter (plan 2.C): state/event/DB-row. Helper-return EKSPLICIT
 // forbudt — den klassiske falsk-grøn (test på intern return, reel policy aldrig kørt).
@@ -96,6 +107,11 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"] };
   if (!isPlainObject(proof)) return { ok: false, reasons: ["build-proof er ikke et objekt"] };
   if (!isPlainObject(snapshot)) return { ok: false, reasons: ["snapshot mangler/ugyldig (fail-closed)"] };
+  // LAGDELING (Codex r5 #3, bevidst): envelope-bindingerne (ok/gate_id/proof_kind/
+  // artifact_oid/bindings_oids) håndhæves af evaluateGate FØR verifyProof kaldes —
+  // samme design som verifyReconCoverageProof. Denne funktion verificerer PAYLOAD
+  // (bevis-indholdet). I produktion nås den kun via evaluateGate; et direkte kald
+  // uden om gaten er ikke gate-stien. (Duplikér ikke envelope her → ingen divergens.)
 
   // EGNE snapshot-felter (stol ikke på kalderen — defense-in-depth mod
   // Object.prototype-pollution, også når verifyBuildProof kaldes direkte).
@@ -165,19 +181,23 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
       if (bidIds.has(bid)) fail(`dublet bid_id: ${bid}`);
       bidIds.add(bid);
       // pr.-bid OID-bindinger: angrebs-spec (kill-listen) + base (async-review-anker).
-      // OID skal både være gyldig FORM og faktisk EKSISTERE i git (committet).
-      // RESIDUAL (ærlig, Codex-confirm r3 #1): eksistens som committet blob er
-      // gulvet. At blobben er DEN plan-gate-låste angrebs-spec for netop dette bid
-      // (ikke en vilkårlig committet fil) kræver en PLAN-deklareret forventet OID
-      // pr. bid + angrebs-spec-schema — begge kommer med plan-wiring/pakke. Dette
-      // er en PROVENANCE-binding, ikke build-DYBDEN: dybden håndhæves uafhængigt af
-      // mutant-kill-gulvet + effect-harness + claim_graph nedenfor.
+      // angrebs-spec PATH-bindes til den gatede commit (reachable + på sin sti) —
+      // ikke bare en vilkårlig/dangling blob i object-DB'en (Codex r5 #1).
+      // RESIDUAL (ærlig, r3 #1): at blobben er DEN plan-gate-låste angrebs-spec for
+      // netop dette bid (ikke bare en committet fil på en sti) kræver en PLAN-
+      // deklareret forventet OID + angrebs-spec-schema (plan-wiring). Provenance-
+      // binding, ikke build-DYBDEN (den håndhæves af mutant-kill + harness + claim_graph).
       const asOid = own(b, "angrebs_spec_oid");
+      const asPath = own(b, "angrebs_spec_path");
       if (!isOid(asOid)) fail(`${bid}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
-      else if (gitObjectType(git, asOid) !== "blob") fail(`${bid}: angrebs_spec_oid er ikke en eksisterende committet blob (fake/ikke-committet OID)`);
+      else if (!isNonEmptyString(asPath)) fail(`${bid}: angrebs_spec_path mangler (kan ikke path-binde kill-listen)`);
+      else pathBind({ path: asPath, oid: asOid }, `${bid} angrebs-spec`);
+      // base_oid: eksisterende commit OG en ancestor af den gatede commit (en
+      // unreachable/divergent base må ikke tælle — Codex r5 #2).
       const baseOid = own(b, "base_oid");
       if (!isOid(baseOid)) fail(`${bid}: base_oid mangler/ugyldig`);
       else if (gitObjectType(git, baseOid) !== "commit") fail(`${bid}: base_oid er ikke en eksisterende commit (fake/ikke-committet OID)`);
+      else if (isOid(commitSha) && !isAncestor(git, baseOid, commitSha)) fail(`${bid}: base_oid er ikke en ancestor af den gatede commit (unreachable/divergent base)`);
 
       // tests: effect-harness-FORM (public-kind entrypoint; ikke-bypass; hård effekt)
       const tests = own(b, "tests");

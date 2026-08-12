@@ -54,6 +54,9 @@ git("add", "-A");
 git("commit", "-qm", "fixture");
 const COMMIT = git("rev-parse", "HEAD");
 const ref = (p) => resolveRef(git, COMMIT, p);
+// orphan commit (samme tree, ingen parent) — gyldigt commit-objekt, men IKKE en
+// ancestor af COMMIT (til base_oid-ancestor-red-team).
+const ORPHAN = git("commit-tree", git("rev-parse", `${COMMIT}^{tree}`), "-m", "orphan");
 
 const plan = ref("plan/plan.md");
 const artifact = ref("build/build-proof.json");
@@ -78,6 +81,7 @@ const greenProof = () => ({
     {
       bid_id: "bid-1",
       angrebs_spec_oid: angrebsSpec.oid,
+      angrebs_spec_path: "recon/angrebs-spec.json",
       base_oid: COMMIT,
       tests: [
         { k_id: "K-1", entrypoint: { kind: "api", ref: "POST /api/salg" }, store: "real", non_bypass_role: true, hard_effect: "db-row", negative_path_exercised: true },
@@ -138,11 +142,23 @@ expectRed("ét K mangler dræbt mutant (kan ikke opt-out)", verify(mutated((p) =
 expectRed("overlevende mutant (killed ikke true)", verify(mutated((p) => (p.bids[0].mutants[0].killed = false))), "overlevende mutant");
 expectRed("mutant for ukendt K", verify(mutated((p) => (p.bids[0].mutants[0].k_id = "K-77"))), "ukendt K");
 
-console.log("\npr.-bid OID-bindinger (form + git-eksistens — Codex-confirm r2 #2):");
+console.log("\npr.-bid OID-bindinger (path-bind + git-eksistens + ancestry — Codex r2/r5):");
 expectRed("angrebs_spec_oid mangler (kill-list ikke bundet)", verify(mutated((p) => delete p.bids[0].angrebs_spec_oid)), "angrebs_spec_oid");
+expectRed("angrebs_spec_path mangler (kan ikke path-binde)", verify(mutated((p) => delete p.bids[0].angrebs_spec_path)), "angrebs_spec_path mangler");
+expectRed("angrebs_spec_oid fake (findes ikke på stien)", verify(mutated((p) => (p.bids[0].angrebs_spec_oid = "a".repeat(40)))), "matcher ikke stien");
+// Codex r5 #1: ægte/dangling blob men IKKE på den angivne sti (unreachable)
+expectRed("angrebs_spec_oid = anden fils blob (forkert sti)", verify(mutated((p) => (p.bids[0].angrebs_spec_oid = ref("plan/plan.md").oid))), "matcher ikke stien");
 expectRed("base_oid ugyldig form", verify(mutated((p) => (p.bids[0].base_oid = "ikke-en-oid"))), "base_oid");
-expectRed("angrebs_spec_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].angrebs_spec_oid = "a".repeat(40)))), "eksisterende committet blob");
 expectRed("base_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].base_oid = "b".repeat(40)))), "eksisterende commit");
+// Codex r5 #2: gyldigt commit-objekt men IKKE ancestor af den gatede commit
+expectRed(
+  "base_oid = orphan-commit (ikke ancestor)",
+  verify(mutated((p) => {
+    p.bids[0].base_oid = ORPHAN;
+    p.async_reviews[0].base_oid = ORPHAN;
+  })),
+  "ancestor",
+);
 
 console.log("\nverifyBuildProof selv-validerer snapshot (Codex-confirm r2 #1 + r3 #2):");
 expectRed("arvet snapshot.bindings (Object.create)", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: Object.create({ plan }) }, { git }), "plan-binding");
