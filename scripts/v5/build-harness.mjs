@@ -35,6 +35,15 @@ const isDenseNonEmptyArray = (a) => {
   return true;
 };
 
+// Anerkendte AUTORISATIONS-/isolations-afvisnings-koder (Postgres SQLSTATE).
+// 42501 = insufficient_privilege — RLS-policy- OG WITH CHECK-violation. En harness
+// SKAL pinne sin negative afvisning til en af disse (via `expectCode`), så en
+// syntax-/constraint-fejl (fx 42601) IKKE kan selv-svække checket til at "tælle som
+// afvist" (Codex-fund: en caller-valgt substring kunne forfalskes). Reject-KLASSEN
+// ejes af frameworket, ikke af harness-forfatteren. (Andre backing stores leverer
+// deres egen kode-klasse — men aldrig en fri streng.)
+export const REJECT_CODES = Object.freeze(["42501"]);
+
 // safeRun(sql, text, opts) → {ok, error, protocolOk}
 // protocolOk=false ⟺ runner mangler/kaster/returnerer ikke {ok:boolean} ELLER sql
 // er tom (en PROTOKOL-fejl, ikke en legitim afvisning). protocolOk=true dækker BÅDE
@@ -50,8 +59,8 @@ function safeRun(sql, text, opts) {
     return { ok: false, error: `runner kastede: ${e?.message ?? String(e)}`, protocolOk: false };
   }
   if (!isPlainObject(r) || typeof r.ok !== "boolean")
-    return { ok: false, error: "runner returnerede ikke {ok:boolean} (fail-closed)", protocolOk: false };
-  return { ok: r.ok, error: typeof r.error === "string" ? r.error : null, protocolOk: true };
+    return { ok: false, error: "runner returnerede ikke {ok:boolean} (fail-closed)", protocolOk: false, code: null };
+  return { ok: r.ok, error: typeof r.error === "string" ? r.error : null, code: typeof r.code === "string" ? r.code : null, protocolOk: true };
 }
 
 // runEffectHarness(harness, sql) → {green, protocolOk, positiveOk, negativeRejected, detail}
@@ -60,32 +69,34 @@ function safeRun(sql, text, opts) {
 //   asRole,                             // ikke-bypass DB-rolle (SET ROLE) — obligatorisk
 //   settings?,                          // session-settings (fx tenant-org)
 //   positive: { sql },                  // handling der SKAL lykkes (samme-org)
-//   negative: { sql, expectError },     // handling der SKAL afvises (cross-org).
-//                                        // expectError = substring fejlen SKAL matche.
-//                                        // OBLIGATORISK: uden den kan en afvisning af
-//                                        // FORKERT grund (syntax/constraint) ikke
-//                                        // skelnes fra den tilsigtede RLS-afvisning.
+//   negative: { sql, expectCode },      // handling der SKAL afvises (cross-org).
+//                                        // expectCode = den STRUKTUREREDE afvisnings-
+//                                        // kode (SQLSTATE) fra runneren. OBLIGATORISK
+//                                        // og SKAL være i REJECT_CODES — så harnessen
+//                                        // ikke kan selv-svække ved at pinne en
+//                                        // triviel/forkert fejlklasse (Codex-fund).
 // }
 // Negativ-udfaldet er TRE-vejs (ikke bare afvist true/false):
 //   negAllowed        = forbudt op LYKKEDES (ok:true) → isolationen er brudt
-//   negRejectedRight  = afvist AF DEN PINNEDE GRUND (ok:false + error ⊇ expectError)
-//   (alt andet: afvist-af-forkert-grund / protokol-fejl → hverken green ELLER kill)
+//   negRejectedRight  = afvist med den PINNEDE, ANERKENDTE autorisations-kode
+//                       (ok:false + code === expectCode ∈ REJECT_CODES)
+//   (alt andet: afvist-af-forkert-kode / protokol-fejl → hverken green ELLER kill)
 // green ⟺ protokol-valid + positiv lykkes + negRejectedRight.
 export function runEffectHarness(harness, sql) {
   const dead = (error) => ({ green: false, protocolOk: false, positiveOk: false, negAllowed: false, negRejectedRight: false, error });
   if (!isPlainObject(harness) || !isPlainObject(harness.positive) || !isPlainObject(harness.negative))
     return dead("malformet harness (positive/negative kræves)");
   if (!isNonEmptyString(harness.asRole)) return dead("asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)");
-  if (!isNonEmptyString(harness.negative.expectError))
-    return dead("negative.expectError kræves (afvisnings-grunden skal pinnes — ellers tæller en tilfældig SQL-fejl som afvisning)");
+  if (!isNonEmptyString(harness.negative.expectCode) || !REJECT_CODES.includes(harness.negative.expectCode))
+    return dead(`negative.expectCode kræves og skal være en anerkendt autorisations-afvisnings-kode (${REJECT_CODES.join("/")}) — en fri fejl-streng kan selv-svækkes`);
   const opts = { role: harness.asRole, settings: isPlainObject(harness.settings) ? harness.settings : undefined };
   const pos = safeRun(sql, harness.positive.sql, opts);
   const neg = safeRun(sql, harness.negative.sql, opts);
   const protocolOk = pos.protocolOk === true && neg.protocolOk === true;
   const positiveOk = pos.protocolOk === true && pos.ok === true;
   const negAllowed = neg.protocolOk === true && neg.ok === true; // forbudt op lykkedes = isolation brudt
-  const negRejectedRight =
-    neg.protocolOk === true && neg.ok === false && isNonEmptyString(neg.error) && neg.error.includes(harness.negative.expectError);
+  // afvist med den ANERKENDTE, pinnede kode (ikke en tilfældig/forkert fejlklasse)
+  const negRejectedRight = neg.protocolOk === true && neg.ok === false && neg.code === harness.negative.expectCode;
   const green = protocolOk && positiveOk && negRejectedRight;
   return { green, protocolOk, positiveOk, negAllowed, negRejectedRight, detail: { pos, neg } };
 }

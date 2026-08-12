@@ -258,8 +258,11 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
               fail(`${bid}: mutant refererer ukendt K '${kId}'`);
               continue;
             }
-            if (!ownTrue(m, "killed")) {
-              fail(`${bid}/${kId}: mutant '${knob}' ikke dræbt (killed ≠ true) — overlevende mutant = falsk-grøn`);
+            // dræbt ER IKKE nok: harness-engine kræver killed && restored &&
+            // cleanAfter (Codex r2 #2) — en kill uden gendannelse eller på beskidt/
+            // ukendt state tæller ikke. Alle tre eksplicit true.
+            if (!ownTrue(m, "killed") || !ownTrue(m, "restored") || !ownTrue(m, "cleanAfter")) {
+              fail(`${bid}/${kId}: mutant '${knob}' ikke dræbt+restored+ren (killed/restored/cleanAfter skal alle være eksplicit true)`);
               continue;
             }
             killedKs.add(kId);

@@ -88,8 +88,8 @@ const greenProof = () => ({
         { k_id: "K-2", entrypoint: { kind: "api", ref: "GET /api/rapport" }, store: "real", non_bypass_role: true, hard_effect: "state", negative_path_exercised: true },
       ],
       mutants: [
-        { k_id: "K-1", knob: "WITH CHECK", killed: true },
-        { k_id: "K-2", knob: "tenant-predikat", killed: true },
+        { k_id: "K-1", knob: "WITH CHECK", killed: true, restored: true, cleanAfter: true },
+        { k_id: "K-2", knob: "tenant-predikat", killed: true, restored: true, cleanAfter: true },
       ],
     },
   ],
@@ -139,7 +139,9 @@ expectRed("entrypoint uden ref", verify(mutated((p) => (p.bids[0].tests[0].entry
 console.log("\nconfig-mutant-kill (gulv for ALLE K — Codex-fund #1):");
 expectRed("intet K har dræbt mutant", verify(mutated((p) => (p.bids[0].mutants = []))), "mutant-kill-gulv brudt");
 expectRed("ét K mangler dræbt mutant (kan ikke opt-out)", verify(mutated((p) => (p.bids[0].mutants = p.bids[0].mutants.filter((m) => m.k_id !== "K-2")))), "K-2.*mutant-kill-gulv brudt|mutant-kill-gulv brudt");
-expectRed("overlevende mutant (killed ikke true)", verify(mutated((p) => (p.bids[0].mutants[0].killed = false))), "overlevende mutant");
+expectRed("overlevende mutant (killed ikke true)", verify(mutated((p) => (p.bids[0].mutants[0].killed = false))), "dræbt\\+restored\\+ren");
+expectRed("mutant dræbt men ikke restored", verify(mutated((p) => delete p.bids[0].mutants[0].restored)), "dræbt\\+restored\\+ren");
+expectRed("mutant dræbt+restored men uren (cleanAfter mangler)", verify(mutated((p) => delete p.bids[0].mutants[0].cleanAfter)), "dræbt\\+restored\\+ren");
 expectRed("mutant for ukendt K", verify(mutated((p) => (p.bids[0].mutants[0].k_id = "K-77"))), "ukendt K");
 
 console.log("\npr.-bid OID-bindinger (path-bind + git-eksistens + ancestry — Codex r2/r5):");

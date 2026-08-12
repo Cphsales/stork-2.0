@@ -3,12 +3,13 @@
 // (plan DEL VI (a)). MOCK sql-runner, så CI kan køre uden Postgres. Rigtig-DB-bevis
 // ligger i build-harness.integration.mjs (kræver container).
 //
-// Dækker Codex-P2-fundene: kill KUN ved at forbudt-op bliver EKSPLICIT TILLADT
-// (ikke positiv-break, ikke protokol-fejl, ikke afvist-af-forkert-grund); baseline
-// green kræver afvisning AF DEN PINNEDE GRUND (expectError obligatorisk); restore+
-// ren state kræves; tom/sparse spec ≠ vacuous grøn; whitespace-sql ≠ ikke-tom.
+// Dækker Codex-P2-fundene: kill KUN når forbudt-op bliver EKSPLICIT TILLADT (ikke
+// positiv-break, ikke protokol-fejl, ikke afvist-af-forkert-kode); baseline green
+// kræver afvisning med den PINNEDE, ANERKENDTE kode (expectCode ∈ REJECT_CODES,
+// ikke en fri streng harnessen selv kan svække); restore+ren state; ingen vacuous/
+// sparse grøn; whitespace-sql afvist.
 
-import { runEffectHarness, killMutant, runBuildProofEngine } from "./build-harness.mjs";
+import { runEffectHarness, killMutant, runBuildProofEngine, REJECT_CODES } from "./build-harness.mjs";
 
 let failed = 0;
 const ok = (n) => console.log(`  ✓ ${n}`);
@@ -18,31 +19,32 @@ const bad = (n, d) => {
 };
 const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, forventede ${JSON.stringify(want)}`));
 
-// NEG-fejl indeholder "RLS" ⇒ matcher expectError (afvist af rigtig grund).
+const RLS = "42501"; // anerkendt autorisations-afvisnings-kode
+const SYNTAX = "42601"; // IKKE i REJECT_CODES
+const rejRLS = { ok: false, error: "rejected by RLS", code: RLS };
+
+// ægte svækkelses-mutant: NEG afvist (RLS) baseline, TILLADT under mutant; POS ok
 const flip = () => {
   let m = false;
   return (t) => {
     if (t === "APPLY") return (m = true), { ok: true };
     if (t === "RESTORE") return (m = false), { ok: true };
     if (t === "POS") return { ok: true };
-    if (t === "NEG") return m ? { ok: true } : { ok: false, error: "rejected by RLS" };
-    return { ok: false, error: "unknown" };
+    if (t === "NEG") return m ? { ok: true } : rejRLS;
+    return { ok: false, code: SYNTAX };
   };
 };
-// findes-agtig: NEG afvist (rigtig grund) ALTID — flipper aldrig til tilladt
-const findes = (t) => (t === "NEG" ? { ok: false, error: "rejected by RLS" } : { ok: true });
-// positiv-break: POS FEJLER under mutant; NEG afvist (rigtig grund) altid
+const findes = (t) => (t === "NEG" ? rejRLS : { ok: true }); // NEG afvist (RLS) altid
 const posBreak = () => {
   let m = false;
   return (t) => {
     if (t === "APPLY") return (m = true), { ok: true };
     if (t === "RESTORE") return (m = false), { ok: true };
-    if (t === "POS") return m ? { ok: false, error: "positiv brød" } : { ok: true };
-    if (t === "NEG") return { ok: false, error: "rejected by RLS" };
+    if (t === "POS") return m ? { ok: false, error: "positiv brød", code: SYNTAX } : { ok: true };
+    if (t === "NEG") return rejRLS;
     return { ok: false };
   };
 };
-// under-mutant-throw: NEG KASTER når mutated (protokol-fejl)
 const underThrow = () => {
   let m = false;
   return (t) => {
@@ -51,12 +53,12 @@ const underThrow = () => {
     if (t === "POS") return { ok: true };
     if (t === "NEG") {
       if (m) throw new Error("connection lost");
-      return { ok: false, error: "rejected by RLS" };
+      return rejRLS;
     }
     return { ok: false };
   };
 };
-// wrong-reason-under-mutant: NEG stadig afvist under mutant, men af FORKERT grund
+// wrong-reason-under-mutant: NEG stadig afvist under mutant, men med FORKERT kode
 // (forbidden-op blev ALDRIG tilladt → ingen reel isolations-brud → ikke en kill)
 const wrongReasonUnder = () => {
   let m = false;
@@ -64,37 +66,38 @@ const wrongReasonUnder = () => {
     if (t === "APPLY") return (m = true), { ok: true };
     if (t === "RESTORE") return (m = false), { ok: true };
     if (t === "POS") return { ok: true };
-    if (t === "NEG") return m ? { ok: false, error: "syntax error" } : { ok: false, error: "rejected by RLS" };
+    if (t === "NEG") return m ? { ok: false, error: "syntax error", code: SYNTAX } : rejRLS;
     return { ok: false };
   };
 };
-// restore-fejl: flip, men RESTORE fejler (mutated forbliver true → uren)
 const restoreFail = () => {
   let m = false;
   return (t) => {
     if (t === "APPLY") return (m = true), { ok: true };
     if (t === "RESTORE") return { ok: false, error: "restore fejlede" };
     if (t === "POS") return { ok: true };
-    if (t === "NEG") return m ? { ok: true } : { ok: false, error: "rejected by RLS" };
+    if (t === "NEG") return m ? { ok: true } : rejRLS;
     return { ok: false };
   };
 };
 
-const harness = { asRole: "app_role", settings: { "app.current_org": "1" }, positive: { sql: "POS" }, negative: { sql: "NEG", expectError: "RLS" } };
+const harness = { asRole: "app_role", settings: { "app.current_org": "1" }, positive: { sql: "POS" }, negative: { sql: "NEG", expectCode: RLS } };
 const mutant = { knob: "with-check", apply: "APPLY", restore: "RESTORE" };
 
-console.log("runEffectHarness — green ⟺ positiv OK + negativ afvist AF PINNEDE GRUND:");
-eq("baseline (POS ok, NEG afvist-RLS) → green", runEffectHarness(harness, flip()).green, true);
+console.log(`REJECT_CODES = [${REJECT_CODES.join(",")}]`);
+console.log("\nrunEffectHarness — green ⟺ positiv OK + negativ afvist med PINNET ANERKENDT kode:");
+eq("baseline (POS ok, NEG afvist-42501) → green", runEffectHarness(harness, flip()).green, true);
 eq("negativ TILLADT (falsk-grøn) → ikke green", runEffectHarness(harness, () => ({ ok: true })).green, false);
-eq("positiv FEJLER → ikke green", runEffectHarness(harness, () => ({ ok: false, error: "RLS" })).green, false);
+eq("positiv FEJLER → ikke green", runEffectHarness(harness, () => ({ ok: false, code: RLS })).green, false);
 
-console.log("\nafvisnings-GRUND (expectError obligatorisk — Codex #1/#2):");
-eq("NEG afvist af FORKERT grund (syntax) → ikke green (#2)", runEffectHarness({ ...harness, negative: { sql: "NEG", expectError: "RLS" } }, (t) => (t === "NEG" ? { ok: false, error: "syntax error" } : { ok: true })).green, false);
-eq("negative.expectError mangler → ikke green (obligatorisk)", runEffectHarness({ ...harness, negative: { sql: "NEG" } }, flip()).green, false);
+console.log("\nafvisnings-KODE ejes af frameworket (Codex #1/#2):");
+eq("NEG afvist m. FORKERT kode (syntax 42601) → ikke green (#2)", runEffectHarness(harness, (t) => (t === "NEG" ? { ok: false, code: SYNTAX } : { ok: true })).green, false);
+eq("expectCode mangler → ikke green (obligatorisk)", runEffectHarness({ ...harness, negative: { sql: "NEG" } }, flip()).green, false);
+eq("expectCode ikke i REJECT_CODES (selv-svækkelse) → ikke green (#1)", runEffectHarness({ ...harness, negative: { sql: "NEG", expectCode: SYNTAX } }, flip()).green, false);
 
 console.log("\nfail-closed (protokol / form):");
 eq("asRole mangler → ikke green", runEffectHarness({ ...harness, asRole: "" }, flip()).green, false);
-eq("tom negativ-sql → ikke green", runEffectHarness({ ...harness, negative: { sql: "", expectError: "RLS" } }, flip()).green, false);
+eq("tom negativ-sql → ikke green", runEffectHarness({ ...harness, negative: { sql: "", expectCode: RLS } }, flip()).green, false);
 eq("whitespace-only sql → ikke green (#3)", runEffectHarness({ ...harness, positive: { sql: "   " } }, flip()).green, false);
 eq("runner kaster → protocolOk=false", runEffectHarness(harness, () => { throw new Error("x"); }).protocolOk, false);
 eq("runner ikke {ok:boolean} → protocolOk=false", runEffectHarness(harness, () => ({ status: "ok" })).protocolOk, false);
@@ -102,27 +105,27 @@ eq("runner ikke {ok:boolean} → protocolOk=false", runEffectHarness(harness, ()
 console.log("\nkillMutant — dræbt ⟺ forbudt-op bliver EKSPLICIT TILLADT:");
 eq("ægte svækkelses-mutant (NEG→tilladt) → dræbt", killMutant(mutant, harness, flip()).killed, true);
 eq("findes-agtig (NEG afvist altid) → OVERLEVER", killMutant(mutant, harness, findes).killed, false);
-eq("positiv-break (POS fejler) → IKKE dræbt (Codex #3)", killMutant(mutant, harness, posBreak()).killed, false);
-eq("wrong-reason-under-mutant (NEG afvist-forkert) → IKKE dræbt (Codex #1)", killMutant(mutant, harness, wrongReasonUnder()).killed, false);
-eq("under-mutant runner kaster → IKKE dræbt (Codex #2)", killMutant(mutant, harness, underThrow()).killed, false);
+eq("positiv-break (POS fejler) → IKKE dræbt (#3)", killMutant(mutant, harness, posBreak()).killed, false);
+eq("wrong-reason-under-mutant (NEG afvist-forkert-kode) → IKKE dræbt (#1)", killMutant(mutant, harness, wrongReasonUnder()).killed, false);
+eq("under-mutant runner kaster → IKKE dræbt (#2)", killMutant(mutant, harness, underThrow()).killed, false);
 {
   const r = killMutant(mutant, harness, flip());
   eq("dræbt + restored + cleanAfter", r.killed && r.restored && r.cleanAfter, true);
 }
 {
   const r = killMutant(mutant, harness, restoreFail());
-  eq("restore fejler → restored=false + cleanAfter=false", r.restored === false && r.cleanAfter === false, true);
+  eq("restore fejler → restored=false + cleanAfter=false (#4)", r.restored === false && r.cleanAfter === false, true);
 }
 eq("malformet mutant (uden apply) → ikke dræbt", killMutant({ knob: "x", restore: "RESTORE" }, harness, flip()).killed, false);
 
 console.log("\nrunBuildProofEngine — baseline green + hver mutant dræbt+restored+ren:");
 eq("green + dræbt+ren → allKilled", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, flip()).allKilled, true);
 eq("findes-agtig → allKilled=false", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, findes).allKilled, false);
-eq("wrong-reason → allKilled=false (Codex #1)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, wrongReasonUnder()).allKilled, false);
-eq("restore-fejl → allKilled=false (Codex #4)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, restoreFail()).allKilled, false);
-eq("tom kTests → allGreen=false (Codex #5)", runBuildProofEngine({ kTests: [] }, flip()).allGreen, false);
+eq("wrong-reason → allKilled=false (#1)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, wrongReasonUnder()).allKilled, false);
+eq("restore-fejl → allKilled=false (#4)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, restoreFail()).allKilled, false);
+eq("tom kTests → allGreen=false (#5)", runBuildProofEngine({ kTests: [] }, flip()).allGreen, false);
 eq("tom kTests → allKilled=false", runBuildProofEngine({ kTests: [] }, flip()).allKilled, false);
-eq("sparse mutants → allKilled=false (Codex #5)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: new Array(1) }] }, flip()).allKilled, false);
+eq("sparse mutants → allKilled=false (#5)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: new Array(1) }] }, flip()).allKilled, false);
 eq("K uden mutant → allKilled=false (gulv)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [] }] }, flip()).allKilled, false);
 eq("malformet spec → allKilled=false", runBuildProofEngine({}, flip()).allKilled, false);
 

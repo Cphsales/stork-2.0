@@ -40,7 +40,9 @@ if (!containerUp()) {
 
 // --- rigtig sql-runner: SET ROLE + SET settings + sætningen i ÉN psql-session ---
 function dockerPsql(sqlText, opts = {}) {
-  const prelude = [];
+  // VERBOSITY verbose → fejl-linjen bærer SQLSTATE ("ERROR:  42501: ...") så vi kan
+  // returnere en STRUKTURERET kode (ikke bare en fri streng frameworket ikke må stole på).
+  const prelude = ["\\set VERBOSITY verbose"];
   if (opts.role) prelude.push(`set role ${opts.role};`);
   if (opts.settings) for (const [k, v] of Object.entries(opts.settings)) prelude.push(`set ${k} = '${String(v)}';`);
   const full = `${prelude.join("\n")}\n${sqlText}`;
@@ -49,9 +51,11 @@ function dockerPsql(sqlText, opts = {}) {
       input: full,
       stdio: ["pipe", "ignore", "pipe"],
     });
-    return { ok: true, error: null };
+    return { ok: true, error: null, code: null };
   } catch (e) {
-    return { ok: false, error: String(e.stderr || e.message).slice(0, 160) };
+    const stderr = String(e.stderr || e.message);
+    const m = stderr.match(/ERROR:\s+([0-9A-Z]{5}):/);
+    return { ok: false, error: stderr.slice(0, 160), code: m ? m[1] : null };
   }
 }
 const query1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-tAc", sqlText]).toString().trim();
@@ -79,7 +83,7 @@ const harness = {
   asRole: "app_role",
   settings: { "app.current_org": "1" },
   positive: { sql: "insert into salg (org_id, beloeb) values (1, 100);" },
-  negative: { sql: "insert into salg (org_id, beloeb) values (2, 100);", expectError: "row-level security" },
+  negative: { sql: "insert into salg (org_id, beloeb) values (2, 100);", expectCode: "42501" },
 };
 // mutant: svæk WITH CHECK til true (bryder cross-org-isolationen)
 const mutant = {
