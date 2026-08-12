@@ -87,9 +87,33 @@ expectRed(
   "matcher ikke skill_path",
 );
 
-console.log("\nweb-mandat i låsen:");
+console.log("\nweb-mandat i låsen (alias/præfiks — Codex-P2 #1):");
 expectRed("web-værktøj på web-forbudt rolle", validate(mutated((l) => l["recon-code"].allowed_tools.push("web"))), "web-værktøj");
+expectRed("web-alias 'web_search'", validate(mutated((l) => l["recon-code"].allowed_tools.push("web_search"))), "web-værktøj");
+expectRed("web-alias 'web.fetch'", validate(mutated((l) => l["recon-code"].allowed_tools.push("web.fetch"))), "web-værktøj");
+expectRed("web-alias 'mcp__web__search'", validate(mutated((l) => l["recon-code"].allowed_tools.push("mcp__web__search"))), "web-værktøj");
+expectRed("web-alias 'anthropic:web-search'", validate(mutated((l) => l["recon-code"].allowed_tools.push("anthropic:web-search"))), "web-værktøj");
+expectGreen("ikke-web værktøj 'webhook' fejl-flag'es IKKE", validate(mutated((l) => l["recon-code"].allowed_tools.push("webhook"))));
 expectGreen("codex-forbedring MÅ have web", validate(derived()));
+
+console.log("\nJS-API-kant (Codex-P2 #2/#3): symbol/ikke-enumerable/accessor fail-lukkes:");
+{
+  const l = clone(derived());
+  Object.defineProperty(l["recon-code"], "extra_hidden", { value: "x", enumerable: false });
+  expectRed("ikke-enumerable eget felt", validateActorsLock(l, { git, commitSha: COMMIT }), "ikke-enumerable");
+}
+{
+  const l = clone(derived());
+  l["recon-code"][Symbol("extra")] = "x";
+  expectRed("symbol-nøgle på entry", validateActorsLock(l, { git, commitSha: COMMIT }), "symbol-nøgle");
+}
+{
+  const l = clone(derived());
+  const pinned = l["recon-code"].model;
+  let n = 0;
+  Object.defineProperty(l["recon-code"], "model", { enumerable: true, configurable: true, get() { return n++ === 0 ? pinned : "latest"; } });
+  expectRed("accessor-felt (getter der skifter model→latest)", validateActorsLock(l, { git, commitSha: COMMIT }), "accessor");
+}
 
 console.log("\nstruktur-fail-closed:");
 expectRed("manglende felt", validate(mutated((l) => delete l["recon-code"].model)), "manglende felt 'model'");

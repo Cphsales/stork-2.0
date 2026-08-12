@@ -34,6 +34,28 @@ const isDenseArrayOf = (a, pred) => {
   for (let i = 0; i < a.length; i++) if (!hasOwn(a, i)) return false;
   return a.every(pred);
 };
+// checkPureDataKeys: Reflect.ownKeys fanger symbol-nøgler + ikke-enumerable + egne
+// nøgler som Object.keys ignorerer; descriptor-tjek afviser accessor-felter (en
+// getter kunne validere som "pinned" og eksponere "latest" bagefter). Kun rene,
+// enumerable data-felter fra `allowedKeys` tillades (fail-closed).
+const checkPureDataKeys = (obj, allowedKeys, label, fail, noun = "felt") => {
+  for (const k of Reflect.ownKeys(obj)) {
+    if (typeof k === "symbol") {
+      fail(`${label}: symbol-nøgle forbudt (fail-closed)`);
+      continue;
+    }
+    const d = Object.getOwnPropertyDescriptor(obj, k);
+    if (!d || typeof d.get === "function" || typeof d.set === "function") {
+      fail(`${label}: accessor/dynamisk ${noun} '${k}' forbudt (rent data-felt kræves)`);
+      continue;
+    }
+    if (!d.enumerable) {
+      fail(`${label}: ikke-enumerable ${noun} '${k}' forbudt (fail-closed)`);
+      continue;
+    }
+    if (!allowedKeys.includes(k)) fail(`${label}: ukendt ${noun} '${k}' (fail-closed)`);
+  }
+};
 
 // aktør-slug → provider (vendor). Fast fabrik-faktum: kun codex er cross-vendor
 // (OpenAI); resten er Anthropic. Bindes så en lås ikke tavst kan flytte en rolle
@@ -45,11 +67,20 @@ export const PROVIDER_OF = Object.freeze({
   codex: "openai",
 });
 export const REASONING_LEVELS = Object.freeze(["low", "medium", "high", "xhigh", "max"]);
-// værktøjs-navne der giver web-adgang. En web-forbudt rolle (roller.web=false) må
-// ALDRIG have et af disse i sin lås (web skaber nye "sandheder" — kun rådgivende
-// forbedring må have det). Match uafhængigt af provider-præfiks.
-export const WEB_TOOLS = Object.freeze(["web", "websearch", "web-search", "webfetch", "web-fetch", "browse", "browser"]);
-const isWebTool = (t) => typeof t === "string" && WEB_TOOLS.includes(t.toLowerCase());
+// web-adgangs-TOKENS. Et værktøjsnavn giver web hvis NOGEN af dets tokens (splittet
+// på alle separatorer: '_' '-' '.' ':' '/' '__' …) er et web-token. Fanger alias/
+// præfiks robust: web_search · web-search · web.fetch · web:run · provider:web ·
+// anthropic:web-search · mcp__web__search · browse. En web-forbudt rolle
+// (roller.web=false) må ALDRIG have et sådant værktøj (web skaber nye "sandheder").
+export const WEB_TOKENS = Object.freeze(["web", "websearch", "webfetch", "webrun", "browse", "browser"]);
+const isWebTool = (t) => {
+  if (typeof t !== "string") return false;
+  return t
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .some((tok) => WEB_TOKENS.includes(tok));
+};
 
 const skillPathOf = (role) => `scripts/v5/roller/${role}.md`;
 
@@ -76,11 +107,11 @@ export function validateActorsLock(lock, { git, commitSha, roller = ROLLER } = {
   if (!isPlainObject(lock)) return { ok: false, reasons: ["actors.lock er ikke et plain object"] };
 
   const roleIds = Object.keys(roller);
-  const lockKeys = Object.keys(lock);
 
-  // dækning: hver rolle låst, ingen ukendt rolle
+  // dækning + rene data-nøgler (Reflect.ownKeys fanger symbol/ikke-enumerable/
+  // accessor rolle-nøgler; ukendt rolle = rød).
+  checkPureDataKeys(lock, roleIds, "actors.lock", fail, "rolle");
   for (const role of roleIds) if (!hasOwn(lock, role)) fail(`rolle '${role}' mangler i actors.lock (anti-tavshed)`);
-  for (const key of lockKeys) if (!hasOwn(roller, key)) fail(`ukendt rolle i actors.lock: '${key}' (fail-closed)`);
 
   for (const role of roleIds) {
     if (!hasOwn(lock, role)) continue;
@@ -89,7 +120,8 @@ export function validateActorsLock(lock, { git, commitSha, roller = ROLLER } = {
       fail(`${role}: entry er ikke et plain object`);
       continue;
     }
-    for (const k of Object.keys(e)) if (!ENTRY_FIELDS.includes(k)) fail(`${role}: ukendt felt '${k}' (fail-closed)`);
+    // rene data-felter: symbol/ikke-enumerable/accessor/ukendte felter → rød
+    checkPureDataKeys(e, ENTRY_FIELDS, role, fail);
     for (const k of ENTRY_FIELDS) if (!hasOwn(e, k)) fail(`${role}: manglende felt '${k}'`);
     if (reasons.some((r) => r.startsWith(`${role}:`))) continue; // strukturelt rådne entries springes over for værdicheck
 
