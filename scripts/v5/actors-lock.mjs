@@ -25,8 +25,12 @@
 // leverer (den kræver kode-eksekvering i CI, hvorefter gaten alligevel er tabt).
 // Object-/array-NIVEAU tricks (egne accessors/symboler/ikke-enumerable, custom
 // prototype, egne metode-overrides) ER lukket her via own-data + prototype-pin +
-// index-loops. Den globale prototype-mutation er en runtime-integritets-antagelse,
-// ikke en validator-fejl.
+// index-loops. Den globale prototype-mutation OG en Proxy (der lyver om
+// descriptors/ownKeys og eksponerer en anden værdi bagefter) er runtime-
+// integritets-antagelser, ikke validator-fejl: `actors.lock` er en committet
+// JSON-fil (JSON.parse → plain object, ALDRIG en Proxy/accessor/custom-prototype),
+// så de vektorer kan ikke nås af den faktiske data-kilde — kun af kode der
+// allerede kører i CI (hvor gaten alligevel er tabt).
 
 import { ROLLER, ROLLE_IDS, OUTPUT_TYPES } from "./roller.mjs";
 import { ACTOR_SLUGS, isOid } from "./gates.mjs";

@@ -8,10 +8,18 @@
 // App/CI-token, DEL V, admin) — her bygges kun payload-formen, som er ren og
 // fuldt verificerbar nu.
 //
-// FAIL-CLOSED (kernen): kun et EKSPLICIT `open === true` giver `success`. Et
-// malformeret resultat, en ukendt/mismatchet gate, eller `open` der ikke er
-// præcist true → `failure`. Et required check der "mangler"/er tvetydigt må
-// ALDRIG blive grønt (anti-tavshed: tvivl = rød gate).
+// FAIL-CLOSED (kernen): kun et EKSPLICIT eget-data `open === true` (med eget-data
+// tomt reasons-array) giver `success`. Et malformeret resultat, en ukendt/
+// mismatchet gate, en accessor/arvet open/gate_id, eller open der ikke er præcist
+// true → `failure`. Et required check der "mangler"/er tvetydigt må ALDRIG blive
+// grønt (anti-tavshed: tvivl = rød gate).
+//
+// RESIDUAL (ærlig, delt runtime-antagelse): `result` kommer fra evaluateGate's
+// plain-object-return. En Proxy (der lyver om descriptors/ownKeys) eller en
+// muteret global built-in prototype kan ikke nås af den kilde — begge kræver
+// kode-eksekvering i CI, hvorefter en angriber kan emittere et grønt check direkte.
+// Object-NIVEAU-arv/accessors ER lukket her (ownData); Proxy/global-mutation er en
+// runtime-integritets-antagelse (jf. actors-lock/hooks), ikke en mapper-fejl.
 
 import { GATE_IDS, CHECK_RUN_PREFIX, checkRunName } from "./gates.mjs";
 
