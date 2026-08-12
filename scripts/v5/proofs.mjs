@@ -8,12 +8,14 @@
 // driver/sandbox, ikke af en ren funktion).
 //
 // Bygget nu: recon-coverage (recon-gaten) — hviler på coverage.mjs's
-// uafhængige flade-derivation. build-proof + chain-proof er endnu IKKE bygget
-// (deres dybde — effect-harness mod real store, held-out reel data — kræver en
-// rigtig pakke og hører til fase-wiring). Routeren fail-lukker for dem, så
-// build/slut-gaten IKKE kan åbne før de er bygget (ærligt, ikke stub-grønt).
+// uafhængige flade-derivation; build-proof (build-gaten) — struktur-gulve +
+// git-forankret claim_graph (build-proof.mjs). chain-proof er endnu IKKE bygget
+// (held-out reel data efter build kræver en rigtig pakke — anti-tailoring-kernen
+// kan ikke bevises uden reel data). Routeren fail-lukker for chain-proof, så
+// slut-gaten IKKE kan åbne før den er bygget (ærligt, ikke stub-grønt).
 
 import { deriveSurface, checkBucketCoverage } from "./coverage.mjs";
+import { verifyBuildProof } from "./build-proof.mjs";
 
 const RECON_ACTORS = Object.freeze(["code", "codex", "claude-ai"]);
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -99,10 +101,11 @@ export function makeProofVerifier({ git }) {
       case "recon-coverage":
         return verifyReconCoverageProof(proof, snapshot, { git });
       case "build-proof":
+        return verifyBuildProof(proof, snapshot, { git });
       case "chain-proof":
         return {
           ok: false,
-          reasons: [`proof-kind '${proof.proof_kind}' er endnu ikke bygget (fail-closed) — kommer i fase-wiring`],
+          reasons: [`proof-kind '${proof.proof_kind}' er endnu ikke bygget (fail-closed) — kræver held-out reel data (rigtig pakke)`],
         };
       default:
         return { ok: false, reasons: [`ukendt proof_kind: ${String(proof?.proof_kind)} (fail-closed)`] };

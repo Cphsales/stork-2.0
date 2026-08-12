@@ -161,12 +161,15 @@ expectRed(
   "omission-devil ikke PASS",
 );
 
-console.log("\nrouter (makeProofVerifier) — fail-closed for endnu-ikke-byggede kinds:");
+console.log("\nrouter (makeProofVerifier) — dispatch + fail-closed:");
 const route = makeProofVerifier({ git });
+// build-proof er nu BYGGET → routeren leder den til verifyBuildProof; en tom
+// payload er stadig rød (her: recon-snapshot har ingen plan-binding). Fuld
+// build-proof red-team ligger i build-proof.selftest.mjs.
 expectRed(
-  "build-proof ikke bygget → rød",
+  "build-proof routes til verifyBuildProof (rød på tom payload)",
   route({ proof_kind: "build-proof" }, snap(greenProof())),
-  "endnu ikke bygget",
+  "plan-binding",
 );
 expectRed(
   "chain-proof ikke bygget → rød",
