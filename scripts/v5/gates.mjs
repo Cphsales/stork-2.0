@@ -196,7 +196,9 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
   // EGNE felter kræves overalt — Object.prototype-pollution må ikke udfylde et
   // required snapshot-felt (snapshot={} med felter arvet fra en forurenet
   // prototype åbnede ellers gaten).
-  if (!hasOwn(snapshot, "commit_sha") || !isNonEmptyString(snapshot.commit_sha)) fail("commit_sha mangler/tom");
+  // commit_sha SKAL være en pinned OID — en mutable ref (HEAD/branch/tag) ville
+  // lade gaten binde til flytbart indhold (falsk-grøn: pin brydes mekanisk).
+  if (!hasOwn(snapshot, "commit_sha") || !isOid(snapshot.commit_sha)) fail("commit_sha mangler/ikke en pinned OID (mutable ref som HEAD forbudt)");
   if (!hasOwn(snapshot, "artifact") || !isRef(snapshot.artifact)) fail("artifact-ref mangler/ugyldig (path+oid+type kræves)");
   const bindings = hasOwn(snapshot, "bindings") && isPlainObj(snapshot.bindings) ? snapshot.bindings : null;
   if (!bindings) fail("bindings mangler/ugyldig (eget plain object kræves)");

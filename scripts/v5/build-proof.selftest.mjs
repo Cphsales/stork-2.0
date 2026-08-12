@@ -146,16 +146,28 @@ expectRed("base_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) =
 
 console.log("\nverifyBuildProof selv-validerer snapshot (Codex-confirm r2 #1 + r3 #2):");
 expectRed("arvet snapshot.bindings (Object.create)", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: Object.create({ plan }) }, { git }), "plan-binding");
-// r3 #2: fake men gyldig-formet plan/artifact-OID (findes ikke i git) → rød backstop
+// r3 #2 / r4 #2: fake el. forkert-path-bundet plan/artifact-OID → rød (path-binding)
 expectRed(
-  "fake plan-OID (gyldig form, findes ikke)",
+  "fake plan-OID (gyldig form, findes ikke på stien)",
   verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: { plan: { path: "plan/plan.md", oid: "a".repeat(40), type: "blob" } } }, { git }),
-  "plan-OID findes ikke",
+  "matcher ikke stien",
 );
 expectRed(
-  "fake artifact-OID (gyldig form, findes ikke)",
+  "fake artifact-OID (gyldig form, findes ikke på stien)",
   verifyBuildProof(greenProof(), { ...snap(greenProof()), artifact: { path: "build/build-proof.json", oid: "c".repeat(40), type: "blob" } }, { git }),
-  "artifact-OID findes ikke",
+  "matcher ikke stien",
+);
+// r4 #2: en RIGTIG eksisterende blob men på FORKERT sti (orphan) → rød
+expectRed(
+  "artifact-OID = ægte blob men forkert sti (orphan)",
+  verifyBuildProof(greenProof(), { ...snap(greenProof()), artifact: { path: "build/build-proof.json", oid: angrebsSpec.oid, type: "blob" } }, { git }),
+  "matcher ikke stien",
+);
+// r4 #1: commit_sha som mutable ref (HEAD) må ikke åbne (pinned-OID-kontrakt)
+expectRed(
+  "commit_sha = 'HEAD' (mutable ref)",
+  verifyBuildProof(greenProof(), { ...snap(greenProof()), commit_sha: "HEAD" }, { git }),
+  "pinned OID",
 );
 {
   const s = snap(greenProof());
@@ -280,6 +292,14 @@ console.log("\nende-til-ende gennem evaluateGate (build-gaten):");
     for (const k of keys) delete Object.prototype[k];
   }
   !r.open ? ok("snapshot={} m. arvede felter åbner IKKE build-gaten (prototype-pollution)") : bad("e2e-proto", "ÅBNEDE");
+}
+{
+  // r4 #1 e2e: mutable-ref commit_sha må ikke åbne gaten (gates.mjs kræver isOid)
+  const deps = { verifyProof: makeProofVerifier({ git }) };
+  const r = evaluateGate("build", { ...snap(greenProof()), commit_sha: "HEAD" }, deps);
+  !r.open && r.reasons.some((x) => /pinned OID/.test(x))
+    ? ok("build-gaten LUKKER ved mutable-ref commit_sha (HEAD)")
+    : bad("e2e-head", r.open ? "ÅBNEDE" : r.reasons.join(" | "));
 }
 
 console.log("");

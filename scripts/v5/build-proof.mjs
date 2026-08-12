@@ -99,20 +99,37 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
 
   // EGNE snapshot-felter (stol ikke på kalderen — defense-in-depth mod
   // Object.prototype-pollution, også når verifyBuildProof kaldes direkte).
-  if (!hasOwn(snapshot, "commit_sha") || !isNonEmptyString(snapshot.commit_sha)) fail("snapshot.commit_sha mangler/ikke eget felt (fail-closed)");
+  // commit_sha SKAL være en pinned OID (mutable ref som HEAD forbudt) OG findes
+  // som commit i git — hele bindingen hviler på en pinned commit.
+  const commitSha = hasOwn(snapshot, "commit_sha") ? snapshot.commit_sha : undefined;
+  if (!isOid(commitSha)) fail("snapshot.commit_sha mangler/ikke en pinned OID (mutable ref som HEAD forbudt)");
+  else if (gitObjectType(git, commitSha) !== "commit") fail("snapshot.commit_sha findes ikke som commit i git (fake/mutable)");
+
+  // PATH-BIND en ref: blobben skal ligge på den CITEREDE sti i den gatede commit
+  // (git rev-parse <commit>:<path> === oid) — ikke bare være en vilkårlig
+  // eksisterende blob et andet sted (defense-in-depth; i produktion resolver
+  // gate-eval.buildSnapshot refs fra rå git, men evaluateGate SELV er git-løs).
+  const pathBind = (ref, label) => {
+    if (!isPlainObject(ref)) return void fail(`${label} mangler/ugyldig (fail-closed)`);
+    const path = hasOwn(ref, "path") ? ref.path : undefined;
+    const oid = hasOwn(ref, "oid") ? ref.oid : undefined;
+    if (!isNonEmptyString(path) || !isOid(oid)) return void fail(`${label}: path/oid mangler/ugyldig`);
+    if (!isOid(commitSha)) return; // commit_sha allerede rapporteret
+    let atPath = null;
+    try {
+      atPath = git("rev-parse", `${commitSha}:${path}`);
+    } catch {
+      atPath = null;
+    }
+    if (atPath === null) fail(`${label}: sti '${path}' findes ikke i den gatede commit`);
+    else if (atPath !== oid) fail(`${label}: oid matcher ikke stien i commit (citeret ${oid}, reel ${atPath}) — stale/orphan`);
+    else if (gitObjectType(git, oid) !== "blob") fail(`${label}: oid er ikke en blob (fil forventet)`);
+  };
+  pathBind(hasOwn(snapshot, "artifact") ? snapshot.artifact : null, "snapshot.artifact");
   const sBindings = hasOwn(snapshot, "bindings") && isPlainObject(snapshot.bindings) ? snapshot.bindings : null;
   const planRef = sBindings && hasOwn(sBindings, "plan") && isPlainObject(sBindings.plan) ? sBindings.plan : null;
-  const planOid = planRef && hasOwn(planRef, "oid") ? planRef.oid : undefined;
-  if (!isOid(planOid)) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
-  // defense-in-depth: refs skal RESOLVE i git, ikke bare være syntaktisk OID — en
-  // forged snapshot med fake OID'er må ikke passere proof-verifieren. (I produktion
-  // resolver gate-eval.buildSnapshot allerede alle refs fra rå git; dette er backstop
-  // for at evaluateGate SELV er ren/git-løs og trusterr sin snapshot-konstruktør.)
-  else if (gitObjectType(git, planOid) !== "blob") fail("plan-OID findes ikke som committet blob i git (fake/manipuleret snapshot)");
-  const artRef = hasOwn(snapshot, "artifact") && isPlainObject(snapshot.artifact) ? snapshot.artifact : null;
-  const artOid = artRef && hasOwn(artRef, "oid") ? artRef.oid : undefined;
-  if (!isOid(artOid)) fail("snapshot.artifact.oid mangler/ugyldig (fail-closed)");
-  else if (gitObjectType(git, artOid) !== "blob") fail("artifact-OID findes ikke som committet blob i git (fake/manipuleret snapshot)");
+  if (!planRef) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
+  else pathBind(planRef, "plan-binding");
 
   // ---------- 1) K-sæt (krav-acceptkriteriet, deklareret) ----------
   const kIds = new Set();
