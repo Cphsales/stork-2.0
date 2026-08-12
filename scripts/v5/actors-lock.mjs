@@ -34,6 +34,45 @@ const isDenseArrayOf = (a, pred) => {
   for (let i = 0; i < a.length; i++) if (!hasOwn(a, i)) return false;
   return a.every(pred);
 };
+// checkPureDenseArrayOf: som isDenseArrayOf, men STOL IKKE på arrayets egne
+// metoder — en egen `some`/`every`-override eller custom Symbol.iterator kunne
+// ellers forfalske checket. Kræv: kun egne nøgler = length + indices 0..len-1
+// (alle enumerable data), ingen huller, ingen symbol-nøgler; iterér via index-loop.
+const checkPureDenseArrayOf = (a, pred, label, fail) => {
+  if (!Array.isArray(a)) {
+    fail(`${label}: ikke et array`);
+    return false;
+  }
+  const len = a.length;
+  for (const k of Reflect.ownKeys(a)) {
+    if (typeof k === "symbol") {
+      fail(`${label}: symbol-nøgle på array forbudt (fx egen Symbol.iterator)`);
+      return false;
+    }
+    if (k === "length") continue;
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= len) {
+      fail(`${label}: uventet egen array-property '${k}' (fx some/every-override)`);
+      return false;
+    }
+    const d = Object.getOwnPropertyDescriptor(a, k);
+    if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) {
+      fail(`${label}: accessor/ikke-enumerable indeks '${k}'`);
+      return false;
+    }
+  }
+  for (let i = 0; i < len; i++) {
+    if (!hasOwn(a, i)) {
+      fail(`${label}: hul ved indeks ${i}`);
+      return false;
+    }
+    if (!pred(a[i])) {
+      fail(`${label}: element ${i} ugyldig`);
+      return false;
+    }
+  }
+  return true;
+};
 // checkPureDataKeys: Reflect.ownKeys fanger symbol-nøgler + ikke-enumerable + egne
 // nøgler som Object.keys ignorerer; descriptor-tjek afviser accessor-felter (en
 // getter kunne validere som "pinned" og eksponere "latest" bagefter). Kun rene,
@@ -75,7 +114,10 @@ export const REASONING_LEVELS = Object.freeze(["low", "medium", "high", "xhigh",
 export const WEB_TOKENS = Object.freeze(["web", "websearch", "webfetch", "webrun", "browse", "browser"]);
 const isWebTool = (t) => {
   if (typeof t !== "string") return false;
+  // camelCase-grænse FØR lowercase, så 'browserSearch'/'webSearch' tokeniseres til
+  // browser/web (ikke ét ord der undslipper). Så split på separatorer.
   return t
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean)
@@ -167,15 +209,19 @@ export function validateActorsLock(lock, { git, commitSha, roller = ROLLER } = {
       else if (atPath !== skillOid) fail(`${role}: skill_oid matcher ikke skill_path i træet (citeret ${skillOid}, reel ${atPath}) — stale/forkert skill`);
     }
 
-    // allowed_tools: ikke-tomt, tæt array af ikke-tomme strenge; web KUN hvis roller.web
+    // allowed_tools: REN, ikke-tomt, tæt array af ikke-tomme strenge; web KUN hvis
+    // roller.web. (checkPureDenseArrayOf: ingen egen some/every/iterator-override.)
     const tools = own(e, "allowed_tools");
-    if (!isDenseArrayOf(tools, isNonEmptyString) || tools.length === 0) fail(`${role}: allowed_tools skal være et ikke-tomt, tæt array af strenge`);
+    if (!checkPureDenseArrayOf(tools, isNonEmptyString, `${role}.allowed_tools`, fail)) {
+      // fejl allerede rapporteret af helperen
+    } else if (tools.length === 0) fail(`${role}: allowed_tools er tomt`);
     else if (!reg.web && tools.some(isWebTool)) fail(`${role}: web-værktøj i allowed_tools men roller.web=false (web skaber nye 'sandheder' — forbudt)`);
 
-    // output_schema: === registryets producerer (samme mængde, ingen drift)
+    // output_schema: REN array === registryets producerer (samme mængde, ingen drift)
     const outs = own(e, "output_schema");
-    if (!isDenseArrayOf(outs, (o) => OUTPUT_TYPES.includes(o))) fail(`${role}: output_schema er ikke et tæt array af kendte output-typer`);
-    else {
+    if (!checkPureDenseArrayOf(outs, (o) => OUTPUT_TYPES.includes(o), `${role}.output_schema`, fail)) {
+      // fejl allerede rapporteret
+    } else {
       const a = [...outs].sort();
       const b = [...reg.producerer].sort();
       if (a.length !== b.length || !a.every((x, i) => x === b[i]))

@@ -140,6 +140,21 @@ bwDenies("malformeret input (null)", null, "ugyldigt input");
   const r = buildWriteDecision(proto);
   r.decision === "deny" ? ok("Object.create(gyldig) → deny (prototype-input)") : bad("bw-proto", r.decision);
 }
+// Codex-P2 #B1: accessor/symbol/ukendt eget felt i input → deny (ustabile værdier)
+{
+  const inp = { repoRoot: ROOT, planLocked: true, bidId: "bid-1", bidAngrebsSpecCommitted: true };
+  let n = 0;
+  Object.defineProperty(inp, "rawPath", { enumerable: true, get: () => (n++ === 0 ? "apps/web/x.ts" : "scripts/v5/hooks.mjs") });
+  Object.defineProperty(inp, "driverRouted", { enumerable: true, value: true });
+  bwDenies("accessor rawPath (god-under-check, ond-bagefter) → deny", inp, "accessor");
+}
+{
+  const inp = { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: true, bidId: "bid-1", bidAngrebsSpecCommitted: true };
+  Object.defineProperty(inp, "driverRouted", { enumerable: true, get: () => true });
+  bwDenies("accessor driverRouted → deny", inp, "accessor");
+}
+bwDenies("symbol-nøgle i input → deny", { ...buildOk, [Symbol("x")]: 1 }, "symbol-nøgle");
+bwDenies("ukendt felt i input → deny", { ...buildOk, sneaky: 1 }, "ukendt felt");
 
 console.log("");
 if (failed > 0) {

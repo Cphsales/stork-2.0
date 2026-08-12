@@ -114,17 +114,37 @@ export function buildWriteDecision(input) {
   if (ip !== Object.prototype && ip !== null)
     return { decision: "deny", zone: "udenfor", reason: "input har ikke-standard prototype (manipuleret)" };
 
+  // RENE data-felter: en getter kunne returnere en gyldig værdi UNDER checket og
+  // en anden BAGEFTER (ustabilt input); symbol/ikke-enumerable/ukendte egne felter
+  // skjuler intention. Afvis dem, og SNAPSHOT værdierne én gang før brug.
+  const ALLOWED = ["rawPath", "repoRoot", "planLocked", "driverRouted", "bidId", "bidAngrebsSpecCommitted"];
+  for (const k of Reflect.ownKeys(input)) {
+    if (typeof k === "symbol")
+      return { decision: "deny", zone: "udenfor", reason: "symbol-nøgle i input (fail-closed)" };
+    const d = Object.getOwnPropertyDescriptor(input, k);
+    if (typeof d.get === "function" || typeof d.set === "function" || !d.enumerable)
+      return { decision: "deny", zone: "udenfor", reason: `accessor/ikke-enumerable felt '${k}' i input (fail-closed)` };
+    if (!ALLOWED.includes(k))
+      return { decision: "deny", zone: "udenfor", reason: `ukendt felt '${k}' i input (fail-closed)` };
+  }
+  const rawPath = input.rawPath;
+  const repoRoot = input.repoRoot;
+  const planLocked = input.planLocked;
+  const driverRouted = input.driverRouted;
+  const bidId = input.bidId;
+  const bidAngrebsSpecCommitted = input.bidAngrebsSpecCommitted;
+
   // zone-gaten først (samme kanoniske klassificering; måle-lag/sandhed/udenfor
-  // afvises uanset build-fase-flag).
-  const coarse = writeDecision({ rawPath: input.rawPath, repoRoot: input.repoRoot, planLocked: input.planLocked });
+  // afvises uanset build-fase-flag). Snapshot'ede værdier — ikke live input.
+  const coarse = writeDecision({ rawPath, repoRoot, planLocked });
   if (coarse.decision === "deny") return coarse;
 
   // her: zone = produkt OG planLocked === true. Anvend attack-spec-tilstanden.
-  if (input.driverRouted !== true)
+  if (driverRouted !== true)
     return { decision: "deny", zone: "produkt", reason: "direkte skrivevej uden om driveren (kun driver-routede bid-byg tillades)" };
-  if (typeof input.bidId !== "string" || input.bidId.length === 0)
+  if (typeof bidId !== "string" || bidId.length === 0)
     return { decision: "deny", zone: "produkt", reason: "skriv uden aktiv bid (bidId mangler)" };
-  if (input.bidAngrebsSpecCommitted !== true)
+  if (bidAngrebsSpecCommitted !== true)
     return { decision: "deny", zone: "produkt", reason: "bid mangler committet angrebs-spec (angrebet skal foreligge før byg)" };
-  return { decision: "allow", zone: "produkt", reason: `produkt-skriv tilladt: driver-routet bid '${input.bidId}' med committet angrebs-spec` };
+  return { decision: "allow", zone: "produkt", reason: `produkt-skriv tilladt: driver-routet bid '${bidId}' med committet angrebs-spec` };
 }

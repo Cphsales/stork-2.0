@@ -93,8 +93,30 @@ expectRed("web-alias 'web_search'", validate(mutated((l) => l["recon-code"].allo
 expectRed("web-alias 'web.fetch'", validate(mutated((l) => l["recon-code"].allowed_tools.push("web.fetch"))), "web-værktøj");
 expectRed("web-alias 'mcp__web__search'", validate(mutated((l) => l["recon-code"].allowed_tools.push("mcp__web__search"))), "web-værktøj");
 expectRed("web-alias 'anthropic:web-search'", validate(mutated((l) => l["recon-code"].allowed_tools.push("anthropic:web-search"))), "web-værktøj");
+// Codex-P2 #A2: camelCase browse/browser-alias skal fanges
+expectRed("web-alias 'browserSearch' (camelCase)", validate(mutated((l) => l["recon-code"].allowed_tools.push("browserSearch"))), "web-værktøj");
+expectRed("web-alias 'browseUrl' (camelCase)", validate(mutated((l) => l["recon-code"].allowed_tools.push("browseUrl"))), "web-værktøj");
+expectRed("web-alias 'webSearch' (camelCase)", validate(mutated((l) => l["recon-code"].allowed_tools.push("webSearch"))), "web-værktøj");
 expectGreen("ikke-web værktøj 'webhook' fejl-flag'es IKKE", validate(mutated((l) => l["recon-code"].allowed_tools.push("webhook"))));
 expectGreen("codex-forbedring MÅ have web", validate(derived()));
+
+console.log("\nnested-array renhed (Codex-P2 #A1):");
+{
+  const l = clone(derived());
+  const arr = ["ok-tool"];
+  arr.some = () => false; // egen some-override der ville forfalske web-checket
+  l["recon-code"].allowed_tools = arr;
+  expectRed("allowed_tools m. egen some-override", validateActorsLock(l, { git, commitSha: COMMIT }), "array-property");
+}
+{
+  const l = clone(derived());
+  const arr = ["raad"];
+  arr[Symbol.iterator] = function* () {
+    yield "recon-candidate";
+  };
+  l["codex-forbedring"].output_schema = arr; // codex-forbedring producerer 'raad'
+  expectRed("output_schema m. egen Symbol.iterator", validateActorsLock(l, { git, commitSha: COMMIT }), "symbol-nøgle på array");
+}
 
 console.log("\nJS-API-kant (Codex-P2 #2/#3): symbol/ikke-enumerable/accessor fail-lukkes:");
 {
