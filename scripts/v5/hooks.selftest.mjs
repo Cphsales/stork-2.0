@@ -155,6 +155,18 @@ bwDenies("malformeret input (null)", null, "ugyldigt input");
 }
 bwDenies("symbol-nøgle i input → deny", { ...buildOk, [Symbol("x")]: 1 }, "symbol-nøgle");
 bwDenies("ukendt felt i input → deny", { ...buildOk, sneaky: 1 }, "ukendt felt");
+// Object.prototype-forurening må ikke levere fakta til et tomt {} (læser kun egne data)
+{
+  const vals = { rawPath: "apps/web/x.ts", repoRoot: ROOT, planLocked: true, driverRouted: true, bidId: "bid-1", bidAngrebsSpecCommitted: true };
+  for (const k of Object.keys(vals)) Object.prototype[k] = vals[k];
+  let r;
+  try {
+    r = buildWriteDecision({});
+  } finally {
+    for (const k of Object.keys(vals)) delete Object.prototype[k];
+  }
+  r.decision === "deny" ? ok("Object.prototype-forurenede felter → deny (kun egne data læses)") : bad("bw-objproto", "ALLOW (falsk-grøn)");
+}
 
 console.log("");
 if (failed > 0) {

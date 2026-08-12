@@ -133,12 +133,20 @@ export function buildWriteDecision(input) {
     if (!ALLOWED.includes(k))
       return { decision: "deny", zone: "udenfor", reason: `ukendt felt '${k}' i input (fail-closed)` };
   }
-  const rawPath = input.rawPath;
-  const repoRoot = input.repoRoot;
-  const planLocked = input.planLocked;
-  const driverRouted = input.driverRouted;
-  const bidId = input.bidId;
-  const bidAngrebsSpecCommitted = input.bidAngrebsSpecCommitted;
+  // læs KUN egne DATA-felter: et felt arvet fra (en forurenet) Object.prototype
+  // eller en accessor må aldrig levere en fakta til et ellers tomt {}. (Global
+  // built-in-prototype-mutation er en runtime-antagelse uden for scope — samme
+  // note som i actors-lock/verdikt; her lukkes object-NIVEAU-arv.)
+  const ownVal = (k) => {
+    const d = Object.getOwnPropertyDescriptor(input, k);
+    return d && typeof d.get !== "function" && typeof d.set !== "function" ? d.value : undefined;
+  };
+  const rawPath = ownVal("rawPath");
+  const repoRoot = ownVal("repoRoot");
+  const planLocked = ownVal("planLocked");
+  const driverRouted = ownVal("driverRouted");
+  const bidId = ownVal("bidId");
+  const bidAngrebsSpecCommitted = ownVal("bidAngrebsSpecCommitted");
 
   // zone-gaten først (samme kanoniske klassificering; måle-lag/sandhed/udenfor
   // afvises uanset build-fase-flag). Snapshot'ede værdier — ikke live input.

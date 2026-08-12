@@ -53,15 +53,23 @@ export function checkRunFromGateResult(gateId, result) {
   if (!gid.has || gid.value !== gateId)
     return failure(`gate-resultat er for '${String(gid.value)}' ≠ emitteret gate '${gateId}' (mismatch/arvet/accessor → failure)`);
 
-  const reasons = Array.isArray(result.reasons) ? result.reasons.filter((r) => typeof r === "string") : [];
+  // reasons SKAL være et eget DATA-array (et manglende/streng/arvet reasons på en
+  // open-påstand er malformed — fail-closed). Index-loop, ingen Array-metoder.
+  const rd = ownData(result, "reasons");
+  const reasonsArr = Array.isArray(rd.value) ? rd.value : null;
+
   // KUN et eget DATA-felt open===true → success (truthy/1/"true"/arvet/accessor → failure).
-  // OG gate-kernens invariant: open ⟺ NUL reasons. Et internt inkonsistent
-  // resultat (open:true MEN reasons ikke-tom) er forged/korrupt → failure.
+  // OG gate-kernens invariant open ⟺ NUL reasons: et open-resultat fra evaluateGate
+  // HAR reasons:[]. Manglende/ikke-array/ikke-tom reasons ved open=true → failure.
   const op = ownData(result, "open");
   if (op.has && op.value === true) {
-    if (reasons.length > 0)
-      return failure("inkonsistent resultat: open=true men reasons ikke-tom (gate-kernens invariant open ⟺ nul reasons brudt)");
+    if (reasonsArr === null)
+      return failure("open=true men reasons mangler/er ikke et eget array (malformed → failure)");
+    if (reasonsArr.length > 0)
+      return failure("inkonsistent resultat: open=true men reasons ikke-tom (invariant open ⟺ nul reasons brudt)");
     return { name, conclusion: "success", output: { title: `${name}: åben`, summary: "Gaten er åben — alle beviser/verdikter/kæde-krav opfyldt." } };
   }
-  return failure(reasons.length ? reasons.map((r) => `- ${r}`).join("\n") : "Gaten er lukket (ingen begrundelse angivet).");
+  let summary = "";
+  if (reasonsArr) for (let i = 0; i < reasonsArr.length; i++) if (typeof reasonsArr[i] === "string") summary += (summary ? "\n" : "") + "- " + reasonsArr[i];
+  return failure(summary || "Gaten er lukket (ingen begrundelse angivet).");
 }

@@ -61,6 +61,8 @@ console.log("\naccessor / prototype-pollution / inkonsistens (Codex-P2):");
   cr.conclusion === "failure" ? ok("arvet open (prototype-pollution) → failure") : bad("cr-proto", "success");
 }
 expectFailure("open:true MEN reasons ikke-tom (inkonsistent) → failure", "build", { open: true, gate_id: "build", reasons: ["mutant overlevede"] });
+expectFailure("open:true uden reasons-felt (malformed) → failure", "build", { open: true, gate_id: "build" });
+expectFailure("open:true m. reasons som streng (malformed) → failure", "build", { open: true, gate_id: "build", reasons: "mutant overlevede" });
 
 console.log("\nsummary-indhold (reasons medtages, men aldrig grøn):");
 {

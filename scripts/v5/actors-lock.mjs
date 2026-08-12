@@ -17,6 +17,16 @@
 // U-forfalskelig kerne: skill_oid re-bindes mod rå git (git rev-parse
 // <commit>:<skill_path> === skill_oid) — en aktør kan ikke påstå en skill-version;
 // den citeres mod træet, ligesom læsebeviset i verdikt.mjs.
+//
+// RESIDUAL (ærlig, delt af HELE v5-substratet): MUTATION af Node's globale
+// built-in prototyper (Array.prototype.some, Object.prototype.<felt>, String.
+// prototype.split …) er fuld runtime-kompromittering — den defeater lige så vel
+// git.mjs, JSON, og gate-kernen selv, og kan IKKE nås af data en bygger/driver
+// leverer (den kræver kode-eksekvering i CI, hvorefter gaten alligevel er tabt).
+// Object-/array-NIVEAU tricks (egne accessors/symboler/ikke-enumerable, custom
+// prototype, egne metode-overrides) ER lukket her via own-data + prototype-pin +
+// index-loops. Den globale prototype-mutation er en runtime-integritets-antagelse,
+// ikke en validator-fejl.
 
 import { ROLLER, ROLLE_IDS, OUTPUT_TYPES } from "./roller.mjs";
 import { ACTOR_SLUGS, isOid } from "./gates.mjs";
@@ -220,20 +230,35 @@ export function validateActorsLock(lock, { git, commitSha, roller = ROLLER } = {
     // allowed_tools: REN, ikke-tomt, tæt array af ikke-tomme strenge; web KUN hvis
     // roller.web. (checkPureDenseArrayOf: ingen egen some/every/iterator-override.)
     const tools = own(e, "allowed_tools");
+    // NB: index-loops (ikke .some/.every/spread) så en GLOBAL Array.prototype-
+    // metode-override ikke kan forfalske checket. (Global built-in-prototype-
+    // MUTATION er dog fuld runtime-kompromittering — se residual-noten i headeren;
+    // den er uden for enhver ren validators rækkevidde.)
     if (!checkPureDenseArrayOf(tools, isNonEmptyString, `${role}.allowed_tools`, fail)) {
       // fejl allerede rapporteret af helperen
-    } else if (tools.length === 0) fail(`${role}: allowed_tools er tomt`);
-    else if (!reg.web && tools.some(isWebTool)) fail(`${role}: web-værktøj i allowed_tools men roller.web=false (web skaber nye 'sandheder' — forbudt)`);
+    } else if (tools.length === 0) {
+      fail(`${role}: allowed_tools er tomt`);
+    } else if (!reg.web) {
+      let hasWeb = false;
+      for (let i = 0; i < tools.length; i++) if (isWebTool(tools[i])) hasWeb = true;
+      if (hasWeb) fail(`${role}: web-værktøj i allowed_tools men roller.web=false (web skaber nye 'sandheder' — forbudt)`);
+    }
 
-    // output_schema: REN array === registryets producerer (samme mængde, ingen drift)
+    // output_schema: REN array === registryets producerer (samme MULTISET, ingen
+    // drift) — bidirektionel index-loop-sammenligning (ingen .sort/.every/spread).
     const outs = own(e, "output_schema");
     if (!checkPureDenseArrayOf(outs, (o) => OUTPUT_TYPES.includes(o), `${role}.output_schema`, fail)) {
       // fejl allerede rapporteret
     } else {
-      const a = [...outs].sort();
-      const b = [...reg.producerer].sort();
-      if (a.length !== b.length || !a.every((x, i) => x === b[i]))
-        fail(`${role}: output_schema [${outs.join(",")}] ≠ roller.producerer [${reg.producerer.join(",")}] (drift)`);
+      const prod = reg.producerer;
+      const contains = (arr, needle) => {
+        for (let i = 0; i < arr.length; i++) if (arr[i] === needle) return true;
+        return false;
+      };
+      let drift = outs.length !== prod.length;
+      for (let i = 0; !drift && i < outs.length; i++) if (!contains(prod, outs[i])) drift = true;
+      for (let i = 0; !drift && i < prod.length; i++) if (!contains(outs, prod[i])) drift = true;
+      if (drift) fail(`${role}: output_schema ≠ roller.producerer (drift)`);
     }
   }
 
