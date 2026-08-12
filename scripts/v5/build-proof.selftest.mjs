@@ -138,9 +138,26 @@ expectRed("ét K mangler dræbt mutant (kan ikke opt-out)", verify(mutated((p) =
 expectRed("overlevende mutant (killed ikke true)", verify(mutated((p) => (p.bids[0].mutants[0].killed = false))), "overlevende mutant");
 expectRed("mutant for ukendt K", verify(mutated((p) => (p.bids[0].mutants[0].k_id = "K-77"))), "ukendt K");
 
-console.log("\npr.-bid OID-bindinger:");
+console.log("\npr.-bid OID-bindinger (form + git-eksistens — Codex-confirm r2 #2):");
 expectRed("angrebs_spec_oid mangler (kill-list ikke bundet)", verify(mutated((p) => delete p.bids[0].angrebs_spec_oid)), "angrebs_spec_oid");
-expectRed("base_oid ugyldig", verify(mutated((p) => (p.bids[0].base_oid = "ikke-en-oid"))), "base_oid");
+expectRed("base_oid ugyldig form", verify(mutated((p) => (p.bids[0].base_oid = "ikke-en-oid"))), "base_oid");
+expectRed("angrebs_spec_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].angrebs_spec_oid = "a".repeat(40)))), "eksisterende committet blob");
+expectRed("base_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].base_oid = "b".repeat(40)))), "eksisterende commit");
+
+console.log("\nverifyBuildProof selv-validerer snapshot (Codex-confirm r2 #1):");
+expectRed("arvet snapshot.bindings (Object.create)", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: Object.create({ plan }) }, { git }), "plan-binding");
+{
+  const s = snap(greenProof());
+  delete s.commit_sha;
+  Object.prototype.commit_sha = COMMIT;
+  let r;
+  try {
+    r = verifyBuildProof(greenProof(), s, { git });
+  } finally {
+    delete Object.prototype.commit_sha;
+  }
+  expectRed("arvet snapshot.commit_sha (prototype) fanges", r, "commit_sha");
+}
 
 console.log("\nclaim_graph — git-forankret kerne (u-forfalskelig, OBLIGATORISK):");
 // Codex-fund #2: den git-forankrede kerne må ikke kunne droppes

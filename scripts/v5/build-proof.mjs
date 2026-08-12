@@ -56,6 +56,16 @@ const isDenseArrayOf = (a, pred) => {
   return a.every(pred);
 };
 const isPosInt = (v) => Number.isInteger(v) && v >= 0;
+// git-objekt-type mod rå git (fail-closed): "blob"/"commit"/… eller null hvis
+// OID'en ikke findes. Så en syntaktisk gyldig men IKKE-committet 40-hex OID
+// (fake anker) fanges — isOid alene beviser ikke eksistens.
+const gitObjectType = (git, oid) => {
+  try {
+    return String(git("cat-file", "-t", oid)).trim();
+  } catch {
+    return null;
+  }
+};
 
 // hårde slut-effekter (plan 2.C): state/event/DB-row. Helper-return EKSPLICIT
 // forbudt — den klassiske falsk-grøn (test på intern return, reel policy aldrig kørt).
@@ -87,7 +97,12 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   if (!isPlainObject(proof)) return { ok: false, reasons: ["build-proof er ikke et objekt"] };
   if (!isPlainObject(snapshot)) return { ok: false, reasons: ["snapshot mangler/ugyldig (fail-closed)"] };
 
-  const planOid = snapshot?.bindings?.plan?.oid;
+  // EGNE snapshot-felter (stol ikke på kalderen — defense-in-depth mod
+  // Object.prototype-pollution, også når verifyBuildProof kaldes direkte).
+  if (!hasOwn(snapshot, "commit_sha") || !isNonEmptyString(snapshot.commit_sha)) fail("snapshot.commit_sha mangler/ikke eget felt (fail-closed)");
+  const sBindings = hasOwn(snapshot, "bindings") && isPlainObject(snapshot.bindings) ? snapshot.bindings : null;
+  const planRef = sBindings && hasOwn(sBindings, "plan") && isPlainObject(sBindings.plan) ? sBindings.plan : null;
+  const planOid = planRef && hasOwn(planRef, "oid") ? planRef.oid : undefined;
   if (!isOid(planOid)) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
 
   // ---------- 1) K-sæt (krav-acceptkriteriet, deklareret) ----------
@@ -123,9 +138,14 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
       }
       if (bidIds.has(bid)) fail(`dublet bid_id: ${bid}`);
       bidIds.add(bid);
-      // pr.-bid OID-bindinger: angrebs-spec (kill-listen) + base (async-review-anker)
-      if (!isOid(own(b, "angrebs_spec_oid"))) fail(`${bid}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
-      if (!isOid(own(b, "base_oid"))) fail(`${bid}: base_oid mangler/ugyldig`);
+      // pr.-bid OID-bindinger: angrebs-spec (kill-listen) + base (async-review-anker).
+      // OID skal både være gyldig FORM og faktisk EKSISTERE i git (committet).
+      const asOid = own(b, "angrebs_spec_oid");
+      if (!isOid(asOid)) fail(`${bid}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
+      else if (gitObjectType(git, asOid) !== "blob") fail(`${bid}: angrebs_spec_oid er ikke en eksisterende committet blob (fake/ikke-committet OID)`);
+      const baseOid = own(b, "base_oid");
+      if (!isOid(baseOid)) fail(`${bid}: base_oid mangler/ugyldig`);
+      else if (gitObjectType(git, baseOid) !== "commit") fail(`${bid}: base_oid er ikke en eksisterende commit (fake/ikke-committet OID)`);
 
       // tests: effect-harness-FORM (public-kind entrypoint; ikke-bypass; hård effekt)
       const tests = own(b, "tests");
