@@ -16,10 +16,12 @@
 //     ok=true  ⟺ sætningen kørte uden fejl
 //     ok=false ⟺ sætningen blev AFVIST (RLS/constraint/fejl) — error = besked
 //
-// KERNEN (hvorfor dette ikke er en findes-test): green afgøres KUN af om den
-// POSITIVE case faktisk lykkes OG den NEGATIVE case faktisk AFVISES gennem den
-// reelle effekt-sti — aldrig af at en policy "findes". Fail-closed: en runner der
-// kaster, en manglende/malformet harness, eller en tvetydig status → IKKE green.
+// KERNEN (hvorfor dette ikke er en findes-test): en mutant tæller KUN som dræbt
+// hvis den NEGATIVE (forbudte) sti FLIPPER fra afvist til tilladt MENS den positive
+// stadig virker — dvs. sikkerheds-assertionen fangede ændringen (ikke en generisk
+// positiv-regression, ikke en runner-fejl). Fail-closed overalt: en runner der
+// kaster / returnerer ikke {ok:boolean} / tom sql / malformet input → IKKE green,
+// IKKE dræbt (virkeligheden er ukendt ≠ "mutanten blev fanget").
 
 const isPlainObject = (v) => {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
@@ -27,86 +29,115 @@ const isPlainObject = (v) => {
   return p === Object.prototype || p === null;
 };
 const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
+const isDenseNonEmptyArray = (a) => {
+  if (!Array.isArray(a) || a.length === 0) return false;
+  for (let i = 0; i < a.length; i++) if (!Object.prototype.hasOwnProperty.call(a, i)) return false;
+  return true;
+};
 
-// safeRun(sql, text, opts) → {ok, error}: en runner der KASTER → {ok:false} med
-// fejl (fail-closed; en exception må aldrig boble op som "grøn").
+// safeRun(sql, text, opts) → {ok, error, protocolOk}
+// protocolOk=false ⟺ runner mangler/kaster/returnerer ikke {ok:boolean} ELLER sql
+// er tom (en PROTOKOL-fejl, ikke en legitim afvisning). protocolOk=true dækker BÅDE
+// ok=true og en legitim ok=false (afvisning). Så en fejlende kør kan aldrig
+// forveksles med et bevis.
 function safeRun(sql, text, opts) {
-  if (typeof sql !== "function") return { ok: false, error: "sql-runner mangler (fail-closed)" };
+  if (typeof sql !== "function") return { ok: false, error: "sql-runner mangler (fail-closed)", protocolOk: false };
+  if (!isNonEmptyString(text)) return { ok: false, error: "tom/ugyldig sql (fail-closed)", protocolOk: false };
   let r;
   try {
     r = sql(text, opts);
   } catch (e) {
-    return { ok: false, error: `runner kastede: ${e?.message ?? String(e)}` };
+    return { ok: false, error: `runner kastede: ${e?.message ?? String(e)}`, protocolOk: false };
   }
-  // runner-svaret SKAL være {ok:boolean}; alt andet er tvetydigt → fail-closed
   if (!isPlainObject(r) || typeof r.ok !== "boolean")
-    return { ok: false, error: "runner returnerede ikke {ok:boolean} (fail-closed)" };
-  return { ok: r.ok, error: typeof r.error === "string" ? r.error : null };
+    return { ok: false, error: "runner returnerede ikke {ok:boolean} (fail-closed)", protocolOk: false };
+  return { ok: r.ok, error: typeof r.error === "string" ? r.error : null, protocolOk: true };
 }
 
-// runEffectHarness(harness, sql) → {green, positiveOk, negativeRejected, detail}
+// runEffectHarness(harness, sql) → {green, protocolOk, positiveOk, negativeRejected, detail}
 //
 // harness = {
-//   asRole,                 // ikke-bypass DB-rolle (SET ROLE) — obligatorisk
-//   settings?,              // session-settings (fx tenant-org)
-//   positive: { sql },      // handling der SKAL lykkes (samme-org)
-//   negative: { sql },      // handling der SKAL afvises (cross-org / forbudt)
+//   asRole,                             // ikke-bypass DB-rolle (SET ROLE) — obligatorisk
+//   settings?,                          // session-settings (fx tenant-org)
+//   positive: { sql },                  // handling der SKAL lykkes (samme-org)
+//   negative: { sql, expectError? },    // handling der SKAL afvises (cross-org);
+//                                        // expectError = substring fejlen SKAL matche
+//                                        // (så en afvisning af FORKERT grund ikke tæller)
 // }
-// green ⟺ positive lykkes OG negative AFVISES. En manglende ikke-bypass rolle →
-// IKKE green (en bypass-/superuser-kør omgår RLS og beviser intet).
+// green ⟺ protokollen kørte validt OG positiv lykkes OG negativ AFVISES (af den
+// rigtige grund, hvis expectError er sat). Manglende ikke-bypass rolle → ikke green.
 export function runEffectHarness(harness, sql) {
   if (!isPlainObject(harness) || !isPlainObject(harness.positive) || !isPlainObject(harness.negative))
-    return { green: false, error: "malformet harness (positive/negative kræves)" };
+    return { green: false, protocolOk: false, positiveOk: false, negativeRejected: false, error: "malformet harness (positive/negative kræves)" };
   if (!isNonEmptyString(harness.asRole))
-    return { green: false, error: "asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)" };
+    return { green: false, protocolOk: false, positiveOk: false, negativeRejected: false, error: "asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)" };
   const opts = { role: harness.asRole, settings: isPlainObject(harness.settings) ? harness.settings : undefined };
   const pos = safeRun(sql, harness.positive.sql, opts);
   const neg = safeRun(sql, harness.negative.sql, opts);
-  const green = pos.ok === true && neg.ok === false; // negativ SKAL afvises
-  return { green, positiveOk: pos.ok === true, negativeRejected: neg.ok === false, detail: { pos, neg } };
+  const protocolOk = pos.protocolOk === true && neg.protocolOk === true;
+  const positiveOk = pos.protocolOk === true && pos.ok === true;
+  // negativ afvist: kørte validt OG blev afvist; hvis expectError er sat SKAL
+  // fejl-beskeden matche (ellers er "afvist" bare en tilfældig SQL-fejl).
+  let negativeRejected = neg.protocolOk === true && neg.ok === false;
+  if (negativeRejected && isNonEmptyString(harness.negative.expectError))
+    negativeRejected = isNonEmptyString(neg.error) && neg.error.includes(harness.negative.expectError);
+  const green = protocolOk && positiveOk && negativeRejected;
+  return { green, protocolOk, positiveOk, negativeRejected, detail: { pos, neg } };
 }
 
-// killMutant(mutant, harness, sql) → {killed, restored, baselineGreen, underMutantGreen}
+// killMutant(mutant, harness, sql) → {killed, restored, cleanAfter, baselineGreen, detail}
 //
 // mutant = { knob, apply: sql, restore: sql }  (config-ændring + gendannelse; køres
 //   som ejer/DDL-rolle, dvs. UDEN harness.asRole).
-// Dræbt ⟺ harnessen var green FØR (baseline) men er IKKE green UNDER mutanten
-//   (dvs. testen OPDAGER ændringen — en findes-test ville ikke flippe).
-// restore køres ALTID (også ved dræbt) så efterfølgende mutanter starter rent.
+// DRÆBT ⟺ baseline var green, under-mutant-kørslen var protokol-valid, den POSITIVE
+//   virker STADIG, men den NEGATIVE er IKKE længere afvist (isolationen brød, og
+//   sikkerheds-assertionen fangede det). En positiv-regression eller en runner-fejl
+//   under mutanten tæller IKKE som kill (virkeligheden er da ukendt/irrelevant).
+// restore + en post-restore baseline køres ALTID, så næste mutant starter rent;
+// cleanAfter=false betyder gendannelsen efterlod beskidt state.
 export function killMutant(mutant, harness, sql) {
-  if (!isPlainObject(mutant) || !isNonEmptyString(mutant.knob))
-    return { killed: false, restored: false, error: "malformet mutant (knob kræves)" };
+  if (!isPlainObject(mutant) || !isNonEmptyString(mutant.knob) || !isNonEmptyString(mutant.apply) || !isNonEmptyString(mutant.restore))
+    return { killed: false, restored: false, cleanAfter: false, error: "malformet mutant (knob/apply/restore kræves)" };
+
   const baseline = runEffectHarness(harness, sql);
-  if (baseline.green !== true) return { killed: false, restored: true, baselineGreen: false, error: "baseline ikke green — intet at dræbe mod" };
+  if (baseline.green !== true) return { killed: false, restored: false, cleanAfter: false, baselineGreen: false, error: "baseline ikke green — intet at dræbe mod" };
 
   const applied = safeRun(sql, mutant.apply, {});
-  if (applied.ok !== true) return { killed: false, restored: false, baselineGreen: true, error: `mutant-apply fejlede: ${applied.error}` };
+  if (applied.protocolOk !== true || applied.ok !== true) {
+    const rr = safeRun(sql, mutant.restore, {}); // best-effort gendannelse
+    const clean = runEffectHarness(harness, sql);
+    return { killed: false, restored: rr.ok === true, cleanAfter: clean.green === true, baselineGreen: true, error: `mutant-apply fejlede: ${applied.error}` };
+  }
 
   const underMutant = runEffectHarness(harness, sql);
   const restore = safeRun(sql, mutant.restore, {});
+  const cleanBaseline = runEffectHarness(harness, sql); // post-restore: er vi rene igen?
 
+  const killed =
+    underMutant.protocolOk === true && underMutant.positiveOk === true && underMutant.negativeRejected === false;
   return {
-    killed: underMutant.green === false, // harnessen flippede = mutanten blev fanget
+    killed,
     restored: restore.ok === true,
+    cleanAfter: cleanBaseline.green === true,
     baselineGreen: true,
-    underMutantGreen: underMutant.green === true,
-    detail: { underMutant, restore },
+    detail: { underMutant, restore, cleanBaseline },
   };
 }
 
 // runBuildProofEngine(spec, sql) → {allGreen, allKilled, results}
 //
-// spec = { kTests: [{ k_id, harness, mutants: [{knob, apply, restore}] }] }
-// Pr. K: baseline harness green + HVER mutant dræbt (config-mutant-kill-gulvet).
-// Producerer OBSERVATIONERNE build-proof kræver. OID/git-anchoring + kobling til
-// krav/plan er wiring-/pakke-residual (frameworket kender ikke git-konteksten her).
+// spec = { kTests: [{ k_id, harness, mutants: [{knob, apply, restore}] }] }  (ikke-tom)
+// Pr. K: baseline harness green + HVER mutant DRÆBT + RESTORED + cleanAfter
+// (config-mutant-kill-gulvet). Producerer OBSERVATIONERNE build-proof kræver.
+// OID/git-anchoring + kobling til krav/plan er wiring-/pakke-residual.
 export function runBuildProofEngine(spec, sql) {
-  if (!isPlainObject(spec) || !Array.isArray(spec.kTests))
-    return { allGreen: false, allKilled: false, error: "malformet spec (kTests-array kræves)", results: [] };
+  if (!isPlainObject(spec) || !isDenseNonEmptyArray(spec.kTests))
+    return { allGreen: false, allKilled: false, error: "malformet spec (ikke-tomt, tæt kTests-array kræves)", results: [] };
   const results = [];
   let allGreen = true;
   let allKilled = true;
-  for (const kt of spec.kTests) {
+  for (let i = 0; i < spec.kTests.length; i++) {
+    const kt = spec.kTests[i];
     if (!isPlainObject(kt) || !isNonEmptyString(kt.k_id)) {
       results.push({ k_id: null, ok: false, error: "malformet kTest" });
       allGreen = false;
@@ -114,19 +145,22 @@ export function runBuildProofEngine(spec, sql) {
       continue;
     }
     const baseline = runEffectHarness(kt.harness, sql);
-    const mutants = Array.isArray(kt.mutants) ? kt.mutants : [];
-    if (mutants.length === 0) {
-      // gulvet: hvert opsætnings-K SKAL have ≥1 mutant (ellers ingen dybde bevist)
-      results.push({ k_id: kt.k_id, baselineGreen: baseline.green, mutantsKilled: [], ok: false, error: "ingen mutant (mutant-kill-gulv brudt)" });
-      allGreen = allGreen && baseline.green;
+    if (!isDenseNonEmptyArray(kt.mutants)) {
+      // gulvet: hvert K SKAL have ≥1 (tæt) mutant — sparse/tomt = ingen dybde bevist
+      results.push({ k_id: kt.k_id, baselineGreen: baseline.green === true, mutantsKilled: [], ok: false, error: "ingen mutant (mutant-kill-gulv brudt / sparse)" });
+      allGreen = allGreen && baseline.green === true;
       allKilled = false;
       continue;
     }
-    const mutantsKilled = mutants.map((m) => {
+    const mutantsKilled = [];
+    let everyKilled = true;
+    for (let j = 0; j < kt.mutants.length; j++) {
+      const m = kt.mutants[j];
       const r = killMutant(m, kt.harness, sql);
-      return { knob: m?.knob ?? null, killed: r.killed, restored: r.restored, error: r.error ?? null };
-    });
-    const everyKilled = mutantsKilled.every((m) => m.killed === true);
+      const good = r.killed === true && r.restored === true && r.cleanAfter === true;
+      mutantsKilled.push({ knob: isPlainObject(m) ? m.knob ?? null : null, killed: r.killed === true, restored: r.restored === true, cleanAfter: r.cleanAfter === true, ok: good, error: r.error ?? null });
+      everyKilled = everyKilled && good;
+    }
     allGreen = allGreen && baseline.green === true;
     allKilled = allKilled && everyKilled;
     results.push({ k_id: kt.k_id, baselineGreen: baseline.green === true, mutantsKilled, ok: baseline.green === true && everyKilled });

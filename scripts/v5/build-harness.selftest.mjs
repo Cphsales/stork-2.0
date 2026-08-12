@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // build-harness.selftest.mjs — container-FRI red-team af orkestrerings-logikken
-// (plan DEL VI (a)). Bruger en MOCK sql-runner, så CI kan køre den uden Postgres.
-// Den rigtige-DB-bevis ligger i build-harness.integration.mjs (kræver container).
+// (plan DEL VI (a)). MOCK sql-runner, så CI kan køre uden Postgres. Rigtig-DB-bevis
+// ligger i build-harness.integration.mjs (kræver container).
 //
-// Kernen der testes: green ⟺ positiv lykkes OG negativ AFVISES; dræbt ⟺ harnessen
-// FLIPPER under mutanten (en findes-agtig harness der ikke flipper → mutant
-// overlever = falsk-grøn fanget); fail-closed på runner der kaster / malformet input.
+// Dækker Codex-P2-fundene: kill KUN ved negativ-flip (ikke positiv-break); protokol-
+// fejl ≠ kill; restore-fejl/uren state ≠ tælt; tom/sparse spec ≠ vacuous grøn;
+// expectError = afvisning af RIGTIG grund.
 
 import { runEffectHarness, killMutant, runBuildProofEngine } from "./build-harness.mjs";
 
@@ -15,71 +15,106 @@ const bad = (n, d) => {
   console.error(`  ✗ ${n} — ${d}`);
   failed++;
 };
-const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${got}, forventede ${want}`));
+const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, forventede ${JSON.stringify(want)}`));
 
-// --- mock-runnere ---
-// ægte flip: NEG afvises baseline, men TILLADES efter APPLY (mutant svækker RLS)
-const makeFlipRunner = () => {
-  let mutated = false;
+// --- mock-runnere (POS/NEG/APPLY/RESTORE; stateful mutated-flag) ---
+// ægte svækkelses-mutant: NEG afvist baseline, TILLADT under mutant; POS altid ok
+const flip = () => {
+  let m = false;
   return (t) => {
-    if (t === "APPLY") return (mutated = true), { ok: true, error: null };
-    if (t === "RESTORE") return (mutated = false), { ok: true, error: null };
-    if (t === "POS") return { ok: true, error: null };
-    if (t === "NEG") return mutated ? { ok: true, error: null } : { ok: false, error: "rejected by RLS" };
-    return { ok: false, error: "unknown sql" };
+    if (t === "APPLY") return (m = true), { ok: true };
+    if (t === "RESTORE") return (m = false), { ok: true };
+    if (t === "POS") return { ok: true };
+    if (t === "NEG") return m ? { ok: true } : { ok: false, error: "rejected by RLS" };
+    return { ok: false, error: "unknown" };
   };
 };
-// findes-agtig: NEG afvises ALTID (harnessen flipper aldrig — opdager ikke mutanten)
-const findesRunner = (t) => {
-  if (t === "APPLY" || t === "RESTORE" || t === "POS") return { ok: true, error: null };
-  if (t === "NEG") return { ok: false, error: "rejected" };
-  return { ok: false, error: "unknown" };
+// findes-agtig: NEG afvist ALTID (flipper aldrig)
+const findes = (t) => (t === "NEG" ? { ok: false, error: "rejected" } : { ok: true });
+// positiv-break: POS FEJLER under mutant, NEG afvist altid (generisk regression)
+const posBreak = () => {
+  let m = false;
+  return (t) => {
+    if (t === "APPLY") return (m = true), { ok: true };
+    if (t === "RESTORE") return (m = false), { ok: true };
+    if (t === "POS") return m ? { ok: false, error: "positiv brød" } : { ok: true };
+    if (t === "NEG") return { ok: false, error: "rejected" };
+    return { ok: false };
+  };
+};
+// under-mutant-throw: NEG KASTER når mutated (protokol-fejl, ikke et bevis)
+const underThrow = () => {
+  let m = false;
+  return (t) => {
+    if (t === "APPLY") return (m = true), { ok: true };
+    if (t === "RESTORE") return (m = false), { ok: true };
+    if (t === "POS") return { ok: true };
+    if (t === "NEG") {
+      if (m) throw new Error("connection lost");
+      return { ok: false, error: "rejected" };
+    }
+    return { ok: false };
+  };
+};
+// restore-fejl: flip, men RESTORE fejler (og mutated forbliver true → uren)
+const restoreFail = () => {
+  let m = false;
+  return (t) => {
+    if (t === "APPLY") return (m = true), { ok: true };
+    if (t === "RESTORE") return { ok: false, error: "restore fejlede" };
+    if (t === "POS") return { ok: true };
+    if (t === "NEG") return m ? { ok: true } : { ok: false, error: "rejected" };
+    return { ok: false };
+  };
 };
 
 const harness = { asRole: "app_role", settings: { "app.current_org": "1" }, positive: { sql: "POS" }, negative: { sql: "NEG" } };
 const mutant = { knob: "with-check", apply: "APPLY", restore: "RESTORE" };
 
-console.log("runEffectHarness — green ⟺ positiv OK + negativ AFVIST:");
-eq("baseline (POS ok, NEG afvist) → green", runEffectHarness(harness, makeFlipRunner()).green, true);
-eq("negativ TILLADT (falsk-grøn) → ikke green", runEffectHarness(harness, (t) => (t === "NEG" ? { ok: true } : { ok: true })).green, false);
-eq("positiv FEJLER → ikke green", runEffectHarness(harness, (t) => (t === "POS" ? { ok: false } : { ok: false })).green, false);
+console.log("runEffectHarness — green ⟺ protokol-valid + positiv OK + negativ AFVIST:");
+eq("baseline (POS ok, NEG afvist) → green", runEffectHarness(harness, flip()).green, true);
+eq("negativ TILLADT (falsk-grøn) → ikke green", runEffectHarness(harness, () => ({ ok: true })).green, false);
+eq("positiv FEJLER → ikke green", runEffectHarness(harness, () => ({ ok: false })).green, false);
 
-console.log("\nfail-closed:");
-eq("asRole mangler (bypass omgår RLS) → ikke green", runEffectHarness({ ...harness, asRole: "" }, makeFlipRunner()).green, false);
-eq("malformet harness → ikke green", runEffectHarness({}, makeFlipRunner()).green, false);
-eq("runner kaster → ikke green", runEffectHarness(harness, () => { throw new Error("boom"); }).green, false);
-eq("runner returnerer ikke {ok:boolean} → ikke green", runEffectHarness(harness, () => ({ status: "ok" })).green, false);
+console.log("\nfail-closed (protokol):");
+eq("asRole mangler → ikke green", runEffectHarness({ ...harness, asRole: "" }, flip()).green, false);
+eq("malformet harness → ikke green", runEffectHarness({}, flip()).green, false);
+eq("tom negativ-sql → ikke green (protokol-fejl)", runEffectHarness({ ...harness, negative: {} }, flip()).green, false);
+eq("runner kaster → ikke green + protocolOk=false", runEffectHarness(harness, () => { throw new Error("x"); }).protocolOk, false);
+eq("runner returnerer ikke {ok:boolean} → protocolOk=false", runEffectHarness(harness, () => ({ status: "ok" })).protocolOk, false);
 
-console.log("\nkillMutant — dræbt ⟺ harnessen flipper:");
-eq("ægte mutant (NEG flipper til tilladt) → dræbt", killMutant(mutant, harness, makeFlipRunner()).killed, true);
-eq("findes-agtig harness (flipper ikke) → mutant OVERLEVER", killMutant(mutant, harness, findesRunner).killed, false);
-{
-  const r = killMutant(mutant, harness, makeFlipRunner());
-  eq("restore køres (rent efter dræbt)", r.restored, true);
-}
-eq("baseline ikke green → intet at dræbe (killed=false)", killMutant(mutant, { ...harness, asRole: "" }, makeFlipRunner()).killed, false);
-eq("mutant-apply fejler → ikke dræbt", killMutant({ ...mutant, apply: "BAD" }, harness, makeFlipRunner()).killed, false);
-eq("malformet mutant (uden knob) → ikke dræbt", killMutant({}, harness, makeFlipRunner()).killed, false);
+console.log("\nexpectError — afvisning skal ske af RIGTIG grund (Codex #1):");
+eq("NEG afvist m. matchende fejl → green", runEffectHarness({ ...harness, negative: { sql: "NEG", expectError: "RLS" } }, flip()).green, true);
+eq("NEG afvist af FORKERT grund → ikke green", runEffectHarness({ ...harness, negative: { sql: "NEG", expectError: "cross-org-policy" } }, flip()).green, false);
 
-console.log("\nrunBuildProofEngine — baseline green + hver mutant dræbt:");
+console.log("\nkillMutant — dræbt ⟺ NEGATIV flipper (ikke positiv-break, ikke protokol-fejl):");
+eq("ægte svækkelses-mutant (NEG flipper) → dræbt", killMutant(mutant, harness, flip()).killed, true);
+eq("findes-agtig (NEG flipper ikke) → OVERLEVER", killMutant(mutant, harness, findes).killed, false);
+eq("positiv-break (POS fejler, NEG afvist) → IKKE dræbt (Codex #3)", killMutant(mutant, harness, posBreak()).killed, false);
+eq("under-mutant runner kaster → IKKE dræbt (Codex #2)", killMutant(mutant, harness, underThrow()).killed, false);
 {
-  const spec = { kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] };
-  const r = runBuildProofEngine(spec, makeFlipRunner());
-  eq("K m. green baseline + dræbt mutant → allGreen", r.allGreen, true);
-  eq("... → allKilled", r.allKilled, true);
-  eq("... → K-resultat ok", r.results[0].ok, true);
+  const r = killMutant(mutant, harness, flip());
+  eq("dræbt + restored + cleanAfter (ren state)", r.killed && r.restored && r.cleanAfter, true);
 }
 {
-  const spec = { kTests: [{ k_id: "K-1", harness, mutants: [] }] };
-  const r = runBuildProofEngine(spec, makeFlipRunner());
-  eq("K uden mutant → allKilled=false (gulv brudt)", r.allKilled, false);
+  const r = killMutant(mutant, harness, restoreFail());
+  eq("restore fejler → restored=false (Codex #4)", r.restored, false);
+  eq("restore fejler → cleanAfter=false (uren state)", r.cleanAfter, false);
 }
+eq("malformet mutant (uden apply) → ikke dræbt", killMutant({ knob: "x", restore: "RESTORE" }, harness, flip()).killed, false);
+
+console.log("\nrunBuildProofEngine — baseline green + hver mutant dræbt+restored+ren:");
+eq("green baseline + dræbt+ren mutant → allKilled", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, flip()).allKilled, true);
+eq("findes-agtig → mutant overlever → allKilled=false", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, findes).allKilled, false);
+eq("restore-fejl → allKilled=false (Codex #4)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, restoreFail()).allKilled, false);
+eq("tom kTests → allGreen=false (Codex #5, ikke vacuous)", runBuildProofEngine({ kTests: [] }, flip()).allGreen, false);
+eq("tom kTests → allKilled=false (Codex #5)", runBuildProofEngine({ kTests: [] }, flip()).allKilled, false);
 {
-  const spec = { kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] };
-  const r = runBuildProofEngine(spec, findesRunner);
-  eq("findes-agtig harness → mutant overlever → allKilled=false", r.allKilled, false);
+  const sparse = new Array(1); // hul, ingen faktisk mutant
+  eq("sparse mutants → allKilled=false (Codex #5)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: sparse }] }, flip()).allKilled, false);
 }
-eq("malformet spec → allKilled=false", runBuildProofEngine({}, makeFlipRunner()).allKilled, false);
+eq("K uden mutant → allKilled=false (gulv)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [] }] }, flip()).allKilled, false);
+eq("malformet spec → allKilled=false", runBuildProofEngine({}, flip()).allKilled, false);
 
 console.log("");
 if (failed > 0) {

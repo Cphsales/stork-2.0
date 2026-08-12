@@ -79,7 +79,7 @@ const harness = {
   asRole: "app_role",
   settings: { "app.current_org": "1" },
   positive: { sql: "insert into salg (org_id, beloeb) values (1, 100);" },
-  negative: { sql: "insert into salg (org_id, beloeb) values (2, 100);" },
+  negative: { sql: "insert into salg (org_id, beloeb) values (2, 100);", expectError: "row-level security" },
 };
 // mutant: svæk WITH CHECK til true (bryder cross-org-isolationen)
 const mutant = {
