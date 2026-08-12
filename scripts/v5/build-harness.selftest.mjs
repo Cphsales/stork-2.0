@@ -163,6 +163,11 @@ console.log("\nObject.prototype-forurening må ikke udfylde tomme inputs (Codex 
   arr[Symbol("x")] = 1;
   eq("kTests m. symbol-nøgle → allKilled=false", runBuildProofEngine({ kTests: arr }, flip()).allKilled, false);
 }
+{
+  const arr = [{ k_id: "K-1", harness, mutants: [mutant] }];
+  arr[""] = { k_id: "K-9", harness, mutants: [mutant] }; // ikke-kanonisk index-nøgle
+  eq("kTests m. ikke-kanonisk nøgle ('') → allKilled=false", runBuildProofEngine({ kTests: arr }, flip()).allKilled, false);
+}
 
 console.log("");
 if (failed > 0) {

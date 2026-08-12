@@ -65,7 +65,9 @@ const isDenseArrayOf = (a, pred) => {
     if (typeof k === "symbol") return false;
     if (k === "length") continue;
     const idx = Number(k);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= len) return false;
+    // KANONISK index-nøgle: String(idx) === k afviser "", "01", "1e0", "-0" osv.
+    // (som Number(k) ellers ville mappe ind i range som en falsk ekstra "index").
+    if (!Number.isInteger(idx) || idx < 0 || idx >= len || String(idx) !== k) return false;
     const d = Object.getOwnPropertyDescriptor(a, k);
     if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false;
   }
@@ -137,7 +139,7 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   // Object.prototype-pollution, også når verifyBuildProof kaldes direkte).
   // commit_sha SKAL være en pinned OID (mutable ref som HEAD forbudt) OG findes
   // som commit i git — hele bindingen hviler på en pinned commit.
-  const commitSha = hasOwn(snapshot, "commit_sha") ? snapshot.commit_sha : undefined;
+  const commitSha = own(snapshot, "commit_sha");
   if (!isOid(commitSha)) fail("snapshot.commit_sha mangler/ikke en pinned OID (mutable ref som HEAD forbudt)");
   else if (gitObjectType(git, commitSha) !== "commit") fail("snapshot.commit_sha findes ikke som commit i git (fake/mutable)");
 
@@ -147,8 +149,8 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   // gate-eval.buildSnapshot refs fra rå git, men evaluateGate SELV er git-løs).
   const pathBind = (ref, label) => {
     if (!isPlainObject(ref)) return void fail(`${label} mangler/ugyldig (fail-closed)`);
-    const path = hasOwn(ref, "path") ? ref.path : undefined;
-    const oid = hasOwn(ref, "oid") ? ref.oid : undefined;
+    const path = own(ref, "path");
+    const oid = own(ref, "oid");
     if (!isNonEmptyString(path) || !isOid(oid)) return void fail(`${label}: path/oid mangler/ugyldig`);
     if (!isOid(commitSha)) return; // commit_sha allerede rapporteret
     let atPath = null;
@@ -161,9 +163,9 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     else if (atPath !== oid) fail(`${label}: oid matcher ikke stien i commit (citeret ${oid}, reel ${atPath}) — stale/orphan`);
     else if (gitObjectType(git, oid) !== "blob") fail(`${label}: oid er ikke en blob (fil forventet)`);
   };
-  pathBind(hasOwn(snapshot, "artifact") ? snapshot.artifact : null, "snapshot.artifact");
-  const sBindings = hasOwn(snapshot, "bindings") && isPlainObject(snapshot.bindings) ? snapshot.bindings : null;
-  const planRef = sBindings && hasOwn(sBindings, "plan") && isPlainObject(sBindings.plan) ? sBindings.plan : null;
+  pathBind(own(snapshot, "artifact"), "snapshot.artifact");
+  const sBindings = own(snapshot, "bindings");
+  const planRef = isPlainObject(sBindings) ? own(sBindings, "plan") : null;
   if (!planRef) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
   else pathBind(planRef, "plan-binding");
 
@@ -367,7 +369,8 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (!ownTrue(pr, "ok")) fail("prover_result.ok ikke eksplicit true (prover ikke grøn)");
     const tr = own(pr, "tests_run");
     if (!isPosInt(tr) || tr === 0) fail("prover_result.tests_run = 0 eller ugyldig (0-tests = rød)");
-    if (!hasOwn(pr, "skipped") || !isPosInt(pr.skipped) || pr.skipped !== 0) fail("prover_result.skipped ≠ 0 (skippede tests = rød)");
+    const sk = own(pr, "skipped");
+    if (!isPosInt(sk) || sk !== 0) fail("prover_result.skipped ≠ 0 (skippede tests = rød)");
   }
 
   return { ok: reasons.length === 0, reasons };

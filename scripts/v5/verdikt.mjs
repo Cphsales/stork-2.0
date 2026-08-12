@@ -182,11 +182,15 @@ export function verifyEvidence(ev, snapshot, { git }) {
   if (typeof git !== "function" || typeof git.bytes !== "function")
     return { ok: false, reasons: ["git-dep mangler/ufuldstændig (fail-closed)"] };
   if (!isPlainObject(ev)) return { ok: false, reasons: ["evidens-item er ikke et objekt"] };
-  // EGNE felter kræves for alle evidens-nøgler — et tomt {} med felter arvet fra
-  // Object.prototype må ikke kunne udfylde et citat (prototype-pollution → falsk
-  // læsebevis). Gælder også når verifyEvidence kaldes uden for schema-validering
-  // (fx claim_graph-ankre i build-proof).
-  for (const k of EVIDENCE_KEYS) if (!hasOwn(ev, k)) return { ok: false, reasons: [`evidens-item mangler eget felt '${k}' (arvet/fraværende = fail-closed)`] };
+  // EGNE DATA-felter kræves for alle evidens-nøgler — et tomt {} med felter arvet
+  // fra Object.prototype ELLER en accessor (getter der kunne returnere én værdi
+  // under checket og en anden bagefter) må ikke udfylde et citat. Gælder også når
+  // verifyEvidence kaldes uden for schema-validering (fx claim_graph-ankre i build-proof).
+  for (const k of EVIDENCE_KEYS) {
+    const d = Object.getOwnPropertyDescriptor(ev, k);
+    if (!d || typeof d.get === "function" || typeof d.set === "function")
+      return { ok: false, reasons: [`evidens-item mangler eget DATA-felt '${k}' (arvet/accessor = fail-closed)`] };
+  }
 
   if (ev.commit_sha !== snapshot?.commit_sha)
     reasons.push(`evidens citerer commit ${String(ev.commit_sha)} ≠ gated commit ${String(snapshot?.commit_sha)}`);

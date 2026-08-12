@@ -38,7 +38,8 @@ const isDenseNonEmptyArray = (a) => {
     if (typeof k === "symbol") return false;
     if (k === "length") continue;
     const idx = Number(k);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= len) return false;
+    // kanonisk index-nøgle (String(idx) === k) afviser "", "01", "-0" osv.
+    if (!Number.isInteger(idx) || idx < 0 || idx >= len || String(idx) !== k) return false;
     const d = Object.getOwnPropertyDescriptor(a, k);
     if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false;
   }

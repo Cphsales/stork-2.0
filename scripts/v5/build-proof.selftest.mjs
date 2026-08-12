@@ -228,6 +228,17 @@ expectRed("bids m. egen Symbol.iterator → rød", verify(mutated((p) => { p.bid
 // Codex r4 #1: accessor (getter) på et required felt må ikke tælle som data-værdi
 expectRed("mutant.killed som getter (accessor) → rød", verify(mutated((p) => { Object.defineProperty(p.bids[0].mutants[0], "killed", { enumerable: true, get: () => true }); })), "dræbt\\+restored\\+ren");
 expectRed("non_bypass_role som getter (accessor) → rød", verify(mutated((p) => { Object.defineProperty(p.bids[0].tests[0], "non_bypass_role", { enumerable: true, get: () => true }); })), "non_bypass_role");
+// Codex r5: ikke-kanonisk index-nøgle · skipped-getter · accessor-evidens/ref
+expectRed("ks m. ikke-kanonisk index-nøgle ('') → rød", verify(mutated((p) => { p.ks[""] = { k_id: "K-9" }; })), "K-sættet mangler");
+expectRed("prover_result.skipped som getter → rød", verify(mutated((p) => { Object.defineProperty(p.prover_result, "skipped", { enumerable: true, get: () => 0 }); })), "skippede tests");
+expectRed("source_anchor.commit_sha som getter → rød", verify(mutated((p) => { const a = p.claim_graph[0].source_anchor; const v = a.commit_sha; Object.defineProperty(a, "commit_sha", { enumerable: true, get: () => v }); })), "eget DATA-felt");
+{
+  const g = greenProof();
+  const badArtifact = { path: artifact.path, type: artifact.type };
+  Object.defineProperty(badArtifact, "oid", { enumerable: true, get: () => artifact.oid }); // frisk, deler ikke shared ref
+  const s = { ...snap(g), artifact: badArtifact };
+  expectRed("snapshot.artifact.oid som getter → rød", verifyBuildProof(g, s, { git }), "path/oid mangler");
+}
 expectRed("build-proof på prototype (arvede felter)", verifyBuildProof(Object.create(greenProof()), snap(greenProof()), { git }), "ikke et objekt");
 expectRed("git-dep mangler", verifyBuildProof(greenProof(), snap(greenProof()), {}), "git-dep mangler");
 expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: {} }, { git }), "plan-binding");
@@ -257,7 +268,7 @@ expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ..
   } finally {
     for (const k of ["commit_sha", "path", "blob_oid", "line_span", "excerpt_sha"]) delete Object.prototype[k];
   }
-  expectRed("tomt source_anchor m. arvede evidens-felter fanges", r, "eget felt");
+  expectRed("tomt source_anchor m. arvede evidens-felter fanges", r, "eget DATA-felt");
 }
 // Codex-confirm #2 (build-del): arvet ks (ikke eget felt) må ikke tælle
 {
