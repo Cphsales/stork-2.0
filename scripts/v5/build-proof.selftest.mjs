@@ -144,8 +144,19 @@ expectRed("base_oid ugyldig form", verify(mutated((p) => (p.bids[0].base_oid = "
 expectRed("angrebs_spec_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].angrebs_spec_oid = "a".repeat(40)))), "eksisterende committet blob");
 expectRed("base_oid fake (gyldig form, findes ikke i git)", verify(mutated((p) => (p.bids[0].base_oid = "b".repeat(40)))), "eksisterende commit");
 
-console.log("\nverifyBuildProof selv-validerer snapshot (Codex-confirm r2 #1):");
+console.log("\nverifyBuildProof selv-validerer snapshot (Codex-confirm r2 #1 + r3 #2):");
 expectRed("arvet snapshot.bindings (Object.create)", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: Object.create({ plan }) }, { git }), "plan-binding");
+// r3 #2: fake men gyldig-formet plan/artifact-OID (findes ikke i git) → rød backstop
+expectRed(
+  "fake plan-OID (gyldig form, findes ikke)",
+  verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: { plan: { path: "plan/plan.md", oid: "a".repeat(40), type: "blob" } } }, { git }),
+  "plan-OID findes ikke",
+);
+expectRed(
+  "fake artifact-OID (gyldig form, findes ikke)",
+  verifyBuildProof(greenProof(), { ...snap(greenProof()), artifact: { path: "build/build-proof.json", oid: "c".repeat(40), type: "blob" } }, { git }),
+  "artifact-OID findes ikke",
+);
 {
   const s = snap(greenProof());
   delete s.commit_sha;

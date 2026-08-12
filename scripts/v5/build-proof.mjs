@@ -104,6 +104,15 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
   const planRef = sBindings && hasOwn(sBindings, "plan") && isPlainObject(sBindings.plan) ? sBindings.plan : null;
   const planOid = planRef && hasOwn(planRef, "oid") ? planRef.oid : undefined;
   if (!isOid(planOid)) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
+  // defense-in-depth: refs skal RESOLVE i git, ikke bare være syntaktisk OID — en
+  // forged snapshot med fake OID'er må ikke passere proof-verifieren. (I produktion
+  // resolver gate-eval.buildSnapshot allerede alle refs fra rå git; dette er backstop
+  // for at evaluateGate SELV er ren/git-løs og trusterr sin snapshot-konstruktør.)
+  else if (gitObjectType(git, planOid) !== "blob") fail("plan-OID findes ikke som committet blob i git (fake/manipuleret snapshot)");
+  const artRef = hasOwn(snapshot, "artifact") && isPlainObject(snapshot.artifact) ? snapshot.artifact : null;
+  const artOid = artRef && hasOwn(artRef, "oid") ? artRef.oid : undefined;
+  if (!isOid(artOid)) fail("snapshot.artifact.oid mangler/ugyldig (fail-closed)");
+  else if (gitObjectType(git, artOid) !== "blob") fail("artifact-OID findes ikke som committet blob i git (fake/manipuleret snapshot)");
 
   // ---------- 1) K-sæt (krav-acceptkriteriet, deklareret) ----------
   const kIds = new Set();
@@ -140,6 +149,12 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
       bidIds.add(bid);
       // pr.-bid OID-bindinger: angrebs-spec (kill-listen) + base (async-review-anker).
       // OID skal både være gyldig FORM og faktisk EKSISTERE i git (committet).
+      // RESIDUAL (ærlig, Codex-confirm r3 #1): eksistens som committet blob er
+      // gulvet. At blobben er DEN plan-gate-låste angrebs-spec for netop dette bid
+      // (ikke en vilkårlig committet fil) kræver en PLAN-deklareret forventet OID
+      // pr. bid + angrebs-spec-schema — begge kommer med plan-wiring/pakke. Dette
+      // er en PROVENANCE-binding, ikke build-DYBDEN: dybden håndhæves uafhængigt af
+      // mutant-kill-gulvet + effect-harness + claim_graph nedenfor.
       const asOid = own(b, "angrebs_spec_oid");
       if (!isOid(asOid)) fail(`${bid}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
       else if (gitObjectType(git, asOid) !== "blob") fail(`${bid}: angrebs_spec_oid er ikke en eksisterende committet blob (fake/ikke-committet OID)`);
