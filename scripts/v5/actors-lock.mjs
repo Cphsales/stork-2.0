@@ -43,6 +43,14 @@ const checkPureDenseArrayOf = (a, pred, label, fail) => {
     fail(`${label}: ikke et array`);
     return false;
   }
+  // prototypen SKAL være Array.prototype — en custom prototype kunne ARVE en
+  // some/every/Symbol.iterator-override som index-loopet ikke ser, men som en
+  // efterfølgende .some()/spread ville bruge (Codex-fund). Ejer-nøgle-tjekket
+  // nedenfor fanger kun EGNE overrides.
+  if (Object.getPrototypeOf(a) !== Array.prototype) {
+    fail(`${label}: array har ikke-standard prototype (arvet metode-override forbudt)`);
+    return false;
+  }
   const len = a.length;
   for (const k of Reflect.ownKeys(a)) {
     if (typeof k === "symbol") {

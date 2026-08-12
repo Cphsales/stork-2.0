@@ -15,6 +15,13 @@
 
 import { GATE_IDS, CHECK_RUN_PREFIX, checkRunName } from "./gates.mjs";
 
+// ownData(o,k): værdien KUN hvis k er en egen DATA-property (ingen getter/setter,
+// ikke arvet). En accessor kunne ellers returnere true under checket; en arvet
+// (Object.prototype-pollution) property er heller ikke resultatets eget udsagn.
+const ownData = (o, k) => {
+  const d = Object.getOwnPropertyDescriptor(o, k);
+  return d && typeof d.get !== "function" && typeof d.set !== "function" ? { has: true, value: d.value } : { has: false, value: undefined };
+};
 const isPlainObject = (v) => {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   const p = Object.getPrototypeOf(v);
@@ -40,14 +47,21 @@ export function checkRunFromGateResult(gateId, result) {
 
   if (!isPlainObject(result)) return failure("gate-resultat malformeret/ikke et objekt (fail-closed → failure)");
   // resultatet SKAL være for netop den gate CI emitterer — ellers kunne et grønt
-  // resultat for gate X publiceres under gate Y's required check.
-  if (result.gate_id !== gateId)
-    return failure(`gate-resultat er for '${String(result.gate_id)}' ≠ emitteret gate '${gateId}' (mismatch → failure)`);
-
-  // KUN eksplicit open===true → success (truthy/1/"true"/undefined → failure)
-  if (result.open === true)
-    return { name, conclusion: "success", output: { title: `${name}: åben`, summary: "Gaten er åben — alle beviser/verdikter/kæde-krav opfyldt." } };
+  // resultat for gate X publiceres under gate Y's required check. EGET felt kræves
+  // (arvet/accessor gate_id/open må ikke afgøre — prototype-pollution).
+  const gid = ownData(result, "gate_id");
+  if (!gid.has || gid.value !== gateId)
+    return failure(`gate-resultat er for '${String(gid.value)}' ≠ emitteret gate '${gateId}' (mismatch/arvet/accessor → failure)`);
 
   const reasons = Array.isArray(result.reasons) ? result.reasons.filter((r) => typeof r === "string") : [];
+  // KUN et eget DATA-felt open===true → success (truthy/1/"true"/arvet/accessor → failure).
+  // OG gate-kernens invariant: open ⟺ NUL reasons. Et internt inkonsistent
+  // resultat (open:true MEN reasons ikke-tom) er forged/korrupt → failure.
+  const op = ownData(result, "open");
+  if (op.has && op.value === true) {
+    if (reasons.length > 0)
+      return failure("inkonsistent resultat: open=true men reasons ikke-tom (gate-kernens invariant open ⟺ nul reasons brudt)");
+    return { name, conclusion: "success", output: { title: `${name}: åben`, summary: "Gaten er åben — alle beviser/verdikter/kæde-krav opfyldt." } };
+  }
   return failure(reasons.length ? reasons.map((r) => `- ${r}`).join("\n") : "Gaten er lukket (ingen begrundelse angivet).");
 }

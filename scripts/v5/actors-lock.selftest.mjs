@@ -117,6 +117,25 @@ console.log("\nnested-array renhed (Codex-P2 #A1):");
   l["codex-forbedring"].output_schema = arr; // codex-forbedring producerer 'raad'
   expectRed("output_schema m. egen Symbol.iterator", validateActorsLock(l, { git, commitSha: COMMIT }), "symbol-nøgle på array");
 }
+// Codex-fund: custom PROTOTYPE (arvet some/iterator som index-loop ikke ser)
+{
+  const l = clone(derived());
+  const arr = ["web"];
+  Object.setPrototypeOf(arr, { some: () => false });
+  l["recon-code"].allowed_tools = arr;
+  expectRed("allowed_tools m. custom prototype (arvet some)", validateActorsLock(l, { git, commitSha: COMMIT }), "ikke-standard prototype");
+}
+{
+  const l = clone(derived());
+  const arr = ["verdikt"];
+  Object.setPrototypeOf(arr, {
+    [Symbol.iterator]: function* () {
+      yield "raad";
+    },
+  });
+  l["codex-forbedring"].output_schema = arr;
+  expectRed("output_schema m. custom prototype (arvet iterator)", validateActorsLock(l, { git, commitSha: COMMIT }), "ikke-standard prototype");
+}
 
 console.log("\nJS-API-kant (Codex-P2 #2/#3): symbol/ikke-enumerable/accessor fail-lukkes:");
 {

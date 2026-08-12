@@ -117,6 +117,12 @@ export function buildWriteDecision(input) {
   // RENE data-felter: en getter kunne returnere en gyldig værdi UNDER checket og
   // en anden BAGEFTER (ustabilt input); symbol/ikke-enumerable/ukendte egne felter
   // skjuler intention. Afvis dem, og SNAPSHOT værdierne én gang før brug.
+  // RESIDUAL (ærlig, Codex): en Proxy kan lyve om ownKeys/descriptors og alligevel
+  // levere grønne værdier — det kan en ren JS-funktion ikke afsløre. Men input her
+  // er DRIVER-leveret autoritet (driverRouted/bidId/angrebs-spec er driverens fakta,
+  // ikke bruger-data), og driveren konstruerer plain-data, ikke Proxies. Transport-
+  // laget (driver-signatur + aktiv-bid-lookup) er den egentlige garanti; dette lag
+  // er fail-closed forbygning oven på den.
   const ALLOWED = ["rawPath", "repoRoot", "planLocked", "driverRouted", "bidId", "bidAngrebsSpecCommitted"];
   for (const k of Reflect.ownKeys(input)) {
     if (typeof k === "symbol")

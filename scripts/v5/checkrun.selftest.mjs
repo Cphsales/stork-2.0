@@ -38,6 +38,30 @@ console.log("\ngate-mismatch + ukendt gate (anti-spoof):");
 expectFailure("result.gate_id ≠ emitteret gate → failure", "build", { open: true, gate_id: "recon", reasons: [] });
 expectFailure("ukendt emitteret gate → failure m. sikkert navn", "hacker", { open: true, gate_id: "hacker", reasons: [] }, "v5/gate/invalid");
 
+console.log("\naccessor / prototype-pollution / inkonsistens (Codex-P2):");
+{
+  const r = { gate_id: "build", reasons: [] };
+  Object.defineProperty(r, "open", { enumerable: true, get: () => true });
+  expectFailure("accessor open (getter) → failure", "build", r);
+}
+{
+  const r = { open: true, reasons: [] };
+  Object.defineProperty(r, "gate_id", { enumerable: true, get: () => "build" });
+  expectFailure("accessor gate_id (getter) → failure", "build", r);
+}
+{
+  Object.prototype.open = true; // pollution
+  const r = { gate_id: "build", reasons: [] };
+  let cr;
+  try {
+    cr = checkRunFromGateResult("build", r);
+  } finally {
+    delete Object.prototype.open;
+  }
+  cr.conclusion === "failure" ? ok("arvet open (prototype-pollution) → failure") : bad("cr-proto", "success");
+}
+expectFailure("open:true MEN reasons ikke-tom (inkonsistent) → failure", "build", { open: true, gate_id: "build", reasons: ["mutant overlevede"] });
+
 console.log("\nsummary-indhold (reasons medtages, men aldrig grøn):");
 {
   const cr = checkRunFromGateResult("build", { open: false, gate_id: "build", reasons: ["a-fejl", "b-fejl"] });
