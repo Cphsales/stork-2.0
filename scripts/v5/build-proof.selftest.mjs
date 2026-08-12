@@ -73,20 +73,20 @@ const greenProof = () => ({
   proof_kind: "build-proof",
   artifact_oid: artifact.oid,
   bindings_oids: { plan: plan.oid },
-  ks: [
-    { k_id: "K-1", is_config_k: true },
-    { k_id: "K-2", is_config_k: false },
-  ],
+  ks: [{ k_id: "K-1" }, { k_id: "K-2" }],
   bids: [
     {
       bid_id: "bid-1",
       angrebs_spec_oid: angrebsSpec.oid,
       base_oid: COMMIT,
       tests: [
-        { k_id: "K-1", entrypoint: "POST /api/salg", store: "real", non_bypass_role: true, hard_effect: "db-row", negative_path_exercised: true },
-        { k_id: "K-2", entrypoint: "GET /api/rapport", store: "real", non_bypass_role: true, hard_effect: "state", negative_path_exercised: true },
+        { k_id: "K-1", entrypoint: { kind: "api", ref: "POST /api/salg" }, store: "real", non_bypass_role: true, hard_effect: "db-row", negative_path_exercised: true },
+        { k_id: "K-2", entrypoint: { kind: "api", ref: "GET /api/rapport" }, store: "real", non_bypass_role: true, hard_effect: "state", negative_path_exercised: true },
       ],
-      mutants: [{ k_id: "K-1", knob: "WITH CHECK", killed: true }],
+      mutants: [
+        { k_id: "K-1", knob: "WITH CHECK", killed: true },
+        { k_id: "K-2", knob: "tenant-predikat", killed: true },
+      ],
     },
   ],
   claim_graph: [
@@ -118,19 +118,23 @@ console.log("\nbijektion (K↔bid↔test):");
 expectRed("K uden nogen test", verify(mutated((p) => (p.bids[0].tests = p.bids[0].tests.filter((t) => t.k_id !== "K-2")))), "bijektion brudt");
 expectRed("rogue-test (ukendt K)", verify(mutated((p) => (p.bids[0].tests[0].k_id = "K-99"))), "rogue");
 expectRed("tomt K-sæt", verify(mutated((p) => (p.ks = []))), "K-sættet mangler");
-expectRed("dublet K", verify(mutated((p) => p.ks.push({ k_id: "K-1", is_config_k: true }))), "dublet K");
-expectRed("is_config_k ikke eksplicit boolean", verify(mutated((p) => delete p.ks[0].is_config_k)), "is_config_k ikke eksplicit");
+expectRed("dublet K", verify(mutated((p) => p.ks.push({ k_id: "K-1" }))), "dublet K");
 expectRed("bid uden test", verify(mutated((p) => (p.bids[0].tests = []))), "beviser intet");
 
-console.log("\neffect-harness-FORM (ingen falsk-grøn helper-return):");
+console.log("\neffect-harness-FORM (ingen falsk-grøn helper-return; public-KIND entrypoint):");
 expectRed("hard_effect = helper-return", verify(mutated((p) => (p.bids[0].tests[0].hard_effect = "helper-return"))), "helper-return");
 expectRed("non_bypass_role ikke true (bypass omgår RLS)", verify(mutated((p) => (p.bids[0].tests[0].non_bypass_role = false))), "non_bypass_role");
 expectRed("store ikke real (fixture/mock)", verify(mutated((p) => (p.bids[0].tests[0].store = "mock"))), "real backing store");
 expectRed("negative-sti ikke udøvet", verify(mutated((p) => (p.bids[0].tests[0].negative_path_exercised = false))), "afvisnings-stien");
-expectRed("entrypoint mangler (ikke public)", verify(mutated((p) => delete p.bids[0].tests[0].entrypoint)), "public entrypoint");
+expectRed("entrypoint mangler (ikke public)", verify(mutated((p) => delete p.bids[0].tests[0].entrypoint)), "public indgang");
+// Codex-fund #3: fri streng / intern helper som "entrypoint" må ikke passere
+expectRed("entrypoint = fri streng (helper)", verify(mutated((p) => (p.bids[0].tests[0].entrypoint = "internalHelper()"))), "public indgang");
+expectRed("entrypoint kind ikke public", verify(mutated((p) => (p.bids[0].tests[0].entrypoint = { kind: "internal", ref: "x" }))), "public indgang");
+expectRed("entrypoint uden ref", verify(mutated((p) => (p.bids[0].tests[0].entrypoint = { kind: "api" }))), "public indgang");
 
-console.log("\nconfig-mutant-kill (gulv):");
-expectRed("opsætnings-K uden dræbt mutant", verify(mutated((p) => (p.bids[0].mutants = []))), "mutant-kill-gulv brudt");
+console.log("\nconfig-mutant-kill (gulv for ALLE K — Codex-fund #1):");
+expectRed("intet K har dræbt mutant", verify(mutated((p) => (p.bids[0].mutants = []))), "mutant-kill-gulv brudt");
+expectRed("ét K mangler dræbt mutant (kan ikke opt-out)", verify(mutated((p) => (p.bids[0].mutants = p.bids[0].mutants.filter((m) => m.k_id !== "K-2")))), "K-2.*mutant-kill-gulv brudt|mutant-kill-gulv brudt");
 expectRed("overlevende mutant (killed ikke true)", verify(mutated((p) => (p.bids[0].mutants[0].killed = false))), "overlevende mutant");
 expectRed("mutant for ukendt K", verify(mutated((p) => (p.bids[0].mutants[0].k_id = "K-77"))), "ukendt K");
 
@@ -138,7 +142,10 @@ console.log("\npr.-bid OID-bindinger:");
 expectRed("angrebs_spec_oid mangler (kill-list ikke bundet)", verify(mutated((p) => delete p.bids[0].angrebs_spec_oid)), "angrebs_spec_oid");
 expectRed("base_oid ugyldig", verify(mutated((p) => (p.bids[0].base_oid = "ikke-en-oid"))), "base_oid");
 
-console.log("\nclaim_graph — git-forankret kerne (u-forfalskelig):");
+console.log("\nclaim_graph — git-forankret kerne (u-forfalskelig, OBLIGATORISK):");
+// Codex-fund #2: den git-forankrede kerne må ikke kunne droppes
+expectRed("claim_graph mangler helt", verify(mutated((p) => delete p.claim_graph)), "må ikke droppes");
+expectRed("claim_graph tom ([])", verify(mutated((p) => (p.claim_graph = []))), "må ikke droppes");
 expectRed("fabrikeret anker (excerpt_sha matcher ikke)", verify(mutated((p) => (p.claim_graph[0].source_anchor.excerpt_sha = sha256("løgn")))), "source-anker ikke git-verificeret");
 expectRed("anker fra anden commit end den gatede", verify(mutated((p) => (p.claim_graph[0].source_anchor.commit_sha = "0".repeat(40)))), "source-anker ikke git-verificeret");
 expectRed("claim ikke eksekveret", verify(mutated((p) => (p.claim_graph[0].executed = false))), "executed ikke eksplicit true");
@@ -159,6 +166,18 @@ expectRed("sparse bids-array (hul)", verify(mutated((p) => { const a = p.bids.sl
 expectRed("build-proof på prototype (arvede felter)", verifyBuildProof(Object.create(greenProof()), snap(greenProof()), { git }), "ikke et objekt");
 expectRed("git-dep mangler", verifyBuildProof(greenProof(), snap(greenProof()), {}), "git-dep mangler");
 expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: {} }, { git }), "plan-binding");
+// Codex-fund #4: Object.prototype-pollution må ikke udfylde et required nested-felt
+{
+  const p = mutated((x) => delete x.bids[0].tests[0].non_bypass_role);
+  Object.prototype.non_bypass_role = true; // forurener prototypen
+  let r;
+  try {
+    r = verify(p);
+  } finally {
+    delete Object.prototype.non_bypass_role;
+  }
+  expectRed("arvet non_bypass_role (prototype-pollution) fanges", r, "non_bypass_role");
+}
 
 console.log("\nrouter (makeProofVerifier) leder build-proof til verifikatoren:");
 const route = makeProofVerifier({ git });
