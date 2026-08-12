@@ -129,6 +129,29 @@ eq("sparse mutants → allKilled=false (#5)", runBuildProofEngine({ kTests: [{ k
 eq("K uden mutant → allKilled=false (gulv)", runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [] }] }, flip()).allKilled, false);
 eq("malformet spec → allKilled=false", runBuildProofEngine({}, flip()).allKilled, false);
 
+console.log("\nObject.prototype-forurening må ikke udfylde tomme inputs (Codex #2, læser kun egne data):");
+{
+  Object.prototype.asRole = "app_role";
+  const h = { positive: { sql: "POS" }, negative: { sql: "NEG", expectCode: RLS } }; // INGEN egen asRole
+  let r;
+  try {
+    r = runEffectHarness(h, flip());
+  } finally {
+    delete Object.prototype.asRole;
+  }
+  eq("arvet asRole → ikke green", r.green, false);
+}
+{
+  Object.prototype.kTests = [{ k_id: "K-1", harness, mutants: [mutant] }];
+  let r;
+  try {
+    r = runBuildProofEngine({}, flip());
+  } finally {
+    delete Object.prototype.kTests;
+  }
+  eq("arvet kTests → allKilled=false", r.allKilled, false);
+}
+
 console.log("");
 if (failed > 0) {
   console.error(`build-harness red-team: ${failed} FEJLEDE`);

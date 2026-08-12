@@ -49,11 +49,26 @@ const isPlainObject = (v) => {
   const p = Object.getPrototypeOf(v);
   return p === Object.prototype || p === null;
 };
-// tæt array: ingen huller (sparse array må ikke tælle som udfyldt — fail-closed).
+// tæt, RENT array: ingen huller + standard Array.prototype + ingen egne symbol-/
+// accessor-/ikke-index-nøgler — så en custom prototype eller egen every/Symbol.
+// iterator-override ikke kan forfalske checket (og efterfølgende for...of er sikker).
+// Index-loop, ikke a.every (Codex-fund; jf. actors-lock.checkPureDenseArrayOf).
 const isDenseArrayOf = (a, pred) => {
-  if (!Array.isArray(a)) return false;
-  for (let i = 0; i < a.length; i++) if (!hasOwn(a, i)) return false;
-  return a.every(pred);
+  if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype) return false;
+  const len = a.length;
+  for (const k of Reflect.ownKeys(a)) {
+    if (typeof k === "symbol") return false;
+    if (k === "length") continue;
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= len) return false;
+    const d = Object.getOwnPropertyDescriptor(a, k);
+    if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false;
+  }
+  for (let i = 0; i < len; i++) {
+    if (!hasOwn(a, i)) return false;
+    if (!pred(a[i])) return false;
+  }
+  return true;
 };
 const isPosInt = (v) => Number.isInteger(v) && v >= 0;
 // git-objekt-type mod rå git (fail-closed): "blob"/"commit"/… eller null hvis

@@ -30,9 +30,18 @@ const isPlainObject = (v) => {
 };
 const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 const isDenseNonEmptyArray = (a) => {
-  if (!Array.isArray(a) || a.length === 0) return false;
+  if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype || a.length === 0) return false;
   for (let i = 0; i < a.length; i++) if (!Object.prototype.hasOwnProperty.call(a, i)) return false;
   return true;
+};
+// læs KUN et eget DATA-felt (ingen getter/setter, ikke arvet) — så et felt arvet
+// fra (en forurenet) Object.prototype eller en accessor ikke kan levere en fakta
+// til et ellers tomt input. (Global built-in-METODE-mutation + Proxy forbliver
+// runtime-residualer; her lukkes object-NIVEAU-arv/accessors som i actors-lock/hooks.)
+const ownVal = (o, k) => {
+  if (o === null || typeof o !== "object") return undefined;
+  const d = Object.getOwnPropertyDescriptor(o, k);
+  return d && typeof d.get !== "function" && typeof d.set !== "function" ? d.value : undefined;
 };
 
 // Anerkendte AUTORISATIONS-/isolations-afvisnings-koder (Postgres SQLSTATE).
@@ -84,19 +93,24 @@ function safeRun(sql, text, opts) {
 // green ⟺ protokol-valid + positiv lykkes + negRejectedRight.
 export function runEffectHarness(harness, sql) {
   const dead = (error) => ({ green: false, protocolOk: false, positiveOk: false, negAllowed: false, negRejectedRight: false, error });
-  if (!isPlainObject(harness) || !isPlainObject(harness.positive) || !isPlainObject(harness.negative))
-    return dead("malformet harness (positive/negative kræves)");
-  if (!isNonEmptyString(harness.asRole)) return dead("asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)");
-  if (!isNonEmptyString(harness.negative.expectCode) || !REJECT_CODES.includes(harness.negative.expectCode))
+  if (!isPlainObject(harness)) return dead("malformet harness");
+  const positive = ownVal(harness, "positive");
+  const negative = ownVal(harness, "negative");
+  const asRole = ownVal(harness, "asRole");
+  const settings = ownVal(harness, "settings");
+  if (!isPlainObject(positive) || !isPlainObject(negative)) return dead("malformet harness (positive/negative kræves)");
+  if (!isNonEmptyString(asRole)) return dead("asRole mangler (ikke-bypass rolle kræves — bypass omgår RLS)");
+  const expectCode = ownVal(negative, "expectCode");
+  if (!isNonEmptyString(expectCode) || !REJECT_CODES.includes(expectCode))
     return dead(`negative.expectCode kræves og skal være en anerkendt autorisations-afvisnings-kode (${REJECT_CODES.join("/")}) — en fri fejl-streng kan selv-svækkes`);
-  const opts = { role: harness.asRole, settings: isPlainObject(harness.settings) ? harness.settings : undefined };
-  const pos = safeRun(sql, harness.positive.sql, opts);
-  const neg = safeRun(sql, harness.negative.sql, opts);
+  const opts = { role: asRole, settings: isPlainObject(settings) ? settings : undefined };
+  const pos = safeRun(sql, ownVal(positive, "sql"), opts);
+  const neg = safeRun(sql, ownVal(negative, "sql"), opts);
   const protocolOk = pos.protocolOk === true && neg.protocolOk === true;
   const positiveOk = pos.protocolOk === true && pos.ok === true;
   const negAllowed = neg.protocolOk === true && neg.ok === true; // forbudt op lykkedes = isolation brudt
   // afvist med den ANERKENDTE, pinnede kode (ikke en tilfældig/forkert fejlklasse)
-  const negRejectedRight = neg.protocolOk === true && neg.ok === false && neg.code === harness.negative.expectCode;
+  const negRejectedRight = neg.protocolOk === true && neg.ok === false && neg.code === expectCode;
   const green = protocolOk && positiveOk && negRejectedRight;
   return { green, protocolOk, positiveOk, negAllowed, negRejectedRight, detail: { pos, neg } };
 }
@@ -112,21 +126,24 @@ export function runEffectHarness(harness, sql) {
 // restore + en post-restore baseline køres ALTID, så næste mutant starter rent;
 // cleanAfter=false betyder gendannelsen efterlod beskidt state.
 export function killMutant(mutant, harness, sql) {
-  if (!isPlainObject(mutant) || !isNonEmptyString(mutant.knob) || !isNonEmptyString(mutant.apply) || !isNonEmptyString(mutant.restore))
+  const knob = ownVal(mutant, "knob");
+  const apply = ownVal(mutant, "apply");
+  const restore = ownVal(mutant, "restore");
+  if (!isNonEmptyString(knob) || !isNonEmptyString(apply) || !isNonEmptyString(restore))
     return { killed: false, restored: false, cleanAfter: false, error: "malformet mutant (knob/apply/restore kræves)" };
 
   const baseline = runEffectHarness(harness, sql);
   if (baseline.green !== true) return { killed: false, restored: false, cleanAfter: false, baselineGreen: false, error: "baseline ikke green — intet at dræbe mod" };
 
-  const applied = safeRun(sql, mutant.apply, {});
+  const applied = safeRun(sql, apply, {});
   if (applied.protocolOk !== true || applied.ok !== true) {
-    const rr = safeRun(sql, mutant.restore, {}); // best-effort gendannelse
+    const rr = safeRun(sql, restore, {}); // best-effort gendannelse
     const clean = runEffectHarness(harness, sql);
     return { killed: false, restored: rr.ok === true, cleanAfter: clean.green === true, baselineGreen: true, error: `mutant-apply fejlede: ${applied.error}` };
   }
 
   const underMutant = runEffectHarness(harness, sql);
-  const restore = safeRun(sql, mutant.restore, {});
+  const restore_ = safeRun(sql, restore, {});
   const cleanBaseline = runEffectHarness(harness, sql); // post-restore: er vi rene igen?
 
   // DRÆBT ⟺ under mutanten er den forbudte op nu EKSPLICIT TILLADT (negAllowed),
@@ -136,10 +153,10 @@ export function killMutant(mutant, harness, sql) {
     underMutant.protocolOk === true && underMutant.positiveOk === true && underMutant.negAllowed === true;
   return {
     killed,
-    restored: restore.ok === true,
+    restored: restore_.ok === true,
     cleanAfter: cleanBaseline.green === true,
     baselineGreen: true,
-    detail: { underMutant, restore, cleanBaseline },
+    detail: { underMutant, restore: restore_, cleanBaseline },
   };
 }
 
@@ -150,39 +167,43 @@ export function killMutant(mutant, harness, sql) {
 // (config-mutant-kill-gulvet). Producerer OBSERVATIONERNE build-proof kræver.
 // OID/git-anchoring + kobling til krav/plan er wiring-/pakke-residual.
 export function runBuildProofEngine(spec, sql) {
-  if (!isPlainObject(spec) || !isDenseNonEmptyArray(spec.kTests))
+  const kTests = ownVal(spec, "kTests");
+  if (!isDenseNonEmptyArray(kTests))
     return { allGreen: false, allKilled: false, error: "malformet spec (ikke-tomt, tæt kTests-array kræves)", results: [] };
   const results = [];
   let allGreen = true;
   let allKilled = true;
-  for (let i = 0; i < spec.kTests.length; i++) {
-    const kt = spec.kTests[i];
-    if (!isPlainObject(kt) || !isNonEmptyString(kt.k_id)) {
+  for (let i = 0; i < kTests.length; i++) {
+    const kt = kTests[i];
+    const k_id = ownVal(kt, "k_id");
+    const ktHarness = ownVal(kt, "harness");
+    const ktMutants = ownVal(kt, "mutants");
+    if (!isNonEmptyString(k_id)) {
       results.push({ k_id: null, ok: false, error: "malformet kTest" });
       allGreen = false;
       allKilled = false;
       continue;
     }
-    const baseline = runEffectHarness(kt.harness, sql);
-    if (!isDenseNonEmptyArray(kt.mutants)) {
+    const baseline = runEffectHarness(ktHarness, sql);
+    if (!isDenseNonEmptyArray(ktMutants)) {
       // gulvet: hvert K SKAL have ≥1 (tæt) mutant — sparse/tomt = ingen dybde bevist
-      results.push({ k_id: kt.k_id, baselineGreen: baseline.green === true, mutantsKilled: [], ok: false, error: "ingen mutant (mutant-kill-gulv brudt / sparse)" });
+      results.push({ k_id, baselineGreen: baseline.green === true, mutantsKilled: [], ok: false, error: "ingen mutant (mutant-kill-gulv brudt / sparse)" });
       allGreen = allGreen && baseline.green === true;
       allKilled = false;
       continue;
     }
     const mutantsKilled = [];
     let everyKilled = true;
-    for (let j = 0; j < kt.mutants.length; j++) {
-      const m = kt.mutants[j];
-      const r = killMutant(m, kt.harness, sql);
+    for (let j = 0; j < ktMutants.length; j++) {
+      const m = ktMutants[j];
+      const r = killMutant(m, ktHarness, sql);
       const good = r.killed === true && r.restored === true && r.cleanAfter === true;
-      mutantsKilled.push({ knob: isPlainObject(m) ? m.knob ?? null : null, killed: r.killed === true, restored: r.restored === true, cleanAfter: r.cleanAfter === true, ok: good, error: r.error ?? null });
+      mutantsKilled.push({ knob: ownVal(m, "knob") ?? null, killed: r.killed === true, restored: r.restored === true, cleanAfter: r.cleanAfter === true, ok: good, error: r.error ?? null });
       everyKilled = everyKilled && good;
     }
     allGreen = allGreen && baseline.green === true;
     allKilled = allKilled && everyKilled;
-    results.push({ k_id: kt.k_id, baselineGreen: baseline.green === true, mutantsKilled, ok: baseline.green === true && everyKilled });
+    results.push({ k_id, baselineGreen: baseline.green === true, mutantsKilled, ok: baseline.green === true && everyKilled });
   }
   return { allGreen, allKilled, results };
 }

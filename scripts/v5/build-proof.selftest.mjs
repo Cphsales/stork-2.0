@@ -221,6 +221,10 @@ expectRed("skippede tests", verify(mutated((p) => (p.prover_result.skipped = 3))
 
 console.log("\nstruktur-fail-closed (sparse/prototype/typer):");
 expectRed("sparse bids-array (hul)", verify(mutated((p) => { const a = p.bids.slice(); delete a[0]; a[1] = greenProof().bids[0]; p.bids = a; })), "tæt array");
+// Codex r3 #1: array m. egen every-override / custom prototype / Symbol.iterator
+expectRed("ks m. egen every-override → rød", verify(mutated((p) => { p.ks.every = () => true; })), "K-sættet mangler");
+expectRed("ks m. custom prototype → rød", verify(mutated((p) => { Object.setPrototypeOf(p.ks, { some: () => true }); })), "K-sættet mangler");
+expectRed("bids m. egen Symbol.iterator → rød", verify(mutated((p) => { p.bids[Symbol.iterator] = function* () {}; })), "bids skal være");
 expectRed("build-proof på prototype (arvede felter)", verifyBuildProof(Object.create(greenProof()), snap(greenProof()), { git }), "ikke et objekt");
 expectRed("git-dep mangler", verifyBuildProof(greenProof(), snap(greenProof()), {}), "git-dep mangler");
 expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ...snap(greenProof()), bindings: {} }, { git }), "plan-binding");
