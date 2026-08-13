@@ -14,7 +14,7 @@
 // kan ikke bevises uden reel data). Routeren fail-lukker for chain-proof, så
 // slut-gaten IKKE kan åbne før den er bygget (ærligt, ikke stub-grønt).
 
-import { deriveSurface, checkBucketCoverage } from "./coverage.mjs";
+import { deriveSurface, checkBucketCoverage, filterSurface } from "./coverage.mjs";
 import { verifyBuildProof } from "./build-proof.mjs";
 
 const RECON_ACTORS = Object.freeze(["code", "codex", "claude-ai"]);
@@ -45,14 +45,31 @@ export function verifyReconCoverageProof(proof, snapshot, { git }) {
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"] };
   if (!isPlainObject(proof)) return { ok: false, reasons: ["recon-coverage-proof er ikke et objekt"] };
 
-  // 1) mekanisk kerne: frisk flade-re-derivation + bøtte-dækning
+  // 1) mekanisk kerne: frisk flade-re-derivation + PAKKE-filter + bøtte-dækning
+  //
+  // Pakke-fladen (Mathias 2026-08-13: recon dækker KUN pakkens flade, som
+  // håndhævet STRUKTUR, ikke husket disciplin): filteret læses fra det OID-
+  // bundne bundle (snapshot.bindings.bundle.oid) — samme artefakt aktørerne
+  // attesterer at have læst. Uforfalskeligt: filteret kan ikke ændres uden at
+  // bundle-OID (og dermed aktør-bindingen) brydes. flade_filter er PÅKRÆVET —
+  // fravær = rød (eksplicit deklaration > default: en glemt deklaration må
+  // aldrig tavst blive til fuld-flade-krav eller intet krav). Ulæseligt
+  // bundle/malformet filter → rød (scope må aldrig gættes).
   if (!isPlainObject(proof.bucket_map)) fail("bucket_map mangler/er ikke et objekt");
   else {
     let surface;
     try {
       surface = deriveSurface({ git, commitSha: snapshot?.commit_sha });
+      const bundleOid = snapshot?.bindings?.bundle?.oid;
+      if (typeof bundleOid !== "string" || bundleOid.length === 0)
+        throw new Error("bundle-binding mangler (pakke-fladen kan ikke afgøres)");
+      const bundle = JSON.parse(git.bytes("cat-file", "blob", bundleOid).toString("utf8"));
+      if (!isPlainObject(bundle)) throw new Error("bundle er ikke et objekt");
+      if (!hasOwn(bundle, "flade_filter"))
+        throw new Error("flade_filter mangler i bundlet (pakke-scope skal deklareres eksplicit — fravær = rød)");
+      surface = filterSurface(surface, bundle.flade_filter);
     } catch (e) {
-      return { ok: false, reasons: [`frisk flade-derivation fejlede (fail-closed): ${e?.message ?? e}`] };
+      return { ok: false, reasons: [`pakke-flade-derivation fejlede (fail-closed): ${e?.message ?? e}`] };
     }
     const cov = checkBucketCoverage(surface, proof.bucket_map);
     if (!cov.ok) fail(...cov.reasons);
@@ -84,9 +101,18 @@ export function verifyReconCoverageProof(proof, snapshot, { git }) {
   }
 
   // 3) konflikt-bevaring + omission-devil (begge eksplicit)
+  // Devil'en dømmer på TO akser (filteret HAR en dommer — driver-forfattet
+  // scope-krympning må aldrig stå udømt): (a) filter_angreb — flade_filter
+  // angrebet mod den FULDE deriverede flade (pakke-relevant punkt udeladt?);
+  // (b) pakke_flade_angreb — misset inden for pakke-fladen. Begge attesteres
+  // eksplicit med egne felter; manglende/arvet akse = rød.
   if (proof.conflicts_preserved !== true) fail("conflicts_preserved ikke eksplicit true (kasseret uenighed → rød)");
   if (!isPlainObject(proof.omission_devil) || proof.omission_devil.conclusion !== "PASS")
     fail("omission-devil ikke PASS");
+  else
+    for (const akse of ["filter_angreb", "pakke_flade_angreb"])
+      if (!hasOwn(proof.omission_devil, akse) || proof.omission_devil[akse] !== "PASS")
+        fail(`omission-devil: aksen '${akse}' ikke eksplicit PASS (filter/pakke-flade skal begge dømmes)`);
 
   return { ok: reasons.length === 0, reasons };
 }

@@ -39,7 +39,15 @@ git("config", "user.email", "selftest@local");
 const FILES = {
   "turbo.json": "{}\n",
   "launch/launch.json": JSON.stringify({ anker: "pakke-x", pakke: "pakke-x" }) + "\n",
-  "recon/bundle.json": JSON.stringify({ docs: ["vision.md"] }) + "\n",
+  "recon/bundle.json":
+    JSON.stringify({
+      docs: ["vision.md"],
+      // flade_filter er PÅKRÆVET (fravær = rød); fixture-filteret dækker hele
+      // den lille fixture-flade, så de generelle cases tester u-filtreret adfærd.
+      flade_filter: {
+        punkt_ids: ["config:turbo.json", "migration:supabase/migrations/0001.sql", "rls_enabled:salg", "rls_policy:salg:salg_egen_org"],
+      },
+    }) + "\n",
   "recon/recon.md": "# recon — pakke-x\n\n3 bøtter, konsolideret.\n",
   "supabase/migrations/0001.sql":
     "alter table salg enable row level security;\n" +
@@ -82,7 +90,7 @@ const greenProof = () => ({
     })),
   },
   conflicts_preserved: true,
-  omission_devil: { conclusion: "PASS" },
+  omission_devil: { conclusion: "PASS", filter_angreb: "PASS", pakke_flade_angreb: "PASS" },
 });
 const snap = (proof) => ({
   commit_sha: COMMIT,
@@ -160,6 +168,97 @@ expectRed(
   verify(mutated((p) => (p.omission_devil.conclusion = "FAIL"))),
   "omission-devil ikke PASS",
 );
+expectRed(
+  "omission-devil uden filter_angreb-akse (filteret skal dømmes)",
+  verify(mutated((p) => delete p.omission_devil.filter_angreb)),
+  "aksen 'filter_angreb' ikke eksplicit PASS",
+);
+expectRed(
+  "omission-devil med pakke_flade_angreb ≠ PASS",
+  verify(mutated((p) => (p.omission_devil.pakke_flade_angreb = "FAIL"))),
+  "aksen 'pakke_flade_angreb' ikke eksplicit PASS",
+);
+
+console.log("\npakke-flade-filter (flade_filter i bundlet — scope er struktur, ikke disciplin):");
+// nyt fixture-lag: bundle MED filter → kun det filtrerede sæt kræves dækket
+writeFileSync(
+  join(ROOT, "recon/bundle.json"),
+  JSON.stringify({ docs: ["vision.md"], flade_filter: { punkt_ids: ["rls_enabled:salg", "rls_policy:salg:salg_egen_org"] } }) + "\n",
+);
+git("add", "-A");
+git("commit", "-qm", "fixture: bundle med pakke-flade-filter");
+const COMMIT_F = git("rev-parse", "HEAD");
+const refF = (p) => resolveRef(git, COMMIT_F, p);
+const reconF = refF("recon/recon.md");
+const launchF = refF("launch/launch.json");
+const bundleF = refF("recon/bundle.json");
+const filteredProof = (bucketMap) => ({
+  ...greenProof(),
+  artifact_oid: reconF.oid,
+  bindings_oids: { anker: launchF.oid, bundle: bundleF.oid },
+  bucket_map: bucketMap,
+  independence: { ...greenProof().independence, bundle_oid: bundleF.oid },
+});
+const snapF = (proof) => ({
+  commit_sha: COMMIT_F,
+  artifact: reconF,
+  bindings: { anker: launchF, bundle: bundleF },
+  proof_result: proof,
+  verdicts: [],
+  approval: null,
+  predecessor: null,
+});
+const verifyF = (proof) => verifyReconCoverageProof(proof, snapF(proof), { git });
+expectGreen(
+  "dækning af KUN pakke-fladen er grøn (punkter uden for filteret kræves ikke)",
+  verifyF(filteredProof({ "rls_enabled:salg": "nuvaerende-kode", "rls_policy:salg:salg_egen_org": "nuvaerende-kode" })),
+);
+expectRed(
+  "misset punkt INDEN FOR pakke-fladen stadig rød",
+  verifyF(filteredProof({ "rls_enabled:salg": "nuvaerende-kode" })),
+  "uklassificeret i recon",
+);
+{
+  // malformet filter → rød (aldrig tavst fuld/ingen flade)
+  writeFileSync(join(ROOT, "recon/bundle.json"), JSON.stringify({ flade_filter: { punkt_ids: [] } }) + "\n");
+  git("add", "-A");
+  git("commit", "-qm", "fixture: malformet filter");
+  const C = git("rev-parse", "HEAD");
+  const rr = (p) => resolveRef(git, C, p);
+  const pr = { ...greenProof(), artifact_oid: rr("recon/recon.md").oid, bindings_oids: { anker: rr("launch/launch.json").oid, bundle: rr("recon/bundle.json").oid } };
+  pr.independence = { ...pr.independence, bundle_oid: rr("recon/bundle.json").oid };
+  const sn = { commit_sha: C, artifact: rr("recon/recon.md"), bindings: { anker: rr("launch/launch.json"), bundle: rr("recon/bundle.json") }, proof_result: pr, verdicts: [], approval: null, predecessor: null };
+  expectRed("malformet flade_filter → rød", verifyReconCoverageProof(pr, sn, { git }), "pakke-flade-derivation fejlede");
+}
+{
+  // filter med ukendt punkt-id → rød (typo-værn)
+  writeFileSync(join(ROOT, "recon/bundle.json"), JSON.stringify({ flade_filter: { punkt_ids: ["rls_enabled:findes_ikke"] } }) + "\n");
+  git("add", "-A");
+  git("commit", "-qm", "fixture: ukendt id i filter");
+  const C = git("rev-parse", "HEAD");
+  const rr = (p) => resolveRef(git, C, p);
+  const pr = { ...greenProof(), artifact_oid: rr("recon/recon.md").oid, bindings_oids: { anker: rr("launch/launch.json").oid, bundle: rr("recon/bundle.json").oid } };
+  pr.independence = { ...pr.independence, bundle_oid: rr("recon/bundle.json").oid };
+  const sn = { commit_sha: C, artifact: rr("recon/recon.md"), bindings: { anker: rr("launch/launch.json"), bundle: rr("recon/bundle.json") }, proof_result: pr, verdicts: [], approval: null, predecessor: null };
+  expectRed("ukendt punkt-id i filter → rød (typo-værn)", verifyReconCoverageProof(pr, sn, { git }), "ukendt punkt-id");
+}
+expectRed(
+  "ulæseligt bundle (binding peger på ikke-eksisterende blob) → rød",
+  verifyReconCoverageProof(greenProof(), { ...snap(greenProof()), bindings: { anker: launch, bundle: { path: "recon/bundle.json", oid: "0".repeat(40), type: "blob" } } }, { git }),
+  "pakke-flade-derivation fejlede",
+);
+{
+  // bundle HELT UDEN flade_filter → rød (fravær = rød, aldrig fuld-flade-default)
+  writeFileSync(join(ROOT, "recon/bundle.json"), JSON.stringify({ docs: ["vision.md"] }) + "\n");
+  git("add", "-A");
+  git("commit", "-qm", "fixture: bundle uden filter");
+  const C = git("rev-parse", "HEAD");
+  const rr = (p) => resolveRef(git, C, p);
+  const pr = { ...greenProof(), artifact_oid: rr("recon/recon.md").oid, bindings_oids: { anker: rr("launch/launch.json").oid, bundle: rr("recon/bundle.json").oid } };
+  pr.independence = { ...pr.independence, bundle_oid: rr("recon/bundle.json").oid };
+  const sn = { commit_sha: C, artifact: rr("recon/recon.md"), bindings: { anker: rr("launch/launch.json"), bundle: rr("recon/bundle.json") }, proof_result: pr, verdicts: [], approval: null, predecessor: null };
+  expectRed("bundle uden flade_filter → rød (eksplicit deklaration påkrævet)", verifyReconCoverageProof(pr, sn, { git }), "flade_filter mangler");
+}
 
 console.log("\nrouter (makeProofVerifier) — dispatch + fail-closed:");
 const route = makeProofVerifier({ git });

@@ -31,7 +31,12 @@ git("config", "user.email", "selftest@local");
 const PAKKE = "pakke-x";
 const FILES = {
   "launch/launch.json": JSON.stringify({ anker: PAKKE, pakke: PAKKE }) + "\n",
-  "recon/bundle.json": JSON.stringify({ docs: ["vision.md"] }) + "\n",
+  "recon/bundle.json":
+    JSON.stringify({
+      docs: ["vision.md"],
+      // flade_filter PÅKRÆVET for recon-gaten (fravær = rød) — dækker fixture-fladen
+      flade_filter: { punkt_ids: ["migration:supabase/migrations/0001.sql", "rls_enabled:salg", "rls_policy:salg:salg_egen"] },
+    }) + "\n",
   "recon/recon.md": "# recon\n",
   [`plan-build/${PAKKE}/recon2.md`]: "# recon2\n",
   [`docs/sandhed/krav/${PAKKE}-krav.md`]: "# krav\n## K-1\nAcceptkriterie: negativ.\n",
@@ -73,7 +78,7 @@ const reconProof = () => {
       })),
     },
     conflicts_preserved: true,
-    omission_devil: { conclusion: "PASS" },
+    omission_devil: { conclusion: "PASS", filter_angreb: "PASS", pakke_flade_angreb: "PASS" },
   };
 };
 

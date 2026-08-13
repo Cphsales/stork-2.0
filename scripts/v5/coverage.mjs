@@ -240,6 +240,36 @@ export function deriveSurface({ git, commitSha }) {
   return { points, kinds: [...SURFACE_KINDS] };
 }
 
+// filterSurface(surface, filter) → surface (evt. indsnævret til pakke-fladen)
+//
+// Pakke-flade-filter (Mathias 2026-08-13: recon-dækning KUN på pakkens flade).
+// filter = { punkt_ids: [<flade-punkt-id>...] } — en EKSPLICIT, committet og
+// dermed reviewbar id-liste (ingen mønster-magi; listen ER pakke-flade-
+// deklarationen og står i det OID-bundne bundle).
+//
+// Fail-closed hele vejen (eksplicit deklaration > default):
+// - filter fraværende (null/undefined) → kast — en glemt deklaration må ALDRIG
+//   tavst blive til fuld-flade-krav eller intet krav; kalderen (recon-gaten)
+//   KRÆVER eksplicit filter (Mathias 2026-08-13: klar struktur i workflowet)
+// - malformet filter → kast (opstrøms gate går rød — aldrig tavst fuld/ingen flade)
+// - id i filteret som IKKE findes i den deriverede flade → kast (typo-værn:
+//   et fejlstavet id ville ellers tavst udelade et punkt man TROEDE var krævet)
+export function filterSurface(surface, filter) {
+  const points = surface?.points;
+  if (!Array.isArray(points)) throw new Error("filterSurface: surface.points mangler/ugyldig");
+  if (filter === null || filter === undefined)
+    throw new Error("filterSurface: flade_filter mangler (pakke-scope skal deklareres eksplicit — fravær = rød)");
+  if (typeof filter !== "object" || Array.isArray(filter)) throw new Error("filterSurface: filter er ikke et objekt");
+  const ids = filter.punkt_ids;
+  if (!Array.isArray(ids) || ids.length === 0 || !ids.every((x) => typeof x === "string" && x.length > 0))
+    throw new Error("filterSurface: filter.punkt_ids skal være en ikke-tom liste af strenge");
+  const want = new Set(ids);
+  if (want.size !== ids.length) throw new Error("filterSurface: dublet-id i punkt_ids");
+  const known = new Set(points.map((p) => p.id));
+  for (const id of want) if (!known.has(id)) throw new Error(`filterSurface: ukendt punkt-id i filter: ${id} (typo-værn, fail-closed)`);
+  return { points: points.filter((p) => want.has(p.id)), kinds: surface.kinds };
+}
+
 // checkCoverage(surface, dispositions) → {ok, reasons, uncovered}
 // PURE komplethed-dom: hvert deriveret flade-punkt SKAL have en gyldig
 // disposition, og et EKSISTERENDE kode-punkt må aldrig klassificeres

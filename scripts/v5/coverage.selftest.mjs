@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { deriveSurface, checkCoverage } from "./coverage.mjs";
+import { deriveSurface, checkCoverage, filterSurface } from "./coverage.mjs";
 import { makeGit } from "./git.mjs";
 
 let failed = 0;
@@ -338,6 +338,29 @@ expectRed(
   ),
   "egne felter",
 );
+
+console.log("\npakke-flade-filter (filterSurface — scope er struktur, ikke disciplin):");
+{
+  const ids = surface.points.map((p) => p.id);
+  const sub = filterSurface(surface, { punkt_ids: [ids[0]] });
+  sub.points.length === 1 && sub.points[0].id === ids[0]
+    ? ok("filter indsnævrer til præcis de deklarerede punkter")
+    : bad("filter-indsnævring", `fik ${sub.points.length} punkter`);
+  const throws = (fn, needle, navn) => {
+    try {
+      fn();
+      bad(navn, "kastede ikke (fail-closed brudt)");
+    } catch (e) {
+      new RegExp(needle).test(e.message) ? ok(navn) : bad(navn, `forkert fejl: ${e.message}`);
+    }
+  };
+  throws(() => filterSurface(surface, null), "deklareres eksplicit", "fraværende filter → kast (fravær = rød, aldrig default)");
+  throws(() => filterSurface(surface, { punkt_ids: [] }), "ikke-tom liste", "tom punkt_ids → kast");
+  throws(() => filterSurface(surface, { punkt_ids: ["findes:ikke"] }), "ukendt punkt-id", "ukendt id → kast (typo-værn)");
+  throws(() => filterSurface(surface, { punkt_ids: [ids[0], ids[0]] }), "dublet", "dublet-id → kast");
+  throws(() => filterSurface(surface, "x"), "ikke et objekt", "malformet filter → kast");
+  throws(() => filterSurface({ points: null }, null), "surface.points", "ugyldig surface → kast");
+}
 
 console.log("");
 if (failed > 0) {
