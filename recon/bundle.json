@@ -1,0 +1,38 @@
+{
+  "pakke": "lokations-skabelon",
+  "launch_commit": "7ad2bde1a798c33fdf83e07c04c67ee1963df130",
+  "tree_sha": "7ad2bde1a798c33fdf83e07c04c67ee1963df130",
+  "anker": {
+    "path": "docs/strategi/stork-2-0-master-plan.md",
+    "oid": "e6c9a715b81b8d9b069f36ae77a798186dabcde1",
+    "punkter": [
+      "§4 trin 10b — scope: Lokations-skabelon (lokationer + placements + leverandører + klient-tilladelser + status + cooldown) + migration: udtræks-SQL for lokations-historik hvis relevant · schema: core_identity",
+      "§1.12 Lokations-skabelon (fundament) — indholdet: lokations-entitet (navn, adresse, default-dagspris, leverandør-FK, type, status, cooldown-konfig jsonb, anonymized_at) · selv-refererende parent_location_id (lokation+placement i samme tabel, pris-arv) · cycle-detection-trigger (rekursiv CTE) · status-livscyklus via RPC m. audit+årsag · klient-tilladelser (klient × lokation × from_date × to_date, versioneret) · cooldown pr. lokation (konfig-tabel, UI-redigerbar) · leverandører som egen master-data-entitet m. type-felt",
+      "Appendix B → 'Lokations-status: Afgøres ved trin 10b' — åben enum-beslutning, skal disponeres i denne pakke",
+      "rettelse 17 → cooldown pr. lokation (ikke pr. klient/kampagne) — låst afgørelse",
+      "§2.7 FM-domæne (nedstrøms-forbrugere trin 24-29: bookinger, assignments, hotel, køretøj, leverandør-fakturering hænger på lokationen — skabelonen skal bære dem, ikke bygge dem)",
+      "§1.1-§1.4 + §1.11 fundament-skabeloner (RLS/adgang · audit · anonymisering (anonymized_at) · tre-schema: core_identity) — mønstrene nye tabeller SKAL følge"
+    ]
+  },
+  "laaste_docs": [
+    {
+      "path": "docs/strategi/vision-og-principper.md",
+      "oid": "37cf974c4674913ad39851d876bce2b6cbf5ab15",
+      "rolle": "låst vision"
+    },
+    {
+      "path": "docs/strategi/forretningsforstaaelse.md",
+      "oid": "74c9a5727a39d00c6479623336b7a34a55a8ccba",
+      "rolle": "låst forretningsforståelse (FM/lokation: linje 232-240)"
+    }
+  ],
+  "kode_flade": {
+    "kilde": "committet tree @ tree_sha (supabase/migrations + scripts) — coverage.mjs deriverer den mekaniske flade FRISK; recon klassificerer hvert punkt",
+    "note": "pakken er greenfield (ingen lokations-kode findes) — nuværende-kode-fladen er de skabeloner/mønstre pakken SKAL genbruge (RLS-helpers, audit-parent, anonymisering, klient/org-tabeller den refererer)"
+  },
+  "regler": {
+    "web": "FORBUDT",
+    "laeseforbud": "aktører læser ALDRIG hinandens output før konsolidering",
+    "binding": "byg fra committede artefakter ved OID — aldrig fra hukommelse"
+  }
+}
