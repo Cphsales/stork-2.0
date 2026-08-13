@@ -1,0 +1,263 @@
+# recon-2-bilag — lokations-skabelon (IKKE krav-føde)
+
+Aftager: recon-2 → plan-dokken (Fase 3) — brydende mutationer pr. fund
+(frø til Codex' kill-lists/angrebs-spec; dømmes ved plan-gaten).
+
+- **config:supabase/config.toml** (code): Fjern core_identity fra live-eksponeringen → alle T9/T10 (og kommende lokations-) RPC'er forsvinder fra API'et; fitness-canary bliver rød
+- **config:supabase/config.toml** (codex): expose-core-identity-in-api-schemas bryder forventningen om at lokationsskabelonen går gennem SECURITY DEFINER/INVOCER RPC og RLS, ikke direkte schema-API.
+- **migration:supabase/migrations/20260514120000_t1_drop_public.sql** (code): Genindfør en lokations-tabel i public-schemaet → tre-schema-arkitekturen (§1.11) brydes og fitness schema-ownership bliver rød
+- **migration:supabase/migrations/20260514120001_t1_schemas_and_defaults.sql** (code): Fjern 'alter default privileges ... revoke all on tables' → nye lokations-tabeller ville arve skriverettigheder og default-deny-fundamentet (§1.1) brister
+- **migration:supabase/migrations/20260514120001_t1_schemas_and_defaults.sql** (codex): grant-default-core-table-writes-to-authenticated gør nye lokationstabeller skrivbare uden RPC-gate og bryder core-schema-disciplinen.
+- **migration:supabase/migrations/20260514120002_t1_helpers_stubs.sql** (code): Redefiner en helper som SECURITY DEFINER uden markør → secdef-marker-discipline-fitness rød (ikke i SECDEF_SANCTIONED)
+- **migration:supabase/migrations/20260514120003_t1_audit_partitioned.sql** (code): Fjern change_reason-RAISE-grenen i stork_audit() → mutationer uden årsag glider lydløst ind i audit-loggen (audit-mønstrets kerne-negativ dør); fitness immutability-trigger-coverage fanger i stedet fjernelse af guard-triggeren
+- **migration:supabase/migrations/20260514120003_t1_audit_partitioned.sql** (codex): make-change-reason-optional-for-manual-source gør lokationsændringer ikke-sporbare og bryder audit-kontrakten.
+- **migration:supabase/migrations/20260514120004_t1_cron_skabelon.sql** (code): Udelad heartbeat-recording i lokations-cron'ens EXCEPTION-blok → jobfejl bliver usynlige for healthcheck() og consecutive-failure-alarmen
+- **migration:supabase/migrations/20260514120004_t1_cron_skabelon.sql** (codex): allow-invalid-cron-heartbeat-status gør lokationscron-health uforudsigelig for healthcheck.
+- **migration:supabase/migrations/20260514120005_t1_data_field_definitions.sql** (code): Løsn data_field_definitions_validate_retention (fx fjern max_days-regex) → ugyldige retention-værdier passerer og retention-cron'ens days_after-beregning for lokations-tabellen bliver udefineret
+- **migration:supabase/migrations/20260514120005_t1_data_field_definitions.sql** (codex): disable-retention-config-validation tillader lokationskolonner uden håndhævelig retention-politik.
+- **migration:supabase/migrations/20260514120006_t1_audit_filter_values.sql** (code): Fjern 'direct'-hash-grenen → direkte PII skrives i klartekst i audit_log uden warning
+- **migration:supabase/migrations/20260514120007_t1_bootstrap_admins.sql** (code): Fjern anonymized_at-filteret i helper-lookups → anonymiserede medarbejdere bevarer login-mapping og adgang
+- **migration:supabase/migrations/20260514120008_t1_classify_trin_1.sql** (code): Flyt set_config ind i en CREATE FUNCTION-body → fitness migration-set-config-discipline ser mutation uden session-vars → rød
+- **migration:supabase/migrations/20260514130000_t2_superadmin_floor.sql** (code): Fjern id=1-CHECK → flere konfig-rækker; floor-triggeren og alle læsere (where id=1) læser vilkårlig/ingen række
+- **migration:supabase/migrations/20260514130001_t2_identity_rpcs.sql** (code): Ændr en with check-klausul til (true) → session-var-gaten dør; fitness write-policy-session-var-consistency fanger det kun for tabeller med aktiv anonymization-mapping
+- **migration:supabase/migrations/20260514130002_t2_classify.sql** (code): Udelad klassifikations-INSERT → CI-blokeret merge
+- **migration:supabase/migrations/20260514140000_t6_anonymization_tables.sql** (code): Drop UNIQUE(entity_type,entity_id) → dobbelt-anonymisering logges dobbelt og replay/verify-semantikken (idempotens) brister
+- **migration:supabase/migrations/20260514140000_t6_anonymization_tables.sql** (codex): make-anonymization-state-mutable underminerer beviset for lokationsrelateret anonymisering.
+- **migration:supabase/migrations/20260514140001_t6_anonymization_rpcs.sql** (code): Behold NULL-fallback i en ny lokations-anonymiseringsvej → stavefejl i strateginavn efterlader PII urørt uden alarm (P1a-registrys eksplicitte validering er modgiften)
+- **migration:supabase/migrations/20260514140002_t6_anonymization_crons.sql** (code): Fjern heartbeat-failure-grenen ved inkonsistens → GDPR-drift-afvigelser bliver usynlige
+- **migration:supabase/migrations/20260514140002_t6_anonymization_crons.sql** (codex): omit-anonymization-cron-heartbeat gør lokationscleanup usynlig for healthcheck.
+- **migration:supabase/migrations/20260514140003_t6_classify.sql** (code): Udelad → CI-blokeret
+- **migration:supabase/migrations/20260514150006_t7b_cron_consecutive_failure.sql** (code): Fjern reset-til-0 ved 'ok' → permanent falsk kritisk alarm; fjern +1 ved failure → alarmen fyrer aldrig
+- **migration:supabase/migrations/20260514160000_t1_inline_fix_audit_non_uuid_id.sql** (code): Fjern exception-handleren → første UPDATE på en integer-PK-konfigtabel fejler med invalid input syntax for type uuid
+- **migration:supabase/migrations/20260514170003_c001_retention_not_null.sql** (code): Fjern retention_consistency-checket → permanent-rækker med values og typede rækker uden — retention-cron'ens datagrundlag korrumperer
+- **migration:supabase/migrations/20260514170004_c002_c003_anonymization_dispatcher.sql** (code): Sæt anonymized_check_column forkert i lokations-mappingen → dispatcheren tester/updaterer en forkert kolonne og retention/replay bliver falsk-grøn — punktet er en isolations-/rettighedsgrænse båret af DATA
+- **migration:supabase/migrations/20260514180000_g028_classify_anonymization_dispatcher_columns.sql** (code): Udelad → CI-blokeret
+- **migration:supabase/migrations/20260514180100_r1b_rename_admin_to_superadmin.sql** (code): Omdøb rollen igen → alle fremtidige permission-seeds (inkl. lokations-pakkens) bliver silent no-ops
+- **migration:supabase/migrations/20260514180200_h1_has_permission_helper.sql** (code): Byt argumentrækkefølge/semantik i en ny overload → alle eksisterende kaldesteder binder stadig til (text,text,boolean)-signaturen; en SECDEF-overload uden SECDEF_SANCTIONED-entry fanges af fitness
+- **migration:supabase/migrations/20260514180200_h1_has_permission_helper.sql** (codex): drop-can-edit-condition-in-has-permission lader view-only roller mutere lokationsdata.
+- **migration:supabase/migrations/20260514180300_q1_employee_active_config.sql** (code): Slet singleton-rækken (id=1) → is_active_employee_state returnerer NULL (ingen row) og HELE adgangskæden evaluerer falsk — alle gates lukker
+- **migration:supabase/migrations/20260514180300_q1_employee_active_config.sql** (codex): bypass-is-active-employee-state-in-has-permission genåbner lokationsrettigheder for terminerede eller anonymiserede medarbejdere.
+- **migration:supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql** (code): Udvid allowlisten bredt (fx hele core_identity) → 'permanent' mister sin system-meta-semantik og retention-disciplinen (rettelse 29) udhules
+- **migration:supabase/migrations/20260514180500_d1_d2_drop_legal_convert_rows.sql** (code): Genindfør NOT NULL uden backfill → alle NULL-klassificerede forretningskolonner blokerer efterfølgende UPDATE'er af registret
+- **migration:supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql** (code): Drop triggeren → 'permanent' kan sættes frit fra UI og fundament-garantien (rettelse 29) forsvinder
+- **migration:supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql** (codex): allow-permanent-retention-without-allowlist fjerner governance-gate for lokationsmasterdata.
+- **migration:supabase/migrations/20260514190000_q_seed_permissions.sql** (code): Seed uden session-var allow_role_page_permissions_write → RLS-afvist under migration
+- **migration:supabase/migrations/20260514190100_q_audit_rpcs.sql** (code): Fjern permission-checket i audit_log_read → enhver authenticated kan læse hele audit-loggen (inkl. hashet PII + record-referencer)
+- **migration:supabase/migrations/20260514190200_q_class_anon_rpcs.sql** (code): Konvertér tilbage til is_admin() → bryder vision-princip 2 (UI-styrede rettigheder)
+- **migration:supabase/migrations/20260515110100_p1a_anonymization_strategies.sql** (code): Fjern regprocedure-eksistens-checket i validation-triggeren → registry kan pege på ikke-eksisterende funktioner og generic_apply fejler først ved anonymiserings-run
+- **migration:supabase/migrations/20260515110100_p1a_anonymization_strategies.sql** (codex): accept-any-anonymization-function åbner for ikke-deterministiske eller side-effektfulde lokationsstrategier.
+- **migration:supabase/migrations/20260515110150_p1a_fix_lifecycle_coalesce.sql** (code): Genindfør '<>'-sammenligning uden coalesce i en ny trigger-gate → gaten er åben når session-var er usat
+- **migration:supabase/migrations/20260515110200_p1b_anonymize_generic_apply.sql** (code): Fjern 'AND <check_col> IS NULL' i UPDATE-prædikatet → gen-anonymisering muterer allerede-anonymiserede rækker og state-loggen mister sin 1:1-semantik
+- **migration:supabase/migrations/20260515110300_p1c_anonymize_employee_wrapper.sql** (code): Spring generic_apply over og UPDATE direkte i wrapperen → registry-valideringer (active-strategi, PII-coverage) omgås
+- **migration:supabase/migrations/20260515110350_p1a_fix_strategy_completeness.sql** (code): Seed direkte som 'active' i migration → lifecycle-trigger afviser (INSERT kun draft/approved)
+- **migration:supabase/migrations/20260515120000_p2_anonymization_mapping_lifecycle.sql** (code): Bevar is_active=true som eneste gate (fjern status-kravet) → r7d-klassens falsk-aktive mappings genopstår; fitness legacy-is-active-readers er modgiften
+- **migration:supabase/migrations/20260515120000_p2_anonymization_mapping_lifecycle.sql** (codex): skip-mapping-test-run-pii-coverage gør lokations-PII afhængig af utestede eller manglende strategier.
+- **migration:supabase/migrations/20260515130000_r7a_regprocedure_callable_fix.sql** (code): Brug v_proc::text direkte i format() i en ny lokations-dispatch → 'fn(text,text)($1,$2)' syntaksfejl ved første kørsel
+- **migration:supabase/migrations/20260515130100_r7b_has_permission_can_view_required.sql** (code): Genindfør '(not p_can_edit or can_edit)' som ENESTE betingelse → view-løse rækker åbner read-adgang
+- **migration:supabase/migrations/20260515130200_r7c_verify_anonymization_consistency_permission.sql** (code): Fjern cron-bypass → daglig verify-cron fejler (auth.uid() er NULL i cron) og alarmen dør
+- **migration:supabase/migrations/20260515130200_r7c_verify_anonymization_consistency_permission.sql** (codex): remove-verify-permission-check eksponerer anonymiseringskonsistens på tværs af lokationsentiteter.
+- **migration:supabase/migrations/20260515130300_r7d_is_active_status_alignment.sql** (code): Læs kun is_active i en status-bærende lokations-tabel → ikke-aktiverede rækker behandles som aktive (falsk-grøn adgang/drift)
+- **migration:supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql** (code): Udelad mapping.table_schema/table_name i en ny entity-vejs state-INSERT → 23502 ved første anonymisering
+- **migration:supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql** (codex): remove-anonymized-check-from-update tillader dobbeltanonymisering og falsk lokations-anonymization_state.
+- **migration:supabase/migrations/20260518000000_t9_pending_changes.sql** (code): Fjern effective_from-checket i pending_change_apply → future-dated ændringer materialiseres for tidligt (V6-sikkerhedsgrænsen sidder i GATEN, ikke i cron-filteret)
+- **migration:supabase/migrations/20260518000000_t9_pending_changes.sql** (codex): apply-pending-change-without-due-check gør fremtidige lokationsændringer effektive før godkendelsesvindue.
+- **migration:supabase/migrations/20260518000001_t9_org_nodes.sql** (code): Fjern besøgs-array-checket i cycle-traverseringen → cyklus opdages først ved dybde-loftet og semantisk korrupte træer når closure-rebuild
+- **migration:supabase/migrations/20260518000001_t9_org_nodes.sql** (codex): remove-org-node-cycle-check kan gøre lokationssubtree ACL uendelig eller forkert.
+- **migration:supabase/migrations/20260518000002_t9_org_node_closure.sql** (code): Fjern tabellen fra AUDIT_EXEMPT_SNAPSHOT_TABLES uden at tilføje audit-trigger → fitness audit-trigger-coverage rød; omvendt: tilføj en ny lokations-derived-tabel UDEN allowlist-entry → samme check rød
+- **migration:supabase/migrations/20260518000002_t9_org_node_closure.sql** (codex): closure-includes-future-dated-versions giver lokationssubtree adgang før org-ændringer træder i kraft.
+- **migration:supabase/migrations/20260518000003_t9_employee_node_placements.sql** (code): Drop partial-UNIQUE + EXCLUDE i en lokations-tilladelsestabel → dobbelt-aktive/overlappende tilladelser og 'gældende pr. dato'-semantikken dør
+- **migration:supabase/migrations/20260518000004_t9_client_node_placements.sql** (code): Fjern team-only-triggeren → klienter kan placeres på afdelinger og team-scoping (krav 3.4) brister
+- **migration:supabase/migrations/20260518000004_t9_client_node_placements.sql** (codex): drop-client-placement-no-overlap tillader samtidige lokationsplaceringer for samme client.
+- **migration:supabase/migrations/20260518000005_t9_permission_elements.sql** (code): Slet en page-række i stedet for deactivate → FK RESTRICT fra tabs/grants blokerer; omgås det, mister grants deres mål
+- **migration:supabase/migrations/20260518000005_t9_permission_elements.sql** (codex): remove-permission-parent-fks tillader lokations-tabs uden area/page-forankring.
+- **migration:supabase/migrations/20260518000006_t9_grants_and_helpers.sql** (code): Byt default-deny til default-allow i permission_resolve → alle ikke-tildelte lokations-elementer bliver synlige — punktet ER rettighedsgrænsen
+- **migration:supabase/migrations/20260518000006_t9_grants_and_helpers.sql** (codex): permission-resolve-default-allow giver lokationsflader adgang uden eksplicit grant.
+- **migration:supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql** (code): Kald pending_change_request direkte uden wrapper → revoked fra authenticated → permission denied
+- **migration:supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql** (codex): wrapper-without-has-permission lader lokationsændringer oprettes i pending uden rollecheck.
+- **migration:supabase/migrations/20260518000008_t9_read_rpcs.sql** (code): Tilbyd kun read() uden read_at(dato) i lokations-API'et → historik-kravet (§1.12 versionering) kan ikke opfyldes uden ny flade
+- **migration:supabase/migrations/20260518000009_t9_migrate_role_page_permissions.sql** (code): Fjern legacy-fallbacken uden at migrere alle konsumenter → alle sider uden grants-row mister adgang på én gang
+- **migration:supabase/migrations/20260518000010_t9_seed_owners.sql** (code): Opret lokations-sider i et NYT area uden superadmin-area-grant → superadmin mister adgang til lokations-UI (m1-mønstret er modgiften: eksplicit seed)
+- **migration:supabase/migrations/20260518000011_t9_classify.sql** (code): Udelad → CI-blokeret
+- **migration:supabase/migrations/20260518100000_t9_fundament_supplement.sql** (code): Sæt session-var FØR permission-checket i en ny lokations-RPC → et fejlet permission-check efterlader stadig autoriseret transaktion — rækkefølgen ER mønstret
+- **migration:supabase/migrations/20260519000000_m1_t9_superadmin_permissions.sql** (code): Udelad seed for lokations-siderne → smoke-testen blokerer main
+- **migration:supabase/migrations/20260520000000_t9_supplement.sql** (code): Fjern subtree-grenen i cnp-select-policyen → tilbage til admin-only og alle team-lederes lokations-klient-opslag dør; udvid den med using(true) → org-bred dataeksponering
+- **migration:supabase/migrations/20260520000000_t9_supplement.sql** (codex): client-place-append-only-no-split skaber overlappende lokations-/klientplaceringer og bryder no-overlap-invariant.
+- **migration:supabase/migrations/20260521000001_t10_tables.sql** (code): Kopiér skabelonen til lokations-tabellen men glem DML-GRANT-linjen → alle writes fejler med permission denied FØR policy-evaluering (Codex V4-KRITISK-lektionen)
+- **migration:supabase/migrations/20260521000001_t10_tables.sql** (codex): allow-partial-logo-or-delete-clients bryder lokationsskabelonens forventede klientreference- og asset-kontrakt.
+- **migration:supabase/migrations/20260521000002_t10_is_permanent_allowed_extend.sql** (code): Tilføj kun nye entries uden at medtage baseline → alle eksisterende permanent-klassificeringer bliver re-valideringsbrud ved næste registry-UPDATE
+- **migration:supabase/migrations/20260521000002_t10_is_permanent_allowed_extend.sql** (codex): wildcard-core-identity-permanent-allowlist bryder reviewkravet for lokationsklassifikation.
+- **migration:supabase/migrations/20260521000003_t10_classify.sql** (code): Klassificér en identificerende lokations-kolonne (fx kontaktperson) som 'none' → audit skriver den i klartekst
+- **migration:supabase/migrations/20260521000004_t10_audit_filter_values.sql** (code): Tilføj is_active-filter på direct-key-walkingen → felt-deaktivering lækker eksisterende værdier i klartekst (Codex V1-KRITISK-hullet genåbnes)
+- **migration:supabase/migrations/20260521000004_t10_audit_filter_values.sql** (codex): filter-dynamic-fields-only-when-definition-active lækker historisk direct PII i audit for inaktive lokationsfelter.
+- **migration:supabase/migrations/20260521000005_t10_clients_validate_fields.sql** (code): Gør triggeren strict-by-default uden migrationsplan → eksisterende rækker med udfasede nøgler blokerer alle UPDATEs
+- **migration:supabase/migrations/20260521000005_t10_clients_validate_fields.sql** (codex): clients-fields-strict-never-raises lader lokationsskabelonen gemme ukontrollerede dynamiske klientfelter.
+- **migration:supabase/migrations/20260521000006_t10_seed_permissions.sql** (code): Seed kun page-grant uden tab-grant → tab-aware has_permission('lokationer','manage') matcher via page-fallback, men mønsteret her er tab-grants — inkonsistens giver svær-diagnosticerbar adgang
+- **migration:supabase/migrations/20260521000006_t10_seed_permissions.sql** (codex): seed-permissions-without-area-scope kan give lokationsgrants til forkert page ved navnekollision.
+- **migration:supabase/migrations/20260521000007_t10_client_node_placements_fk.sql** (code): Vælg ON DELETE CASCADE i stedet → sletning af klient sletter placerings-historik (historik-princippet brydes)
+- **migration:supabase/migrations/20260521000007_t10_client_node_placements_fk.sql** (codex): drop-client-placement-client-fk tillader dangling lokationsplaceringer.
+- **migration:supabase/migrations/20260521000008_t10_client_active_check.sql** (code): Tjek kun aktiv-status i wrapperen og ikke i apply-handleren → deaktivering mellem request og apply glider igennem (dobbelt-verifikations-mønstret ER pointen)
+- **migration:supabase/migrations/20260521000008_t10_client_active_check.sql** (codex): client-node-place-allows-inactive-nonadmin gør lokationsplacering mulig for lukkede klienter.
+- **migration:supabase/migrations/20260521000009_t10_client_rpcs.sql** (code): Lad upsert-UPDATE tage is_active med → navnerettelse reaktiverer en deaktiveret lokation (V8-lektionen)
+- **migration:supabase/migrations/20260521000009_t10_client_rpcs.sql** (codex): client-upsert-mutates-is-active-on-update blander masterdata og aktiveringsflow for lokationsknyttede klienter.
+- **migration:supabase/migrations/20260521000010_t10_client_field_definition_rpcs.sql** (code): Tilføj superadmin-bypass på pii-nedgraderingen → audit-PII-datalæk med ét UI-klik
+- **migration:supabase/migrations/20260521000010_t10_client_field_definition_rpcs.sql** (codex): allow-direct-pii-downgrade bryder audit_filter_values og anonymization coverage for lokationsrelaterede dynamiske felter.
+- **migration:supabase/migrations/20260521000011_t10_client_logo_rpcs.sql** (codex): allow-partial-client-logo gør lokationsvisning afhængig af inkonsistent asset-state.
+- **migration:supabase/migrations/20260521000012_t10_client_read_rpcs.sql** (code): Gør list-RPC'en SECDEF uden markør → fitness secdef-marker-discipline rød; udelad permission-check → policy alene bærer (og policy er has_permission — dobbelt-laget er bevidst)
+- **migration:supabase/migrations/20260521000012_t10_client_read_rpcs.sql** (codex): client-field-list-includes-inactive-by-default får lokationsUI til at tilbyde felter der bevidst er slået fra.
+- **migration:supabase/migrations/20260521000013_t10_seed_legacy_permissions.sql** (code): Genindfør legacy-seeds → dobbelt sandhedskilde for permissions genopstår
+- **migration:supabase/migrations/20260521000013_t10_seed_legacy_permissions.sql** (codex): omit-legacy-permission-seed-for-new-location-pages gør has_permission-baserede tests og fallback-roller inkonsistente.
+- **migration:supabase/migrations/20260521000014_t10_remove_legacy_permissions.sql** (code): Slet legacy-fallbacken i has_permission samtidig → sider der stadig kun har legacy-rows (pre-T9-seeds) mister adgang
+- **migration:supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql** (code): Glem grant på lokations-wrapper → 'fungerer i SQL-editor, fejler i app' — klassikeren denne migration retter
+- **migration:supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql** (codex): omit-wrapper-t9-write-authorized gør lokationswrapperen ubrugelig under FORCE RLS.
+- **migration:supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql** (code): Udelad grants på lokations-RPC'er → hele API-fladen er død for appen trods korrekt SQL
+- **migration:supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql** (codex): forget-authenticated-execute-grant gør lokationsskabelonens RPC-flade død i API-laget.
+- **migration:supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql** (code): Udvid bypass til strukturelle vagter → superadmin kan skrive semantisk umulige tilstande (placering på ikke-eksisterende mål)
+- **migration:supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql** (codex): superadmin-bypasses-structural-team-close lader lokationsclosure/placements pege på ikke-team eller manglende version.
+- **migration:supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql** (code): Gør requires_second_approver UI-redigerbar → fortrydelses-/godkender-invarianten (krav §2.5) kan slås fra i drift
+- **migration:supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql** (codex): let-action-permission-fallback-to-tab-write giver lokationshandlinger approve-adgang uden eksplicit action-grant.
+- **migration:supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql** (code): Tilføj arv/fallback til action-grant-opslaget → additiv-modellen brister og en bred tab-grant giver implicit alle handlinger
+- **migration:supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql** (codex): has-permission-action-ignore-tab-write lader lokationsactions køre uden almindelig write-ret til fanen.
+- **migration:supabase/migrations/20260521100005_t9_supplement_2_pending_changes_select_policy.sql** (code): Tilføj lokations-change_type til dispatcheren men IKKE til select-policyen → godkendere kan ikke se det de skal godkende (funktionelt dødt flow)
+- **migration:supabase/migrations/20260521100006_t9_supplement_2_pending_change_approve.sql** (code): Spring action-grenen over for lokations-pendings → 2.-godkender-kravet håndhæves ikke
+- **migration:supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql** (code): Udvid upsert-RPC med de kode-låste flag → migration-seed-låsen omgås fra UI
+- **migration:supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql** (codex): permission-action-upsert-allows-requires-second-approver-edit gør kode-låste lokationsaction-flags mutable via UI.
+- **migration:supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql** (code): Glem re-grant efter DROP+CREATE → RPC forsvinder fra API-fladen
+- **migration:supabase/migrations/20260607100001_core_identity_secdef_permission_action.sql** (code): Fjern has_permission-checket i en SECDEF-body → funktionen er åben for alle authenticated (RLS gælder ikke længere som bagstopper)
+- **migration:supabase/migrations/20260607100002_core_identity_secdef_permission_area.sql** (code): Fjern has_permission-checket i en SECDEF-body → funktionen er åben for alle authenticated (RLS gælder ikke længere som bagstopper)
+- **migration:supabase/migrations/20260607100003_core_identity_secdef_permission_page.sql** (code): Fjern has_permission-checket i en SECDEF-body → funktionen er åben for alle authenticated (RLS gælder ikke længere som bagstopper)
+- **migration:supabase/migrations/20260607100004_core_identity_secdef_permission_tab.sql** (code): Fjern has_permission-checket i en SECDEF-body → funktionen er åben for alle authenticated (RLS gælder ikke længere som bagstopper)
+- **migration:supabase/migrations/20260607110001_core_identity_secdef_pending_change.sql** (code): Konvertér til SECDEF uden at genindsætte gates 1:1 → godkendelses-disciplinen bæres ikke længere af RLS (revoked) og er væk
+- **migration:supabase/migrations/20260607110001_core_identity_secdef_pending_change.sql** (codex): approve-action-without-has-permission-action gør lokationsændringer godkendelige uden action-grant og tab-write-kontrol.
+- **migration:supabase/migrations/20260607110002_core_identity_secdef_role_permission_grant.sql** (code): Fjern element-type-valideringen → grants uden mål
+- **migration:supabase/migrations/20260607110003_core_identity_secdef_undo_setting.sql** (code): Fjern permission-gaten → enhver kan nulstille undo-perioder til 0 og fjerne fortrydelsesretten
+- **migration:supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql** (code): Giv authenticated skrive-grant på lokations-tabellen 'for nemheds skyld' → §1.1/§3#18-grænsen brydes og CI blokerer
+- **migration:supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql** (codex): remove-core-write-revokes giver app-roller direkte mutationsevne på nye lokationstabeller og omgår pending/audit/RPC-kontrakten.
+- **migration:supabase/migrations/20260610190000_gov4_g061_comment_paritet.sql** (code): Ret kun kommentaren i repoet uden migration → permanent drift mellem repo og live
+- **oid:021357f80b6e770bafe9dc63b91d841a0bf636bc:supabase/classification.json** (code): Genoptag brug af filen → dobbelt sandhedskilde for klassifikation
+- **oid:4312d4b59493cd35cad092c17fd9921190747be5:.github/workflows/ci.yml** (code): Sæt MIGRATION_GATE_STRICT=false → uklassificerede lokations-kolonner glider igennem som warnings
+- **oid:70d52135782e35327a8392e7e5922f322750279c:scripts/types-gen.sh** (code): Fjern core_identity fra SCHEMAS-listen → lokations-typer forsvinder fra frontend-kontrakten uden fejl
+- **oid:b09f79cf83b27b83d00e1575768e90600de83f18:supabase/advisor-baseline.json** (code): Regenerér baselinen ukritisk fra live → utilsigtede eksponeringer hvidvaskes
+- **oid:d1b4d601ef273e62dbaba42261cc20ba051882c5:scripts/fitness.mjs** (code): Tilføj lokations-tabellen til AUDIT_EXEMPT_SNAPSHOT_TABLES i stedet for at skrive audit-trigger → mekanisk grøn men audit-mønstret (§1.3) reelt fravalgt — allowlist-udvidelser ER pakkens review-flade
+- **oid:d1b4d601ef273e62dbaba42261cc20ba051882c5:scripts/fitness.mjs** (codex): remove-fitness-secdef-audit-fk-appwrite-gates lader lokationspakken lande uden de fælles sikkerheds- og driftinvarianter.
+- **oid:e767efb8b392a98102f88dd9008d6d6ad6dfb05f:scripts/run-db-tests.mjs** (code): Skriv lokations-tests uden ROLLBACK → test-artefakter i produktions-DB (h024-oprydningens grundårsag)
+- **oid:e79ce6eb985c5994cd320398cb9c23f101db8135:scripts/migration-gate.mjs** (code): Parse-hul: kolonner skabt via dynamisk SQL (EXECUTE format('ALTER TABLE...')) ses ikke af gaten — undgå dynamisk DDL i lokations-migrationer
+- **oid:e79ce6eb985c5994cd320398cb9c23f101db8135:scripts/migration-gate.mjs** (codex): ignore-alter-table-columns-in-migration-gate lader lokationspakken tilføje uk klassificerede felter uden CI-stop.
+- **oid:ecc23f9767347a90cf0bdee677bebec84c36efbf:scripts/schema-check.sh** (code): Antag at schema-check vogter core_* → falsk tryghed; migrations-disciplin + types:check er de reelle vagter dér
+- **oid:f3012195132643a4f6740884b0723e3487fb07a0:scripts/governance-check.mjs** (code): Omformulér formålsblokken i planen 'redaktionelt' → §3.0-brud fanges mekanisk
+- **rls_enabled:core_compliance.anonymization_mappings** (code): Fjern FORCE → direkte ejer-side mutation uden lifecycle-trigger-kontekst
+- **rls_enabled:core_compliance.anonymization_state** (code): Tilføj select-policy → anonymiserings-historik (hvem/hvornår) eksponeres uden om audit-permission
+- **rls_enabled:core_compliance.anonymization_state** (codex): add-authenticated-select-on-anonymization-state eksponerer anonymiseringshistorik uden RPC-permission.
+- **rls_enabled:core_compliance.anonymization_strategies** (code): Fjern FORCE → registry kan muteres uden om lifecycle-triggernes kontekstkrav
+- **rls_enabled:core_compliance.audit_log** (code): Slå FORCE til → stork_audit()-INSERTs blokeres og AL auditering dør (undtagelsen er bevidst)
+- **rls_enabled:core_compliance.audit_log** (codex): add-authenticated-select-policy-on-audit-log eksponerer lokationsaudit uden admin-RPC.
+- **rls_enabled:core_compliance.cron_heartbeats** (code): Tilføj åben select-policy → drift-detaljer (fejlbeskeder m. potentielt følsom kontekst) eksponeres bredt
+- **rls_enabled:core_compliance.cron_heartbeats** (codex): add-cron-heartbeats-select-policy leaks intern driftstatus uden admin-gate.
+- **rls_enabled:core_compliance.data_field_definitions** (code): Fjern FORCE → ejerkontekst-queries omgår policy-gaten
+- **rls_enabled:core_compliance.superadmin_settings** (code): Fjern FORCE → konfig kan ændres uden RPC-vejens change_reason-krav
+- **rls_enabled:core_identity.client_field_definitions** (code): Fjern FORCE → konfig muteres uden om immutable-key-RPC-invarianterne
+- **rls_enabled:core_identity.client_node_placements** (code): Fjern FORCE → apply-handlere/invoker-læsere omgår subtree-grænsen
+- **rls_enabled:core_identity.clients** (code): Fjern FORCE → SECURITY INVOKER-helpers ser forbi policies i ejer-kontekst
+- **rls_enabled:core_identity.employee_active_config** (code): Fjern select-adgangen → is_active_employee_state (INVOKER) fejler for alle og adgangskæden lukker
+- **rls_enabled:core_identity.employee_node_placements** (code): Udelad FORCE på lokations-tilladelsestabellen → RLS gælder ikke ejerkontekst
+- **rls_enabled:core_identity.employees** (code): Fjern FORCE → invoker-helpers læser hele tabellen uanset policy
+- **rls_enabled:core_identity.org_node_closure** (code): Stram select-policyen → acl_subtree_* returnerer tomt for alle og subtree-visibility dør
+- **rls_enabled:core_identity.org_node_versions** (code): Åbn en write-policy+grant → versionsdisciplinen (pending-vejen) omgås
+- **rls_enabled:core_identity.org_nodes** (code): Fjern FORCE → ejer-kontekst-veje omgår policies; drop ENABLE helt → advisor-baseline/db-rls-policies-fitness rød
+- **rls_enabled:core_identity.pending_changes** (code): Fjern FORCE → INVOKER-veje ser alle pendings (payloads kan bære følsomme data)
+- **rls_enabled:core_identity.permission_actions** (code): Åbn write-policyen → permission-strukturen kan omformes uden om permissions/manage-gaten
+- **rls_enabled:core_identity.permission_actions** (codex): permission-actions-write-policy-open gør second-approver/undo flags app-mutable.
+- **rls_enabled:core_identity.permission_areas** (code): Åbn write-policyen → permission-strukturen kan omformes uden om permissions/manage-gaten
+- **rls_enabled:core_identity.permission_pages** (code): Åbn write-policyen → permission-strukturen kan omformes uden om permissions/manage-gaten
+- **rls_enabled:core_identity.permission_tabs** (code): Åbn write-policyen → permission-strukturen kan omformes uden om permissions/manage-gaten
+- **rls_enabled:core_identity.role_page_permissions** (code): Slet tabellen før fallback-fjernelse → has_permission's fallback-gren fejler hårdt
+- **rls_enabled:core_identity.role_permission_grants** (code): Åbn select til anon → hele rettighedskortet eksponeres uautentificeret
+- **rls_enabled:core_identity.roles** (code): Fjern FORCE → ejer-kontekst-mutation udenom session-var-regimet
+- **rls_enabled:core_identity.undo_settings** (code): Drop ENABLE/FORCE → undo-konfig muteres udenom t9_write_authorized-regimet i ejerkontekst
+- **rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_insert** (code): with check(true) → mappings (og dermed dispatcher-targets!) kan plantes af enhver authenticated — dispatch-fladen er en rettighedsgrænse
+- **rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_insert** (codex): mapping-insert-policy-open gør ikke-testede lokationsmappings aktive uden godkendt lifecycle.
+- **rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_select** (code): Stram select til admin-only → UI-mapping-oversigten og mapping-upsert-flowet (læs-før-skriv) dør for ikke-admins med anonymization_mappings/manage-grant
+- **rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_update** (code): Fjern policy → (post-revoke) ingen effekt for authenticated-DML, men SECDEF-veje mister defense-in-depth; D4-fitness kræver policyen for aktive mappings
+- **rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_update** (codex): mapping-update-policy-open omgår test_run/approve/activate-kæden for lokationsdata.
+- **rls_policy:core_compliance.anonymization_strategies:strategies_delete** (code): Fjern delete-triggeren → aktive strategier kan slettes under fødderne på mappings
+- **rls_policy:core_compliance.anonymization_strategies:strategies_delete** (codex): allow-delete-active-strategy gør historisk lokationsanonymisering ikke-reproducerbar.
+- **rls_policy:core_compliance.anonymization_strategies:strategies_insert** (code): with check(true) → vilkårlige funktions-referencer kan registreres som strategier
+- **rls_policy:core_compliance.anonymization_strategies:strategies_insert** (codex): strategy-insert-policy-open lader app-kode registrere ukontrollerede anonymiseringsstrategier.
+- **rls_policy:core_compliance.anonymization_strategies:strategies_select** (code): Stram select → strategi-vælgeren i mapping-UI kan ikke liste registry'et
+- **rls_policy:core_compliance.anonymization_strategies:strategies_update** (code): Slå de to session-vars sammen → aktiverings-privilegiet smitter med almindelig redigering
+- **rls_policy:core_compliance.anonymization_strategies:strategies_update** (codex): strategy-update-policy-open bryder godkendelses- og aktiveringskæden for PII-anonymisering.
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_delete** (code): Åbn delete → klassifikationer kan fjernes og audit_filter_values mister hash-grundlag (klartekst-PII)
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_delete** (codex): data-field-definitions-delete-open sletter audit-filter-grundlaget for lokationsfelter.
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_insert** (code): with check(true) → klassifikations-registret kan forurenes udenom change_reason-kravet
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_insert** (codex): data-field-definitions-insert-using-true tillader ukontrolleret klassifikation af lokationsfelter.
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_select** (code): Stram til admin-only → INVOKER-veje (audit_filter_values er SECDEF og upåvirket, men UI-opslag dør)
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_update** (code): Fjern WITH CHECK → række kan flyttes ind i u-gated tilstand ved UPDATE
+- **rls_policy:core_compliance.data_field_definitions:data_field_definitions_update** (codex): data-field-definitions-update-using-true lader lokationsklassifikation ændres uden audit-reason/RPC-kontrol.
+- **rls_policy:core_compliance.superadmin_settings:superadmin_settings_select** (code): Stram select → enforce_admin_floor (SECDEF) virker stadig, men UI mister floor-visning; åbn i stedet for anon → konfig-eksponering
+- **rls_policy:core_compliance.superadmin_settings:superadmin_settings_update** (code): Konvertér gaten til has_permission → superadmin-ankeret (Mathias-korrektionen) opgives
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_insert** (code): with check(true) → nye direct-PII-nøgler kan registreres udenom RPC'ens pii-validering
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_insert** (codex): client-field-definitions-insert-open lader lokationsfladen tilføje direct PII uden RPC-kontrol.
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_select** (code): Skift til using(true) → felt-katalog (inkl. pii-markeringer) eksponeres uden permission
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_select** (codex): client-field-definitions-select-using-true eksponerer PII-konfigurationsmetadata uden rollecheck.
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_update** (code): Flyt immutabilitets-checket KUN til policy → SECDEF-veje (bypassrls) ville omgå det; RPC-laget er det rigtige sted
+- **rls_policy:core_identity.client_field_definitions:client_field_definitions_update** (codex): allow-direct-pii-downgrade gør audit/anonymisering af dynamiske lokationsfelter inkonsistent.
+- **rls_policy:core_identity.client_node_placements:client_node_placements_select** (code): Fjern date-parametriseringen → historiske opslag (read_at) RLS-filtreres mod NUTIDENS subtree og giver falske huller i historik
+- **rls_policy:core_identity.client_node_placements:client_node_placements_select** (codex): client-node-placements-select-using-true lækker alle klienters lokationer til alle authenticated brugere.
+- **rls_policy:core_identity.clients:clients_insert** (code): with check(true) → upsert-invarianterne (navn-krav, logo-adskillelse) kan omgås via direkte INSERT fra SECDEF-kontekster uden var
+- **rls_policy:core_identity.clients:clients_insert** (codex): clients-insert-policy-open omgår klient-RPC og audit-reason før lokationsbinding.
+- **rls_policy:core_identity.clients:clients_select** (code): Skift til using(true) → alle authenticated ser klient-master inkl. PII-felter i fields
+- **rls_policy:core_identity.clients:clients_select** (codex): clients-select-using-true eksponerer klientmasterdata for lokationsfladen uden rollecheck.
+- **rls_policy:core_identity.clients:clients_update** (code): Tilføj delete-policy → 'klient bevares evigt'-kravet (§2.5.1) brydes
+- **rls_policy:core_identity.clients:clients_update** (codex): clients-update-policy-open lader lokationsfladen ændre client masterdata uden permission/audit.
+- **rls_policy:core_identity.employee_active_config:employee_active_config_select** (code): Stram til admin-only → alle non-admin-gates evaluerer mod 0 rækker → NULL → adgang lukker for alle
+- **rls_policy:core_identity.employee_active_config:employee_active_config_update** (code): Åbn update → grace-period/anonym-flag kan flippes og adgangs-semantikken ændres uden audit-årsag
+- **rls_policy:core_identity.employee_active_config:employee_active_config_update** (codex): employee-active-config-update-using-true bryder aktiv-medarbejder-gaten for alle lokationsrettigheder.
+- **rls_policy:core_identity.employee_node_placements:employee_node_placements_select** (code): Kopiér using(true) til lokations-tilladelsestabellen → alle authenticated ser hvilke klienter der må stå på hvilke lokationer
+- **rls_policy:core_identity.employees:employees_insert** (code): with check(true) → medarbejder-rækker kan plantes udenom employee_upsert's admin-gate + change_reason (post-revoke dog kun fra SECDEF-kontekster)
+- **rls_policy:core_identity.employees:employees_select** (code): using(true) → hele medarbejder-masteren (PII) åben for alle authenticated
+- **rls_policy:core_identity.employees:employees_update** (code): with check(true) → anonymized_at kan nulstilles udenom anonymiserings-vejen — GDPR-tilstand kan rulles tilbage uden spor af årsag
+- **rls_policy:core_identity.org_node_closure:org_node_closure_select** (code): Stram policyen → subtree-ACL evaluerer tomt og al subtree-visibility (inkl. klient-placeringer) dør
+- **rls_policy:core_identity.org_node_closure:org_node_closure_select** (codex): remove-closure-select-policy bryder lokationsaction higher-level og subtree-adgang.
+- **rls_policy:core_identity.org_node_versions:org_node_versions_select** (code): Kopiér denne åbne policy til en lokations-tabel med følsomme felter (dagspris!) uden vurdering → priser eksponeres org-bredt; lokations-select bør være permission-gated som clients_select
+- **rls_policy:core_identity.org_node_versions:org_node_versions_select** (codex): hide-org-node-versions-from-authenticated får lokationswrapperens team-checks og read-RPCs til at fejle.
+- **rls_policy:core_identity.org_nodes:org_nodes_select** (code): Stram select → org-træ-opslag og placement-joins dør for ikke-admins
+- **rls_policy:core_identity.org_nodes:org_nodes_select** (codex): remove-org-nodes-select-policy bryder subtree- og placeringslæsninger for lokationsfladen.
+- **rls_policy:core_identity.pending_changes:pending_changes_insert** (code): with check(true) → pendings kan plantes udenom permission-kæden
+- **rls_policy:core_identity.pending_changes:pending_changes_insert** (codex): pending-changes-insert-policy-open lader klienten fabrikkere lokationsændringer uden permission-wrapper.
+- **rls_policy:core_identity.pending_changes:pending_changes_select** (code): Tilføj lokations-gren med using(true)-agtig bredde → payload-overread på tværs af ansvarsområder
+- **rls_policy:core_identity.pending_changes:pending_changes_select** (codex): pending-changes-select-using-true lækker lokationsændringskøen til alle authenticated brugere.
+- **rls_policy:core_identity.pending_changes:pending_changes_update** (code): Fjern policy → (post-revoke moot for authenticated) SECDEF-fejlveje mister sidste net
+- **rls_policy:core_identity.pending_changes:pending_changes_update** (codex): pending-changes-update-policy-open omgår second-approver og undo-vindue for lokationsændringer.
+- **rls_policy:core_identity.permission_actions:permission_actions_insert** (code): Eksponér requires_second_approver i upsert-RPC → kode-låsen brydes
+- **rls_policy:core_identity.permission_actions:permission_actions_insert** (codex): permission-actions-insert-open lader klienten oprette godkendelsespligtige lokationshandlinger uden governance.
+- **rls_policy:core_identity.permission_actions:permission_actions_select** (code): Stram select → has_permission_action's action-opslag (INVOKER) fejler og action-gated flows dør
+- **rls_policy:core_identity.permission_actions:permission_actions_update** (code): using(true) → second_approver_type kan ændres udenom set_approver_type-RPC'ens CHECK-flade
+- **rls_policy:core_identity.permission_actions:permission_actions_update** (codex): permission-actions-update-open gør undo/approver-regler mutable uden review.
+- **rls_policy:core_identity.permission_areas:permission_areas_insert** (code): with check(true) → nye areas kan plantes udenom permissions/manage-gaten og forurene element-træet
+- **rls_policy:core_identity.permission_areas:permission_areas_insert** (codex): permission-areas-insert-open lader appen udvide rettighedsmodellen uden audit/RPC.
+- **rls_policy:core_identity.permission_areas:permission_areas_select** (code): Stram select → permission_resolve/har-adgang-opslag (INVOKER) mister element-læsning og UI-navigation dør
+- **rls_policy:core_identity.permission_areas:permission_areas_update** (code): with check/using(true) → areas kan deaktiveres udenom permissions/manage-gaten (hele UI-grene forsvinder)
+- **rls_policy:core_identity.permission_pages:permission_pages_insert** (code): with check(true) → lokations-sider (eller falske sider) kan seedes udenom gaten
+- **rls_policy:core_identity.permission_pages:permission_pages_insert** (codex): permission-pages-insert-open gør lokationspages oprettelige uden permissions/manage flow.
+- **rls_policy:core_identity.permission_pages:permission_pages_select** (code): Stram select → tab→page-opslag i has_permission (INVOKER) fejler og al tab-aware adgang lukker
+- **rls_policy:core_identity.permission_pages:permission_pages_update** (code): using(true) → pages kan omhænges/deaktiveres udenom gaten
+- **rls_policy:core_identity.permission_tabs:permission_tabs_insert** (code): with check(true) → tabs kan plantes udenom gaten (adgangsflade-forurening)
+- **rls_policy:core_identity.permission_tabs:permission_tabs_insert** (codex): permission-tabs-insert-open lader appen skabe rettighedsfaner uden auditspor.
+- **rls_policy:core_identity.permission_tabs:permission_tabs_select** (code): Stram select → tab-navne-join i has_permission fejler — samme lukning
+- **rls_policy:core_identity.permission_tabs:permission_tabs_update** (code): using(true) → tabs kan deaktiveres udenom gaten
+- **rls_policy:core_identity.role_page_permissions:role_page_permissions_delete** (code): Åbn delete uden floor-trigger-hensyn → admin-permission-rækker kan fjernes til under floor (triggeren er sidste værn)
+- **rls_policy:core_identity.role_page_permissions:role_page_permissions_insert** (code): with check(true) → legacy-permissions kan plantes og har effekt via has_permission-fallbacken — skjult rettighedsvej
+- **rls_policy:core_identity.role_page_permissions:role_page_permissions_select** (code): Stram select → has_permission's legacy-fallback (INVOKER) fejler og pre-T9-seedede sider mister adgang
+- **rls_policy:core_identity.role_page_permissions:role_page_permissions_update** (code): with check(true) → samme skjulte rettighedsvej via UPDATE
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_delete** (code): Fjern delete-policy uden at ændre grant_remove → (pre-secdef) remove ville dø under FORCE RLS
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_insert** (code): with check(true) → grants kan tildeles udenom permissions/manage — direkte privilege-eskalation
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_insert** (codex): role-permission-grants-insert-open gør lokationsadgang selvbetjeningsbar fra klienten.
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_select** (code): Stram select → permission_resolve (INVOKER) mister grant-læsning og AL adgang default-denyer
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_update** (code): using(true) → can_write/visibility kan hæves udenom gaten
+- **rls_policy:core_identity.role_permission_grants:role_permission_grants_update** (codex): role-permission-grants-update-open gør privilege escalation mulig for lokationsfladen.
+- **rls_policy:core_identity.roles:roles_delete** (code): Fjern floor-triggeren → sidste admin-rolle kan slettes og systemet låses ude
+- **rls_policy:core_identity.roles:roles_insert** (code): with check(true) → roller kan oprettes udenom role_upsert's change_reason-krav
+- **rls_policy:core_identity.roles:roles_select** (code): Stram select → has_permission's role-join (INVOKER) mister læseadgang og alle gates evaluerer false
+- **rls_policy:core_identity.roles:roles_update** (code): with check(true) → rolle-omdøbning udenom RPC → navnebaserede seeds (name='superadmin') rammer forbi
+- **rls_policy:core_identity.undo_settings:undo_settings_insert** (code): with check(true) → undo-perioder kan sættes udenom pending_changes/settings-gaten
+- **rls_policy:core_identity.undo_settings:undo_settings_select** (code): Stram select → UI kan ikke vise fortrydelsesfrist; approve-flowets deadline-beregning (SECDEF) er upåvirket
+- **rls_policy:core_identity.undo_settings:undo_settings_update** (code): with check(true) → fortrydelsesperioder kan nulstilles uden permission — fortrydelsesretten fjernes reelt
