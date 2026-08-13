@@ -36,7 +36,7 @@
     "binding": "byg fra committede artefakter ved OID — aldrig fra hukommelse"
   },
   "flade_filter": {
-    "note": "Pakke-flade-deklaration (Mathias 2026-08-13: recon-dækning KUN pakkens flade). Driver-forfattet fra ankerets skabelon-afsnit (§1.1/§1.3/§1.4/§1.11 + klient/org/permission-referencer), krydstjekket mod begge kode-aktørers uafhængige relevans-markeringer (union). Udelukket = core_money-domænet, break-glass, den droppede public-æra (c*/d*-lag), build-config. Scopet bekræftes ved krav OK.",
+    "note": "Pakke-flade-deklaration (Mathias 2026-08-13: recon-dækning KUN pakkens flade). Driver-forfattet fra ankerets skabelon-afsnit (§1.1/§1.3/§1.4/§1.11 + klient/org/permission-referencer), krydstjekket mod begge kode-aktørers uafhængige relevans-markeringer (union). Udelukket = core_money-domænet, break-glass, den droppede public-æra (c*/d*-lag), build-config. Scopet bekræftes ved krav OK. Suppleret efter omission-devil filter_angreb-fund (2026-08-13): p0_gdpr_responsible_employee (anonymiserings-governance-kant — lokation har anonymized_at).",
     "punkt_ids": [
       "config:supabase/config.toml",
       "migration:supabase/migrations/20260514120000_t1_drop_public.sql",
@@ -69,6 +69,7 @@
       "migration:supabase/migrations/20260514190000_q_seed_permissions.sql",
       "migration:supabase/migrations/20260514190100_q_audit_rpcs.sql",
       "migration:supabase/migrations/20260514190200_q_class_anon_rpcs.sql",
+      "migration:supabase/migrations/20260515110000_p0_gdpr_responsible_employee.sql",
       "migration:supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
       "migration:supabase/migrations/20260515110150_p1a_fix_lifecycle_coalesce.sql",
       "migration:supabase/migrations/20260515110200_p1b_anonymize_generic_apply.sql",
