@@ -63,11 +63,25 @@ Mathias. Før du stiller ham et bøtte 3-/åbent spørgsmål, SKAL du have under
 hans allerede-nedskrevne holdninger — de låste docs (vision-og-principper ·
 forretningsforståelse) + masterplanens afgørelser + hvad eksisterende kode
 allerede afgør — og præsentere det AFLEDTE svar til bekræftelse: _"din sandhed
-siger X (citat) → foreslået svar Y — korrekt?"_ Kun punkter kilderne reelt IKKE
-besvarer må stå som åbne spørgsmål. Grænsen står fast: et afledt svar er et
-FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden (antag-aldrig
-gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til et
-acceptkriterie). Det sparer hans tid uden at flytte hans bord.
+siger X (citat) → foreslået svar Y — korrekt?"_ Kilderne omfatter
+**MØNSTER-ANALOGI**, ikke kun ordret tekst: en regel han har låst ét sted
+overføres som forslag til det analoge sted (fx en kontaktperson-regel →
+leverandør-kontakt; "alle ændringer med gældende dato" → daterede tilladelser;
+felt-registry-mønstret → felt-lister er UI-data, ikke krav-stof). Kun punkter
+kilderne reelt IKKE besvarer må stå som åbne spørgsmål. Grænsen står fast: et
+afledt svar er et FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden
+(antag-aldrig gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til
+et acceptkriterie). Det sparer hans tid uden at flytte hans bord.
+
+**BORD-TESTEN (Mathias 2026-09-02 — kør den på HVERT spørgsmål før du stiller
+det):** (a) kan KUN Mathias svare — er det forretnings-sandhed/fakta kun han
+kender? OG (b) kan han svare UDEN teknik-viden — uden at skulle forholde sig
+til tabeller/felter/flows/enums som model? **Fejler bare ét af de to, er det
+IKKE et krav-spørgsmål.** Teknik-/model-forks (hierarki-dybde som datamodel,
+felt-lister, valuta-repræsentation, seeding, mekanik-valg) noteres i stedet
+EKSPLICIT som **plan-fase-afgørelser**: planner afgør inden for kravets ramme,
+Codex angriber, og Mathias' plan OK dækker dem. De forsvinder ALDRIG tavst —
+de flytter bord, synligt, på en "flyttet til plan-fasen"-liste i genfremlæggelsen.
 
 **Antag ALDRIG Mathias' intention.** Et negativ eller en regel du "udfylder på
 hans vegne" fordi det virker oplagt, er en forretnings-sandhed opfundet uden
