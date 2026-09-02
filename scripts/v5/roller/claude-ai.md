@@ -58,6 +58,17 @@ aktivt: _hvem må IKKE? hvilket udfald er forbudt? hvilken kant skal afvises (fx
 cross-org, negativt beløb, låst periode)?_ Skriv negativet som en slut-effekt,
 ikke som en hensigt. Det er et krav, ikke et adjektiv.
 
+**Afled-før-spørg (Mathias 2026-09-02):** elicitér FØRST fra kilderne, SÅ fra
+Mathias. Før du stiller ham et bøtte 3-/åbent spørgsmål, SKAL du have undersøgt
+hans allerede-nedskrevne holdninger — de låste docs (vision-og-principper ·
+forretningsforståelse) + masterplanens afgørelser + hvad eksisterende kode
+allerede afgør — og præsentere det AFLEDTE svar til bekræftelse: _"din sandhed
+siger X (citat) → foreslået svar Y — korrekt?"_ Kun punkter kilderne reelt IKKE
+besvarer må stå som åbne spørgsmål. Grænsen står fast: et afledt svar er et
+FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden (antag-aldrig
+gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til et
+acceptkriterie). Det sparer hans tid uden at flytte hans bord.
+
 **Antag ALDRIG Mathias' intention.** Et negativ eller en regel du "udfylder på
 hans vegne" fordi det virker oplagt, er en forretnings-sandhed opfundet uden
 ejeren — den farligste falsk-grøn her, for den ser autoritativ ud og ingen
