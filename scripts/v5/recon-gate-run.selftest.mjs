@@ -45,6 +45,11 @@ write(
   "alter table salg enable row level security;\n" + 'create policy "salg_egen" on salg for select using (org_id = auth_org());\n',
 );
 const proof = () => ({
+  ok: true,
+  gate_id: "recon",
+  proof_kind: "recon-coverage",
+  artifact_oid: null, // udfyldes med recon.md-blob-OID efter commit
+  bindings_oids: null, // udfyldes med {anker, bundle} efter commit
   bucket_map: {
     "migration:supabase/migrations/0001.sql": "nuvaerende-kode",
     "rls_enabled:salg": "nuvaerende-kode",
@@ -62,11 +67,17 @@ const proof = () => ({
   conflicts_preserved: true,
   omission_devil: { conclusion: "PASS", filter_angreb: "PASS", pakke_flade_angreb: "PASS" },
 });
-// to-trins-commit: først alt andet, så proof med korrekt bundle-OID
+// to-trins-commit: først alt andet, så proof med korrekte OID-bindinger
+// (beviset bærer SELV sine bindinger — runneren injicerer aldrig, Codex-fund)
 let C = commit("fixture uden proof");
 const bundleOid = git("rev-parse", `${C}:recon/bundle.json`);
-const p = proof();
-p.independence.bundle_oid = bundleOid;
+const bind = (pp) => {
+  pp.independence.bundle_oid = bundleOid;
+  pp.artifact_oid = git("rev-parse", `${C}:recon/recon.md`);
+  pp.bindings_oids = { anker: git("rev-parse", `${C}:launch/launch.json`), bundle: bundleOid };
+  return pp;
+};
+const p = bind(proof());
 write("recon/recon-coverage-proof.json", JSON.stringify(p) + "\n");
 C = commit("fixture med proof");
 
@@ -85,8 +96,7 @@ console.log("\nrunReconGate — fail-closed:");
 }
 {
   // manipuleret proof: et flade-punkt fjernet fra bucket_map → frisk re-derivation fanger det
-  const p2 = proof();
-  p2.independence.bundle_oid = bundleOid;
+  const p2 = bind(proof());
   delete p2.bucket_map["rls_enabled:salg"];
   write("recon/recon-coverage-proof.json", JSON.stringify(p2) + "\n");
   const C2 = commit("manipuleret proof");
@@ -97,8 +107,7 @@ console.log("\nrunReconGate — fail-closed:");
 }
 {
   // devil-akse fjernet → rød
-  const p3 = proof();
-  p3.independence.bundle_oid = bundleOid;
+  const p3 = bind(proof());
   delete p3.omission_devil.filter_angreb;
   write("recon/recon-coverage-proof.json", JSON.stringify(p3) + "\n");
   const C3 = commit("proof uden filter-akse");
@@ -106,6 +115,46 @@ console.log("\nrunReconGate — fail-closed:");
   r.open === false && r.reasons.some((x) => x.includes("filter_angreb"))
     ? ok("manglende devil-akse → rød")
     : bad("devil-akse", JSON.stringify(r));
+}
+{
+  // STALE proof (Codex-fund): recon.md ÆNDRES men beviset binder den gamle
+  // blob-OID → artifact_oid-mismatch SKAL lukke gaten (ingen injektion der
+  // "re-binder" beviset til det nye artefakt).
+  const p4 = bind(proof()); // binder recon.md @ C (gammel version)
+  write("recon/recon-coverage-proof.json", JSON.stringify(p4) + "\n");
+  write("recon/recon.md", "# recon — pakke-x\n\nÆNDRET efter beviset blev lavet.\n");
+  const C4 = commit("recon.md ændret, proof stale");
+  const r = runReconGate(C4, { root: ROOT });
+  r.open === false && r.reasons.some((x) => x.includes("artifact_oid"))
+    ? ok("stale proof mod ændret recon.md → rød (binding fra beviset, ikke injiceret)")
+    : bad("stale-proof", JSON.stringify(r));
+  write("recon/recon.md", "# recon — pakke-x\n"); // gendan til øvrige cases
+  write("recon/recon-coverage-proof.json", JSON.stringify(bind(proof())) + "\n");
+  commit("gendan");
+}
+{
+  // proof med ok:false i det committede bevis → rød (feltet respekteres, overskrives ikke)
+  const p5 = bind(proof());
+  p5.ok = false;
+  write("recon/recon-coverage-proof.json", JSON.stringify(p5) + "\n");
+  const C5 = commit("proof ok:false");
+  const r = runReconGate(C5, { root: ROOT });
+  r.open === false && r.reasons.some((x) => x.includes("ok er ikke eksplicit true"))
+    ? ok("committet ok:false → rød (runneren overskriver aldrig)")
+    : bad("ok-false", JSON.stringify(r));
+}
+{
+  // proof uden binding-felter → rød (runneren injicerer dem IKKE længere)
+  const p6 = proof();
+  p6.independence.bundle_oid = bundleOid;
+  delete p6.artifact_oid;
+  delete p6.bindings_oids;
+  write("recon/recon-coverage-proof.json", JSON.stringify(p6) + "\n");
+  const C6 = commit("proof uden bindinger");
+  const r = runReconGate(C6, { root: ROOT });
+  r.open === false && r.reasons.some((x) => x.includes("artifact_oid") || x.includes("bindings_oids"))
+    ? ok("proof uden egne binding-felter → rød (ingen injektion)")
+    : bad("uden-binding", JSON.stringify(r));
 }
 {
   const r = runReconGate("0".repeat(40), { root: ROOT });

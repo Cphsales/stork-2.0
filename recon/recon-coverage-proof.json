@@ -205,5 +205,12 @@
   "filter_angreb": "PASS",
   "pakke_flade_angreb": "PASS",
   "recon_commit": "5a7f068"
+ },
+ "ok": true,
+ "gate_id": "recon",
+ "artifact_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+ "bindings_oids": {
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293",
+  "bundle": "cde07ec7ac7daecc004f1d4671108b29570f4e28"
  }
 }

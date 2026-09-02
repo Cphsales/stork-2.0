@@ -95,6 +95,20 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
         fail(`${ak}: fund uden gyldigt id (fælles nøgling påkrævet)`);
         continue;
       }
+      // Codex-fund (2026-09-02): fund-bøtten SKAL være gyldig OG konsistent med
+      // den konsoliderede bucket_map for deriverede punkter — ellers kan et
+      // kode-punkt VISES i forkert bøtte i recon.md mens gaten er grøn
+      // (præsentations-falsk-grøn), eller et fund tabes tavst i renderen.
+      if (!BUCKETS.includes(f.boette)) {
+        fail(`${ak}: fund ${f.id} med ugyldig bøtte '${String(f.boette)}' (ville tabes/fejlroutes tavst i render)`);
+        continue;
+      }
+      if (hasOwn(bucket_map, f.id) && f.boette !== bucket_map[f.id]) {
+        fail(
+          `${ak}: fund ${f.id} bøtte '${f.boette}' modsiger den konsoliderede bucket_map '${bucket_map[f.id]}' (intern selvmodsigelse — fail-closed)`,
+        );
+        continue;
+      }
       const { id, ...substans } = f;
       const key = `${id}\u0000${canonical(substans)}`;
       if (seenSubstans.has(key)) continue; // ÆGTE dublet (byte-lig substans)
@@ -144,7 +158,11 @@ export function renderReconFiles({ recon, konflikter, meta }) {
   for (const f of recon.fund)
     for (const bid of f.bidrag) {
       const b = bid.boette;
-      if (!Object.prototype.hasOwnProperty.call(buckets, b)) continue;
+      // Codex-fund (2026-09-02): ukendt bøtte må ALDRIG droppes tavst — et fund
+      // der hverken lander i recon.md eller bilaget er informations-tab.
+      // Konsolideringen afviser ugyldige bøtter; dette er fail-closed-backstop.
+      if (!Object.prototype.hasOwnProperty.call(buckets, b))
+        throw new Error(`renderReconFiles: fund ${f.id} (${bid.aktor}) med ukendt bøtte '${String(b)}' (fail-closed — tavst drop forbudt)`);
       buckets[b].push({ id: f.id, bid, flerAktor: f.bidrag.length > 1 });
     }
   const ev = (bid) =>

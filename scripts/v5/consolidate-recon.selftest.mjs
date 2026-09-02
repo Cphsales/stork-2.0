@@ -89,6 +89,28 @@ t("usikkerheder bevares aktør-mærket", () => {
   assert(r.ok && r.recon.usikkerheder.some((u) => u.aktor === "code" && u.tekst === "forstod ikke X"), "usikkerhed tabt");
 });
 
+t("rød: fund-bøtte modsiger konsolideret bucket_map (præsentations-falsk-grøn, Codex-fund)", () => {
+  const c = alle({ code: { fund: [mkFund({ boette: "intet-data" })] } });
+  const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+  assert(!r.ok && r.reasons.some((x) => x.includes("modsiger den konsoliderede bucket_map")), "selvmodsigende fund-bøtte gled igennem");
+});
+
+t("rød: fund med ugyldig bøtte (ville tabes tavst i render, Codex-fund)", () => {
+  const c = alle({ code: { fund: [mkFund({ id: "oid:abc:x", boette: "ikke-bygget" })] } });
+  const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+  assert(!r.ok && r.reasons.some((x) => x.includes("ugyldig bøtte 'ikke-bygget'")), "ugyldig fund-bøtte gled igennem");
+});
+
+t("render-backstop: ukendt bøtte i håndbygget recon → kast (aldrig tavst drop)", () => {
+  let threw = false;
+  try {
+    renderReconFiles({ recon: { fund: [{ id: "x", bidrag: [{ aktor: "code", boette: "ukendt" }] }], usikkerheder: [], flade_enumeration: [], aktorer: [] }, konflikter: [], meta: {} });
+  } catch (e) {
+    threw = /tavst drop forbudt/.test(e.message);
+  }
+  assert(threw, "render droppede ukendt bøtte tavst");
+});
+
 t("render: mutation er ALDRIG i recon.md (krav-føde), KUN i bilaget (recon-2-spor)", () => {
   const c = alle({ code: { fund: [mkFund({ mutation: "drop WITH CHECK på a" })] } });
   const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });

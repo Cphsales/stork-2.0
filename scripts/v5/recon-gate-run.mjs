@@ -38,22 +38,17 @@ function runReconGateInner(commitSha, root) {
 
   const snapshot = buildSnapshot("recon", { git, commitSha, pakke });
 
-  // proof-input fra committet spor; bindes til snapshotens OID'er så et
-  // genbrugt/generisk bevis aldrig kan åbne gaten.
+  // proof-input fra committet spor — VERBATIM. Binding-felterne (gate_id ·
+  // proof_kind · artifact_oid · bindings_oids · ok) SKAL stå i det committede
+  // bevis selv; evaluateGate sammenligner dem mod snapshotens friske OID'er.
+  // Codex-fund (2026-09-02): runneren må ALDRIG injicere/overskrive dem fra
+  // snapshotet — det gjorde binding-checket til en tautologi, så et stale/
+  // generisk bevis kunne åbne gaten for et ÆNDRET recon.md. Mangler felterne →
+  // evaluateGate fail-lukker (manglende/mismatchede felter = rød).
   let proofResult = null;
   try {
     const raw = JSON.parse(git.bytes("show", `${commitSha}:recon/recon-coverage-proof.json`).toString("utf8"));
-    proofResult = {
-      ...raw,
-      ok: true,
-      gate_id: "recon",
-      proof_kind: "recon-coverage",
-      artifact_oid: snapshot.artifact?.oid ?? null,
-      bindings_oids: {
-        anker: snapshot.bindings?.anker?.oid ?? null,
-        bundle: snapshot.bindings?.bundle?.oid ?? null,
-      },
-    };
+    if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) proofResult = raw;
   } catch {
     proofResult = null; // evaluateGate fail-lukker på manglende proof_result
   }
