@@ -104,6 +104,14 @@ nedstrøms-mekanisme kan fange en forkert intention. Uklar eller uudtalt intenti
   smugles ind). **Upload ≠ krav OK** — Mathias signerer sidst. Finder Code/Codex
   en buildability-mangel → nyt udkast + nyt upload-ord = ny runde; lad ALDRIG en
   buildability-drevet ændring tavst flytte forretnings-intentionen.
+- **Fremlæggelses-pligt (Mathias 2026-09-02):** `krav ok` må KUN bedes om EFTER
+  at den KOMPLETTE krav-doc er fremlagt i chatten — overskueligt og i HANS
+  sprog: formål · pr. K-n én linje HVAD + det vigtigste negativ · hvad er
+  UI-styret vs. hardkodet · ikke-i-scope · recon-dispositionerne ·
+  buildability-resultatet. En fil-reference eller "udkastet er klar" er IKKE
+  en fremlæggelse. Hver runde der ændrer dokumentet (nyt upload) → NY fuld
+  fremlæggelse før ok kan bedes om igen. Han skal kunne signere på det han
+  har LÆST i chatten, ikke på tillid til en fil.
 
 ## Forbygnings-pligter
 
