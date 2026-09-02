@@ -3,7 +3,7 @@
 // Falsk-grøn-klasserne: tabt divergens (værst) · tavs manglende dækning ·
 // forkert input (bundle-mismatch) · attest-mangel · tavs aktør.
 
-import { consolidateRecon } from "./consolidate-recon.mjs";
+import { consolidateRecon, renderReconFiles } from "./consolidate-recon.mjs";
 
 let pass = 0, fail = 0;
 const t = (navn, fn) => {
@@ -87,6 +87,29 @@ t("usikkerheder bevares aktør-mærket", () => {
   c[0].usikkerheder = ["forstod ikke X"];
   const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
   assert(r.ok && r.recon.usikkerheder.some((u) => u.aktor === "code" && u.tekst === "forstod ikke X"), "usikkerhed tabt");
+});
+
+t("render: mutation er ALDRIG i recon.md (krav-føde), KUN i bilaget (recon-2-spor)", () => {
+  const c = alle({ code: { fund: [mkFund({ mutation: "drop WITH CHECK på a" })] } });
+  const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+  assert(r.ok, `uventet rød: ${r.reasons.join("; ")}`);
+  const { reconMd, bilagMd } = renderReconFiles({ recon: r.recon, konflikter: r.konflikter, meta: { pakke: "p" } });
+  assert(!reconMd.includes("drop WITH CHECK"), "mutation lækkede ind i krav-fladen");
+  assert(bilagMd.includes("drop WITH CHECK på a"), "mutation mangler i bilaget (spor tabt)");
+});
+
+t("render: claude-ai-fund normaliseres (kraever/forbyder → hvad/AFVISER) + divergens er mærket", () => {
+  const c = alle({
+    codex: { fund: [mkFund({ hvad: "RLS på a — divergent læsning" })] },
+    "claude-ai": { fund: [{ id: "doc:x#y", boette: "intet-data", omraade: "cooldown", kraever: "systemet skal K", forbyder: "aldrig F", forankring: "citat — dok x" }], flade_enumeration: ["vision §1"] },
+  });
+  const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+  assert(r.ok, `uventet rød: ${r.reasons.join("; ")}`);
+  const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: r.konflikter, meta: {} });
+  assert(reconMd.includes("systemet skal K") && reconMd.includes("AFVISER: aldrig F"), "claude-ai-fund ikke normaliseret");
+  assert(reconMd.includes("citat — dok x"), "doc-forankring tabt");
+  assert(reconMd.includes("divergens bevaret"), "fund-divergens ikke mærket i krav-fladen");
+  assert(reconMd.includes("fund-divergens @ migration:a.sql"), "konflikt-listen mangler divergensen");
 });
 
 console.log(`consolidate-recon.selftest: ${pass} grønne, ${fail} røde`);
