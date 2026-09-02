@@ -1,0 +1,341 @@
+{
+  "aktor": "claude-ai",
+  "bundle_oid": "cde07ec7ac7daecc004f1d4671108b29570f4e28",
+  "attester": { "workdir_attest": true, "web_forbud_attest": true, "read_forbud_attest": true },
+  "fund": [
+    {
+      "id": "doc:docs/strategi/forretningsforstaaelse.md#14-fm-grenen:lokation-som-master-data",
+      "boette": "dokument",
+      "omraade": "Lokation som master-data (FM-grenens fundament)",
+      "kraever": "Fysiske lokationer skal planlægges som master-data på linje med klient og medarbejder — en selvstændig, central entitet med eget liv, ikke et attribut på noget andet.",
+      "forbyder": "Forbyder lokation som fritekst/ad-hoc-felt på en booking; forbyder at lokationsdata opstår spredt pr. booking i stedet for i én master-data-kilde (vision: én autoritativ kilde pr. fakta); forbyder et parallelt FM-univers med egen lokations-model.",
+      "forankring": "\"Stork skal kunne planlægge fysiske lokationer som master-data på linje med klient og medarbejder\" — forretningsforstaaelse.md §14 FM-grenen. Understøttet af master-plan §1.12: \"Lokationer er master-data på linje med klienter og medarbejdere.\""
+    },
+    {
+      "id": "doc:docs/strategi/forretningsforstaaelse.md#14-fm-grenen:klient-tilladelses-kontrol",
+      "boette": "dokument",
+      "omraade": "Klient-tilladelse pr. lokation (kernenegativ for hele pakken)",
+      "kraever": "Systemet skal kunne kontrollere at en klient kun sælges på lokationer hvor der er tilladelse — tilladelsen er en dato-afgrænset, versioneret kendsgerning systemet håndhæver, ikke en konvention.",
+      "forbyder": "Forbyder booking/salg af en klient på en lokation uden gyldig tilladelse på den relevante dato; forbyder at tilladelses-kontrollen ligger som manuel disciplin/UI-konvention i stedet for håndhævet validering i skrive-vejen.",
+      "forankring": "\"Stork skal kunne kontrollere at en klient kun sælges på lokationer hvor der er tilladelse\" — forretningsforstaaelse.md §14 FM-grenen."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12:lokations-entitet-felter",
+      "boette": "dokument",
+      "omraade": "Lokations-entitetens forretningsindhold",
+      "kraever": "Pr. lokation: navn, adresse, default-dagspris, leverandør-FK, type (butik/messe/marked/event/andet), status (livscyklus), cooldown-konfiguration jsonb, anonymized_at. Type-enum'en er doc-fastlagt (i modsætning til status-enum'en som er åben).",
+      "forbyder": "Forbyder at udelade et af de otte doc-fastlagte felter; forbyder leverandør som fritekst (skal være FK til leverandør-entitet); forbyder type-værdier uden for den fastlagte liste uden ny Mathias-beslutning; forbyder pris-data uden lokations-anker.",
+      "forankring": "\"Pr. lokation: navn, adresse, default-dagspris, leverandør-FK, type (butik / messe / marked / event / andet), status (livscyklus), cooldown-konfiguration jsonb, anonymized_at\" — master-plan §1.12 Lokations-entitet."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12:placement-hierarki-og-pris-arv",
+      "boette": "dokument",
+      "omraade": "Lokation/placement-hierarki i samme tabel + pris-arv + cycle-detection",
+      "kraever": "Selv-refererende parent_location_id; top-niveau lokation kan have placements (stand-positioner) under sig; samme tabel håndterer begge; placement bærer egen pris hvis sat, ellers arves fra parent; cycle-detection-trigger via rekursiv CTE.",
+      "forbyder": "Forbyder to parallelle tabeller for lokation og placement (én-sandheds-princippet); forbyder cykler i hierarkiet (en lokation må aldrig være sin egen — direkte eller transitive — parent); forbyder placement uden pris-opløsning (enten egen pris eller entydig arv fra parent); forbyder pris-kopiering der bryder arven (to sandheder om samme pris).",
+      "forankring": "\"Selv-refererende `parent_location_id` — top-niveau lokation kan have placements (stand-positioner) under sig. Samme tabel håndterer både lokation og placement\" + \"Placement-niveau bærer egen pris hvis sat (ellers arves fra parent-lokation)\" + \"Cycle-detection-trigger via rekursiv CTE\" — master-plan §1.12."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12:status-livscyklus",
+      "boette": "dokument",
+      "omraade": "Lokations-status som første-klasses livscyklus (den doc-låste del)",
+      "kraever": "Status-overgange sker via dedikeret RPC og auditeres med årsag; bookings kan kun oprettes på aktiv lokation (håndhævet regel nedstrøms-forbrugerne bygger på).",
+      "forbyder": "Forbyder direkte status-UPDATE uden om RPC'en; forbyder status-ændring uden angivet årsag i audit; forbyder at booking-oprettelse på ikke-aktiv lokation kan lykkes; forbyder status-ændring ved overskrivning uden historik (vision-princip 9).",
+      "forankring": "\"Overgange via dedikeret RPC. Auditeres med årsag\" + \"Bookings kan kun oprettes på aktiv lokation\" — master-plan §1.12 Lokations-status som første-klasses livscyklus."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12:klient-tilladelser-form",
+      "boette": "dokument",
+      "omraade": "Klient-tilladelsers datamæssige form og håndhævelsespunkt",
+      "kraever": "Separat relations-tabel klient × lokation × from_date × to_date, versioneret; booking-RPC (nedstrøms, trin 24) validerer at klient er tilladt på lokation på booking-datoen — skabelonen skal levere tabellen og opslags-fladen.",
+      "forbyder": "Forbyder tilladelse som flag/jsonb på lokations- eller klient-rækken (skal være separat relations-tabel); forbyder destruktiv redigering af historiske tilladelses-versioner (versioneret = fortid skrives ikke om); forbyder tilladelses-model uden dato-interval (tilladelse er tidsafgrænset, ikke evig binær).",
+      "forankring": "\"Separat relations-tabel: klient × lokation × from_date × to_date. Versioneret\" + \"Booking-RPC validerer at klient er tilladt på lokation på booking-dato\" — master-plan §1.12 Klient-tilladelser pr. lokation."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12+appendix-a-fm:cooldown-pr-lokation",
+      "boette": "dokument",
+      "omraade": "Cooldown-dimensionen (låst afgørelse)",
+      "kraever": "Cooldown konfigureres pr. lokation — i konfig-tabel, UI-redigerbar. Nedstrøms (trin 24) tjekker cooldown-trigger at samme lokation ikke overlapper med tidligere booking inden for konfigureret cooldown.",
+      "forbyder": "Forbyder cooldown modelleret pr. klient eller pr. kampagne (eksplicit fravalgt, låst afgørelse); forbyder hardkodede cooldown-værdier i kode (skal være UI-redigerbar data, vision-princip 3); forbyder cooldown-regler der kun lever i UI-laget uden autoritativ konfig-kilde.",
+      "forankring": "\"**Cooldown pr. lokation** (ikke pr. klient eller kampagne — afgørelse fra rettelse 17). Konfig-tabel, UI-redigerbar.\" — master-plan §1.12. Låst i Appendix A FM-domæne: \"Cooldown | Pr. lokation (ikke pr. klient/kampagne)\". NB: se usikkerhed om rettelse-17-nummereringen."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.12:leverandoerer",
+      "boette": "dokument",
+      "omraade": "Leverandører som egen master-data-entitet",
+      "kraever": "Leverandør er egen master-data-entitet, separat fra lokation; lokation har leverandør-FK; leverandør-type-felt kategoriserer (kæde/enkelt-butik/messe-operatør/andet) og styrer rabataftale-lookup nedstrøms (trin 29).",
+      "forbyder": "Forbyder leverandør-data indlejret i lokations-tabellen; forbyder leverandør som fritekst-navn (samme leverandør må ikke kunne optræde som flere stave-varianter — én-sandheds-princippet); forbyder type-løs leverandør (typen er forretningsbærende: den styrer rabataftale-lookup).",
+      "forankring": "\"Egen master-data-entitet (separat fra lokation). Lokation har leverandør-FK\" + \"Leverandør-type-felt kategoriserer (kæde / enkelt-butik / messe-operatør / andet) — styrer rabataftale-lookup\" — master-plan §1.12 Leverandører."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#4-trin-10b:scope-og-schema",
+      "boette": "dokument",
+      "omraade": "Pakkens scope-afgrænsning og schema-placering",
+      "kraever": "Trin 10b leverer: lokationer + placements + leverandører + klient-tilladelser + status + cooldown, i schema core_identity, plus migration: udtræks-SQL for lokations-historik hvis relevant. §1.11 placerer 'lokationer' eksplicit i core_identity.",
+      "forbyder": "Forbyder at bygge nedstrøms-funktionalitet i denne pakke (bookinger, assignments, hotel, køretøj, leverandør-fakturering er trin 24-29 — skabelonen skal BÆRE dem, ikke bygge dem); forbyder placering af lokations-entiteterne i andet schema end core_identity; forbyder at droppe migration-leverancen uden eksplicit 'ikke relevant'-afgørelse.",
+      "forankring": "\"Lokations-skabelon (lokationer + placements + leverandører + klient-tilladelser + status + cooldown) + migration: udtræks-SQL for lokations-historik hvis relevant | core_identity\" — master-plan §4 trin 10b. + §1.11: \"core_identity — \\\"hvem og hvor\\\": medarbejdere, identitets-master, org-træ, teams, klient-team, roller, permissions, klienter, lokationer, vehicle-registry\"."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#2.7:nedstroems-baereevne",
+      "boette": "dokument",
+      "omraade": "Nedstrøms-forbrugere skabelonen skal kunne bære (trin 24-29)",
+      "kraever": "Bookinger (§2.7.1: klient-tilladelse valideres, cooldown-trigger pr. lokation, bookings kun på aktiv lokation), booking-assignments (§2.7.2), hotel (§2.7.3), køretøj/mileage (§2.7.4), leverandør-fakturering (§2.7.6: rabataftale-trapper på leverandør + per-lokation undtagelses-tabel lokation × leverandør × max_discount × excluded × from_date × to_date) hænger alle på lokationen. Skabelonens opslags-flader (aktiv-status, tilladelses-opslag pr. dato, cooldown-konfig, leverandør-type) skal kunne forbruges af disse trin uden om-design.",
+      "forbyder": "Forbyder skabelon-design der blokerer en kendt nedstrøms-forbruger (fx status-model uden entydigt 'aktiv'-begreb til booking-gate, cooldown-konfig der ikke kan evalueres pr. lokation, leverandør uden type til rabat-lookup, lokations-nøgle der ikke kan indgå i undtagelses-tabellen); forbyder at flytte nedstrøms-beslutninger (booking-livscyklus, assignment-status m.fl. — Appendix B: afgøres ved trin 24-27) ind i denne pakke.",
+      "forankring": "\"Bookinger, hotel-tildelinger, køretøjs-tildelinger og leverandør-fakturering hænger på lokationen.\" — master-plan §1.12 intro. + §2.7.1: \"Cooldown-trigger tjekker at samme lokation ikke overlapper med tidligere booking inden for konfigureret cooldown (pr. lokation)\" + §2.7.6: \"Relations-tabel: lokation × leverandør × max_discount × excluded × from_date × to_date\"."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#2.7.8:markeder-messer-ingen-saermodel",
+      "boette": "dokument",
+      "omraade": "Markeder/messer som type-værdi, ikke særmodel",
+      "kraever": "Messe og marked er type-værdier på lokationen; UI filtrerer på type; booking-flow er identisk uanset lokations-type.",
+      "forbyder": "Forbyder separat messe-/markeds-entitet eller -tabel; forbyder type-specifik mekanik i skabelonen (forskellige regler pr. lokations-type er ikke doc-hjemlet).",
+      "forankring": "\"Ikke en særmodel. Type-felt på lokation: messe eller marked blandt mulige værdier. UI filtrerer på type. Booking-flow er identisk uanset lokations-type.\" — master-plan §2.7.8. Låst i Appendix A FM-domæne: \"Markeder/messer | Type-felt på lokation, ikke særmodel\"."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#2.7.1:attribution-ikke-via-lokation",
+      "boette": "dokument",
+      "omraade": "Attribution — lokationen er IKKE en attributions-dimension",
+      "kraever": "Salg fra booking attribueres via klientens team på salgs-tidspunktet — samme regel som al anden salgs-attribution. Lokationen knytter kun det fysiske sted; klienten forbliver dimensionen.",
+      "forbyder": "Forbyder at lokations-skabelonen indfører lokations-baseret attribution, provision eller team-kobling (attribution går via klient, aldrig via lokation eller sælgers team — forretningsforstaaelse §3); forbyder lokations-ejerskab som skygge-dimension for økonomi.",
+      "forankring": "\"Salg fra booking attribueres via klientens team på salgs-tidspunktet — samme regel som al anden salgs-attribution\" — master-plan §2.7.1 Booking-attribution. + forretningsforstaaelse.md §3: \"Stork skal kunne afgøre team-attribution via klienten, ikke via sælgerens nuværende team\"."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.1:adgangs-moenster",
+      "boette": "dokument",
+      "omraade": "Adgangs-mønster for alle nye lokations-tabeller",
+      "kraever": "FORCE RLS som default pr. tabel, default deny; skrivning udelukkende via sanktionerede RPC'er (session-var-mønster); direkte tabel-rettigheder revoked; policy-prædikat-kolonner indexeret; smoke-test pr. rolle pr. tabel.",
+      "forbyder": "Forbyder direkte INSERT/UPDATE/DELETE på lokations-, tilladelses-, cooldown- og leverandør-tabeller uden om RPC; forbyder SECURITY DEFINER uden has_permission-gate og sanktions-markør (skjult RLS-bypass); forbyder adgangs-sandhed i app-laget i stedet for databasen.",
+      "forankring": "\"FORCE RLS som default pr. tabel. Default deny. Adgangs-sandheden lever i databasen, ikke i appen.\" — master-plan §1.1 Adgangs-mekanik."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.2:klassifikations-pligt",
+      "boette": "dokument",
+      "omraade": "Klassifikations-pligt for alle nye kolonner",
+      "kraever": "Hver ny kolonne (lokation, placement, tilladelse, cooldown-konfig, leverandør) skal have registry-indgang: kategori, PII-niveau, retention-type; migration-gate blokerer PR ved ny kolonne uden indgang.",
+      "forbyder": "Forbyder nye kolonner uden eksplicit klassifikation; forbyder implicit PII-/retention-antagelse (default = intet: ingen PII, ingen retention, ingen anonymisering medmindre aktivt valgt — vision-princip 4).",
+      "forankring": "\"Migration-gate blokerer PR ved ny kolonne uden registry-indgang\" — master-plan §1.2 Klassifikations-registry. + vision-og-principper.md princip 4: \"Ingen PII, ingen retention, ingen anonymisering, ingen audit-opgradering medmindre det aktivt vælges i UI.\""
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.3:audit-pligt",
+      "boette": "dokument",
+      "omraade": "Audit-pligt på alle lokations-mutationer",
+      "kraever": "Per-row audit som default på alle mutable lokations-tabeller (universel audit-trigger); status-overgange auditeres med årsag; audit er append-only og immutable.",
+      "forbyder": "Forbyder mutation af lokation/tilladelse/cooldown/leverandør uden audit-spor; forbyder at nogen lokations-tabel optages i snapshot-audit-undtagelsen (undtagelsen er en statisk allowlist for computational byproducts — lokations-data er forretnings-mutationer); forbyder ændring/sletning af audit-rækker.",
+      "forankring": "\"Én universel audit-tabel — append-only, immutable\" + \"Universel audit-trigger attaches pr. mutable tabel, bortset fra eksplicitte audit-undtagelser nedenfor\" — master-plan §1.3 Audit-mønster. + vision-og-principper.md princip 6: \"Per-row audit som default.\""
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.4:anonymisering-af-lokation",
+      "boette": "dokument",
+      "omraade": "Anonymiserings-mønster (lokationen har anonymized_at)",
+      "kraever": "Anonymisering = UPDATE, ikke DELETE; master-row bevares evigt; anonymized_at sættes; felt-listen pr. entitet er deklareret data (anonymiserings-mapping), ikke hardkodet; anonymization_state er autoritativ kilde med replay efter restore.",
+      "forbyder": "Forbyder DELETE som anonymiserings-mekanisme (audit-FK'er må aldrig orphan'e); forbyder hardkodet felt-liste for hvad der anonymiseres på lokationen; forbyder anonymisering uden om anonymize_<entity>-RPC-vejen. NB: HVAD der er personhenførbart på en lokation er intet-data — se separat fund.",
+      "forankring": "\"Anonymisering = UPDATE, ikke DELETE. Audit-FK'er må aldrig orphan'e.\" — master-plan §1.4. + §1.12 lokations-entitet inkluderer \"anonymized_at\"."
+    },
+    {
+      "id": "doc:docs/strategi/vision-og-principper.md#princip-9:status-bevarer-historik",
+      "boette": "dokument",
+      "omraade": "Historik-bevarelse på tværs af pakken (status + tilladelser)",
+      "kraever": "Statusændringer og tilladelses-ændringer sker via status-felter/separate versionerede rækker med bevaret historik — man skal altid kunne se hvad der gjaldt hvornår.",
+      "forbyder": "Forbyder overskrivning af oprindelig data ved forretningshandlinger (status-skift, tilladelses-ændring, cooldown-ændring); forbyder at en tilladelses-periode redigeres destruktivt i stedet for at versioneres.",
+      "forankring": "\"Forretningshandlinger ændrer aldrig oprindelig data. Statusændringer sker via separate tabeller eller status-felter, aldrig ved overskrivning.\" — vision-og-principper.md, operationelt princip 9."
+    },
+    {
+      "id": "doc:docs/strategi/vision-og-principper.md#princip-3:forretningslogik-som-data",
+      "boette": "dokument",
+      "omraade": "Konfigurerbarhed af lokations-værdier",
+      "kraever": "Cooldown-konfiguration, dagspriser og tilladelses-data er data i UI; algoritmerne (cycle-detection, cooldown-evaluering, tilladelses-opslag) er kode. Forretningen skal kunne ændre værdier uden udvikler.",
+      "forbyder": "Forbyder hardkodede cooldown-perioder, priser eller tilladelses-lister i kode; forbyder at en regel-ændring (fx ny cooldown-længde) kræver teknisk ændring.",
+      "forankring": "\"KPI'er, lønarter, formler, klassifikationer, regler — alt er data i UI. Algoritmer er kode, værdier er data.\" — vision-og-principper.md princip 3. + forretningsforstaaelse.md §9: \"Stork skal kunne adskille algoritmer (hvordan noget beregnes) fra værdier (hvad satserne er)\"."
+    },
+    {
+      "id": "doc:docs/strategi/forretningsforstaaelse.md#15+master-plan-0.5:migration",
+      "boette": "dokument",
+      "omraade": "Migration af lokations-historik (betinget leverance)",
+      "kraever": "Migration er separat beslutning pr. pakke; hvis relevant leveres udtræks-SQL (+ upload-script, discovery hvor relevant) efter §0.5-mekanikken: direkte udtræk + upload, audit med source_type='migration' + change_reason='legacy_import_t0'. Lokation er kategori 3 master-data (discovery-fase, direkte upload til core_identity).",
+      "forbyder": "Forbyder ETL-pipeline, sync-job, adapter-dobbelt-skriv og staging-schema; forbyder at arve 1.0's lokations-antagelser i 2.0's design (greenfield: design afgøres ud fra vision og principper, ikke 'hvordan gør 1.0 det?'); forbyder migration-upload uden migrations-audit-spor.",
+      "forankring": "\"Migration sker via direkte udtræk + upload, IKKE via ETL-pipeline eller adapter-dobbelt-skriv.\" — master-plan §0.5. + forretningsforstaaelse.md §15: \"Stork 2.0 skal kunne tage migration som separat beslutning pr. pakke, ikke som automatisk leverance\". + §4 trin 10b: \"hvis relevant\"."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#1.8:klient-reference-kontrast",
+      "boette": "dokument",
+      "omraade": "Klient-referencen i tilladelses-tabellen (FK-mål + anonymiserings-kontrast)",
+      "kraever": "Klienten lever i core_identity.clients med is_active-livscyklus; klient-tilladelser refererer denne entitet via FK (sammenkobling eksplicit — FK-constraints obligatoriske). Klient anonymiseres ikke — lokationen HAR anonymized_at; de to entiteter har altså bevidst forskellig anonymiserings-profil.",
+      "forbyder": "Forbyder klient-reference som navn/fritekst i tilladelses-tabellen (skal være FK); forbyder at kopiere klient-skabelonens 'anonymiseres ikke'-valg til lokationen uden Mathias-afgørelse (docs siger eksplicit anonymized_at på lokation).",
+      "forankring": "\"Klient anonymiseres ikke (mathias-afgoerelser 2026-05-20 \\\"Trin 10 forretnings-ramme\\\")\" — master-plan §1.8. + vision-og-principper.md bærende princip 3: \"FK-constraints er obligatoriske mellem relaterede entiteter.\""
+    },
+    {
+      "id": "doc:docs/strategi/forretningsforstaaelse.md#12:rettigheder-form",
+      "boette": "dokument",
+      "omraade": "Rettigheds-form for lokations-handlinger",
+      "kraever": "Rettigheder defineres pr. side og pr. handling i UI; synlighed adskilles fra handling; permission-gating via has_permission-modellen (tre-niveau + to akser, rettelse 35). Lokations-handlingerne (status-RPC, cooldown-redigering, tilladelses-administration, leverandør-administration) skal gates ad denne vej.",
+      "forbyder": "Forbyder hardkodede roller for lokations-administration (superadmin er eneste hardkodede undtagelse); forbyder at samme permission implicit giver både læse- og skrive-adgang (synlighed ≠ handling); forbyder lokations-særskilt rettigheds-mekanisme uden om den fælles model.",
+      "forankring": "\"Stork skal kunne adskille synlighed (hvad ses) fra handling (hvad må ændres)\" — forretningsforstaaelse.md §12. + Appendix A Adgang: \"Permission-model | Tre-niveau (Område → Page → Tab) + to akser\". NB: de KONKRETE tildelinger er intet-data — se separat fund."
+    },
+    {
+      "id": "doc:docs/strategi/stork-2-0-master-plan.md#appendix-a-fm:alt-med",
+      "boette": "dokument",
+      "omraade": "FM-scope-låsning (ingen udskydelser)",
+      "kraever": "FM er fuldt med i Stork 2.0 — lokations-skabelonen er fundamentet for hele FM-kæden og kan ikke skæres til en minimal-version der udskyder tilladelser/cooldown/leverandører.",
+      "forbyder": "Forbyder at udskyde dele af 10b-scopet (lokationer + placements + leverandører + klient-tilladelser + status + cooldown er alle i trin-definitionen) til senere trin uden Mathias-beslutning.",
+      "forankring": "\"FM i Stork 2.0 | Alt med (ingen udskydelser)\" — master-plan Appendix A, FM-domæne."
+    },
+    {
+      "id": "intet-data:lokations-status-enum-og-semantik",
+      "boette": "intet-data",
+      "omraade": "Lokations-status: enum-værdier, lovlige overgange og kommerciel betydning pr. status",
+      "kraever": "SKAL disponeres i denne pakke — Appendix B binder beslutningen eksplicit til trin 10b. Der mangler: (a) de konkrete status-værdier (fx aktiv/inaktiv/midlertidigt lukket/under forhandling/nedlagt?), (b) hvilke overgange der er lovlige, (c) hvad hver status betyder kommercielt: kan der bookes (kun 'aktiv' er doc-låst som bookbar), vises lokationen i UI-lister, tæller den i leverandør-rabat-trapper, blokerer den nye tilladelser?",
+      "forbyder": "Uden Mathias-afgørelse kan negativerne pr. status ikke formuleres (fx 'på nedlagt lokation må HELLER IKKE nye klient-tilladelser oprettes' — uafgjort). Kill-list nedstrøms har intet at ramme før enum + overgangsmatrix er valgt.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for at beslutningen er åben og hører til her: \"Lokations-status | Afgøres ved trin 10b\" — master-plan Appendix B, Enum-værdier. + §1.12: \"Konkrete enum-værdier afgøres ved bygning (åben beslutning, se Appendix B)\"."
+    },
+    {
+      "id": "intet-data:cooldown-forretnings-semantik",
+      "boette": "intet-data",
+      "omraade": "Cooldown: hvad reglen konkret betyder kommercielt",
+      "kraever": "Doc-låst er kun dimensionen (pr. lokation) og formen (konfig-tabel, jsonb, UI-redigerbar) samt trigger-adfærden nedstrøms (ingen booking-overlap inden for konfigureret cooldown). Uafgjort: (a) cooldown-enheden og jsonb-strukturen (dage? forskellige værdier pr. situation?), (b) om cooldown gælder på tværs af klienter eller kun samme klient igen (pr.-lokation-dimensionen antyder på tværs — men det er en antagelse), (c) om annullerede/aflyste bookinger tæller som cooldown-udløsende, (d) om cooldown kan overrides og af hvem (break-glass? permission?), (e) om cooldown evalueres pr. placement eller pr. top-lokation.",
+      "forbyder": "Negativerne kan ikke formuleres færdigt: 'booking X dage efter forrige booking skal AFVISES' mangler X, subjekt (hvilken klient) og niveau (placement vs. lokation).",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for det låste: \"Cooldown pr. lokation (ikke pr. klient eller kampagne...). Konfig-tabel, UI-redigerbar.\" — §1.12; \"Cooldown-trigger tjekker at samme lokation ikke overlapper med tidligere booking inden for konfigureret cooldown (pr. lokation)\" — §2.7.1. Ingen doc afgør enhed, tværs-af-klient-semantik, annullerings-effekt, override eller placement-niveau."
+    },
+    {
+      "id": "intet-data:klient-tilladelse-kommerciel-betydning",
+      "boette": "intet-data",
+      "omraade": "Klient-tilladelse: hvad 'tilladelse' ER kommercielt, og dens kant-regler",
+      "kraever": "Doc-låst er formen (klient × lokation × from_date × to_date, versioneret) og håndhævelsen (booking-RPC validerer på dato). Uafgjort: (a) hvad tilladelsen repræsenterer kommercielt (aftale med leverandøren? kæde-aftale der dækker mange lokationer på én gang?), (b) hvem der må oprette/ændre/lukke tilladelser, (c) om to_date må være åben (NULL = indtil videre), (d) om flere klienter må have tilladelse på samme lokation i samme periode, (e) om overlappende tilladelses-versioner for samme klient×lokation skal afvises, (f) hvad der sker med eksisterende fremtidige bookinger når en tilladelse trækkes tilbage/udløber, (g) om tilladelse gives pr. top-lokation eller pr. placement.",
+      "forbyder": "Uden disse afgørelser kan systemets afvisnings-adfærd ikke specificeres (fx 'tilbagetrækning af tilladelse skal/skal-ikke annullere fremtidige bookinger' er uafgjort begge veje).",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for det låste: §1.12 Klient-tilladelser pr. lokation + forretningsforstaaelse.md §14. Ingen doc definerer tilladelsens kommercielle kilde, kardinalitet, åben-slutdato, tilbagetræknings-konsekvens eller placement-granularitet."
+    },
+    {
+      "id": "intet-data:pris-semantik",
+      "boette": "intet-data",
+      "omraade": "Default-dagspris: forbrug, ændrings-semantik og arv-dybde",
+      "kraever": "Doc-låst: lokation har default-dagspris; placement bærer egen pris hvis sat, ellers arv fra parent. Uafgjort: (a) hvad dagsprisen forbruges til kommercielt (leverandør-fakturering trin 29? intern kalkyle? informativ som hotellets default-pris?) — ingen doc kobler den eksplicit til en beregning, (b) om pris-ændring på parent slår igennem på fremtidige og/eller allerede oprettede bookinger (snapshot-princippet nedstrøms antyder frys-ved-brug, men det er trin 24+'s beslutning), (c) valuta/enhed og om 0/NULL-pris er gyldig, (d) om arv går flere niveauer ned hvis hierarkiet er dybere end to.",
+      "forbyder": "Negativet 'en pris-ændring må ALDRIG ændre historiske bookinger' er sandsynligt ud fra dato-snapshot-princippet men IKKE doc-afgjort for lokationspriser — må ikke antages.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for det låste: \"default-dagspris\" + \"Placement-niveau bærer egen pris hvis sat (ellers arves fra parent-lokation)\" — §1.12. Ingen doc afgør forbrugs-punkt, gennemslags-semantik eller enhed."
+    },
+    {
+      "id": "intet-data:hierarki-dybde-og-placement-regler",
+      "boette": "intet-data",
+      "omraade": "Hierarki: tilladt dybde og placement-adfærd for status/tilladelse/cooldown",
+      "kraever": "Doc-teksten siger 'top-niveau lokation kan have placements under sig' — antyder to niveauer, men selv-reference tillader vilkårlig dybde. Uafgjort: (a) må placements have under-placements (skal dybde >2 afvises?), (b) arver placement status fra parent (kan en placement være aktiv under en inaktiv lokation?), (c) kan en placement have egen leverandør-FK eller arves den, (d) evalueres tilladelse og cooldown pr. placement eller pr. top-lokation (også rejst under cooldown/tilladelses-fundene — samlet hierarki-afgørelse nødvendig).",
+      "forbyder": "Uden dybde-/arv-afgørelsen kan cycle-detection-kravet ikke suppleres med de forretnings-negativer der reelt beskytter driften (fx 'booking på inaktiv parents placement skal AFVISES' — uafgjort).",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for det låste: \"Selv-refererende `parent_location_id` — top-niveau lokation kan have placements (stand-positioner) under sig\" — §1.12. Ingen doc afgør dybdegrænse eller arv af status/leverandør/tilladelse/cooldown."
+    },
+    {
+      "id": "intet-data:permissions-konkrete-tildelinger",
+      "boette": "intet-data",
+      "omraade": "Hvem må hvad: konkrete permission-tildelinger for lokations-området",
+      "kraever": "Formen er doc-låst (has_permission, side/tab, synlighed ≠ handling), men de konkrete forretnings-tildelinger er uafgjorte: hvem må ændre lokations-status (FM-leder? kun admin?), hvem må redigere cooldown-konfig, hvem må oprette/tilbagetrække klient-tilladelser, hvem må administrere leverandører, og hvilken synligheds-scope lokations-data har (er lokationer synlige for alle eller scoped?).",
+      "forbyder": "Uden tildelingerne kan afvisnings-kravene ikke skrives ('en sælger må ALDRIG ændre lokations-status' er sandsynligt men uafgjort).",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for formen: forretningsforstaaelse.md §12 + master-plan Appendix A Adgang. Ingen doc tildeler lokations-handlinger til roller/områder."
+    },
+    {
+      "id": "intet-data:lokations-pii-og-retention",
+      "boette": "intet-data",
+      "omraade": "PII-klassifikation og retention for lokations- og leverandør-felter",
+      "kraever": "Lokationen har anonymized_at (doc-låst) — men HVAD der er personhenførbart på en lokation/leverandør er uafgjort: er adresse forretningsdata (butiksadresse) eller kan den være indirekte PII (privat-adresse for enkelt-butik-ejer)? Kommer der kontaktperson-felter på leverandør (jf. hotel-registry der har kontakt-info)? Pr. kolonne skal vælges: kategori, pii_level, retention-type — default = intet kræver aktivt valg. Desuden: hvornår anonymiseres en lokation overhovedet (hvilken forretningshændelse udløser det)?",
+      "forbyder": "Forbyder at klassifikationen gættes: uden Mathias-valg pr. felt kan anonymiserings-mappingen (deklareret data, §1.4) ikke udfyldes, og negativet 'lokations-anonymisering må ALDRIG fjerne forretningsbærende felter (navn til rapporter?)' er uafgjort.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for pligten: §1.2 (registry-indgang pr. kolonne) + §1.4 (felt-liste er deklareret data) + vision-princip 4 (default = intet). Ingen doc klassificerer lokations-/leverandør-felterne eller definerer anonymiserings-triggeren."
+    },
+    {
+      "id": "intet-data:migration-relevans-lokationer",
+      "boette": "intet-data",
+      "omraade": "Om 1.0 har lokations-historik der skal migreres",
+      "kraever": "Trin 10b-rækken siger 'udtræks-SQL for lokations-historik hvis relevant' — relevans-spørgsmålet er uafgjort: findes der lokations-/booking-historik i 1.0 der skal med, i hvilket omfang (jf. §0.5: omfang styres ved import, Mathias afgør pr. kategori), og skal leverandører/tilladelser også udtrækkes?",
+      "forbyder": "Forbyder både at antage 'ikke relevant' (dropper leverancen tavst) og at bygge migration uden afgørelse — beslutningen skal træffes eksplicit af Mathias.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for betingelsen: \"+ migration: udtræks-SQL for lokations-historik hvis relevant\" — §4 trin 10b; \"Mathias afgør pr. kategori hvor langt tilbage data importeres\" — §0.5 kategori 4."
+    },
+    {
+      "id": "intet-data:leverandoer-entitetens-fulde-indhold",
+      "boette": "intet-data",
+      "omraade": "Leverandør-entitetens felter ud over type — og rabataftale-jsonb'ens hjemsted i tid",
+      "kraever": "§1.12 fastlægger kun: egen entitet + type-felt. §2.7.6 (trin 29) siger 'Leverandør-entitet bærer rabataftale jsonb: procent-trapper'. Uafgjort: (a) hvilke øvrige felter leverandøren har (navn, adresse, kontakt-info, CVR, status/livscyklus?), (b) om rabataftale-jsonb-feltet skal med i skabelonen nu (så trin 29 kun bygger evaluering) eller først tilføjes ved trin 29, (c) om leverandør har egen status-livscyklus som lokationen.",
+      "forbyder": "Uden afgørelsen kan hverken skabelonens leverandør-scope eller negativet 'leverandør uden aktiv aftale må ALDRIG...' fastlægges.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for det låste: §1.12 Leverandører + §2.7.6: \"Leverandør-entitet bærer rabataftale jsonb: procent-trapper\". Ingen doc afgør felt-listen eller timing af rabataftale-feltet."
+    },
+    {
+      "id": "intet-data:konfig-lifecycle-for-cooldown",
+      "boette": "intet-data",
+      "omraade": "Om cooldown-konfig (og tilladelser) skal gennem konfigurations-lifecycle",
+      "kraever": "Vision-princip 5 + rettelse 27 kræver draft → tested → approved → active for 'alt der påvirker data-håndtering' / 'tabeller med klassifikations-styring'. Uafgjort om cooldown-konfig-tabellen og klient-tilladelser falder ind under lifecycle-kravet (de er forretningskonfig, ikke data-håndterings-konfig) — eller om simpel UI-redigering med audit er nok.",
+      "forbyder": "Må ikke afgøres ved antagelse: enten mangler lifecycle-negativerne ('en cooldown-ændring må ALDRIG være aktiv uden godkendelse'?) eller også over-bygges der (v5: over-test ikke).",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel for spændingen: vision-og-principper.md princip 5: \"Alt der påvirker data-håndtering gennemgår draft → tested → approved → active.\" vs. §1.12: \"Konfig-tabel, UI-redigerbar.\" — ingen doc afgør om lokations-konfig er 'data-håndtering' i princip-5-forstand."
+    },
+    {
+      "id": "intet-data:anonymiserings-infrastruktur-udvidelse",
+      "boette": "intet-data",
+      "omraade": "Om replay_anonymization/retention-cron skal udvides med lokations-branch i 10b",
+      "kraever": "§4.2 action-items binder 'replay_anonymization udvides med branches per entity' til trin 10 (clients) + trin 15, og 'retention_cleanup_daily refactoreres til generisk evaluator' til 'når flere entities har retention-deadlines (trin 10+)'. Lokationen har anonymized_at — om 10b udløser disse udvidelser (anonymize_location-RPC, replay-branch, retention-evaluator) er ikke eksplicit afgjort.",
+      "forbyder": "Forbyder tavs udeladelse: hvis lokationen kan anonymiseres skal replay-efter-restore også dække den (backup-paradox-garantien, §1.4), ellers er GDPR-mekanikken hul for denne entitet.",
+      "forankring": "intet-data → kræver Mathias. Doc-hjemmel: §4.2: \"replay_anonymization | Udvides med branches per entity | §4 trin 10 (clients) + trin 15 (identitets-master)\" — trin 10b er ikke nævnt, men §1.12 giver lokationen anonymized_at."
+    }
+  ],
+  "flade_enumeration": [
+    "vision-og-principper.md :: Vision (holdbarhed, greenfield, data/rettigheder/logik i UI) — BERØRT: rammesætter alle skabelon-valg; cooldown/pris/tilladelser skal være UI-data, ingen shortcuts",
+    "vision-og-principper.md :: Bærende princip 1 (én sandhed) — BERØRT: én lokations-tabel for lokation+placement; leverandør som én entitet; ingen parallelle sandheder",
+    "vision-og-principper.md :: Bærende princip 2 (styr på data) — BERØRT: klassifikations-pligt for alle nye kolonner (fund §1.2)",
+    "vision-og-principper.md :: Bærende princip 3 (sammenkobling eksplicit, FK obligatorisk) — BERØRT: leverandør-FK, parent_location_id, klient-FK i tilladelser",
+    "vision-og-principper.md :: Operationelt princip 1 (data-kontrol i UI) — BERØRT: klassifikation af lokations-kolonner vælges i UI-registry",
+    "vision-og-principper.md :: Operationelt princip 2 (rettigheder i UI) — BERØRT: lokations-handlinger gates via permission-modellen; konkrete tildelinger = intet-data",
+    "vision-og-principper.md :: Operationelt princip 3 (forretningslogik som data) — BERØRT: cooldown-konfig + priser + tilladelser er data, ikke kode",
+    "vision-og-principper.md :: Operationelt princip 4 (default = intet) — BERØRT: ingen implicit PII/retention på nye kolonner",
+    "vision-og-principper.md :: Operationelt princip 5 (lifecycle for konfiguration) — MULIGT BERØRT: uafgjort om cooldown-konfig er 'data-håndtering' i princip-5-forstand → intet-data-fund + usikkerhed",
+    "vision-og-principper.md :: Operationelt princip 6 (audit på alt) — BERØRT: per-row audit på alle nye tabeller; ingen snapshot-undtagelse gælder her",
+    "vision-og-principper.md :: Operationelt princip 7 (anonymisering bevarer audit) — BERØRT: anonymized_at på lokation; UPDATE ikke DELETE",
+    "vision-og-principper.md :: Operationelt princip 8 (identitet én gang) — IKKE BERØRT: lokation/leverandør er ikke person-identiteter; ingen identity-mapping i pakken. Grænse-note: leverandør-kontaktperson-felter ville aktivere princippet — felt-listen er intet-data",
+    "vision-og-principper.md :: Operationelt princip 9 (status-modeller bevarer historik) — BERØRT: status-livscyklus via RPC + versionerede tilladelser",
+    "forretningsforstaaelse.md :: §1 Klient som omdrejningspunkt — BERØRT: klient-tilladelser knytter klient til lokation; klient forbliver dimensionen",
+    "forretningsforstaaelse.md :: §2 Dato-snapshot-princippet — BERØRT (mønster): tilladelser er dato-interval-versionerede; opslag 'hvad gjaldt på dato X' skal kunne besvares. Pris-gennemslags-semantik = intet-data",
+    "forretningsforstaaelse.md :: §3 Attribution-trekanten — BERØRT SOM NEGATIV: lokationen må ALDRIG blive attributions-dimension; attribution går via klient (jf. §2.7.1)",
+    "forretningsforstaaelse.md :: §4 Salget — IKKE BERØRT: ingen salgs-/pricing-mekanik i pakken; salgs-kæden forbruger først lokationen via bookinger (trin 24+)",
+    "forretningsforstaaelse.md :: §5 Vagter, stempelur og klient-tid — IKKE BERØRT: vagter opstår fra booking-assignments (trin 25), ikke fra skabelonen",
+    "forretningsforstaaelse.md :: §6 Annulleringer — IKKE BERØRT: ingen modpost-mekanik i pakken. Grænse-note: annullerede bookingers effekt på cooldown er intet-data (trin 24-kobling)",
+    "forretningsforstaaelse.md :: §7 Provision-mekanikken — IKKE BERØRT: ingen løn-/provisions-flade; FM-lønarter er trin 28",
+    "forretningsforstaaelse.md :: §8 Lønperiode-låsning — IKKE BERØRT: lokations-data indgår ikke i periode-låsning; ingen frosne tal i pakken",
+    "forretningsforstaaelse.md :: §9 Forretningslogik som data — BERØRT: cooldown/pris/tilladelser som UI-data; algoritme/værdi-adskillelse",
+    "forretningsforstaaelse.md :: §10 Identitet én gang — IKKE BERØRT: ingen person-entiteter (se princip-8-noten)",
+    "forretningsforstaaelse.md :: §11 Persondata vs. forretningsdata — BERØRT: klassifikation + anonymized_at; HVAD der er PII på lokation/leverandør = intet-data",
+    "forretningsforstaaelse.md :: §12 Rettigheder og adgang — BERØRT: form doc-låst; konkrete tildelinger = intet-data",
+    "forretningsforstaaelse.md :: §13 Yderligere funktioner (kontrakt/besked/dashboard/rapportering) — IKKE BERØRT: selvstændige områder, afdækkes pakke for pakke",
+    "forretningsforstaaelse.md :: §14 FM-grenen — KERNE-BERØRT: lokation som master-data + klient-tilladelses-kontrol; bookinger/lønarter er nedstrøms",
+    "forretningsforstaaelse.md :: §15 Greenfield-rammen — BERØRT: migration separat beslutning ('hvis relevant'); 1.0-antagelser forbudt i design",
+    "forretningsforstaaelse.md :: §16 Sammenhængen — BERØRT: skabelonen er første led i kæden lokation → booking → vagt → løn; skabelonen skal bære kæden uden at bygge den",
+    "stork-2-0-master-plan.md :: §4 trin 10b (anker) — BERØRT: scope-definition (lokationer + placements + leverandører + klient-tilladelser + status + cooldown + betinget migration), schema core_identity; §4.1 status: ⌛ Udestående",
+    "stork-2-0-master-plan.md :: §1.12 Lokations-skabelon (anker) — KERNE-BERØRT: alle fem under-blokke disponeret som fund (entitet, hierarki/pris-arv, status-livscyklus, klient-tilladelser, cooldown, leverandører)",
+    "stork-2-0-master-plan.md :: Appendix B → 'Lokations-status: Afgøres ved trin 10b' (anker) — BERØRT: åben enum-beslutning SKAL disponeres i pakken → intet-data-fund. Øvrige Appendix B-punkter (booking-livscyklus trin 24, assignment-status trin 25, hotel trin 26, vehicle/aflevering trin 27) — IKKE BERØRT: eksplicit bundet til senere trin",
+    "stork-2-0-master-plan.md :: rettelse 17 / Appendix A FM-domæne 'Cooldown pr. lokation' (anker) — BERØRT: låst afgørelse; substansen står i §1.12 + Appendix A. Nummererings-uoverensstemmelse i Appendix C → usikkerhed",
+    "stork-2-0-master-plan.md :: §2.7 FM-domæne intro + §2.7.1 booking-stamme (anker) — BERØRT som nedstrøms-forbruger: tilladelses-validering, cooldown-trigger, aktiv-lokation-gate, attribution-via-klient",
+    "stork-2-0-master-plan.md :: §2.7.2 booking-assignment — BERØRT KUN som bæreevne-krav (trin 25 bygger); ingen skabelon-regler udover at lokations-nøglen skal kunne forbruges",
+    "stork-2-0-master-plan.md :: §2.7.3 hotel-booking — IKKE BERØRT direkte: hotel-registry er egen entitet (trin 26); bemærk mønster-parallel (default-pris 'informativ') til dagspris-spørgsmålet → usikkerhed",
+    "stork-2-0-master-plan.md :: §2.7.4 køretøj/mileage — IKKE BERØRT: vehicle-registry er trin 27 (dog samme schema core_identity)",
+    "stork-2-0-master-plan.md :: §2.7.5 diæt/oplæringsbonus — IKKE BERØRT: formel-instanser trin 28",
+    "stork-2-0-master-plan.md :: §2.7.6 leverandør-fakturering — BERØRT som bæreevne: leverandør-type styrer rabat-lookup; rabataftale-jsonb + undtagelses-tabel (lokation × leverandør) er trin 29 — timing af rabataftale-feltet = intet-data",
+    "stork-2-0-master-plan.md :: §2.7.7 FM-checkliste — IKKE BERØRT: trin 30",
+    "stork-2-0-master-plan.md :: §2.7.8 markeder/messer — BERØRT: type-felt, ingen særmodel (negativ-fund)",
+    "stork-2-0-master-plan.md :: §1.1 Adgangs-mekanik (anker) — BERØRT: FORCE RLS/RPC-mønster for alle nye tabeller",
+    "stork-2-0-master-plan.md :: §1.2 Klassifikations-registry (anker) — BERØRT: registry-indgang pr. ny kolonne; migration-gate",
+    "stork-2-0-master-plan.md :: §1.3 Audit-mønster (anker) — BERØRT: per-row audit; status-årsag; ingen snapshot-undtagelse",
+    "stork-2-0-master-plan.md :: §1.4 Anonymisering (anker) — BERØRT: anonymized_at, UPDATE-ikke-DELETE, mapping som data, replay-garanti → udvidelses-spørgsmål = intet-data",
+    "stork-2-0-master-plan.md :: §1.11 Tre-schema-arkitektur (anker) — BERØRT: 'lokationer' eksplicit i core_identity; app-skrivning kun via SECDEF-RPC",
+    "stork-2-0-master-plan.md :: §0.5 Migration fra 1.0 — BERØRT via trin 10b-rækkens migration-leverance (udtræk+upload-mekanik, kategori 3 master-data, migrations-audit); relevans = intet-data",
+    "stork-2-0-master-plan.md :: §1.8 Klient-skabelon — BERØRT som FK-mål og anonymiserings-kontrast (klient anonymiseres ikke; lokation har anonymized_at)",
+    "stork-2-0-master-plan.md :: §4.2 Action-items — BERØRT: retention_cleanup_daily (trin 10+) + replay_anonymization-udvidelse rører pakken → intet-data-fund",
+    "stork-2-0-master-plan.md :: Appendix A FM-domæne — BERØRT: 'Alt med', cooldown-dimension, markeder/messer låst",
+    "stork-2-0-master-plan.md :: Øvrige afsnit uden for bundlets anker (§0 plan-grundlag, §1.5-§1.7, §1.9-§1.10, §1.13-§1.15, §2.1-§2.6, §3 disciplin, §5, Appendix A øvrige tabeller, Appendix C øvrig historik, cutover-blockers, rettelse-19-begrundelser) — IKKE DISPONERET SOM FORRETNINGS-FLADE: uden for ankerets punkter; teknisk disciplin (§3, CI) er Code/Codex' bord. Deklareret her så udeladelsen er aktiv og synlig, ikke tavs"
+  ],
+  "usikkerheder": [
+    "Rettelse-17-kryds-referencen: §1.12 citerer 'afgørelse fra rettelse 17' for cooldown-pr-lokation, men Appendix C's række 17 lyder 'Schema-grænser fra trin 1. Vagt-tabel inkluderer FM-koblingen fra trin 17' — og Appendix C har duplikerede numre (to rækker nr. 18 og to nr. 19). Substansen ER låst (Appendix A FM-domæne), men den numeriske kilde-henvisning kan ikke verificeres i bundlet → flag til Mathias/plan-vedligehold",
+    "Lokations-status-enum: Appendix B binder beslutningen til trin 10b — Mathias skal vælge værdier, overgangsmatrix og kommerciel semantik pr. status (fuldt disponeret i intet-data-fund)",
+    "Cooldown-semantik: enhed/jsonb-struktur, tværs-af-klienter vs. samme klient, annullerede bookingers effekt, override-mulighed, placement- vs. lokations-niveau — alle uafgjorte (intet-data-fund)",
+    "Klient-tilladelsens kommercielle betydning: kilde (leverandør-aftale? kæde-aftale?), åben to_date, multi-klient-samtidighed, overlap-regler, konsekvens for eksisterende bookinger ved tilbagetrækning, placement-granularitet (intet-data-fund)",
+    "Default-dagspris: hvad den forbruges til (fakturering? informativ som hotel-default?), gennemslag ved ændring, enhed/valuta, NULL-gyldighed (intet-data-fund)",
+    "Hierarki-dybde: to niveauer eller vilkårlig; status-/leverandør-/tilladelses-arv mellem parent og placement (intet-data-fund)",
+    "Permissions: konkrete tildelinger for status-ændring, cooldown-redigering, tilladelses- og leverandør-administration + synligheds-scope for lokations-data (intet-data-fund)",
+    "PII/retention pr. lokations- og leverandør-kolonne + hvilken forretningshændelse der udløser lokations-anonymisering; kontrast til klientens 'anonymiseres ikke'-valg (intet-data-fund)",
+    "Migration-relevans: findes 1.0-lokations-/leverandør-/tilladelses-data der skal udtrækkes, og i hvilket omfang (intet-data-fund)",
+    "Leverandør-entitetens fulde felt-liste (navn/adresse/kontakt/CVR/status?) + om rabataftale-jsonb hører til 10b eller trin 29 (intet-data-fund)",
+    "Konfig-lifecycle: gælder draft→tested→approved→active (vision-princip 5/rettelse 27) for cooldown-konfig og tilladelser, eller er UI-redigering + audit nok? (intet-data-fund)",
+    "Anonymiserings-infrastruktur: skal anonymize_location-RPC, replay_anonymization-branch og retention-evaluator-refactor med i 10b? §4.2 nævner kun trin 10 (clients) + 15, men §1.12 giver lokationen anonymized_at (intet-data-fund)",
+    "Uklarhed om 'aktiv lokation' i §1.12 ('Bookings kan kun oprettes på aktiv lokation') refererer til en konkret kommende enum-værdi 'aktiv' eller til en klasse af bookbare statusser — afhænger af enum-beslutningen; må ikke antages",
+    "Leverandør-status: har leverandøren egen livscyklus (jf. hotel-registry og vehicle-registry der begge har status-felt)? Ikke doc-afgjort for leverandør → indgår i leverandør-felt-listen til Mathias",
+    "flade_filter-udelukkelse vs. åbent override-spørgsmål (gælder fortsat i bundle cde07ec): flade_filter.note udelukker break-glass fra pakke-fladen, men mit intet-data-fund om cooldown-semantik rejser eksplicit om cooldown (og evt. status-overgange) skal kunne overrides — og ad hvilken vej (break-glass? permission?). Udelukkelsen forudsætter dermed et svar på et endnu uafgjort Mathias-spørgsmål: afgøres override-vejen til break-glass ved krav, skal flade_filter suppleres (noten siger selv 'Scopet bekræftes ved krav OK' — flagget her så koblingen ikke tabes). Øvrige udelukkelser (core_money, droppet public-æra, build-config) er konsistente med forretnings-kortlægningen: core_money-forbrugerne er netop trin 24-29 som skabelonen skal bære, ikke bygge — intet berørt forretnings-område mister dækning. Rebind 2 (omission-devil): filteret suppleret med p0_gdpr_responsible_employee (anonymiserings-governance-kanten) — rent additivt, matcher mit intet-data-fund om anonymiserings-infrastruktur-udvidelsen; ingen forretnings-flade-ændring"
+  ]
+}

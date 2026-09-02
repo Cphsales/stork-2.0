@@ -1,0 +1,1864 @@
+{
+ "points": [
+  {
+   "id": "config:pnpm-workspace.yaml",
+   "kind": "config",
+   "ref": "pnpm-workspace.yaml",
+   "detail": "pnpm-workspace.yaml"
+  },
+  {
+   "id": "config:supabase/config.toml",
+   "kind": "config",
+   "ref": "supabase/config.toml",
+   "detail": "supabase/config.toml"
+  },
+  {
+   "id": "config:tsconfig.base.json",
+   "kind": "config",
+   "ref": "tsconfig.base.json",
+   "detail": "tsconfig.base.json"
+  },
+  {
+   "id": "config:turbo.json",
+   "kind": "config",
+   "ref": "turbo.json",
+   "detail": "turbo.json"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511151815_c1_rls_helpers_stub.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511151815_c1_rls_helpers_stub.sql",
+   "detail": "supabase/migrations/20260511151815_c1_rls_helpers_stub.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511152603_c2_audit_template.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511152603_c2_audit_template.sql",
+   "detail": "supabase/migrations/20260511152603_c2_audit_template.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511153246_c3_cron_skabelon.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511153246_c3_cron_skabelon.sql",
+   "detail": "supabase/migrations/20260511153246_c3_cron_skabelon.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "supabase/migrations/20260511165543_c4_pay_periods_template.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511170429_c4_1_audit_log_immutability.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511170429_c4_1_audit_log_immutability.sql",
+   "detail": "supabase/migrations/20260511170429_c4_1_audit_log_immutability.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "supabase/migrations/20260511170951_d1_data_field_definitions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511194701_d1_5_seed_classification.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511194701_d1_5_seed_classification.sql",
+   "detail": "supabase/migrations/20260511194701_d1_5_seed_classification.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511195819_d2_audit_filter_values.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511195819_d2_audit_filter_values.sql",
+   "detail": "supabase/migrations/20260511195819_d2_audit_filter_values.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511202242_d3_employees.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511202242_d3_employees.sql",
+   "detail": "supabase/migrations/20260511202242_d3_employees.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "supabase/migrations/20260511204529_d4_role_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511213009_d5_clients.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "supabase/migrations/20260511213009_d5_clients.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260511215749_d6_truncate_blocking.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260511215749_d6_truncate_blocking.sql",
+   "detail": "supabase/migrations/20260511215749_d6_truncate_blocking.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "supabase/migrations/20260512212115_d7_teams_org_units.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120000_t1_drop_public.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120000_t1_drop_public.sql",
+   "detail": "supabase/migrations/20260514120000_t1_drop_public.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120001_t1_schemas_and_defaults.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120001_t1_schemas_and_defaults.sql",
+   "detail": "supabase/migrations/20260514120001_t1_schemas_and_defaults.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120002_t1_helpers_stubs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120002_t1_helpers_stubs.sql",
+   "detail": "supabase/migrations/20260514120002_t1_helpers_stubs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120003_t1_audit_partitioned.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120003_t1_audit_partitioned.sql",
+   "detail": "supabase/migrations/20260514120003_t1_audit_partitioned.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120004_t1_cron_skabelon.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120004_t1_cron_skabelon.sql",
+   "detail": "supabase/migrations/20260514120004_t1_cron_skabelon.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "supabase/migrations/20260514120005_t1_data_field_definitions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120006_t1_audit_filter_values.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120006_t1_audit_filter_values.sql",
+   "detail": "supabase/migrations/20260514120006_t1_audit_filter_values.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514120008_t1_classify_trin_1.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514120008_t1_classify_trin_1.sql",
+   "detail": "supabase/migrations/20260514120008_t1_classify_trin_1.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514130000_t2_superadmin_floor.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514130000_t2_superadmin_floor.sql",
+   "detail": "supabase/migrations/20260514130000_t2_superadmin_floor.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "supabase/migrations/20260514130001_t2_identity_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514130002_t2_classify.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514130002_t2_classify.sql",
+   "detail": "supabase/migrations/20260514130002_t2_classify.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "supabase/migrations/20260514140000_t6_anonymization_tables.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514140001_t6_anonymization_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514140001_t6_anonymization_rpcs.sql",
+   "detail": "supabase/migrations/20260514140001_t6_anonymization_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514140002_t6_anonymization_crons.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514140002_t6_anonymization_crons.sql",
+   "detail": "supabase/migrations/20260514140002_t6_anonymization_crons.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514140003_t6_classify.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514140003_t6_classify.sql",
+   "detail": "supabase/migrations/20260514140003_t6_classify.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "supabase/migrations/20260514150000_t7_pay_periods.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150001_t7_commission_snapshots.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150001_t7_commission_snapshots.sql",
+   "detail": "supabase/migrations/20260514150001_t7_commission_snapshots.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150002_t7_salary_corrections.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150002_t7_salary_corrections.sql",
+   "detail": "supabase/migrations/20260514150002_t7_salary_corrections.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150003_t7_cancellations_skeleton.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150003_t7_cancellations_skeleton.sql",
+   "detail": "supabase/migrations/20260514150003_t7_cancellations_skeleton.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150005_t7_lock_pipeline.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150005_t7_lock_pipeline.sql",
+   "detail": "supabase/migrations/20260514150005_t7_lock_pipeline.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150006_t7b_cron_consecutive_failure.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150006_t7b_cron_consecutive_failure.sql",
+   "detail": "supabase/migrations/20260514150006_t7b_cron_consecutive_failure.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150007_t7b_auto_lock_crons.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150007_t7b_auto_lock_crons.sql",
+   "detail": "supabase/migrations/20260514150007_t7b_auto_lock_crons.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "supabase/migrations/20260514150008_t7c_break_glass.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150009_t7_classify.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150009_t7_classify.sql",
+   "detail": "supabase/migrations/20260514150009_t7_classify.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514150010_t7_inline_fix_locked_by_nullable.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514150010_t7_inline_fix_locked_by_nullable.sql",
+   "detail": "supabase/migrations/20260514150010_t7_inline_fix_locked_by_nullable.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514160000_t1_inline_fix_audit_non_uuid_id.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514160000_t1_inline_fix_audit_non_uuid_id.sql",
+   "detail": "supabase/migrations/20260514160000_t1_inline_fix_audit_non_uuid_id.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514160001_t7_disable_auto_lock_until_compute_real.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514160001_t7_disable_auto_lock_until_compute_real.sql",
+   "detail": "supabase/migrations/20260514160001_t7_disable_auto_lock_until_compute_real.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514170000_c004_pay_period_rpc_security.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514170000_c004_pay_period_rpc_security.sql",
+   "detail": "supabase/migrations/20260514170000_c004_pay_period_rpc_security.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514170001_c005_admin_floor_termination.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514170001_c005_admin_floor_termination.sql",
+   "detail": "supabase/migrations/20260514170001_c005_admin_floor_termination.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514170002_c006_break_glass_allowlist.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514170002_c006_break_glass_allowlist.sql",
+   "detail": "supabase/migrations/20260514170002_c006_break_glass_allowlist.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514170003_c001_retention_not_null.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514170003_c001_retention_not_null.sql",
+   "detail": "supabase/migrations/20260514170003_c001_retention_not_null.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514170004_c002_c003_anonymization_dispatcher.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514170004_c002_c003_anonymization_dispatcher.sql",
+   "detail": "supabase/migrations/20260514170004_c002_c003_anonymization_dispatcher.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180000_g028_classify_anonymization_dispatcher_columns.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180000_g028_classify_anonymization_dispatcher_columns.sql",
+   "detail": "supabase/migrations/20260514180000_g028_classify_anonymization_dispatcher_columns.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180100_r1b_rename_admin_to_superadmin.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180100_r1b_rename_admin_to_superadmin.sql",
+   "detail": "supabase/migrations/20260514180100_r1b_rename_admin_to_superadmin.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180200_h1_has_permission_helper.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180200_h1_has_permission_helper.sql",
+   "detail": "supabase/migrations/20260514180200_h1_has_permission_helper.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180300_q1_employee_active_config.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180300_q1_employee_active_config.sql",
+   "detail": "supabase/migrations/20260514180300_q1_employee_active_config.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql",
+   "detail": "supabase/migrations/20260514180400_d1b_is_permanent_allowed.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180500_d1_d2_drop_legal_convert_rows.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180500_d1_d2_drop_legal_convert_rows.sql",
+   "detail": "supabase/migrations/20260514180500_d1_d2_drop_legal_convert_rows.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql",
+   "detail": "supabase/migrations/20260514180600_d1c_validate_permanent_classification.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190000_q_seed_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190000_q_seed_permissions.sql",
+   "detail": "supabase/migrations/20260514190000_q_seed_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190100_q_audit_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190100_q_audit_rpcs.sql",
+   "detail": "supabase/migrations/20260514190100_q_audit_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190200_q_class_anon_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190200_q_class_anon_rpcs.sql",
+   "detail": "supabase/migrations/20260514190200_q_class_anon_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190300_q_break_glass_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190300_q_break_glass_rpcs.sql",
+   "detail": "supabase/migrations/20260514190300_q_break_glass_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190400_q_hr_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190400_q_hr_rpcs.sql",
+   "detail": "supabase/migrations/20260514190400_q_hr_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260514190500_q_pay_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260514190500_q_pay_rpcs.sql",
+   "detail": "supabase/migrations/20260514190500_q_pay_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515090000_r3_r4_commission_snapshots_update_flag.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515090000_r3_r4_commission_snapshots_update_flag.sql",
+   "detail": "supabase/migrations/20260515090000_r3_r4_commission_snapshots_update_flag.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515100000_r5_for_update_lock_pipeline.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515100000_r5_for_update_lock_pipeline.sql",
+   "detail": "supabase/migrations/20260515100000_r5_for_update_lock_pipeline.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515100100_r6_drop_legacy_candidate_tables.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515100100_r6_drop_legacy_candidate_tables.sql",
+   "detail": "supabase/migrations/20260515100100_r6_drop_legacy_candidate_tables.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110000_p0_gdpr_responsible_employee.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110000_p0_gdpr_responsible_employee.sql",
+   "detail": "supabase/migrations/20260515110000_p0_gdpr_responsible_employee.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110150_p1a_fix_lifecycle_coalesce.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110150_p1a_fix_lifecycle_coalesce.sql",
+   "detail": "supabase/migrations/20260515110150_p1a_fix_lifecycle_coalesce.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110200_p1b_anonymize_generic_apply.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110200_p1b_anonymize_generic_apply.sql",
+   "detail": "supabase/migrations/20260515110200_p1b_anonymize_generic_apply.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110300_p1c_anonymize_employee_wrapper.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110300_p1c_anonymize_employee_wrapper.sql",
+   "detail": "supabase/migrations/20260515110300_p1c_anonymize_employee_wrapper.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515110350_p1a_fix_strategy_completeness.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515110350_p1a_fix_strategy_completeness.sql",
+   "detail": "supabase/migrations/20260515110350_p1a_fix_strategy_completeness.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515120000_p2_anonymization_mapping_lifecycle.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515120000_p2_anonymization_mapping_lifecycle.sql",
+   "detail": "supabase/migrations/20260515120000_p2_anonymization_mapping_lifecycle.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515120100_p3_break_glass_operation_types_lifecycle.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515120100_p3_break_glass_operation_types_lifecycle.sql",
+   "detail": "supabase/migrations/20260515120100_p3_break_glass_operation_types_lifecycle.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515130000_r7a_regprocedure_callable_fix.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515130000_r7a_regprocedure_callable_fix.sql",
+   "detail": "supabase/migrations/20260515130000_r7a_regprocedure_callable_fix.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515130100_r7b_has_permission_can_view_required.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515130100_r7b_has_permission_can_view_required.sql",
+   "detail": "supabase/migrations/20260515130100_r7b_has_permission_can_view_required.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515130200_r7c_verify_anonymization_consistency_permission.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515130200_r7c_verify_anonymization_consistency_permission.sql",
+   "detail": "supabase/migrations/20260515130200_r7c_verify_anonymization_consistency_permission.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515130300_r7d_is_active_status_alignment.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515130300_r7d_is_active_status_alignment.sql",
+   "detail": "supabase/migrations/20260515130300_r7d_is_active_status_alignment.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql",
+   "detail": "supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260516200000_h024_test_artifact_cleanup.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260516200000_h024_test_artifact_cleanup.sql",
+   "detail": "supabase/migrations/20260516200000_h024_test_artifact_cleanup.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260516200100_h024_pay_periods_truncate_block.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260516200100_h024_pay_periods_truncate_block.sql",
+   "detail": "supabase/migrations/20260516200100_h024_pay_periods_truncate_block.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "detail": "supabase/migrations/20260518000000_t9_pending_changes.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "detail": "supabase/migrations/20260518000001_t9_org_nodes.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000002_t9_org_node_closure.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000002_t9_org_node_closure.sql",
+   "detail": "supabase/migrations/20260518000002_t9_org_node_closure.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000003_t9_employee_node_placements.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000003_t9_employee_node_placements.sql",
+   "detail": "supabase/migrations/20260518000003_t9_employee_node_placements.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000004_t9_client_node_placements.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000004_t9_client_node_placements.sql",
+   "detail": "supabase/migrations/20260518000004_t9_client_node_placements.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "supabase/migrations/20260518000005_t9_permission_elements.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000006_t9_grants_and_helpers.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000006_t9_grants_and_helpers.sql",
+   "detail": "supabase/migrations/20260518000006_t9_grants_and_helpers.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql",
+   "detail": "supabase/migrations/20260518000007_t9_public_wrapper_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000008_t9_read_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000008_t9_read_rpcs.sql",
+   "detail": "supabase/migrations/20260518000008_t9_read_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000009_t9_migrate_role_page_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000009_t9_migrate_role_page_permissions.sql",
+   "detail": "supabase/migrations/20260518000009_t9_migrate_role_page_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000010_t9_seed_owners.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000010_t9_seed_owners.sql",
+   "detail": "supabase/migrations/20260518000010_t9_seed_owners.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518000011_t9_classify.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518000011_t9_classify.sql",
+   "detail": "supabase/migrations/20260518000011_t9_classify.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "supabase/migrations/20260518100000_t9_fundament_supplement.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260519000000_m1_t9_superadmin_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260519000000_m1_t9_superadmin_permissions.sql",
+   "detail": "supabase/migrations/20260519000000_m1_t9_superadmin_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260520000000_t9_supplement.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260520000000_t9_supplement.sql",
+   "detail": "supabase/migrations/20260520000000_t9_supplement.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000001_t10_tables.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "supabase/migrations/20260521000001_t10_tables.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000002_t10_is_permanent_allowed_extend.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000002_t10_is_permanent_allowed_extend.sql",
+   "detail": "supabase/migrations/20260521000002_t10_is_permanent_allowed_extend.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000003_t10_classify.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000003_t10_classify.sql",
+   "detail": "supabase/migrations/20260521000003_t10_classify.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000004_t10_audit_filter_values.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000004_t10_audit_filter_values.sql",
+   "detail": "supabase/migrations/20260521000004_t10_audit_filter_values.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000005_t10_clients_validate_fields.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000005_t10_clients_validate_fields.sql",
+   "detail": "supabase/migrations/20260521000005_t10_clients_validate_fields.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000006_t10_seed_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000006_t10_seed_permissions.sql",
+   "detail": "supabase/migrations/20260521000006_t10_seed_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000007_t10_client_node_placements_fk.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000007_t10_client_node_placements_fk.sql",
+   "detail": "supabase/migrations/20260521000007_t10_client_node_placements_fk.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000008_t10_client_active_check.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000008_t10_client_active_check.sql",
+   "detail": "supabase/migrations/20260521000008_t10_client_active_check.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000009_t10_client_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000009_t10_client_rpcs.sql",
+   "detail": "supabase/migrations/20260521000009_t10_client_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000010_t10_client_field_definition_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000010_t10_client_field_definition_rpcs.sql",
+   "detail": "supabase/migrations/20260521000010_t10_client_field_definition_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000011_t10_client_logo_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000011_t10_client_logo_rpcs.sql",
+   "detail": "supabase/migrations/20260521000011_t10_client_logo_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000012_t10_client_read_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000012_t10_client_read_rpcs.sql",
+   "detail": "supabase/migrations/20260521000012_t10_client_read_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000013_t10_seed_legacy_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000013_t10_seed_legacy_permissions.sql",
+   "detail": "supabase/migrations/20260521000013_t10_seed_legacy_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521000014_t10_remove_legacy_permissions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521000014_t10_remove_legacy_permissions.sql",
+   "detail": "supabase/migrations/20260521000014_t10_remove_legacy_permissions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql",
+   "detail": "supabase/migrations/20260521100000_t9_supplement_2_wrappers_session_var.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql",
+   "detail": "supabase/migrations/20260521100001_t9_supplement_2_grants_fix.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql",
+   "detail": "supabase/migrations/20260521100002_t9_supplement_2_superadmin_bypass.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "detail": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql",
+   "detail": "supabase/migrations/20260521100004_t9_supplement_2_approve_helpers.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100005_t9_supplement_2_pending_changes_select_policy.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100005_t9_supplement_2_pending_changes_select_policy.sql",
+   "detail": "supabase/migrations/20260521100005_t9_supplement_2_pending_changes_select_policy.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100006_t9_supplement_2_pending_change_approve.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100006_t9_supplement_2_pending_change_approve.sql",
+   "detail": "supabase/migrations/20260521100006_t9_supplement_2_pending_change_approve.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql",
+   "detail": "supabase/migrations/20260521100007_t9_supplement_2_ui_rpcs.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql",
+   "detail": "supabase/migrations/20260521100008_t9_supplement_2_read_rpcs_action.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607100001_core_identity_secdef_permission_action.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607100001_core_identity_secdef_permission_action.sql",
+   "detail": "supabase/migrations/20260607100001_core_identity_secdef_permission_action.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607100002_core_identity_secdef_permission_area.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607100002_core_identity_secdef_permission_area.sql",
+   "detail": "supabase/migrations/20260607100002_core_identity_secdef_permission_area.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607100003_core_identity_secdef_permission_page.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607100003_core_identity_secdef_permission_page.sql",
+   "detail": "supabase/migrations/20260607100003_core_identity_secdef_permission_page.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607100004_core_identity_secdef_permission_tab.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607100004_core_identity_secdef_permission_tab.sql",
+   "detail": "supabase/migrations/20260607100004_core_identity_secdef_permission_tab.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607110001_core_identity_secdef_pending_change.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607110001_core_identity_secdef_pending_change.sql",
+   "detail": "supabase/migrations/20260607110001_core_identity_secdef_pending_change.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607110002_core_identity_secdef_role_permission_grant.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607110002_core_identity_secdef_role_permission_grant.sql",
+   "detail": "supabase/migrations/20260607110002_core_identity_secdef_role_permission_grant.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607110003_core_identity_secdef_undo_setting.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607110003_core_identity_secdef_undo_setting.sql",
+   "detail": "supabase/migrations/20260607110003_core_identity_secdef_undo_setting.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql",
+   "detail": "supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql"
+  },
+  {
+   "id": "migration:supabase/migrations/20260610190000_gov4_g061_comment_paritet.sql",
+   "kind": "migration",
+   "ref": "supabase/migrations/20260610190000_gov4_g061_comment_paritet.sql",
+   "detail": "supabase/migrations/20260610190000_gov4_g061_comment_paritet.sql"
+  },
+  {
+   "id": "rls_enabled:core_compliance.anonymization_mappings",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "core_compliance.anonymization_mappings"
+  },
+  {
+   "id": "rls_enabled:core_compliance.anonymization_state",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "core_compliance.anonymization_state"
+  },
+  {
+   "id": "rls_enabled:core_compliance.anonymization_strategies",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "core_compliance.anonymization_strategies"
+  },
+  {
+   "id": "rls_enabled:core_compliance.audit_log",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120003_t1_audit_partitioned.sql",
+   "detail": "core_compliance.audit_log"
+  },
+  {
+   "id": "rls_enabled:core_compliance.break_glass_operation_types",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_operation_types"
+  },
+  {
+   "id": "rls_enabled:core_compliance.break_glass_requests",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_requests"
+  },
+  {
+   "id": "rls_enabled:core_compliance.cron_heartbeats",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120004_t1_cron_skabelon.sql",
+   "detail": "core_compliance.cron_heartbeats"
+  },
+  {
+   "id": "rls_enabled:core_compliance.data_field_definitions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "core_compliance.data_field_definitions"
+  },
+  {
+   "id": "rls_enabled:core_compliance.superadmin_settings",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514130000_t2_superadmin_floor.sql",
+   "detail": "core_compliance.superadmin_settings"
+  },
+  {
+   "id": "rls_enabled:core_identity.client_field_definitions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.client_field_definitions"
+  },
+  {
+   "id": "rls_enabled:core_identity.client_node_placements",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000004_t9_client_node_placements.sql",
+   "detail": "core_identity.client_node_placements"
+  },
+  {
+   "id": "rls_enabled:core_identity.clients",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.clients"
+  },
+  {
+   "id": "rls_enabled:core_identity.employee_active_config",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514180300_q1_employee_active_config.sql",
+   "detail": "core_identity.employee_active_config"
+  },
+  {
+   "id": "rls_enabled:core_identity.employee_node_placements",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000003_t9_employee_node_placements.sql",
+   "detail": "core_identity.employee_node_placements"
+  },
+  {
+   "id": "rls_enabled:core_identity.employees",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.employees"
+  },
+  {
+   "id": "rls_enabled:core_identity.org_node_closure",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000002_t9_org_node_closure.sql",
+   "detail": "core_identity.org_node_closure"
+  },
+  {
+   "id": "rls_enabled:core_identity.org_node_versions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "detail": "core_identity.org_node_versions"
+  },
+  {
+   "id": "rls_enabled:core_identity.org_nodes",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "detail": "core_identity.org_nodes"
+  },
+  {
+   "id": "rls_enabled:core_identity.pending_changes",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "detail": "core_identity.pending_changes"
+  },
+  {
+   "id": "rls_enabled:core_identity.permission_actions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "detail": "core_identity.permission_actions"
+  },
+  {
+   "id": "rls_enabled:core_identity.permission_areas",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_areas"
+  },
+  {
+   "id": "rls_enabled:core_identity.permission_pages",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_pages"
+  },
+  {
+   "id": "rls_enabled:core_identity.permission_tabs",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_tabs"
+  },
+  {
+   "id": "rls_enabled:core_identity.role_page_permissions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.role_page_permissions"
+  },
+  {
+   "id": "rls_enabled:core_identity.role_permission_grants",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000006_t9_grants_and_helpers.sql",
+   "detail": "core_identity.role_permission_grants"
+  },
+  {
+   "id": "rls_enabled:core_identity.roles",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.roles"
+  },
+  {
+   "id": "rls_enabled:core_identity.undo_settings",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "detail": "core_identity.undo_settings"
+  },
+  {
+   "id": "rls_enabled:core_money.cancellations",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150003_t7_cancellations_skeleton.sql",
+   "detail": "core_money.cancellations"
+  },
+  {
+   "id": "rls_enabled:core_money.commission_snapshots",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150001_t7_commission_snapshots.sql",
+   "detail": "core_money.commission_snapshots"
+  },
+  {
+   "id": "rls_enabled:core_money.commission_snapshots_candidate",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.commission_snapshots_candidate"
+  },
+  {
+   "id": "rls_enabled:core_money.pay_period_candidate_runs",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.pay_period_candidate_runs"
+  },
+  {
+   "id": "rls_enabled:core_money.pay_period_settings",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_period_settings"
+  },
+  {
+   "id": "rls_enabled:core_money.pay_periods",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_periods"
+  },
+  {
+   "id": "rls_enabled:core_money.salary_corrections",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150002_t7_salary_corrections.sql",
+   "detail": "core_money.salary_corrections"
+  },
+  {
+   "id": "rls_enabled:core_money.salary_corrections_candidate",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.salary_corrections_candidate"
+  },
+  {
+   "id": "rls_enabled:public.audit_log",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511152603_c2_audit_template.sql",
+   "detail": "public.audit_log"
+  },
+  {
+   "id": "rls_enabled:public.cancellations",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.cancellations"
+  },
+  {
+   "id": "rls_enabled:public.client_field_definitions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.client_field_definitions"
+  },
+  {
+   "id": "rls_enabled:public.client_teams",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.client_teams"
+  },
+  {
+   "id": "rls_enabled:public.clients",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.clients"
+  },
+  {
+   "id": "rls_enabled:public.commission_snapshots",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.commission_snapshots"
+  },
+  {
+   "id": "rls_enabled:public.cron_heartbeats",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511153246_c3_cron_skabelon.sql",
+   "detail": "public.cron_heartbeats"
+  },
+  {
+   "id": "rls_enabled:public.data_field_definitions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "public.data_field_definitions"
+  },
+  {
+   "id": "rls_enabled:public.employee_teams",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.employee_teams"
+  },
+  {
+   "id": "rls_enabled:public.employees",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511202242_d3_employees.sql",
+   "detail": "public.employees"
+  },
+  {
+   "id": "rls_enabled:public.org_units",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.org_units"
+  },
+  {
+   "id": "rls_enabled:public.pay_period_settings",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_period_settings"
+  },
+  {
+   "id": "rls_enabled:public.pay_periods",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_periods"
+  },
+  {
+   "id": "rls_enabled:public.role_page_permissions",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.role_page_permissions"
+  },
+  {
+   "id": "rls_enabled:public.roles",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.roles"
+  },
+  {
+   "id": "rls_enabled:public.salary_corrections",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.salary_corrections"
+  },
+  {
+   "id": "rls_enabled:public.teams",
+   "kind": "rls_enabled",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.teams"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "core_compliance.anonymization_mappings · anonymization_mappings_insert"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "core_compliance.anonymization_mappings · anonymization_mappings_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_mappings:anonymization_mappings_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514140000_t6_anonymization_tables.sql",
+   "detail": "core_compliance.anonymization_mappings · anonymization_mappings_update"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_strategies:strategies_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "core_compliance.anonymization_strategies · strategies_delete"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_strategies:strategies_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "core_compliance.anonymization_strategies · strategies_insert"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_strategies:strategies_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "core_compliance.anonymization_strategies · strategies_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.anonymization_strategies:strategies_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515110100_p1a_anonymization_strategies.sql",
+   "detail": "core_compliance.anonymization_strategies · strategies_update"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_operation_types:break_glass_operation_types_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_operation_types · break_glass_operation_types_insert"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_operation_types:break_glass_operation_types_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_operation_types · break_glass_operation_types_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_operation_types:break_glass_operation_types_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_operation_types · break_glass_operation_types_update"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_requests:break_glass_requests_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_requests · break_glass_requests_insert"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_requests:break_glass_requests_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_requests · break_glass_requests_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.break_glass_requests:break_glass_requests_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150008_t7c_break_glass.sql",
+   "detail": "core_compliance.break_glass_requests · break_glass_requests_update"
+  },
+  {
+   "id": "rls_policy:core_compliance.data_field_definitions:data_field_definitions_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "core_compliance.data_field_definitions · data_field_definitions_delete"
+  },
+  {
+   "id": "rls_policy:core_compliance.data_field_definitions:data_field_definitions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "core_compliance.data_field_definitions · data_field_definitions_insert"
+  },
+  {
+   "id": "rls_policy:core_compliance.data_field_definitions:data_field_definitions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "core_compliance.data_field_definitions · data_field_definitions_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.data_field_definitions:data_field_definitions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120005_t1_data_field_definitions.sql",
+   "detail": "core_compliance.data_field_definitions · data_field_definitions_update"
+  },
+  {
+   "id": "rls_policy:core_compliance.superadmin_settings:superadmin_settings_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130000_t2_superadmin_floor.sql",
+   "detail": "core_compliance.superadmin_settings · superadmin_settings_select"
+  },
+  {
+   "id": "rls_policy:core_compliance.superadmin_settings:superadmin_settings_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130000_t2_superadmin_floor.sql",
+   "detail": "core_compliance.superadmin_settings · superadmin_settings_update"
+  },
+  {
+   "id": "rls_policy:core_identity.client_field_definitions:client_field_definitions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.client_field_definitions · client_field_definitions_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.client_field_definitions:client_field_definitions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.client_field_definitions · client_field_definitions_select"
+  },
+  {
+   "id": "rls_policy:core_identity.client_field_definitions:client_field_definitions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.client_field_definitions · client_field_definitions_update"
+  },
+  {
+   "id": "rls_policy:core_identity.client_node_placements:client_node_placements_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000004_t9_client_node_placements.sql",
+   "detail": "core_identity.client_node_placements · client_node_placements_select"
+  },
+  {
+   "id": "rls_policy:core_identity.clients:clients_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.clients · clients_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.clients:clients_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.clients · clients_select"
+  },
+  {
+   "id": "rls_policy:core_identity.clients:clients_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521000001_t10_tables.sql",
+   "detail": "core_identity.clients · clients_update"
+  },
+  {
+   "id": "rls_policy:core_identity.employee_active_config:employee_active_config_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514180300_q1_employee_active_config.sql",
+   "detail": "core_identity.employee_active_config · employee_active_config_select"
+  },
+  {
+   "id": "rls_policy:core_identity.employee_active_config:employee_active_config_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514180300_q1_employee_active_config.sql",
+   "detail": "core_identity.employee_active_config · employee_active_config_update"
+  },
+  {
+   "id": "rls_policy:core_identity.employee_node_placements:employee_node_placements_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000003_t9_employee_node_placements.sql",
+   "detail": "core_identity.employee_node_placements · employee_node_placements_select"
+  },
+  {
+   "id": "rls_policy:core_identity.employees:employees_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.employees · employees_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.employees:employees_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.employees · employees_select"
+  },
+  {
+   "id": "rls_policy:core_identity.employees:employees_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.employees · employees_update"
+  },
+  {
+   "id": "rls_policy:core_identity.org_node_closure:org_node_closure_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000002_t9_org_node_closure.sql",
+   "detail": "core_identity.org_node_closure · org_node_closure_select"
+  },
+  {
+   "id": "rls_policy:core_identity.org_node_versions:org_node_versions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "detail": "core_identity.org_node_versions · org_node_versions_select"
+  },
+  {
+   "id": "rls_policy:core_identity.org_nodes:org_nodes_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "detail": "core_identity.org_nodes · org_nodes_select"
+  },
+  {
+   "id": "rls_policy:core_identity.pending_changes:pending_changes_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.pending_changes · pending_changes_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.pending_changes:pending_changes_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "detail": "core_identity.pending_changes · pending_changes_select"
+  },
+  {
+   "id": "rls_policy:core_identity.pending_changes:pending_changes_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.pending_changes · pending_changes_update"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_actions:permission_actions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "detail": "core_identity.permission_actions · permission_actions_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_actions:permission_actions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "detail": "core_identity.permission_actions · permission_actions_select"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_actions:permission_actions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260521100003_t9_supplement_2_permission_actions.sql",
+   "detail": "core_identity.permission_actions · permission_actions_update"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_areas:permission_areas_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_areas · permission_areas_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_areas:permission_areas_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_areas · permission_areas_select"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_areas:permission_areas_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_areas · permission_areas_update"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_pages:permission_pages_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_pages · permission_pages_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_pages:permission_pages_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_pages · permission_pages_select"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_pages:permission_pages_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_pages · permission_pages_update"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_tabs:permission_tabs_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_tabs · permission_tabs_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_tabs:permission_tabs_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000005_t9_permission_elements.sql",
+   "detail": "core_identity.permission_tabs · permission_tabs_select"
+  },
+  {
+   "id": "rls_policy:core_identity.permission_tabs:permission_tabs_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.permission_tabs · permission_tabs_update"
+  },
+  {
+   "id": "rls_policy:core_identity.role_page_permissions:role_page_permissions_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.role_page_permissions · role_page_permissions_delete"
+  },
+  {
+   "id": "rls_policy:core_identity.role_page_permissions:role_page_permissions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.role_page_permissions · role_page_permissions_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.role_page_permissions:role_page_permissions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.role_page_permissions · role_page_permissions_select"
+  },
+  {
+   "id": "rls_policy:core_identity.role_page_permissions:role_page_permissions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.role_page_permissions · role_page_permissions_update"
+  },
+  {
+   "id": "rls_policy:core_identity.role_permission_grants:role_permission_grants_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.role_permission_grants · role_permission_grants_delete"
+  },
+  {
+   "id": "rls_policy:core_identity.role_permission_grants:role_permission_grants_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.role_permission_grants · role_permission_grants_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.role_permission_grants:role_permission_grants_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000006_t9_grants_and_helpers.sql",
+   "detail": "core_identity.role_permission_grants · role_permission_grants_select"
+  },
+  {
+   "id": "rls_policy:core_identity.role_permission_grants:role_permission_grants_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.role_permission_grants · role_permission_grants_update"
+  },
+  {
+   "id": "rls_policy:core_identity.roles:roles_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.roles · roles_delete"
+  },
+  {
+   "id": "rls_policy:core_identity.roles:roles_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.roles · roles_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.roles:roles_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514120007_t1_bootstrap_admins.sql",
+   "detail": "core_identity.roles · roles_select"
+  },
+  {
+   "id": "rls_policy:core_identity.roles:roles_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514130001_t2_identity_rpcs.sql",
+   "detail": "core_identity.roles · roles_update"
+  },
+  {
+   "id": "rls_policy:core_identity.undo_settings:undo_settings_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.undo_settings · undo_settings_insert"
+  },
+  {
+   "id": "rls_policy:core_identity.undo_settings:undo_settings_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518000000_t9_pending_changes.sql",
+   "detail": "core_identity.undo_settings · undo_settings_select"
+  },
+  {
+   "id": "rls_policy:core_identity.undo_settings:undo_settings_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260518100000_t9_fundament_supplement.sql",
+   "detail": "core_identity.undo_settings · undo_settings_update"
+  },
+  {
+   "id": "rls_policy:core_money.cancellations:cancellations_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150003_t7_cancellations_skeleton.sql",
+   "detail": "core_money.cancellations · cancellations_insert"
+  },
+  {
+   "id": "rls_policy:core_money.cancellations:cancellations_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150003_t7_cancellations_skeleton.sql",
+   "detail": "core_money.cancellations · cancellations_select"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots:commission_snapshots_delete_candidate",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515090000_r3_r4_commission_snapshots_update_flag.sql",
+   "detail": "core_money.commission_snapshots · commission_snapshots_delete_candidate"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots:commission_snapshots_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150001_t7_commission_snapshots.sql",
+   "detail": "core_money.commission_snapshots · commission_snapshots_insert"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots:commission_snapshots_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150001_t7_commission_snapshots.sql",
+   "detail": "core_money.commission_snapshots · commission_snapshots_select"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots:commission_snapshots_update_flag",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260515090000_r3_r4_commission_snapshots_update_flag.sql",
+   "detail": "core_money.commission_snapshots · commission_snapshots_update_flag"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots_candidate:commission_snapshots_candidate_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.commission_snapshots_candidate · commission_snapshots_candidate_delete"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots_candidate:commission_snapshots_candidate_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.commission_snapshots_candidate · commission_snapshots_candidate_insert"
+  },
+  {
+   "id": "rls_policy:core_money.commission_snapshots_candidate:commission_snapshots_candidate_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.commission_snapshots_candidate · commission_snapshots_candidate_select"
+  },
+  {
+   "id": "rls_policy:core_money.pay_period_candidate_runs:pay_period_candidate_runs_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.pay_period_candidate_runs · pay_period_candidate_runs_insert"
+  },
+  {
+   "id": "rls_policy:core_money.pay_period_candidate_runs:pay_period_candidate_runs_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.pay_period_candidate_runs · pay_period_candidate_runs_select"
+  },
+  {
+   "id": "rls_policy:core_money.pay_period_candidate_runs:pay_period_candidate_runs_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.pay_period_candidate_runs · pay_period_candidate_runs_update"
+  },
+  {
+   "id": "rls_policy:core_money.pay_period_settings:pay_period_settings_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_period_settings · pay_period_settings_select"
+  },
+  {
+   "id": "rls_policy:core_money.pay_period_settings:pay_period_settings_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_period_settings · pay_period_settings_update"
+  },
+  {
+   "id": "rls_policy:core_money.pay_periods:pay_periods_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_periods · pay_periods_insert"
+  },
+  {
+   "id": "rls_policy:core_money.pay_periods:pay_periods_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_periods · pay_periods_select"
+  },
+  {
+   "id": "rls_policy:core_money.pay_periods:pay_periods_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150000_t7_pay_periods.sql",
+   "detail": "core_money.pay_periods · pay_periods_update"
+  },
+  {
+   "id": "rls_policy:core_money.salary_corrections:salary_corrections_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150002_t7_salary_corrections.sql",
+   "detail": "core_money.salary_corrections · salary_corrections_insert"
+  },
+  {
+   "id": "rls_policy:core_money.salary_corrections:salary_corrections_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150002_t7_salary_corrections.sql",
+   "detail": "core_money.salary_corrections · salary_corrections_select"
+  },
+  {
+   "id": "rls_policy:core_money.salary_corrections_candidate:salary_corrections_candidate_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.salary_corrections_candidate · salary_corrections_candidate_delete"
+  },
+  {
+   "id": "rls_policy:core_money.salary_corrections_candidate:salary_corrections_candidate_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.salary_corrections_candidate · salary_corrections_candidate_insert"
+  },
+  {
+   "id": "rls_policy:core_money.salary_corrections_candidate:salary_corrections_candidate_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260514150004_t7_candidate_snapshots.sql",
+   "detail": "core_money.salary_corrections_candidate · salary_corrections_candidate_select"
+  },
+  {
+   "id": "rls_policy:public.cancellations:cancellations_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.cancellations · cancellations_insert"
+  },
+  {
+   "id": "rls_policy:public.cancellations:cancellations_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.cancellations · cancellations_update"
+  },
+  {
+   "id": "rls_policy:public.client_field_definitions:client_field_definitions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.client_field_definitions · client_field_definitions_insert"
+  },
+  {
+   "id": "rls_policy:public.client_field_definitions:client_field_definitions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.client_field_definitions · client_field_definitions_select"
+  },
+  {
+   "id": "rls_policy:public.client_field_definitions:client_field_definitions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.client_field_definitions · client_field_definitions_update"
+  },
+  {
+   "id": "rls_policy:public.client_teams:client_teams_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.client_teams · client_teams_insert"
+  },
+  {
+   "id": "rls_policy:public.client_teams:client_teams_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.client_teams · client_teams_select"
+  },
+  {
+   "id": "rls_policy:public.client_teams:client_teams_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.client_teams · client_teams_update"
+  },
+  {
+   "id": "rls_policy:public.clients:clients_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.clients · clients_insert"
+  },
+  {
+   "id": "rls_policy:public.clients:clients_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.clients · clients_select"
+  },
+  {
+   "id": "rls_policy:public.clients:clients_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511213009_d5_clients.sql",
+   "detail": "public.clients · clients_update"
+  },
+  {
+   "id": "rls_policy:public.commission_snapshots:commission_snapshots_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.commission_snapshots · commission_snapshots_insert"
+  },
+  {
+   "id": "rls_policy:public.data_field_definitions:data_field_definitions_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "public.data_field_definitions · data_field_definitions_delete"
+  },
+  {
+   "id": "rls_policy:public.data_field_definitions:data_field_definitions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "public.data_field_definitions · data_field_definitions_insert"
+  },
+  {
+   "id": "rls_policy:public.data_field_definitions:data_field_definitions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "public.data_field_definitions · data_field_definitions_select"
+  },
+  {
+   "id": "rls_policy:public.data_field_definitions:data_field_definitions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511170951_d1_data_field_definitions.sql",
+   "detail": "public.data_field_definitions · data_field_definitions_update"
+  },
+  {
+   "id": "rls_policy:public.employee_teams:employee_teams_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.employee_teams · employee_teams_insert"
+  },
+  {
+   "id": "rls_policy:public.employee_teams:employee_teams_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.employee_teams · employee_teams_select"
+  },
+  {
+   "id": "rls_policy:public.employee_teams:employee_teams_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.employee_teams · employee_teams_update"
+  },
+  {
+   "id": "rls_policy:public.employees:employees_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511202242_d3_employees.sql",
+   "detail": "public.employees · employees_insert"
+  },
+  {
+   "id": "rls_policy:public.employees:employees_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511202242_d3_employees.sql",
+   "detail": "public.employees · employees_select"
+  },
+  {
+   "id": "rls_policy:public.employees:employees_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511202242_d3_employees.sql",
+   "detail": "public.employees · employees_update"
+  },
+  {
+   "id": "rls_policy:public.org_units:org_units_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.org_units · org_units_insert"
+  },
+  {
+   "id": "rls_policy:public.org_units:org_units_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.org_units · org_units_select"
+  },
+  {
+   "id": "rls_policy:public.org_units:org_units_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.org_units · org_units_update"
+  },
+  {
+   "id": "rls_policy:public.pay_period_settings:pay_period_settings_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_period_settings · pay_period_settings_select"
+  },
+  {
+   "id": "rls_policy:public.pay_period_settings:pay_period_settings_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_period_settings · pay_period_settings_update"
+  },
+  {
+   "id": "rls_policy:public.pay_periods:pay_periods_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_periods · pay_periods_insert"
+  },
+  {
+   "id": "rls_policy:public.pay_periods:pay_periods_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_periods · pay_periods_select"
+  },
+  {
+   "id": "rls_policy:public.pay_periods:pay_periods_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.pay_periods · pay_periods_update"
+  },
+  {
+   "id": "rls_policy:public.role_page_permissions:role_page_permissions_delete",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.role_page_permissions · role_page_permissions_delete"
+  },
+  {
+   "id": "rls_policy:public.role_page_permissions:role_page_permissions_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.role_page_permissions · role_page_permissions_insert"
+  },
+  {
+   "id": "rls_policy:public.role_page_permissions:role_page_permissions_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.role_page_permissions · role_page_permissions_select"
+  },
+  {
+   "id": "rls_policy:public.role_page_permissions:role_page_permissions_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.role_page_permissions · role_page_permissions_update"
+  },
+  {
+   "id": "rls_policy:public.roles:roles_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.roles · roles_insert"
+  },
+  {
+   "id": "rls_policy:public.roles:roles_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.roles · roles_select"
+  },
+  {
+   "id": "rls_policy:public.roles:roles_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511204529_d4_role_permissions.sql",
+   "detail": "public.roles · roles_update"
+  },
+  {
+   "id": "rls_policy:public.salary_corrections:salary_corrections_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260511165543_c4_pay_periods_template.sql",
+   "detail": "public.salary_corrections · salary_corrections_insert"
+  },
+  {
+   "id": "rls_policy:public.teams:teams_insert",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.teams · teams_insert"
+  },
+  {
+   "id": "rls_policy:public.teams:teams_select",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.teams · teams_select"
+  },
+  {
+   "id": "rls_policy:public.teams:teams_update",
+   "kind": "rls_policy",
+   "ref": "supabase/migrations/20260512212115_d7_teams_org_units.sql",
+   "detail": "public.teams · teams_update"
+  }
+ ],
+ "kinds": [
+  "migration",
+  "rls_enabled",
+  "rls_policy",
+  "config"
+ ]
+}

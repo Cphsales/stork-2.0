@@ -20,8 +20,19 @@ import { dirname, resolve } from "node:path";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export function runReconGate(commitSha, { root = repoRoot } = {}) {
+  // top-level fail-closed: enhver exception (manglende launch, brudt repo,
+  // malformeret JSON) → RØD med begrundelse, aldrig en boblende crash CI
+  // kunne fejltolke. (Samme regel som evaluateGate's egen top-guard.)
+  try {
+    return runReconGateInner(commitSha, root);
+  } catch (e) {
+    return { open: false, gate_id: "recon", reasons: [`gate-run kastede (fail-closed): ${e?.message ?? String(e)}`] };
+  }
+}
+
+function runReconGateInner(commitSha, root) {
   const git = makeGit(root);
-  // pakke fra den committede launch (fail-closed: mangler → kast → RØD)
+  // pakke fra den committede launch (fail-closed: mangler → kast → RØD via top-guard)
   const launch = JSON.parse(git.bytes("show", `${commitSha}:launch/launch.json`).toString("utf8"));
   const pakke = launch.pakke;
 

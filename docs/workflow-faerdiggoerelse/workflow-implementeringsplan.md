@@ -141,6 +141,8 @@ Givet led X⊨Y → producér **falsificerbar test/probe + citeret evidens**, al
 
 ## Fase 1 — Recon → "hvad pakken berører" (føder krav)
 Driveren bygger + committer **pakke-kontekst-bundlet** (anker + refererede docs + låste vision/forretning **+ `flade_filter`** = eksplicit pakke-flade-deklaration, 2.D) + udleder pakke-fladen (`coverage --derive` → `filterSurface`, 2.D). **Recon dækker KUN pakkens flade** — dæknings-kravet er den filtrerede flade, ikke hele repoet (Mathias 2026-08-13; aktør-dybden var altid pakke-scoped — det er KRAVET der er pakke-scoped som håndhævet struktur). **Tre friske, blinde aktører** (recon-Code · Codex · Claude.ai — separat workdir · læseforbud mod hinandens output · **web FORBUDT**) → hver sit candidate → `consolidate-recon` → ÉN OID-bundet `recon.md` (3 bøtter; **konflikt-bevaring HÅRD:** divergenser bevares med aktør-mærke, kun ægte dubletter dedupes, kasseret uenighed → BLOKER) → **omission-devil** (Codex, én pass; loop kun ved fund) — **to eksplicitte akser** (2.C): (a) angrib `flade_filter` mod den fulde deriverede flade (pakke-relevant punkt udeladt af filteret?) · (b) find misset inden for pakke-fladen.
+**Bundle-felter (byggevejen — næste pakkes driver bygger fra DENNE spec, kopierer aldrig forrige pakkes artefakt):** `{pakke, launch_commit, anker{path,oid,punkter}, laaste_docs[{path,oid,rolle}], kode_flade, regler, flade_filter{note,punkt_ids}}`. **INTET `tree_sha`-felt** (første pakkes bundle bar et — commit-OID under tree-navn = feltet løj; commit-pin hedder `launch_commit`, og deriveSurface pinnes altid ved gate-commit'en, aldrig ved et bundle-felt).
+**Arkiverings-regel (provenance — lærdom fra første pakke):** aktør-kandidater + devil-output committes som arbejds-spor (`recon/spor/`) **FØR** workdirs/worktrees ryddes — oprydning uden arkivering = provenance-tab (kandidat-niveau-reproduktion umulig). Arbejds-spor slettes ved lukke-PR (Fase 6); git-historikken bevarer dem.
 **Gate `recon`** = machineProof `recon-coverage` (2.C). Doc: `recon.md` (AI-intern).
 **Aftager-kæden definerer leverance-formen (struktur, ikke huskeregel — Mathias 2026-08-13):** recon-1's aftager er **krav-dokken** (HVAD pakken skal kunne — Mathias' bord via 3-bøtte-præsentationen) → `recon.md` organiseres som KRAV-føde: 3 bøtter, forretnings-oversætbart, hvert fund klar til disposition (behandlet/udskudt/ikke-relevant); GØR/AFVISER + negativer er krav-føde (→ acceptkriteriernes slut-effekt inkl. negativer). Mutation-/test-dybde-materiale er IKKE krav-føde — det gemmes som bilag/spor og konsumeres af **recon-2, hvis aftager er plan-dokken** (HVORDAN — kill-lists/angrebs-spec dømmes ved plan-gaten, Fase 3/4). Intet kasseres; det ligger blot hos sin aftager.
 *Forbygning:* (a) forstå HELE bundlet ved OID; (b) kortlæg hele scope (ikke første-fund) · evidens-trace pr. fund · spørg v. uklarhed. **Fundamentet — fejl her forplanter sig nedstrøms.**
@@ -157,7 +159,7 @@ Driveren bygger + committer **pakke-kontekst-bundlet** (anker + refererede docs 
 ```
 # <pakke> — krav-og-data   (Status: UDKAST|krav-laast · recon_oid · anker)
 ## Formål — hvad pakken leverer
-## Krav — K-n: HVAD (forretnings-sprog, ingen kode) · Acceptkriterie (slut-effekt INKL. negativer)
+## Krav — K-n: HVAD (forretnings-sprog, ingen kode) · Acceptkriterie (slut-effekt INKL. negativer) · pr. K markeret: UMULIGT (struktur, systemet afviser) vs. KONFIGURERBART (værdi, UI-styret)
 ## Recon-fund-dispositioner | flade_punkt | bøtte | disposition | krav-ref |
 ## IKKE i scope   ## Holdt mod låste docs
 ```
