@@ -83,6 +83,19 @@ EKSPLICIT som **plan-fase-afgørelser**: planner afgør inden for kravets ramme,
 Codex angriber, og Mathias' plan OK dækker dem. De forsvinder ALDRIG tavst —
 de flytter bord, synligt, på en "flyttet til plan-fasen"-liste i genfremlæggelsen.
 
+**FORM-KRAV til spørgsmål der BESTÅR bord-testen (Mathias 2026-09-02 — et
+uskarpt spørgsmål koster hans svar):**
+1. **ÉN beslutning pr. spørgsmål.** Del-spørgsmål må ALDRIG gemmes i en
+   parentes/hale (de bliver svaret forbi) — de får eget nummer eller venter.
+2. **SCENARIE-FORM:** stil spørgsmålet som en konkret situation fra HANS
+   forretning med navngivne klienter/steder ("Tryg i Bilka Hundige…"), aldrig
+   meta-sprog ("hvad repræsenterer X kommercielt?" forstår han med rette ikke).
+3. **SVARBART MED ÉT ORD:** giv svarmulighederne (ja/nej eller 2-3 navngivne
+   udfald) + evt. din anbefaling. Svarer han "forstår ikke" → spørgsmålet
+   HALTER og omformuleres — gå ALDRIG videre uden svar.
+4. **Værdi-tjek før afsendelse:** spørger du om en VÆRDI (enhed, længde,
+   sats)? Så er svaret næsten altid "UI-konfig" — bortfald, ikke spørgsmål.
+
 **Antag ALDRIG Mathias' intention.** Et negativ eller en regel du "udfylder på
 hans vegne" fordi det virker oplagt, er en forretnings-sandhed opfundet uden
 ejeren — den farligste falsk-grøn her, for den ser autoritativ ud og ingen
