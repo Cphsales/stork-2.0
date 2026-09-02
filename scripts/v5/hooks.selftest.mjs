@@ -68,6 +68,25 @@ denies("sandhed altid deny (efter plan)", { rawPath: "docs/sandhed/vision.md", r
 denies("måle-lag altid deny (før plan)", { rawPath: "scripts/v5/gates.mjs", repoRoot: ROOT, planLocked: false });
 denies("måle-lag altid deny (efter plan)", { rawPath: "scripts/v5/gates.mjs", repoRoot: ROOT, planLocked: true });
 denies("udenfor deny", { rawPath: "/etc/passwd", repoRoot: ROOT, planLocked: true });
+
+console.log("\nwriteDecision — krav-upload-ruten (smal driver-rute, sandhed-protect ellers intakt):");
+{
+  const mandat = { pakke: "pakke-x", udkastBlobOid: "a".repeat(40) };
+  const r1 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: mandat });
+  r1.decision === "allow" ? ok("gyldigt mandat + eksakt krav-sti → allow") : bad("krav-allow", r1.reason);
+  const r2 = writeDecision({ rawPath: "docs/sandhed/vision.md", repoRoot: ROOT, planLocked: false, kravUpload: mandat });
+  r2.decision === "deny" ? ok("mandat åbner IKKE andre sandhed-stier") : bad("krav-scope", "ALLOW (falsk-grøn)");
+  const r3 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-y-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: mandat });
+  r3.decision === "deny" ? ok("mandat åbner IKKE en anden pakkes krav-sti") : bad("krav-pakke", "ALLOW (falsk-grøn)");
+  const r4 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "pakke-x", udkastBlobOid: "ikke-en-oid" } });
+  r4.decision === "deny" ? ok("ugyldig udkast-OID → deny") : bad("krav-oid", "ALLOW (falsk-grøn)");
+  const r5 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "../evil", udkastBlobOid: "a".repeat(40) } });
+  r5.decision === "deny" ? ok("traversal-pakkenavn → deny (PAKKE_RE)") : bad("krav-traversal", "ALLOW (falsk-grøn)");
+  const r6 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: Object.create({ pakke: "pakke-x", udkastBlobOid: "a".repeat(40) }) });
+  r6.decision === "deny" ? ok("arvet/prototype-mandat → deny (egne felter)") : bad("krav-proto", "ALLOW (falsk-grøn)");
+  const r7 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false });
+  r7.decision === "deny" ? ok("uden mandat er krav-stien stadig deny") : bad("krav-udenmandat", "ALLOW (falsk-grøn)");
+}
 denies("produkt før plan-laast deny (default-deny)", {
   rawPath: "apps/web/src/x.ts",
   repoRoot: ROOT,

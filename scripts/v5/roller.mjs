@@ -64,7 +64,7 @@ export const ROLLER = Object.freeze({
     kode: false, // forretnings-mening, ALDRIG kode-vurdering (Codex' bord)
     ejerMaalelag: false,
     raadgivende: false,
-    freshness: "frisk chat pr. gate",
+    freshness: "frisk terminal-session pr. gate",
     forbyg_input: "handover-HALT mod recon-hash + forstå recon",
     forbyg_output: "fang intentionen + negativerne · kun HVAD · hvert berørt område dækket · aldrig antag intention (HALT) · plan-verdikt OID-bundet (tavshed ≠ ja)",
   },

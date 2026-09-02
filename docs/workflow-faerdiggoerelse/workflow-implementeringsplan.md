@@ -49,7 +49,7 @@ Detektion (gates · prover · troskab) er **sidste** forsvar; forbygning er **f�
 Interne AI-flade-docs (recon · plan · kontrakter · skills · attack-specs · verdikter) skrives i **aktørernes eget sprog/form**. Kun **Mathias-flade** (krav-doc · recon-præsentation · gates · masterplan-diff) er i hans sprog. Mathias læser ikke det interne.
 
 ## Mathias' flader (hård constraint)
-**Claude-appen** (forretning + med-forfatter af krav) + **Code-terminalen**. Gate-ord (`qwers` · `krav ok` · `plan ok` · `slut ok`) fra hans mgrubak-session i **app eller terminal** (installeret+testet plugin håndterer app↔repo). GitHub-Actions kører automatisk/usynligt — **han rører ALDRIG GitHub-UI.**
+**Code-terminalen er hans ENESTE flade** (Mathias 2026-09-02; tidligere app+terminal — ændret for nemmere kommunikation på tværs af sessioner). Forretning + med-forfatterskab af krav sker i en **NY, FRISK Code-terminal-session pr. gate i claude-ai-rollen** (Mathias starter den selv og giver rolle-ord + binding). Gate-ord (`qwers` · `krav upload` · `krav ok` · `plan ok` · `slut ok`) fra hans mgrubak-session i terminalen. GitHub-Actions kører automatisk/usynligt — **han rører ALDRIG GitHub-UI.** *Ærligt tab (navngivet):* app-projektets chat-historik indgår ikke længere i krav-konteksten; kontekst = repo-docs + recon @ OID + Mathias live i sessionen.
 
 ## Konventioner
 Repo-rod `/home/mathias/stork-implplan`. Refs = git-OIDs (`git rev-parse <sha>:<path>` / tree-oid — intet custom hash). U-committet indhold kan aldrig åbne en gate.
@@ -115,7 +115,7 @@ Evidens-typen er **eksplicit pr. gate** — krav/plan kræver ingen machine-proo
 
 ## 2.E Enforcement — autoritet ved artefakt-grænsen (hooks = lokal UX)
 **Platform-håndhævet (autoritet):** gate-App `checks:write`, **aldrig `contents:write`** (gate-state muterer ikke træet) · build/test-jobs `contents:read` · **måle-lag** (`scripts/v5/**` · `test/v5/**` · `.claude/**` · `.github/workflows/**`) via **rulesets/push-path-restrictions** — Code kan ikke skrive; Codex/CI ejer (*der måler ≠ der bygger*; Code må læse + køre) · required check `v5/gate/<id>` **source-locked** til gate-App'en · CODEOWNERS + branch-protection = backstop.
-**Lokale hooks (friktion/UX, exit 2):** default-deny produkt-skriv før `plan-laast` · måle-lag-skriv-deny · sandhed-protect (AI skriver aldrig `docs/sandhed/`) · **attack-spec-gate som state-machine:** før `plan-laast` → kun read-only tool-kald; efter → kun **driver-routede** build/prove-kald for **aktuel bid MED committet angrebs-spec**; direkte skriveveje uden om driveren → deny. Auto-fix-/"issue→PR"-makroer er ALDRIG i allowlisten (springer den gatede kæde over).
+**Lokale hooks (friktion/UX, exit 2):** default-deny produkt-skriv før `plan-laast` · måle-lag-skriv-deny · sandhed-protect (AI skriver aldrig `docs/sandhed/` — ENESTE undtagelse: driver-flytten af krav-udkast til `docs/sandhed/krav/<pakke>-krav.md` på Mathias' `krav upload`-ord, byte-identisk, eksakt sti; Fase 2 pkt. 3) · **attack-spec-gate som state-machine:** før `plan-laast` → kun read-only tool-kald; efter → kun **driver-routede** build/prove-kald for **aktuel bid MED committet angrebs-spec**; direkte skriveveje uden om driveren → deny. Auto-fix-/"issue→PR"-makroer er ALDRIG i allowlisten (springer den gatede kæde over).
 
 ## 2.F Driver + `actors.lock` (provenance + transport)
 decide/udfoer-split (genbrug `dirigent.mjs`-arkitektur, ny logik). **`actors.lock`** = låst registry `{role, provider, model, reasoning, skill_oid, allowed_tools, output_schema}` — **eksakt skill-OID, aldrig "latest"**. CI's actor-runner injicerer skill-bytes + returnerer **signeret `actor_run.json`** (faktisk model/skill/input-OIDs) → model+skill = **provenance**, ikke CLI-config. Driver pr. fase: invokér aktør → candidate → commit → trigger CI; **auto-dispatch** (kun krav/plan/slut OK afbryder — menneske); HALT → durabelt flag; lokal fejl → fix-loop (`/loop` + `/goal` turn-cap; **prover = eneste success**); uløst → `/rewind` + eskalér. Lokal = candidate; CI = autoritativ.
@@ -126,7 +126,7 @@ Hver rolle-skill kompilerer til en output-kontrakt (CI ignorerer fri prosa). **A
 - **code-reviewer:** frisk ≠ byggeren; dybde-inspektion → `claim_graph_refs` (kun gyldig ved eksekveret + dræbt).
 - **codex/ANGREB:** falsk-grøn-jagt, dybde intrinsisk (overfladisk test = falsk-grøn); ejer måle-laget; cross-vendor (gpt-5.5 xhigh); **ingen web**.
 - **codex/FORBEDRING:** bedre alternativer (test/forbyg/dybde); **web TILLADT**; rådgivende — ingen gate; separat agent.
-- **claude-ai:** forretnings-mening mod **låste** docs; med-forfatter af krav; ingen kode; app-kanal; frisk chat pr. gate.
+- **claude-ai:** forretnings-mening mod **låste** docs; med-forfatter af krav; ingen kode; kanal = frisk Code-terminal-session pr. gate i claude-ai-rollen (Mathias 2026-09-02; før: app).
 - **recon-roller:** friske, blinde, separat workdir, **web FORBUDT**, evidens-trace pr. fund.
 
 ## 2.H `test-led`-skill (rygradens motor, anvendt pr. ⊨)
@@ -146,11 +146,11 @@ Driveren bygger + committer **pakke-kontekst-bundlet** (anker + refererede docs 
 *Forbygning:* (a) forstå HELE bundlet ved OID; (b) kortlæg hele scope (ikke første-fund) · evidens-trace pr. fund · spørg v. uklarhed. **Fundamentet — fejl her forplanter sig nedstrøms.**
 
 ## Fase 2 — Krav (vision/forretning ⊨ krav) — Mathias godkender SIDST
-1. **Handover:** Claude.ai-app bygger kontekst (docs-sync + projekt-chats + committet recon-OID). **Handover-HALT:** binding verificeres FØR krav — stale/forkert/overfladisk → HALT (recon er committet/durabel → re-synkes, gen-køres ikke). App'en **konsumerer** recon-dybden, tilføjer den ikke.
+1. **Handover:** Mathias starter en NY, FRISK Code-terminal-session i **claude-ai-rollen** (rolle-ord + binding: recon-commit + `recon/recon.md`). Sessionen læser recon DIREKTE ved OID fra git (stærkere læsebevis end app-sync; Mathias 2026-09-02). **Handover-HALT uændret:** binding verificeres FØR krav — stale/forkert/overfladisk → HALT (recon er committet/durabel). Sessionen **konsumerer** recon-dybden, tilføjer den ikke. Kontekst = repo-docs + recon @ OID + Mathias live (app-chat-historik indgår ikke — ærligt tab, DEL I).
 2. **3-bøtte-præsentation:** nuværende kode ("x bygget sådan — korrekt?") / ikke-bygget/dokument ("dok y siger — korrekt?") / intet-data ("hvad skal x kunne?"). **Hvert berørt bord-område SKAL præsenteres** (udækket → FAIL); kun pakke-relevant (ingen støj). Mathias dømmer forretning, ikke kode.
-3. **Krav skrives:** Mathias + Claude.ai → hvert **K-n: HVAD** (forretnings-sprog, ingen kode) + **acceptkriterie = slut-effekt INKL. negativer**; bundet til recon-OID; **hvert recon-fund disponeret** (behandlet/udskudt/ikke-relevant). Claude.ai uploader — **upload-hash SKAL matche det færdiggjorte** (ingen anden version kan smugles ind). **Upload ≠ krav OK.**
+3. **Krav skrives:** Mathias + claude-ai-sessionen → hvert **K-n: HVAD** (forretnings-sprog, ingen kode) + **acceptkriterie = slut-effekt INKL. negativer**; bundet til recon-OID; **hvert recon-fund disponeret** (behandlet/udskudt/ikke-relevant). Sessionen skriver KUN **udkast**: `plan-build/<pakke>/krav-udkast.md` (AI-zone — sandhed-protect slækkes ALDRIG generelt). **Upload = driver-flyt på Mathias' ord** (`krav upload`, mgrubak i terminal): driveren kopierer udkastet **byte-identisk** til `docs/sandhed/krav/<pakke>-krav.md` + committer — committet krav-blob-OID SKAL == udkast-blob-OID (flyt, aldrig redigér; afvigelse → HALT). Hook-undtagelsen er PRÆCIS denne driver-rute (kun denne sti · kun med Mathias' upload-ord · kun byte-identisk). **Upload ≠ krav OK.** (Erstatter app-modellens upload-hash-transport — Mathias 2026-09-02.)
 4. **Buildability:** Code + Codex afgiver verdikt (2.B) ad ÉN akse — *kan det kodes? er der huller?* — IKKE forretnings-merit. De **retter ALDRIG krav** — mangler → spørgsmål/forslag til Mathias → **nyt upload = ny runde**.
-5. **krav OK = Mathias SIDST** (krav 5): `krav ok` i app/terminal (mgrubak-autoritet). **orderedApproval** binder til uændret krav-OID + refererer de forudgående verdikt-digests → rækkefølgen er bevist, ikke påstået. Krav **immutabelt** efter OK.
+5. **krav OK = Mathias SIDST** (krav 5): `krav ok` i terminalen (mgrubak-autoritet). **orderedApproval** binder til uændret krav-OID + refererer de forudgående verdikt-digests → rækkefølgen er bevist, ikke påstået. Krav **immutabelt** efter OK.
 
 **Gate `krav`** = actors(code, codex) + approver(mgrubak, sidst). *Bevis:* test-led — Claude.ai (forretnings-mening mod låste docs; med-forfatterskabet ER pre-upload-trinnet). *Dommer:* Mathias.
 **Krav-template** (`docs/sandhed/krav/<pakke>-krav.md` · Mathias-flade):
@@ -257,19 +257,19 @@ Hver canary = seeded negativ fixture; gaten SKAL gå rød. Alle bestået → **s
 - **Ukendt-ukendt recon-komplethed** — omission-devil + Mathias krymper; residual.
 - **Dybde-fuldstændighed** — effect-harness + mutant-kill mindsker mekanisk; fuld sti-dækning er ikke deterministisk; rest = plan-gatens dom + prover.
 - **Internt-komplet vs. eksternt-forkert bijektion** (krav forkert splittet/udvandet) — Mathias + Claude.ai.
-- **Claude.ai-app som menneske-led** + **GitHub-App/Actions som root-of-trust** — enforcement-selftest verificerer at config er live; org-admin (mgrubak) uden for workflowet, navngivet.
+- **Claude-terminal-session som menneske-led** (før: app; Mathias 2026-09-02) + **GitHub-App/Actions som root-of-trust** — enforcement-selftest verificerer at config er live; org-admin (mgrubak) uden for workflowet, navngivet.
 - **Aktør-dommens korrekthed** — kernen verificerer PASS + reelle citater, IKKE at dommen er rigtig (P3-residual; derfor cross-vendor + menneske-gates).
 
 ---
 
 # DEL VIII — AFGJORT (beslutningslog)
 1. **Genbrug vejet** (sund plumbing genbruges · falsk-grøn-mekanik bygges på ny).
-2. **Recon i terminal** (`claude -p`/`codex exec`); **krav i Claude.ai-appen**.
+2. **Recon i terminal** (`claude -p`/`codex exec`); **krav i NY frisk Code-terminal-session i claude-ai-rollen** (Mathias 2026-09-02 — før: Claude.ai-appen; ændret for cross-session-kommunikation. Udkast i AI-zone, upload = driver-flyt på Mathias' ord, byte-identisk).
 3. **CI = autoritativ dommer**; lokal = candidate-only.
 4. **test-led-skill** pr. ⊨; aktør = input, dommer = deterministisk/menneske.
 5. Trace = committede OID-bundne artefakter.
 6. **Gate-autoritet = check-runs fra gate-App'en** — aldrig committede filer (v4-kernen).
 7. **Krav-rækkefølge: Mathias godkender SIDST** (krav 5) — upload ≠ krav OK; orderedApproval beviser rækkefølgen.
 8. **build OK = mekanisk**, ikke Mathias-gate.
-9. **Mathias rører aldrig GitHub-UI**; hans flader = app + terminal.
+9. **Mathias rører aldrig GitHub-UI**; hans flade = Code-terminalen (app udgået 2026-09-02, se pkt. 2).
 10. **Papir-runder på gate-kernen er stoppet** — dens bevis er byg + red-team (DEL VI pkt. 2).

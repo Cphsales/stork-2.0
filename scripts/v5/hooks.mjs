@@ -61,14 +61,23 @@ export function pathZone(rawPath, repoRoot) {
   return "produkt";
 }
 
-// writeDecision({rawPath, repoRoot, planLocked}) → {decision:"allow"|"deny", zone, reason}
+// writeDecision({rawPath, repoRoot, planLocked, kravUpload?}) → {decision, zone, reason}
 // Fail-closed forbygning ved skrive-kald fra en Code-session:
 // - udenfor repo  → deny (mistænkeligt / uden for fabrikkens greb)
-// - sandhed       → deny (Mathias' bord; AI skriver aldrig)
+// - sandhed       → deny (Mathias' bord; AI skriver aldrig) — MED én smal,
+//   eksplicit driver-rute (Mathias 2026-09-02, terminal-krav-modellen):
+//   kravUpload = { pakke, udkastBlobOid } tillader skriv til PRÆCIS
+//   `docs/sandhed/krav/<pakke>-krav.md` — driverens byte-identiske flyt af
+//   udkastet på Mathias' `krav upload`-ord. Alle andre sandhed-stier forbliver
+//   deny (sandhed-protect slækkes ALDRIG generelt); byte-identiteten
+//   (krav-blob-OID == udkast-blob-OID) håndhæves af driver-flytten + er
+//   re-verificerbar ved krav-gatens OID-binding.
 // - måle-lag      → deny (der måler ≠ der bygger; Codex/CI ejer)
 // - produkt, før plan-laast → deny (default-deny: intet produkt bygges før plan OK)
 // - produkt, efter plan-laast → allow (build-fasen; de finere attack-spec-/
 //   driver-routing-regler tilføjes med driver-biddet)
+const KRAV_PAKKE_RE = /^[a-z][a-z0-9-]*$/; // samme som launcher (anti-traversal)
+const isHexOid = (s) => typeof s === "string" && /^[0-9a-f]{40}$/.test(s);
 export function writeDecision(input) {
   // fail-closed på malformeret input: en hook-API skal returnere deny, aldrig
   // kaste (en wrapper der fejlhåndterer en exception kunne blive fail-open).
@@ -77,13 +86,36 @@ export function writeDecision(input) {
   const ip = Object.getPrototypeOf(input);
   if (ip !== Object.prototype && ip !== null)
     return { decision: "deny", zone: "udenfor", reason: "input har ikke-standard prototype (manipuleret)" };
-  const { rawPath, repoRoot, planLocked } = input;
+  const { rawPath, repoRoot, planLocked, kravUpload } = input;
   const zone = pathZone(rawPath, repoRoot);
   switch (zone) {
     case "udenfor":
       return { decision: "deny", zone, reason: "skrivning uden for repoet (fail-closed)" };
-    case "sandhed":
+    case "sandhed": {
+      // smal driver-rute for krav-upload — alle betingelser EKSPLICITTE og
+      // fail-closed: plain object mandat + gyldigt pakke-navn + udkast-OID +
+      // eksakt sti-match. Alt andet i sandhed = deny som altid.
+      if (kravUpload !== undefined && kravUpload !== null) {
+        const kp = Object.getPrototypeOf(kravUpload);
+        const plain = typeof kravUpload === "object" && !Array.isArray(kravUpload) && (kp === Object.prototype || kp === null);
+        if (
+          plain &&
+          typeof kravUpload.pakke === "string" &&
+          KRAV_PAKKE_RE.test(kravUpload.pakke) &&
+          isHexOid(kravUpload.udkastBlobOid)
+        ) {
+          const { relPath } = toRepoRel(rawPath, repoRoot);
+          if (relPath === `docs/sandhed/krav/${kravUpload.pakke}-krav.md`)
+            return {
+              decision: "allow",
+              zone,
+              reason: `krav-upload (driver-flyt på Mathias' ord): docs/sandhed/krav/${kravUpload.pakke}-krav.md — byte-identisk mod udkast ${kravUpload.udkastBlobOid.slice(0, 12)}`,
+            };
+        }
+        return { decision: "deny", zone, reason: "kravUpload-mandat ugyldigt eller sti-mismatch (fail-closed)" };
+      }
       return { decision: "deny", zone, reason: "docs/sandhed er Mathias' bord — AI skriver aldrig her" };
+    }
     case "maale-lag":
       return { decision: "deny", zone, reason: "måle-laget ejes af Codex/CI (der måler ≠ der bygger)" };
     case "produkt":
