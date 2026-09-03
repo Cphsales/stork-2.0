@@ -1,14 +1,14 @@
 # lokations-skabelon — krav-og-data
 
-Status: UDKAST · recon_oid: 7fbd3a2f43c03ce239aa81e20483326bf438463c @ commit afcf4080a6c3619462eb9e53df10f49495e19abf · anker: masterplan §4 trin 10b / §1.12
+Status: UDKAST · alle Mathias-svar 2026-09-02/03 indarbejdet · recon_oid: 7fbd3a2f43c03ce239aa81e20483326bf438463c @ commit afcf4080a6c3619462eb9e53df10f49495e19abf · anker: masterplan §4 trin 10b / §1.12
 
 ## Formål — hvad pakken leverer
 
-Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient-tilladelser, status-livscyklus og hvile-regler som central master-data — UI-styret, auditeret og klar til at bære bookinger og resten af FM-kæden (trin 24-29) uden om-design. Fundamentet for hele FM-grenen.
+Lokations-skabelonen: fysiske lokationer med stande (placements), grupper (ejere), klient-tilladelser (hvilke klienter må stå hvor), status-livscyklus og hvile-regler som central master-data — UI-styret, auditeret og klar til at bære bookinger og resten af FM-kæden (trin 24-29) uden om-design. Fundamentet for hele FM-grenen.
 
-**Grundlag:** recon (3-blind, gate åben) @ OID ovenfor · Mathias' krav-ord 2026-09-02: UI-styring med struktur/værdi-skel ("noget skal være hardkodet — fx at en lokation skal have et navn; men HVILKET navn styres i UI") · status `aktiv · dvale · nedlagt`, kun aktiv bookbar · nedlagt kan genåbnes · tilladelser må oprettes i dvale når den bookede dato ligger efter dvalens ophør · hvile-reglen er absolut, men perioden kan stoppes i UI · aftaler laves pr. lokation, hver lokation har en gruppe som ejer · migration: importeres senere.
+**Grundlag:** recon (3-blind, gate åben) @ OID ovenfor · Mathias' krav-ord 2026-09-02: UI-styring med struktur/værdi-skel ("noget skal være hardkodet — fx at en lokation skal have et navn; men HVILKET navn styres i UI") · status `aktiv · dvale · nedlagt`, kun aktiv bookbar · nedlagt kan genåbnes · tilladelser må oprettes i dvale når den bookede dato ligger efter dvalens ophør · hvile-reglen er absolut, men perioden kan stoppes i UI · aftaler laves pr. lokation, hver lokation har en gruppe som ejer · migration: importeres senere · Mathias' krav-ord 2026-09-03 (verbatim): "alle lokationer ejes af en gruppe (eks. coop) og … i en lokation kan oprettes flere stande. derfor kan der godt være flere klienter på en lokation samtidig men der kan maks være 1 klient pr stand" · hvileperiode-ændring "styres i rettigheder".
 
-**Sprog-note:** Mathias' ord "gruppe"/"ejer" er masterplanens "leverandør" (§1.12) — samme entitet, to navne. Kravet skriver "gruppe (leverandør)".
+**Sprog-note:** Mathias' ord "gruppe"/"ejer" er masterplanens "leverandør" (§1.12); hans "stand" er masterplanens "placement"; samme entiteter, to navne. Kravet skriver hans ord først og systemordet i parentes ved første brug: "gruppe (leverandør)", "stand (placement)". Klient-tilladelser skrives som forretningsforstaaelse §14's egen funktion — "hvilke klienter må stå/sælges på hvilke lokationer" — ikke som et dateret aftale-objekt (Mathias 2026-09-03: "hvad menes der med aftaler?"); datoer og versionering er plan-mekanik. Doc-citater står uændret.
 
 **Form:** Hvert krav svarer på "hvad er umuligt" (struktur — hardkodet) og "hvad er konfigurerbart" (værdi — UI). Acceptkriterier er slut-effekter: noget AFVISES eller kan IKKE ske — aldrig "bør valideres".
 
@@ -28,19 +28,20 @@ Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient
 4. Lokationen kan IKKE indgå som attributions- eller provisions-dimension — der findes ingen økonomi-kobling på lokationen i denne pakke.
 5. Oprettelse/ændring af en lokation kræver ALDRIG udvikler-indgreb (jf. K-9).
 
-### K-2 Placements under lokation (hierarki)
+### K-2 Stande (placements) under lokation
 
-**HVAD:** En top-lokation kan have placements (stand-positioner) under sig — samme entitet, ét hierarki. En placement kan bære egen dagspris; ellers gælder parentens.
+**HVAD:** En lokation kan have flere stande (placements) under sig — samme entitet, ét hierarki (Mathias 2026-09-03: "i en lokation kan oprettes flere stande"). Standen er den enhed én klient ad gangen står på: flere klienter kan være på lokationen samtidig, men aldrig to klienter på samme stand samtidig — låst forretningsregel. En stand kan bære egen dagspris; ellers gælder lokationens.
 
-- **Struktur (umuligt):** cykler (en lokation kan aldrig — direkte eller gennem led — være sin egen over-lokation) · placement uden entydig pris-opløsning · booking på placement under ikke-aktiv lokation (via K-4).
-- **Værdi (UI):** hvilke placements, navne, egne priser.
+- **Struktur (umuligt):** cykler (en lokation kan aldrig — direkte eller gennem led — være sin egen over-lokation) · stand uden entydig pris-opløsning · to klienter på samme stand samtidig · booking på stand under ikke-aktiv lokation (via K-4).
+- **Værdi (UI):** hvilke stande, navne, egne priser.
 
 **Acceptkriterier (slut-effekter):**
 1. En skrivning der skaber en cyklus i hierarkiet AFVISES.
-2. Placement uden egen pris læses entydigt med parentens pris — der findes aldrig to sandheder om samme pris.
-3. En placement under en lokation i dvale eller nedlagt er IKKE bookbar (håndhæves via K-4's aktiv-opslag).
+2. Stand uden egen pris læses entydigt med lokationens pris — der findes aldrig to sandheder om samme pris.
+3. En stand under en lokation i dvale eller nedlagt er IKKE bookbar (håndhæves via K-4's aktiv-opslag).
+4. Én klient pr. stand ad gangen: skabelonen leverer standen som den enhed en booking binder til, så to klienter på samme stand på samme dag AFVISES i booking-leddet (trin 24 forbruger stand-identiteten). Tilladelsen (K-6) gives pr. lokation; hvilken stand klienten står på afgøres ved booking.
 
-*Plan-fase:* dybde-håndhævelse (to niveauer vs. fri) og gruppe-arv på placement — inden for dette kravs ramme.
+*Plan-fase:* Mathias' model er lokation → stande; om en stand kan have under-stande er ikke forretnings-afgjort (planner afgør i rammen) · gruppe-arv på stand — inden for dette kravs ramme.
 
 ### K-3 Gruppe (leverandør) som ejer
 
@@ -53,7 +54,7 @@ Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient
 1. Oprettelse af lokation uden gruppe-kobling AFVISES.
 2. Gruppe angives ved valg af eksisterende gruppe-entitet — et fritekst-gruppenavn på lokationen kan IKKE eksistere.
 3. Gruppe uden type AFVISES.
-4. Der findes INGEN kæde-tilladelse: en tilladelse (K-6) peger altid på én lokation.
+4. Der findes INGEN kæde-tilladelse: en tilladelse (K-6) gives altid pr. lokation.
 5. En gruppe med lokationer kan IKKE slettes — kun deaktiveres/udfases (historik består).
 
 ### K-4 Status-livscyklus: aktiv · dvale · nedlagt
@@ -69,38 +70,43 @@ Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient
 3. Status-skrivning uden om den dedikerede handling AFVISES.
 4. Det er UMULIGT at overskrive status-historik — hvad der gjaldt hvornår kan altid ses.
 5. Aktiv-opslaget pr. dato svarer entydigt (fladen trin 24's booking-gate forbruger): booking på dvale/nedlagt AFVISES dér.
-6. Klient-tilladelser MÅ oprettes/forlænges mens lokationen er i dvale — det AFVISES IKKE (den bookede dato skal ligge efter dvalens ophør; håndhævelsen af selve booking-datoen er trin 24).
+6. Tilladelser (K-6) MÅ registreres mens lokationen er i dvale — det AFVISES IKKE (den bookede dato skal ligge efter dvalens ophør; håndhævelsen af selve booking-datoen er trin 24).
 7. Genåbning af nedlagt lokation er MULIG via samme dedikerede handling (auditeret, med årsag) — nedlagt er ikke en endestation.
+8. Tilladelse på nedlagt lokation AFVISES — lokationen skal være åben først (Mathias 2026-09-03: "den skal være åben"); genåbn (ac 7), registrér derefter.
 
 ### K-5 Hvile efter brug (cooldown)
 
 **HVAD:** En lokation hviler efter en kampagne — automatisk pr. lokationens hvile-konfiguration eller sat manuelt. Hvilen gælder lokationen **på tværs af klienter** ("pr. lokation, ikke pr. klient/kampagne" — låst afgørelse). Reglen er absolut: der findes ingen omgåelse (Mathias 2026-09-02: "nej") — men hvile-**perioden** kan afsluttes før tid i UI af en rettighedshaver, hvorefter lokationen er aktiv igen ("man skal kunne stoppe dvaleperioden og dermed åbne lokationen i ui").
 
-- **Struktur (umuligt):** booking under hvile (via K-4) · en "book alligevel"-fravigelse · hvile-konfig-ændring der træder i kraft uden bevidst aktivering (livscyklus kladde→testet→godkendt→aktiv, princip 5) · periode-afslutning uden rettighed eller uden audit-spor.
-- **Værdi (UI):** hvile-periodens længde/enhed pr. lokation ("periode styres i ui") · manuel dvale og afslutning før tid.
+- **Struktur (umuligt):** booking under hvile (via K-4) · en "book alligevel"-fravigelse · hvile-konfig-ændring uden rettighed eller uden audit-spor · periode-afslutning uden rettighed eller uden audit-spor.
+- **Værdi (UI):** hvile-periodens længde/enhed pr. lokation ("periode styres i ui") · manuel dvale og afslutning før tid · hvem der må ændre (rettigheder, K-8).
 
 **Acceptkriterier (slut-effekter):**
 1. Booking på hvilende lokation AFVISES — der findes INGEN handling der tillader booking uden at hvilen først er afsluttet synligt.
 2. Afslutning af hvile før tid uden rettighed AFVISES; med rettighed auditeres den med årsag, og lokationen er derefter aktiv.
-3. En ændring af hvile-konfigurationen kan IKKE være gældende uden at have gennemgået kladde→testet→godkendt→aktiv.
+3. Ændring af hvile-konfigurationen uden rettighed AFVISES; med rettighed gælder den straks og auditeres med årsag (Mathias 2026-09-03: "styres i rettigheder" — ingen godkendelses-livscyklus; princip 5's kladde→testet→godkendt→aktiv gælder data-håndterings-konfiguration, hvile-perioden er forretningskonfig).
 4. Ændring af hvile-værdier (længde/enhed) kræver ALDRIG udvikler.
 
 *Plan-fase:* om dvale-status (K-4) og hvile-mekanismen er én eller to model-ting — forretnings-sandheden er bindende: samme oplevelse, ingen omgåelse, kun styring af perioden. *Trin 24 (noteret nedstrøms-afhængighed):* annullerede bookingers hvile-effekt · evaluerings-niveau (placement vs. top-lokation).
 
-### K-6 Klient-tilladelser pr. lokation
+### K-6 Hvilke klienter må stå på hvilke lokationer (klient-tilladelser)
 
-**HVAD:** At en klient må stå på en lokation er en dato-afgrænset, versioneret kendsgerning (klient × lokation × fra-dato × til-dato) som systemet håndhæver — aldrig en manuel konvention. Aftaler indgås pr. lokation (K-3). Tilladelser oprettes, forlænges og tilbagetrækkes i UI; som daterede ændringer følger de fortrydelses-mekanismen (gældende dato → godkendelse → fortrydelses-periode — §1.7).
+**HVAD:** Stork styrer hvilke klienter der må stå og sælges på hvilke lokationer (forretningsforstaaelse §14) — systemet håndhæver det, aldrig en manuel konvention. Tilladelsen gives pr. lokation (K-3; Mathias 2/9: pr. lokation, ikke pr. kæde) og gælder fra den registreres indtil den aktivt trækkes tilbage, eller lokationen nedlægges (Mathias 2026-09-03: "lokationer har ingen slutdato før vi deaktiverer den/nedlægger den") — ingen slutdato kræves. Flere klienter kan have tilladelse på samme lokation samtidig; grænsen er standen (K-2): én klient pr. stand ad gangen, og hvilken stand klienten står på afgøres ved booking (trin 24). Fortiden bevares: hvad der gjaldt hvornår kan altid ses (princip 9). Tilladelser registreres og trækkes tilbage i UI af rettighedshavere. *Plan-mekanik (ikke krav-sprog):* gældende-dato, versionering og fortrydelses-mekanismen (§1.7) følger fundamentets mønster for daterede ændringer.
 
-- **Struktur (umuligt):** tilladelse uden klient, lokation eller fra-dato · overlappende perioder for samme klient×lokation · destruktiv redigering af historiske perioder · booking af klient uden gyldig tilladelse på datoen (håndhævet i skrivevejen — trin 24 forbruger opslags-fladen).
-- **Værdi (UI):** hvilken klient, hvilken lokation, hvilke datoer, forlængelse, tilbagetrækning; fortrydelses-periodens længde pr. ændrings-type.
+- **Struktur (umuligt):** tilladelse uden klient eller lokation · to gældende tilladelser for samme klient×lokation (én sandhed) · kæde-tilladelse (K-3) · tilladelse på nedlagt lokation (K-4) · sletning/omskrivning af historik · booking af klient uden gældende tilladelse på lokationen på bookingdatoen (håndhævet i skrivevejen — trin 24 forbruger opslags-fladen).
+- **Værdi (UI):** hvilken klient må stå på hvilken lokation, fra hvornår; tilbagetrækning; fortrydelses-periodens længde pr. ændrings-type.
 
 **Acceptkriterier (slut-effekter):**
-1. Tilladelse uden klient, lokation eller fra-dato AFVISES.
-2. Overlappende tilladelses-perioder for samme klient×lokation AFVISES.
-3. Destruktiv redigering af en historisk periode AFVISES — enhver ændring versioneres; en tilbagetrækning lukker fra en dato og ændrer aldrig fortiden.
-4. Opslaget "må klient X stå på lokation Y på dato D?" svarer entydigt — også for historiske datoer.
-5. Åben til-dato (indtil videre) er LOVLIG; flere klienter kan have tilladelse på samme lokation samtidig — det AFVISES IKKE.
-6. Tilladelses-ændring uden rettighed AFVISES; daterede ændringer får godkendelse + fortrydelses-periode før de træder i kraft.
+1. Tilladelse uden klient eller lokation AFVISES.
+2. En anden gældende tilladelse for samme klient på samme lokation AFVISES — der er én sandhed om forholdet.
+3. Ingen slutdato kræves: en tilladelse uden slutdato AFVISES IKKE; den gælder indtil aktiv tilbagetrækning eller lokationens nedlæggelse (Mathias 2026-09-03).
+4. Tilbagetrækning lukker forholdet fra en dato og ændrer aldrig fortiden; sletning eller omskrivning af historik AFVISES.
+5. Opslaget "må klient X stå på lokation Y på dato D?" svarer entydigt — også for historiske datoer (fladen trin 24's booking-gate forbruger).
+6. Flere klienter kan have tilladelse på samme lokation samtidig — det AFVISES IKKE (Mathias 2026-09-03). Grænsen er standen: én klient pr. stand ad gangen (K-2 ac 4).
+7. Nedlæggelse af lokationen afslutter dens gældende tilladelser (de bliver historik); efter genåbning registreres tilladelser på ny. *Afledt af Mathias-svar 2026-09-03 ("ingen slutdato før vi … nedlægger den" + "den skal være åben") — fremlagt til bekræftelse før upload.*
+8. Tilladelses-ændring uden rettighed AFVISES; daterede ændringer får godkendelse + fortrydelses-periode før de træder i kraft.
+
+*Trin 24 (noteret nedstrøms-afhængighed):* hvad der sker med allerede bookede dage når en tilladelse trækkes tilbage — bookingen forbruger tilladelses-opslaget pr. dato; konsekvensen for eksisterende bookinger afgøres i trin 24.
 
 ### K-7 Klassifikation, persondata og anonymisering
 
@@ -131,7 +137,7 @@ Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient
 
 ### K-9 UI-styrbarhed (Mathias-ord 2026-09-02)
 
-**HVAD:** Alle pakkens forretningshandlinger — oprette/redigere lokationer, placements, grupper, tilladelser; status-skift; hvile-styring; klassifikations-valg — kan udføres i UI af rettighedshavere. Skellet er hans: **struktur er hardkodet** (required-felter, forbud — fx at en lokation skal have et navn), **værdier styres i UI** (hvilket navn, hvilken klient, hvilke perioder).
+**HVAD:** Alle pakkens forretningshandlinger — oprette/redigere lokationer, stande, grupper, tilladelser; status-skift; hvile-styring; klassifikations-valg — kan udføres i UI af rettighedshavere. Skellet er hans: **struktur er hardkodet** (required-felter, forbud — fx at en lokation skal have et navn), **værdier styres i UI** (hvilket navn, hvilken klient, hvilke perioder).
 
 - **Struktur (umuligt):** et forbud eller required-felt der kan slås fra via UI-konfiguration · en forretningshandling der kræver udvikler.
 - **Værdi (UI):** alt indhold.
@@ -145,7 +151,7 @@ Lokations-skabelonen: fysiske lokationer med placements, grupper (ejere), klient
 
 ## Plan-fase-afgørelser (bord flyttet synligt — planner afgør i kravets ramme, Codex angriber, plan-OK dækker)
 
-Hierarki-dybde-håndhævelse (K-2) · gruppe-arv på placement (K-2/K-3) · valuta-/enheds-repræsentation og tom-pris-gyldighed (K-1) · felt-registry-udformning for gruppens felter, CVR m.v. (K-3) · seeding-detaljer ud over superadmin (K-8) · fortrydelses-wiring: ændrings-typer og undo-defaults (K-6/K-8) · om dvale-status og hvile-mekanisme er én eller to model-ting (K-4/K-5) · direkte-vs-godkendelses-mekanik pr. handlings-type inden for UI-rammen (K-8).
+Hierarki-dybde under stand-niveau (K-2) · gruppe-arv på stand (K-2/K-3) · valuta-/enheds-repræsentation og tom-pris-gyldighed (K-1) · felt-registry-udformning for gruppens felter, CVR m.v. (K-3) · seeding-detaljer ud over superadmin (K-8) · fortrydelses-wiring: ændrings-typer og undo-defaults (K-6/K-8) · om dvale-status og hvile-mekanisme er én eller to model-ting (K-4/K-5) · direkte-vs-godkendelses-mekanik pr. handlings-type inden for UI-rammen (K-8).
 
 ## Recon-fund-dispositioner
 
@@ -360,9 +366,9 @@ Hvert recon-fund disponeret (behandlet / udskudt / ikke-relevant). Bøtte 1-punk
 | doc:docs/strategi/vision-og-principper.md#princip-9:status-bevarer-historik | 2 | behandlet | K-4/K-6 |
 | intet-data:anonymiserings-infrastruktur-udvidelse | 3 | behandlet | K-7 (gruppe-kontakt dækket i leverancen; lokations-anonymisering aktiveres først ved aktivt PII-valg) |
 | intet-data:cooldown-forretnings-semantik | 3 | behandlet | K-5 (Mathias-svar; annullering + niveau → trin 24) |
-| intet-data:hierarki-dybde-og-placement-regler | 3 | behandlet | K-2 (dybde/arv → plan-fase, synligt flyttet) |
-| intet-data:klient-tilladelse-kommerciel-betydning | 3 | behandlet | K-6 (Mathias-svar: pr. lokation; gruppe ejer — K-3) |
-| intet-data:konfig-lifecycle-for-cooldown | 3 | behandlet | K-5 (princip 5: livscyklus gælder konfigurationen) |
+| intet-data:hierarki-dybde-og-placement-regler | 3 | behandlet | K-2 (Mathias 2026-09-03: lokation → flere stande, én klient pr. stand ad gangen; dybde under stand + gruppe-arv → plan-fase, synligt flyttet) |
+| intet-data:klient-tilladelse-kommerciel-betydning | 3 | behandlet | K-6 (Mathias 2/9: pr. lokation, gruppe ejer — K-3 · 3/9: flere klienter pr. lokation, én pr. stand · ingen slutdato, gælder til tilbagetrækning/nedlæggelse · nedlagt: lokationen skal være åben først (K-4 ac 8) · eksisterende bookinger ved tilbagetrækning → trin 24) |
+| intet-data:konfig-lifecycle-for-cooldown | 3 | behandlet | K-5 (Mathias 2026-09-03: "styres i rettigheder" — rettighed + audit, ingen godkendelses-livscyklus) |
 | intet-data:leverandoer-entitetens-fulde-indhold | 3 | behandlet | K-3 (felter = UI-felt-registry; rabataftale → trin 29) |
 | intet-data:lokations-pii-og-retention | 3 | behandlet | K-7 (§11-grænsen: lokations-felter = forretningsdata; gruppe-kontakt = persondata) |
 | intet-data:lokations-status-enum-og-semantik | 3 | behandlet | K-4 (Mathias-svar: aktiv·dvale·nedlagt; genåbning mulig) |
@@ -379,13 +385,14 @@ Hvert recon-fund disponeret (behandlet / udskudt / ikke-relevant). Bøtte 1-punk
 - **Rabataftale-trapper + undtagelses-tabel (trin 29):** gruppens type-felt leveres som opslags-anker; mekanikken bygges i trin 29.
 - **UI-sider/formularer (lag F):** se K-9's bevis-punkt — handlings-fladen bevises nu, siderne kommer ved første frontend-side.
 - **Migration af 1.0-data:** UDSKUDT på Mathias' ord 2026-09-02 ("dette importeres senere"). Det idempotente import-mønster gør senere import mulig uden om-design; ingen udtræks-leverance i denne pakke.
-- **Annullerede bookingers hvile-effekt + hvile-evalueringsniveau (placement vs. top-lokation):** trin 24 — noteret som nedstrøms-afhængighed i K-5.
+- **Annullerede bookingers hvile-effekt + hvile-evalueringsniveau (stand vs. lokation):** trin 24 — noteret som nedstrøms-afhængighed i K-5.
+- **Konsekvens for allerede bookede dage når en tilladelse trækkes tilbage + afvisning af to klienter på samme stand samme dag:** trin 24 — skabelonen leverer tilladelses-opslag pr. dato og stand-identiteten; booking-leddet håndhæver. Noteret som nedstrøms-afhængighed i K-2/K-6.
 - **Attribution/økonomi via lokation:** forbudt (K-1) — ikke en udskydelse, en grænse.
 
 ## Holdt mod låste docs
 
-Kæden vision/forretning ⊨ krav er holdt mod: **vision-og-principper.md** (vision: UI-styring, holdbarhed; bærende princip 1 én sandhed, 2 styr på data, 3 eksplicit sammenkobling/FK; operationelt princip 3 forretningslogik som data, 4 default = intet, 5 livscyklus for konfiguration, 6 audit på alt, 7 anonymisering bevarer audit, 9 status bevarer historik) · **forretningsforstaaelse.md** (§2 dato-snapshot, §3 attribution via klient, §9 algoritme/værdi-adskillelse, §11 persondata-grænsen entitet/felter, §12 rettigheder og adgang, §14 FM-grenen: lokation som master-data + tilladelses-kontrol, §15 greenfield/migration som separat beslutning) · **stork-2-0-master-plan.md** (§0.5 migrations-mekanik, §1.1-§1.4 adgang/klassifikation/audit/anonymisering, §1.8 klient-kontrast, §1.11 schema-placering, §1.12 lokations-skabelonen [anker], §2.7.1/§2.7.6/§2.7.8 nedstrøms-forbrugere, §4 trin 10b [anker], Appendix A FM-domænet [cooldown pr. lokation, alt-med, markeder/messer], Appendix B [lokations-status afgjort her ved trin 10b]).
+Kæden vision/forretning ⊨ krav er holdt mod: **vision-og-principper.md** (vision: UI-styring, holdbarhed; bærende princip 1 én sandhed, 2 styr på data, 3 eksplicit sammenkobling/FK; operationelt princip 3 forretningslogik som data, 4 default = intet, 5 livscyklus for konfiguration [læst som data-håndterings-konfig; hvile-perioden er forretningskonfig — Mathias 2026-09-03], 6 audit på alt, 7 anonymisering bevarer audit, 9 status bevarer historik) · **forretningsforstaaelse.md** (§2 dato-snapshot, §3 attribution via klient, §9 algoritme/værdi-adskillelse, §11 persondata-grænsen entitet/felter, §12 rettigheder og adgang, §14 FM-grenen: lokation som master-data + tilladelses-kontrol, §15 greenfield/migration som separat beslutning) · **stork-2-0-master-plan.md** (§0.5 migrations-mekanik, §1.1-§1.4 adgang/klassifikation/audit/anonymisering, §1.8 klient-kontrast, §1.11 schema-placering, §1.12 lokations-skabelonen [anker], §2.7.1/§2.7.6/§2.7.8 nedstrøms-forbrugere, §4 trin 10b [anker], Appendix A FM-domænet [cooldown pr. lokation, alt-med, markeder/messer], Appendix B [lokations-status afgjort her ved trin 10b]).
 
-**Mathias-ord i denne krav-fase (2026-09-02, alle indarbejdet):** UI-styrings-kravet · struktur/værdi-skellet · status `aktiv · dvale · nedlagt`, kun aktiv bookbar · tilladelser i dvale lovlige (booket dato efter dvalens ophør) · hvile-reglen absolut, perioden kan stoppes i UI · aftaler pr. lokation, gruppen ejer lokationen · nedlagt kan genåbnes · migration importeres senere · fremlæggelses-pligten før ok.
+**Mathias-ord i denne krav-fase (2026-09-02, alle indarbejdet):** UI-styrings-kravet · struktur/værdi-skellet · status `aktiv · dvale · nedlagt`, kun aktiv bookbar · tilladelser i dvale lovlige (booket dato efter dvalens ophør) · hvile-reglen absolut, perioden kan stoppes i UI · aftaler pr. lokation, gruppen ejer lokationen · nedlagt kan genåbnes · migration importeres senere · fremlæggelses-pligten før ok. **2026-09-03 (relæ fra parallel session, verbatim):** gruppe ejer lokation · lokation har flere stande · flere klienter på lokationen samtidig, maks 1 klient pr. stand · hvileperiode-ændring "styres i rettigheder" · nedlagt lokation: "den skal være åben" (registrering kræver åben lokation) · slutdato: "hvad menes der med aftaler? lokationer har ingen slutdato før vi deaktivere den/nedlægger den" (ingen slutdato; et dateret aftale-objekt er ikke hans model → §14's funktions-formulering).
 
 **Ingen modsigelse mod låste docs fundet.** Ét vedligeholds-flag (ikke pakke-relevant): §1.12's kilde-henvisning "rettelse 17" for cooldown-afgørelsen matcher ikke Appendix C's nummerering — substansen er låst i Appendix A; henvisningen bør rettes ved plan-vedligehold.
