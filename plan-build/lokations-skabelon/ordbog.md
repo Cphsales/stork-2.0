@@ -8,7 +8,7 @@ recon-Claude.ai (fra pakke 2) og af krav-dialogen.
 | Mathias' ord | systemord (recon/masterplan) | kilde |
 |---|---|---|
 | stand / stande | placement (child-lokation m. parent_location_id) | M-14 (»lokaitoner beholder de oprettede stande«) · §1.12 |
-| gruppe | leverandør (egen master-data-entitet m. type-felt) | krav-dialogen (mathias-78-relæ) · §1.12 |
+| gruppe (tidlig læsning) | leverandør (egen master-data-entitet m. type-felt) — AFKLARES i plan-fasen: er gruppen leverandør-entiteten udvidet m. klient-kobling? | krav-dialogen · §1.12 |
 | dvale / hvile | status-tilstand mellem aktiv og nedlagt (+ cooldown-relateret) | M-7 (status: aktiv·dvale·nedlagt) |
 | nedlagt | status-livscyklussens slut-tilstand (historik bevares — M-13) | M-7 · M-13 |
 | gruppe | ejer-entiteten: gruppe EJER lokationer; klienter kobles på gruppen og arver lokationerne | M-17 · M-18 |

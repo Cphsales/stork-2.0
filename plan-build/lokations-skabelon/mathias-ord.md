@@ -29,7 +29,7 @@ ledger-entry kan ikke bære et krav.
 Fra mathias-78 (modtaget dér 2026-09-02/03, hidtil kun som parafrase):
 de 7 svar fra spørgerunden — »stande-model«-svaret · »forstår ikke« ×2 ·
 »styres i retigheder« · »den skal væres åben« · »hvad menes der med aftaler? …«
-(+ fuld kontekst pr. svar). Tilføjes som M-17+ når de leveres ordret.
+(+ fuld kontekst pr. svar). Tilføjes som M-23+ når de leveres ordret (M-17..M-22 = runde 2 nedenfor).
 
 ## Runde 2 (appendet af driveren 2026-09-03 — leveret direkte i mathias-df)
 
