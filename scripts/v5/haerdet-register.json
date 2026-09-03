@@ -40,8 +40,8 @@
   "note": "Codex-batch 2026-09-02 (3 fund lukket: proof-binding · bøtte-konsistens · render-backstop)"
  },
  "consolidate-recon.mjs": {
-  "pas_ref": "58d2bacb916d585db2de6f5c06d6379ada2ffdce",
-  "blob_oid": "cecf097b23807cbb006de5f2338f8808d9432123",
-  "note": "Codex-batch 2026-09-02 (3 fund lukket: proof-binding · bøtte-konsistens · render-backstop)"
+  "pas_ref": "d1f38a49b916d945142ab9ef21ad6a9f84d4eaf5",
+  "blob_oid": "2e009cc292fec4e3b9e1fef6c11cb55aee8e17d6",
+  "note": "mini-delta-pas 2026-09-03 (B2-delta: 1 fund lukket — render-afledt divergens)"
  }
 }
