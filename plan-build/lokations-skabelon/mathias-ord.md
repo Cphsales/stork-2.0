@@ -41,3 +41,16 @@ de 7 svar fra spørgerunden — »stande-model«-svaret · »forstår ikke« ×2
 | M-20 | 2026-09-03, efter 95b2ed6 | mathias-df (direkte, verbatim) | »præsenter krav for mig« | → fremlæggelse runde 2 (i chat; fil-reglen nåede sessionen efter) |
 | M-21 | 2026-09-03, før 7fae51e | mathias-df (direkte, verbatim) | »5. kan hvis antal hvile dage er valgt i ui« | svar på fremlæggelse runde 2 pkt. 5 → auto-hvile kun ved valgt antal hviledage (UI-konfig) |
 | M-22 | 2026-09-03, ca. 18:50 | mathias-df (direkte, verbatim) | »krav upload« | runde 2-upload-ord — udkast-blob 4513a0de @ 7fae51e; upload afventer fresh-eyes-audit (B1) + ledger-citater (fold-ind-runden) |
+
+## Spørgerunden 2026-09-02/03 (appendet af driveren — leveret verbatim af mathias-78; kun rækkefølge kendt, ikke klokkeslæt)
+
+| id | tid | kanal | ord | kontekst |
+|---|---|---|---|---|
+| M-23 | 2026-09-02 | mathias-78 (direkte, verbatim) | »Det står i logikker at alt skal kunne styres i ui. Dermed skal det være muligt at oprette en lokaition i ui« | uopfordret krav-input (dedupér mod krav-dokkens Mathias-ord-sektion) |
+| M-24 | 2026-09-02 | mathias-78 (direkte, verbatim) | »Der er selvfølgelgi noget der skal være hardkodet. eksempelvis at en loaktion skal have et navn og en client. men hvilkvet navn og hvilken client styres i ui« | præcisering af M-23 → struktur/værdi-skellet (UMULIGT vs KONFIGURERBART) |
+| M-25 | 2026-09-02 | mathias-78 (direkte, verbatim) | »tjek op på spørgsmål  1.  aktiv · dvale · nedlagt: kan kun bookes i aktiv 2. periode styres i ui 3. forstår ikke 4. dette importeres senere« | svar på de 4 forretnings-spørgsmål (status · cooldown · tilladelse · migration) |
+| M-26 | 2026-09-02 | mathias-78 (direkte, verbatim) | »nej tjek op. synes stadig ikke de er helt skarpe« | WORKFLOW-DOM (ikke krav-stof) — dom over spørgsmåls-kvalitet → form-kravene (1415b26); til retrospektiv/L-log |
+| M-27 | 2026-09-02 | mathias-78 (direkte, verbatim) | »a ja, så længe den bookede data er efter dvale b nej, men man skal kunne stoppe dvaleperioden og dermed åbne lokationen i ui. c vi booker selv de enkelte lokationer men hver lokation har en gruppe. eks brugsen er i gruppen coop. et center kan være under dansk shopping centrer. så gruppe ejer lokationen« | svar på omformulerede A (tilladelse under dvale + genåbning) · B (booking før hvile-slut) · C (kæde-aftale) — FØRSTE gruppe-ord |
+| M-28 | 2026-09-02 | mathias-78 (direkte, verbatim) | »en nedlagt skal kunne genåbnes« | svar på rest-spørgsmålet: nedlagt = endestation? |
+| M-29 | 2026-09-03 | mathias-78 (direkte, verbatim) | »1. hvis vi skal gøre det korrekt så skal det bygges op med at alle lokationer ejes af en gruppe (eks. coop) og at der en lokation kan oprettes flere stande. derfor kan deres godt være flere klienter på en lokation samtidig men der kan maks være 1 klient pr stand - 2 forstår ikke - 3 se svar 1. - 4 forstår ikke - 5 styres i retigheder« | svar på de 5 fresh-eyes-spørgsmål → gruppe-ejerskab + MAKS 1 KLIENT PR. STAND |
+| M-30 | 2026-09-03 | mathias-78 (direkte, verbatim) | »2. den skal væres åben - 4 hvad menes der med aftaler? lokationer har ingen slutdato før vi deaktivere den/nedlægger den« | svar på omformuleret 2 (registrering på nedlagt lokation) + 4 (slutdato) |
