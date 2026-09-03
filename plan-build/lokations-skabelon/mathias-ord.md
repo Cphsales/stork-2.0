@@ -54,3 +54,14 @@ de 7 svar fra spørgerunden — »stande-model«-svaret · »forstår ikke« ×2
 | M-28 | 2026-09-02 | mathias-78 (direkte, verbatim) | »en nedlagt skal kunne genåbnes« | svar på rest-spørgsmålet: nedlagt = endestation? |
 | M-29 | 2026-09-03 | mathias-78 (direkte, verbatim) | »1. hvis vi skal gøre det korrekt så skal det bygges op med at alle lokationer ejes af en gruppe (eks. coop) og at der en lokation kan oprettes flere stande. derfor kan deres godt være flere klienter på en lokation samtidig men der kan maks være 1 klient pr stand - 2 forstår ikke - 3 se svar 1. - 4 forstår ikke - 5 styres i retigheder« | svar på de 5 fresh-eyes-spørgsmål → gruppe-ejerskab + MAKS 1 KLIENT PR. STAND |
 | M-30 | 2026-09-03 | mathias-78 (direkte, verbatim) | »2. den skal væres åben - 4 hvad menes der med aftaler? lokationer har ingen slutdato før vi deaktivere den/nedlægger den« | svar på omformuleret 2 (registrering på nedlagt lokation) + 4 (slutdato) |
+
+## Referenter (IKKE Mathias-ord — sessions-spørgsmålene M-29 besvarede; leveret verbatim af mathias-df der stillede dem)
+
+M-29 svarer på disse fem (relæet til Mathias via mathias-78; R4-konteksten i M-29-rækken viser formen han så):
+- Q1: »Flere klienter på samme sted. Tryg har tilladelse i Bilka Hundige. Må Alka også få tilladelse dér i samme periode? Svar: ja / nej. Udkastet siger ja. Anbefaling: ja, eksklusivitet er en aftalesag, ikke en systemregel.«
+- Q2: »Tilladelse på nedlagt lokation. Bilka Hundige er nedlagt. Må I oprette en tilladelse til Tryg dér? Svar: ja / nej. Udkastet er tavst, så byggeren ville vælge. Anbefaling: nej, genåbn først. Det var hale-spørgsmålet der blev tabt den 2/9.«
+- Q3: »Hele butikken eller én stand-plads. Gælder Trygs tilladelse i Bilka Hundige hele butikken, eller kan den gælde én bestemt stand-plads? Svar: butikken / stand-plads. Udkastet er uklart. Anbefaling: butikken, stand-pladser arver.«
+- Q4: »Aftale uden slutdato. Kan Trygs tilladelse i Bilka Hundige være "indtil videre" uden slutdato? Svar: ja / nej. Udkastet siger ja. Anbefaling: ja.«
+- Q5: »Ændring af hvileperiode. Hvileperioden for Bilka Hundige ændres fra 14 til 21 dage. Skal en anden godkende først, eller må rettighedshaveren ændre direkte med audit? Svar: godkendelse / direkte. Udkastet kræver godkendelses-livscyklus. Anbefaling: direkte, det er forretningskonfig, ikke datahåndtering.«
+
+M-30's referenter (mathias-78's omformulerede 2+4) står verbatim i M-30-rækkens kontekst-kolonne (leveret af mathias-78 sammen med R5).
