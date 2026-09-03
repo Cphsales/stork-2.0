@@ -56,3 +56,18 @@ export function decideModelPreflight({ pinned, vurderede, available } = {}) {
     return { action: "flag-mathias", reason: `nye modeller tilgængelige (${nye.join(", ")}) — skift er Mathias' ord + actors.lock, aldrig automatik`, nye };
   return { action: "ok", reason: `pinned '${pinned}' kører; ingen u-vurderede modeller`, nye: [] };
 }
+
+// decideWorktreePreflight({porcelain}) → {action: "ok"|"halt", reason, urene}
+// Rent-arbejdstræ-tjek (A4): FØR aktør-spawn/commit-operationer skal driveren
+// vide at arbejdstræet ikke bærer fremmede/udrevne ændringer (evidens: 3 ugers
+// måle-lags-drift + git add -A-fejlen). porcelain = linjer fra
+// `git status --porcelain`. Ikke-tom → halt med listen (fail-closed; driveren
+// afgør bevidst — committer/arkiverer/stasher — aldrig tavs videre-kørsel).
+export function decideWorktreePreflight({ porcelain } = {}) {
+  if (!Array.isArray(porcelain) || !porcelain.every((l) => typeof l === "string"))
+    return { action: "halt", reason: "porcelain-status mangler/ugyldig (fail-closed)", urene: [] };
+  const urene = porcelain.filter((l) => l.trim().length > 0);
+  if (urene.length > 0)
+    return { action: "halt", reason: `arbejdstræet er urent (${urene.length} sti(er)) — commit/arkivér/stash bevidst før aktør-kørsel`, urene };
+  return { action: "ok", reason: "rent arbejdstræ", urene: [] };
+}

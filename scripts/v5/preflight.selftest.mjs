@@ -71,3 +71,22 @@ if (fail > 0) {
   process.exit(1);
 }
 console.log(`preflight red-team: alle ${pass} cases passed`);
+
+// --- decideWorktreePreflight (A4: rent arbejdstræ før aktør-kørsel) ---
+import { decideWorktreePreflight } from "./preflight.mjs";
+console.log("\ndecideWorktreePreflight:");
+{
+  const r = decideWorktreePreflight({ porcelain: [] });
+  r.action === "ok" ? console.log("  ✓ rent træ → ok") : (process.exitCode = 1, console.error("  ✗ rent træ: " + r.action));
+}
+{
+  const r = decideWorktreePreflight({ porcelain: [" M scripts/v5/x.mjs", "?? ny.md"] });
+  r.action === "halt" && r.urene.length === 2
+    ? console.log("  ✓ urent træ → halt med listen")
+    : (process.exitCode = 1, console.error("  ✗ urent træ: " + JSON.stringify(r)));
+}
+{
+  const r = decideWorktreePreflight({});
+  r.action === "halt" ? console.log("  ✓ manglende status → halt (fail-closed)") : (process.exitCode = 1, console.error("  ✗ manglende status"));
+}
+if (process.exitCode === 1) { console.error("preflight worktree-cases FEJLEDE"); process.exit(1); }

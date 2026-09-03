@@ -178,6 +178,31 @@ expectRed(
   verify(mutated((p) => (p.omission_devil.pakke_flade_angreb = "FAIL"))),
   "aksen 'pakke_flade_angreb' ikke eksplicit PASS",
 );
+expectRed(
+  "omission-devil accessor-akse (getter-PASS) afvises (Codex-fund: kun egne datafelter)",
+  verify(
+    mutated((p) => {
+      delete p.omission_devil.filter_angreb;
+      Object.defineProperty(p.omission_devil, "filter_angreb", { get: () => "PASS", enumerable: true });
+    }),
+  ),
+  "aksen 'filter_angreb' ikke eksplicit PASS",
+);
+{
+  // duplikat-nøgle i rå bundle (Codex-fund): JSON.parse last-key-wins må ikke vinde
+  writeFileSync(
+    join(ROOT, "recon/bundle.json"),
+    '{"flade_filter":{"punkt_ids":["rls_enabled:salg","rls_policy:salg:salg_egen_org"]},"flade_filter":{"punkt_ids":["rls_enabled:salg"]}}\n',
+  );
+  git("add", "-A");
+  git("commit", "-qm", "fixture: duplikat flade_filter");
+  const C = git("rev-parse", "HEAD");
+  const rr = (p) => resolveRef(git, C, p);
+  const pr = { ...greenProof(), artifact_oid: rr("recon/recon.md").oid, bindings_oids: { anker: rr("launch/launch.json").oid, bundle: rr("recon/bundle.json").oid } };
+  pr.independence = { ...pr.independence, bundle_oid: rr("recon/bundle.json").oid };
+  const sn = { commit_sha: C, artifact: rr("recon/recon.md"), bindings: { anker: rr("launch/launch.json"), bundle: rr("recon/bundle.json") }, proof_result: pr, verdicts: [], approval: null, predecessor: null };
+  expectRed("duplikat flade_filter-nøgle i rå bundle → rød", verifyReconCoverageProof(pr, sn, { git }), "duplikat-nøgle");
+}
 
 console.log("\npakke-flade-filter (flade_filter i bundlet — scope er struktur, ikke disciplin):");
 // nyt fixture-lag: bundle MED filter → kun det filtrerede sæt kræves dækket

@@ -63,7 +63,17 @@ export function verifyReconCoverageProof(proof, snapshot, { git }) {
       const bundleOid = snapshot?.bindings?.bundle?.oid;
       if (typeof bundleOid !== "string" || bundleOid.length === 0)
         throw new Error("bundle-binding mangler (pakke-fladen kan ikke afgøres)");
-      const bundle = JSON.parse(git.bytes("cat-file", "blob", bundleOid).toString("utf8"));
+      const rawBundle = git.bytes("cat-file", "blob", bundleOid).toString("utf8");
+      // duplikat-nøgle-værn (Codex-fund 2026-09-03): JSON.parse er last-key-wins —
+      // et bundle med TO flade_filter/punkt_ids-deklarationer er tvetydigt i rå
+      // form og må aldrig parse-vinde sig grønt. Grov tælling er bevidst
+      // over-rød (en streng-VÆRDI med nøgle-mønstret rammer også) — fail-closed
+      // i den rigtige retning.
+      for (const key of ["flade_filter", "punkt_ids"]) {
+        const n = (rawBundle.match(new RegExp(`"${key}"\\s*:`, "g")) ?? []).length;
+        if (n > 1) throw new Error(`bundlet deklarerer '${key}' ${n} gange (duplikat-nøgle = tvetydigt scope — rød)`);
+      }
+      const bundle = JSON.parse(rawBundle);
       if (!isPlainObject(bundle)) throw new Error("bundle er ikke et objekt");
       if (!hasOwn(bundle, "flade_filter"))
         throw new Error("flade_filter mangler i bundlet (pakke-scope skal deklareres eksplicit — fravær = rød)");
@@ -107,11 +117,17 @@ export function verifyReconCoverageProof(proof, snapshot, { git }) {
   // (b) pakke_flade_angreb — misset inden for pakke-fladen. Begge attesteres
   // eksplicit med egne felter; manglende/arvet akse = rød.
   if (proof.conflicts_preserved !== true) fail("conflicts_preserved ikke eksplicit true (kasseret uenighed → rød)");
-  if (!isPlainObject(proof.omission_devil) || proof.omission_devil.conclusion !== "PASS")
+  // EGNE DATA-felter (Codex-fund 2026-09-03): en accessor-getter kunne returnere
+  // PASS under checket og andet bagefter — kun stabile, egne datafelter tæller.
+  const devilFelt = (o, k) => {
+    const dd = Object.getOwnPropertyDescriptor(o, k);
+    return dd && typeof dd.get !== "function" && typeof dd.set !== "function" ? dd.value : undefined;
+  };
+  if (!isPlainObject(proof.omission_devil) || devilFelt(proof.omission_devil, "conclusion") !== "PASS")
     fail("omission-devil ikke PASS");
   else
     for (const akse of ["filter_angreb", "pakke_flade_angreb"])
-      if (!hasOwn(proof.omission_devil, akse) || proof.omission_devil[akse] !== "PASS")
+      if (devilFelt(proof.omission_devil, akse) !== "PASS")
         fail(`omission-devil: aksen '${akse}' ikke eksplicit PASS (filter/pakke-flade skal begge dømmes)`);
 
   return { ok: reasons.length === 0, reasons };

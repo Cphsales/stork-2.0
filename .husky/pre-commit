@@ -2,6 +2,9 @@
 # v9-format (ingen 'source husky.sh' nødvendig per V5.3)
 # Lag 1 leverance C: husky pre-commit hook med slut-rapport-reminder.
 
+# Step 0: v5 commit-zoner (A4 — sessionens rolle-zone, fail-closed på beskyttede zoner)
+node scripts/v5/pre-commit-zone.mjs || exit 2
+
 # Step 1: lint-staged kører altid (uændret eksisterende)
 pnpm exec lint-staged
 LINT_EXIT=$?

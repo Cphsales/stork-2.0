@@ -194,3 +194,67 @@ export function buildWriteDecision(input) {
     return { decision: "deny", zone: "produkt", reason: "bid mangler committet angrebs-spec (angrebet skal foreligge før byg)" };
   return { decision: "allow", zone: "produkt", reason: `produkt-skriv tilladt: driver-routet bid '${bidId}' med committet angrebs-spec` };
 }
+
+// ---------- commit-zoner (A4, Mathias 2026-09-03: "vi retter workflowet mens vi bygger") ----------
+//
+// Evidens: en driver-`git add -A` fejede en anden sessions krav-udkast med ind
+// i en commit, og måle-lags-ændringer gik i drift uncommitted i 3 uger. Reglen:
+// hver session committer KUN i sin rolle-zone — håndhævet af pre-commit-hooken
+// (lokal UX, exit 2) via denne PURE beslutning.
+//
+// commitZoneDecision({rolle, paths, repoRoot, kravUpload?}) → {decision, afviste, reason}
+// Rolle-zoner (fail-closed: ukendt rolle → deny alt med instruks):
+// - "fabrik"       (driver/fabrik-bygger): alt UNDTAGEN docs/sandhed;
+//                  sandhed kun via kravUpload-mandatet (samme regel som writeDecision)
+// - "claude-ai"    (krav/plan/slut-rollen): KUN plan-build/**
+// - "builder-code" : KUN produkt-zonen (aldrig måle-lag/sandhed)
+// - "codex"        : KUN måle-laget (der måler ≠ der bygger)
+// - "recon-code" | "recon-codex" | "recon-claude-ai": INGEN commits (kandidater
+//                  arkiveres af driveren — arkiverings-reglen, plan Fase 1)
+export const COMMIT_ROLLER = Object.freeze(["fabrik", "claude-ai", "builder-code", "codex", "recon-code", "recon-codex", "recon-claude-ai"]);
+
+export function commitZoneDecision(input) {
+  if (input === null || typeof input !== "object" || Array.isArray(input))
+    return { decision: "deny", afviste: [], reason: "ugyldigt input (fail-closed)" };
+  const { rolle, paths, repoRoot, kravUpload } = input;
+  if (!Array.isArray(paths) || !paths.every((p) => typeof p === "string" && p.length > 0))
+    return { decision: "deny", afviste: [], reason: "paths mangler/ugyldige (fail-closed)" };
+  if (paths.length === 0) return { decision: "allow", afviste: [], reason: "ingen staged stier" };
+  if (!COMMIT_ROLLER.includes(rolle))
+    return {
+      decision: "deny",
+      afviste: [...paths],
+      reason: `ukendt/ikke-sat rolle '${String(rolle)}' — sæt STORK_V5_ROLLE (${COMMIT_ROLLER.join("|")}) for denne session`,
+    };
+
+  const afviste = [];
+  for (const p of paths) {
+    const zone = pathZone(p, repoRoot);
+    let tilladt = false;
+    switch (rolle) {
+      case "fabrik":
+        if (zone === "sandhed") {
+          // genbrug PRÆCIS samme smalle mandat-regel som writeDecision
+          tilladt = writeDecision({ rawPath: p, repoRoot, planLocked: false, kravUpload }).decision === "allow";
+        } else tilladt = zone !== "udenfor";
+        break;
+      case "claude-ai": {
+        const { relPath, escapes } = toRepoRel(p, repoRoot);
+        tilladt = !escapes && relPath !== null && (relPath === "plan-build" || relPath.startsWith("plan-build/"));
+        break;
+      }
+      case "builder-code":
+        tilladt = zone === "produkt";
+        break;
+      case "codex":
+        tilladt = zone === "maale-lag";
+        break;
+      default:
+        tilladt = false; // recon-roller committer aldrig
+    }
+    if (!tilladt) afviste.push(p);
+  }
+  return afviste.length === 0
+    ? { decision: "allow", afviste: [], reason: `alle ${paths.length} stier i '${rolle}'-zonen` }
+    : { decision: "deny", afviste, reason: `${afviste.length} sti(er) uden for '${rolle}'-zonen (fail-closed): ${afviste.slice(0, 5).join(", ")}${afviste.length > 5 ? ", …" : ""}` };
+}

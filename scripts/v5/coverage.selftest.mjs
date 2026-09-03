@@ -359,6 +359,12 @@ console.log("\npakke-flade-filter (filterSurface — scope er struktur, ikke dis
   throws(() => filterSurface(surface, { punkt_ids: ["findes:ikke"] }), "ukendt punkt-id", "ukendt id → kast (typo-værn)");
   throws(() => filterSurface(surface, { punkt_ids: [ids[0], ids[0]] }), "dublet", "dublet-id → kast");
   throws(() => filterSurface(surface, "x"), "ikke et objekt", "malformet filter → kast");
+  throws(() => filterSurface(surface, Object.create({ punkt_ids: [ids[0]] })), "EGET datafelt", "arvet punkt_ids → kast (Codex-fund)");
+  throws(() => {
+    const f = {};
+    Object.defineProperty(f, "punkt_ids", { get: () => [ids[0]], enumerable: true });
+    filterSurface(surface, f);
+  }, "EGET datafelt", "accessor punkt_ids → kast (Codex-fund)");
   throws(() => filterSurface({ points: null }, null), "surface.points", "ugyldig surface → kast");
 }
 

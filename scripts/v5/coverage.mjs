@@ -260,6 +260,11 @@ export function filterSurface(surface, filter) {
   if (filter === null || filter === undefined)
     throw new Error("filterSurface: flade_filter mangler (pakke-scope skal deklareres eksplicit — fravær = rød)");
   if (typeof filter !== "object" || Array.isArray(filter)) throw new Error("filterSurface: filter er ikke et objekt");
+  // EGET DATA-felt (Codex-fund 2026-09-03): et arvet/accessor punkt_ids må ikke
+  // indsnævre fladen — kun et committet, eget datafelt tæller (fail-closed).
+  const d = Object.getOwnPropertyDescriptor(filter, "punkt_ids");
+  if (!d || typeof d.get === "function" || typeof d.set === "function")
+    throw new Error("filterSurface: punkt_ids skal være et EGET datafelt (arvet/accessor = fail-closed)");
   const ids = filter.punkt_ids;
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((x) => typeof x === "string" && x.length > 0))
     throw new Error("filterSurface: filter.punkt_ids skal være en ikke-tom liste af strenge");

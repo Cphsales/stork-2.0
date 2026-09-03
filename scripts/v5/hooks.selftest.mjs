@@ -3,7 +3,7 @@
 // (plan DEL VI (a)). Path-matching er et klassisk falsk-grøn-sted (traversal,
 // segment-grænser, absolut vs. relativ) — derfor hård, konkret afprøvning.
 
-import { pathZone, writeDecision, buildWriteDecision, toRepoRel } from "./hooks.mjs";
+import { pathZone, writeDecision, buildWriteDecision, toRepoRel, commitZoneDecision } from "./hooks.mjs";
 
 const ROOT = "/home/mathias/stork-implplan";
 let failed = 0;
@@ -68,6 +68,36 @@ denies("sandhed altid deny (efter plan)", { rawPath: "docs/sandhed/vision.md", r
 denies("måle-lag altid deny (før plan)", { rawPath: "scripts/v5/gates.mjs", repoRoot: ROOT, planLocked: false });
 denies("måle-lag altid deny (efter plan)", { rawPath: "scripts/v5/gates.mjs", repoRoot: ROOT, planLocked: true });
 denies("udenfor deny", { rawPath: "/etc/passwd", repoRoot: ROOT, planLocked: true });
+
+console.log("\ncommitZoneDecision — commit-zoner pr. rolle (A4):");
+{
+  const zr = (rolle, paths, kravUpload) => writeZone({ rolle, paths, repoRoot: ROOT, kravUpload });
+  const writeZone = commitZoneDecision;
+  let r = zr("fabrik", ["scripts/v5/x.mjs", "docs/strategi/y.md", "recon/z.json"]);
+  r.decision === "allow" ? ok("fabrik: måle-lag+docs+recon → allow") : bad("zone-fabrik", r.reason);
+  r = zr("fabrik", ["docs/sandhed/krav/p-krav.md"]);
+  r.decision === "deny" ? ok("fabrik: sandhed uden mandat → deny") : bad("zone-fabrik-sandhed", "ALLOW");
+  r = zr("fabrik", ["docs/sandhed/krav/p-krav.md"], { pakke: "p", udkastBlobOid: "a".repeat(40) });
+  r.decision === "allow" ? ok("fabrik: krav-upload m. mandat → allow (samme smalle rute)") : bad("zone-mandat", r.reason);
+  r = zr("claude-ai", ["plan-build/p/krav-udkast.md", "plan-build/p/fremlaeggelse-1.md"]);
+  r.decision === "allow" ? ok("claude-ai: plan-build → allow") : bad("zone-ai", r.reason);
+  r = zr("claude-ai", ["plan-build/p/x.md", "recon/recon.md"]);
+  r.decision === "deny" && r.afviste.includes("recon/recon.md")
+    ? ok("claude-ai: uden for plan-build → deny (git add -A-fejlen forbygget)")
+    : bad("zone-ai-bred", r.reason);
+  r = zr("builder-code", ["scripts/v5/gates.mjs"]);
+  r.decision === "deny" ? ok("builder-code: måle-lag → deny (der måler ≠ der bygger)") : bad("zone-builder", "ALLOW");
+  r = zr("codex", ["scripts/v5/gates.mjs"]);
+  r.decision === "allow" ? ok("codex: måle-lag → allow") : bad("zone-codex", r.reason);
+  r = zr("recon-code", ["recon/x.json"]);
+  r.decision === "deny" ? ok("recon-rolle: committer aldrig") : bad("zone-recon", "ALLOW");
+  r = zr(undefined, ["a.md"]);
+  r.decision === "deny" && r.reason.includes("STORK_V5_ROLLE")
+    ? ok("ukendt/ikke-sat rolle → deny med instruks (fail-closed)")
+    : bad("zone-ukendt", r.reason);
+  r = zr("claude-ai", ["plan-buildx/evil.md"]);
+  r.decision === "deny" ? ok("segment-grænse: plan-buildx ≠ plan-build") : bad("zone-segment", "ALLOW (falsk-grøn)");
+}
 
 console.log("\nwriteDecision — krav-upload-ruten (smal driver-rute, sandhed-protect ellers intakt):");
 {
