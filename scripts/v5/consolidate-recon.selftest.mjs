@@ -136,3 +136,28 @@ t("render: claude-ai-fund normaliseres (kraever/forbyder → hvad/AFVISER) + div
 
 console.log(`consolidate-recon.selftest: ${pass} grønne, ${fail} røde`);
 if (fail > 0) process.exit(1);
+
+// --- B2: divergens-klassificering (påstand → Mathias; ordlyd → AI-spor) ---
+{
+  let p2 = 0, f2 = 0;
+  const t2 = (navn, fn) => { try { fn(); p2++; } catch (e) { f2++; console.error(`RØD  ${navn}: ${e.message}`); } };
+  const a2 = (c, m) => { if (!c) throw new Error(m); };
+  t2("B2: uklassificeret divergens behandles som påstand (fail-closed)", () => {
+    const c = alle({ codex: { fund: [mkFund({ hvad: "anden læsning" })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    a2(r.ok, r.reasons.join("; "));
+    a2(r.konflikter.some((k) => k.klassifikation === "uklassificeret"), "klassifikation mangler");
+    const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: r.konflikter, meta: {} });
+    a2(reconMd.includes("uklassificeret → behandles som påstand"), "uklassificeret ikke løftet til Mathias");
+  });
+  t2("B2: ordlyds-forskel markeres som AI-spor (ikke Mathias' bord)", () => {
+    const c = alle({ codex: { fund: [mkFund({ hvad: "anden læsning" })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    const konf = r.konflikter.map((k) => (k.type === "fund-divergens" ? { ...k, klassifikation: "ordlyds-forskel" } : k));
+    const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: konf, meta: {} });
+    a2(reconMd.includes("ordlyds-forskel — kun AI-spor"), "ordlyds-forskel ikke markeret");
+    a2(!reconMd.includes("uklassificeret → behandles"), "stadig markeret som påstand");
+  });
+  console.log(`consolidate-recon B2: ${p2} grønne, ${f2} røde`);
+  if (f2 > 0) process.exit(1);
+}

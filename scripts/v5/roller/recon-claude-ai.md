@@ -55,6 +55,19 @@ ikke dit.
   låst doc (hvilken doc/afsnit) ELLER flages eksplicit som "intet-data → kræver
   Mathias". Et fund uden forankring er en uforankret påstand = tæller ikke.
 
+## Pakke-ordbogen (B3 — dit ekstra output fra Fase 1)
+
+Mens du kortlægger, HØSTER du Mathias' egne begreber fra de låste docs og
+afleverer dem som ordbogs-kandidater (Mathias' ord ↔ systemord, fx stand=
+placement · gruppe=leverandør). Driveren committer `plan-build/<pakke>/ordbog.md`;
+al senere Mathias-flade bruger HANS ord, og planen/koden arver navnene.
+
+## Din sandbox (B4 — attester er mekaniske, ikke erklærede)
+
+Du køres som separat proces i en netværksløs worktree (som Codex): web-forbud
+og workdir-isolation er håndhævet af sandboxen — dine attester bekræfter hvad
+der allerede er mekanisk sandt.
+
 ## Forbygnings-pligter
 
 - **(a) Verificér input:** forstå forretnings-konteksten i bundlet + de låste

@@ -66,6 +66,16 @@ træffe en beslutning → ikke 1:1).
   mutanter er grønne.
 - Angrebs-spec-krav + risiko-flag (bred mutation/PBT kun ved høj-risiko) pr. bid.
 
+## Pakke-ordbogen arves (B3, Mathias 2026-09-03)
+
+Planen (og dermed koden) ARVER Mathias' navne fra `plan-build/<pakke>/ordbog.md`
+— tabeller/felter/RPC'er hedder hans ord (stande, gruppe, …) ELLER planen
+mapper eksplicit i ordbogen (Mathias-ord ↔ systemnavn). En navne-afvigelse
+uden ordbogs-entry er en FAIL ved plan-gaten. Teknik-/model-forks som krav-fasen
+har flyttet til dit bord ("flyttet til plan-fasen"-listen) SKAL afgøres i
+planen — hver med begrundelse inden for kravets ramme (Codex angriber dem;
+Mathias' plan OK dækker dem).
+
 ## "Alt besluttes her" — self-check mod skjulte build-tids-valg
 
 For hvert step, spørg: _skal en frisk builder vælge et navn, en type, en tabel,

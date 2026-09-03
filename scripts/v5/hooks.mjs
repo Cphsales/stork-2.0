@@ -102,7 +102,11 @@ export function writeDecision(input) {
           plain &&
           typeof kravUpload.pakke === "string" &&
           KRAV_PAKKE_RE.test(kravUpload.pakke) &&
-          isHexOid(kravUpload.udkastBlobOid)
+          isHexOid(kravUpload.udkastBlobOid) &&
+          // B1 (Mathias 2026-09-03): upload kræver fresh-eyes-audit — en FRISK
+          // claude-ai-instans' antag-aldrig-audit (ubekræftede afledninger),
+          // committet FØR upload; mandatet bærer dens blob-OID (fail-closed).
+          isHexOid(kravUpload.auditBlobOid)
         ) {
           const { relPath } = toRepoRel(rawPath, repoRoot);
           if (relPath === `docs/sandhed/krav/${kravUpload.pakke}-krav.md`)

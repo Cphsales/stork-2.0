@@ -1,0 +1,47 @@
+{
+ "gates.mjs": {
+  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
+  "blob_oid": "eeff33bc128faff2ffdb7d4183cef6e148a2374e",
+  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+ },
+ "verdikt.mjs": {
+  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
+  "blob_oid": "01dc90cce8e522a409123fa1c792102dfc3871b2",
+  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+ },
+ "git.mjs": {
+  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
+  "blob_oid": "0a427d60284ff4ecc7e2fc495efbe3e3f9094f2b",
+  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+ },
+ "build-proof.mjs": {
+  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
+  "blob_oid": "09e62f90389bacee59727ce3b469d257e7349a5c",
+  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+ },
+ "gate-eval.mjs": {
+  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
+  "blob_oid": "9f0256dfea852eba34090e85b5050438b1e48fbc",
+  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+ },
+ "coverage.mjs": {
+  "pas_ref": "aa6ba0b6025e06be9a5f4efd591fb1a91133ae02",
+  "blob_oid": "23bef2623db5292387e28a80a285035937278892",
+  "note": "fokuseret delta-pas 2026-09-03 (3 fund lukket: arvet punkt_ids · duplikat-nøgle · accessor-akser)"
+ },
+ "proofs.mjs": {
+  "pas_ref": "aa6ba0b6025e06be9a5f4efd591fb1a91133ae02",
+  "blob_oid": "c847557e26d2b0045a4fd394372c4e32c1fe006f",
+  "note": "fokuseret delta-pas 2026-09-03 (3 fund lukket: arvet punkt_ids · duplikat-nøgle · accessor-akser)"
+ },
+ "recon-gate-run.mjs": {
+  "pas_ref": "58d2bacb916d585db2de6f5c06d6379ada2ffdce",
+  "blob_oid": "d56ec19ae31af718cae21745f8750bcd1dcd0b44",
+  "note": "Codex-batch 2026-09-02 (3 fund lukket: proof-binding · bøtte-konsistens · render-backstop)"
+ },
+ "consolidate-recon.mjs": {
+  "pas_ref": "58d2bacb916d585db2de6f5c06d6379ada2ffdce",
+  "blob_oid": "cecf097b23807cbb006de5f2338f8808d9432123",
+  "note": "Codex-batch 2026-09-02 (3 fund lukket: proof-binding · bøtte-konsistens · render-backstop)"
+ }
+}

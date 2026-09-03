@@ -117,8 +117,13 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
       fundById.get(id).push({ aktor: ak, ...f });
     }
   }
-  // divergens-markering (samme id, forskellig substans) — bevares, mærkes
-  for (const [id, arr] of fundById) if (arr.length > 1) konflikter.push({ type: "fund-divergens", punkt: id, antal: arr.length });
+  // divergens-markering (samme id, forskellig substans) — bevares, mærkes.
+  // B2 (Mathias 2026-09-03): klassifikation starter "uklassificeret"; omission-
+  // devil'en dømmer påstands-konflikt (modstridende GØR/AFVISER — Mathias' bord)
+  // vs ordlyds-forskel (kun AI-spor). Uklassificeret behandles som påstand
+  // (fail-closed: hellere én for meget til Mathias end en tabt modsigelse).
+  for (const [id, arr] of fundById)
+    if (arr.length > 1) konflikter.push({ type: "fund-divergens", punkt: id, antal: arr.length, klassifikation: "uklassificeret" });
 
   // 4) usikkerheder + forretnings-enumeration bevares rå (aktør-mærket)
   const usikkerheder = [];
@@ -205,8 +210,14 @@ export function renderReconFiles({ recon, konflikter, meta }) {
     ``,
     `## Konflikter (bevaret uenighed — aktør-mærket, aldrig kasseret)`,
     ``,
+    `_Påstands-konflikter (+ uklassificerede, fail-closed) er Mathias' bord; ordlyds-forskelle er AI-spor og står kun i listen herunder som note._`,
+    ``,
     ...(konflikter?.length
-      ? konflikter.map((k) => `- ${k.type} @ ${k.punkt}${k.antal ? ` (${k.antal} bidrag)` : ""}`)
+      ? konflikter.map((k) => {
+          const kl = k.klassifikation ?? "uklassificeret";
+          const mark = kl === "ordlyds-forskel" ? " _(ordlyds-forskel — kun AI-spor)_" : kl === "påstands-konflikt" ? " **(påstands-konflikt — Mathias' bord)**" : " **(uklassificeret → behandles som påstand)**";
+          return `- ${k.type} @ ${k.punkt}${k.antal ? ` (${k.antal} bidrag)` : ""}${k.type === "fund-divergens" ? mark : ""}`;
+        })
       : ["(ingen)"]),
     ``,
     `## Usikkerheder (HALT-flag — til afklaring, aldrig oprundet til fund)`,

@@ -4,7 +4,7 @@
 // Kaldes fra .husky/pre-commit. Session-rollen deklareres pr. session:
 //   STORK_V5_ROLLE=fabrik|claude-ai|builder-code|codex|recon-*
 // kravUpload-mandatet (kun driver-flytten) deklareres:
-//   STORK_V5_KRAV_UPLOAD="<pakke>:<udkast-blob-oid>"
+//   STORK_V5_KRAV_UPLOAD="<pakke>:<udkast-blob-oid>:<audit-blob-oid>"  (B1: fresh-eyes-audit påkrævet)
 //
 // Fail-closed-graduering (bevidst): ER rollen sat → fuld zone-håndhævelse.
 // Er rollen IKKE sat → deny KUN commits der rører de beskyttede zoner
@@ -25,9 +25,9 @@ if (staged.length === 0) process.exit(0);
 const rolle = process.env.STORK_V5_ROLLE;
 let kravUpload;
 const mandat = process.env.STORK_V5_KRAV_UPLOAD;
-if (typeof mandat === "string" && mandat.includes(":")) {
-  const i = mandat.indexOf(":");
-  kravUpload = { pakke: mandat.slice(0, i), udkastBlobOid: mandat.slice(i + 1) };
+if (typeof mandat === "string") {
+  const dele = mandat.split(":");
+  if (dele.length === 3) kravUpload = { pakke: dele[0], udkastBlobOid: dele[1], auditBlobOid: dele[2] };
 }
 
 if (rolle === undefined || rolle === "") {

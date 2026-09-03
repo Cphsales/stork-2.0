@@ -77,7 +77,7 @@ console.log("\ncommitZoneDecision — commit-zoner pr. rolle (A4):");
   r.decision === "allow" ? ok("fabrik: måle-lag+docs+recon → allow") : bad("zone-fabrik", r.reason);
   r = zr("fabrik", ["docs/sandhed/krav/p-krav.md"]);
   r.decision === "deny" ? ok("fabrik: sandhed uden mandat → deny") : bad("zone-fabrik-sandhed", "ALLOW");
-  r = zr("fabrik", ["docs/sandhed/krav/p-krav.md"], { pakke: "p", udkastBlobOid: "a".repeat(40) });
+  r = zr("fabrik", ["docs/sandhed/krav/p-krav.md"], { pakke: "p", udkastBlobOid: "a".repeat(40), auditBlobOid: "b".repeat(40) });
   r.decision === "allow" ? ok("fabrik: krav-upload m. mandat → allow (samme smalle rute)") : bad("zone-mandat", r.reason);
   r = zr("claude-ai", ["plan-build/p/krav-udkast.md", "plan-build/p/fremlaeggelse-1.md"]);
   r.decision === "allow" ? ok("claude-ai: plan-build → allow") : bad("zone-ai", r.reason);
@@ -101,7 +101,7 @@ console.log("\ncommitZoneDecision — commit-zoner pr. rolle (A4):");
 
 console.log("\nwriteDecision — krav-upload-ruten (smal driver-rute, sandhed-protect ellers intakt):");
 {
-  const mandat = { pakke: "pakke-x", udkastBlobOid: "a".repeat(40) };
+  const mandat = { pakke: "pakke-x", udkastBlobOid: "a".repeat(40), auditBlobOid: "b".repeat(40) };
   const r1 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: mandat });
   r1.decision === "allow" ? ok("gyldigt mandat + eksakt krav-sti → allow") : bad("krav-allow", r1.reason);
   const r2 = writeDecision({ rawPath: "docs/sandhed/vision.md", repoRoot: ROOT, planLocked: false, kravUpload: mandat });
@@ -110,9 +110,11 @@ console.log("\nwriteDecision — krav-upload-ruten (smal driver-rute, sandhed-pr
   r3.decision === "deny" ? ok("mandat åbner IKKE en anden pakkes krav-sti") : bad("krav-pakke", "ALLOW (falsk-grøn)");
   const r4 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "pakke-x", udkastBlobOid: "ikke-en-oid" } });
   r4.decision === "deny" ? ok("ugyldig udkast-OID → deny") : bad("krav-oid", "ALLOW (falsk-grøn)");
-  const r5 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "../evil", udkastBlobOid: "a".repeat(40) } });
+  const r5 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "../evil", udkastBlobOid: "a".repeat(40), auditBlobOid: "b".repeat(40) } });
   r5.decision === "deny" ? ok("traversal-pakkenavn → deny (PAKKE_RE)") : bad("krav-traversal", "ALLOW (falsk-grøn)");
-  const r6 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: Object.create({ pakke: "pakke-x", udkastBlobOid: "a".repeat(40) }) });
+  const r5b = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: { pakke: "pakke-x", udkastBlobOid: "a".repeat(40) } });
+  r5b.decision === "deny" ? ok("mandat UDEN fresh-eyes-audit → deny (B1)") : bad("krav-uden-audit", "ALLOW (falsk-grøn)");
+  const r6 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false, kravUpload: Object.create({ pakke: "pakke-x", udkastBlobOid: "a".repeat(40), auditBlobOid: "b".repeat(40) }) });
   r6.decision === "deny" ? ok("arvet/prototype-mandat → deny (egne felter)") : bad("krav-proto", "ALLOW (falsk-grøn)");
   const r7 = writeDecision({ rawPath: "docs/sandhed/krav/pakke-x-krav.md", repoRoot: ROOT, planLocked: false });
   r7.decision === "deny" ? ok("uden mandat er krav-stien stadig deny") : bad("krav-udenmandat", "ALLOW (falsk-grøn)");

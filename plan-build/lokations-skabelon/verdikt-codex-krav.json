@@ -1,0 +1,126 @@
+{
+ "schema_version": 1,
+ "gate_id": "krav",
+ "aktor": "codex",
+ "artifact_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+ "bindings_oids": {
+  "recon": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293"
+ },
+ "input_oids_read": [
+  "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+  "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "7096d2ecbebce37426899dce29ba1984f3225293",
+  "408a96ff17ec2460919c678633b85e613036b9eb"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "Lokation med blankt eller manglende navn afvises.",
+  "Lokationstype uden for {butik, messe, marked, event, andet} afvises.",
+  "Direkte app-write til lokations-, gruppe- eller tilladelsestabel uden godkendt RPC afvises.",
+  "Hierarkiændring der skaber parent-cycle afvises.",
+  "Lokation uden gruppe-FK eller gruppe uden type afvises.",
+  "Status uden for {aktiv, dvale, nedlagt} eller statusskift uden årsag og dedikeret action afvises.",
+  "Booking-opslag for dvale, nedlagt eller hvilende lokation returnerer ikke-bookbar; bookingafvisningen ligger i trin 24.",
+  "Hvile- eller cooldown-konfig samt tidlig afslutning uden rettighed afvises.",
+  "Klientkobling på nedlagt lokation afvises.",
+  "Tilladelse uden klient eller lokation afvises.",
+  "Overlappende eller samtidig gældende dobbelt-tilladelse for samme klient x lokation afvises.",
+  "Nedlæggelse lukker alle åbne klientkoblinger og bevarer koblingshistorik og stande.",
+  "Uklassificeret ny kolonne blokerer migration-gate.",
+  "Direct PII-nedklassificering af feltdefinition afvises.",
+  "Audit-log update, delete eller truncate afvises.",
+  "Ny SECURITY DEFINER-lokations-RPC uden sanctionering bliver fitness-rød.",
+  "Ny *_id-kolonne uden FK eller exemption bliver fitness-rød.",
+  "Ny lokationstabel uden audit-trigger eller eksplicit reviewet exemption bliver fitness-rød."
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    17,
+    29
+   ],
+   "excerpt_sha": "62260a2bc6cb9c21adf446663fac2380d276ce1a54ff05bf1a1908cd13c7a5c9"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    31,
+    43
+   ],
+   "excerpt_sha": "9a0ee29ecbff766abfc4bf25203c56e22b6bbb421822fbb195888fe580bc3e75"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    61,
+    77
+   ],
+   "excerpt_sha": "45b11fe618bac7d661b0ae948a12062efa1aea9e067e6c66b2a8239629a397a4"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    94,
+    109
+   ],
+   "excerpt_sha": "5a80fe50c326550c06a7ef5cbed9450b5f913663851c125130a55ef633d8bad0"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    113,
+    124
+   ],
+   "excerpt_sha": "80550ab8e4b5414cc288509c5cf0d0828de87ad67022c1b6b12c17dffcdea1b8"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    323,
+    330
+   ],
+   "excerpt_sha": "839aa0db0bd8c506984292c71a56d72924670f64d7a321b0752c916408b89258"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    721,
+    729
+   ],
+   "excerpt_sha": "68d67aa0d4100dcbd70b975394e2c167802147954d1255e87efdb0beb4c265b4"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql",
+   "blob_oid": "408a96ff17ec2460919c678633b85e613036b9eb",
+   "line_span": [
+    1,
+    12
+   ],
+   "excerpt_sha": "b4f5ff5599a0ba53e684463b8e5d191a1f9c766ab7e9c2d674376a84b1c435d1"
+  }
+ ],
+ "run": {
+  "run_id": "fase2-buildability-codex-2026-09-03",
+  "run_attempt": 1,
+  "raw_output_sha256": "7027f08462063bd4aeffd57e17e06dc09774088a8c749041926dfeeeb1ee9c2c",
+  "actor_server_id": "local-driver-spawn (server-provenance = residual til CI actor-runner)"
+ }
+}

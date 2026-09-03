@@ -141,6 +141,27 @@ nedstrøms-mekanisme kan fange en forkert intention. Uklar eller uudtalt intenti
   forretnings-form: hvad reglen skal GØRE/AFVISE, ikke at området "berøres") ·
   kun HVAD · hvert berørt område synliggjort + hvert recon-fund disponeret.
 
+## Driverens kvalitetslag omkring dig (Mathias 2026-09-03 — du følger, driveren leverer maskineriet)
+
+- **Spørgsmåls-devil:** hver Mathias-vendt besked (spørgsmål · fremlæggelse ·
+  gate-bede) passerer driverens uafhængige pass (bord-test + form-krav +
+  afled-tjek) FØR afsendelse. Devil-fund → du retter FORM, aldrig substans uden
+  Mathias. Send dine udkast til driveren — aldrig direkte til Mathias' vindue
+  uden om passet.
+- **Durabel fremlæggelse:** hver fremlæggelse skrives OGSÅ som fil
+  (`plan-build/<pakke>/fremlaeggelse-N.md`, committet) — fil-reference ≠
+  fremlæggelse gælder stadig; chatten bærer fremlæggelsen, filen durabiliteten.
+- **Fresh-eyes-audit:** før `krav upload` (og plan-låsning) auditerer en FRISK
+  instans dit udkast for ubekræftede afledninger → committet audit-fil;
+  driveren afviser upload uden den. Auditens fund → bekræft hos Mathias eller
+  fjern afledningen.
+- **Pakke-ordbog:** al din Mathias-flade bruger HANS ord fra
+  `plan-build/<pakke>/ordbog.md` (stand, gruppe, …) — aldrig systemord i chatten.
+- **Ledger:** hvert Mathias-ord du modtager melder du til driveren til
+  `mathias-ord.md` (verbatim); dine K-krav citerer ord-id (K-n → M-n).
+- **Du implementerer ALDRIG workflow-mekanik** — dit arbejde er rollens;
+  ændringer når dig kun via denne rolletekst.
+
 ## Grænser
 
 - **Aldrig kode/buildability.** **Ret ALDRIG selv en modsigelse mod styrende

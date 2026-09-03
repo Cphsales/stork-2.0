@@ -1,0 +1,141 @@
+{
+ "schema_version": 1,
+ "gate_id": "krav",
+ "aktor": "code",
+ "artifact_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+ "bindings_oids": {
+  "recon": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293"
+ },
+ "input_oids_read": [
+  "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+  "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "7096d2ecbebce37426899dce29ba1984f3225293",
+  "71cadac316a633ed7f58762755b4fd13ed2fe404",
+  "f49e7d5bf248af01d8a67ac2a5f1129ceb462a7a",
+  "408a96ff17ec2460919c678633b85e613036b9eb"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "K-1: oprettelse af lokation med blankt/manglende navn afvises (CHECK trim>0 + RPC 22023 — client_upsert-mønstret linje-læst)",
+  "K-1: type uden for {butik,messe,marked,event,andet} afvises (CHECK IN — node_type-mønstret)",
+  "K-1: økonomi-kobling på lokation findes ikke (strukturelt fravær — schema-assertion, ingen FK/kolonne mod core_money)",
+  "K-2: cyklisk parent-kæde afvises med P0001 (_org_node_cycle_check-skabelonen linje-læst: besøgs-array + dybde-loft 100)",
+  "K-2: stand uden egen pris læses entydigt med lokationens pris — ingen pris-kopi lagres (to-sandheder-negativet testbart via read-RPC)",
+  "K-2: nedlæggelse sletter ingen stande (status-skift rører ikke child-rækker; DELETE er default-deny uden delete-policy)",
+  "K-3: lokation uden gruppe-FK afvises (NOT NULL FK, samme-schema — ingen konflikt med cross-schema-fk-disciplinen)",
+  "K-3: gruppe med lokationer kan ikke slettes (FK ON DELETE RESTRICT + ingen delete-policy; kun set_active-udfasning)",
+  "K-3: type-løs gruppe afvises (NOT NULL + CHECK IN doc-fastlagt liste)",
+  "K-4: status uden for {aktiv,dvale,nedlagt} afvises (CHECK)",
+  "K-4: status-skift uden årsag afvises (RPC 22023 + stork_audit P0001-net)",
+  "K-4: status-skrivning uden om dedikeret RPC afvises (20260607110004-revoke linje-læst + FORCE RLS; upsert eksponerer ikke status — set_active-adskillelsen)",
+  "K-4: overskrivning af status-historik umulig (audit_log immutability-trigger P0001 + TRUNCATE-blok linje-læst; versioneret status-tabel m. no-overlap)",
+  "K-4/K-6: nedlagt lokation med åben klient-kobling kan ikke findes (cascade-lukning i handler — _apply_team_close-klassen; DB-assertion efter handling)",
+  "K-4: kobling på nedlagt lokation afvises i både wrapper-precheck og apply-handler (dobbelt-verifikations-mønstret fra t10_client_active_check)",
+  "K-5: afslutning af hvile før tid uden rettighed afvises (has_permission-gate 42501); med rettighed auditeret m. årsag",
+  "K-5: hvile-konfig-ændring uden rettighed afvises; ingen godkendelses-livscyklus (Mathias-afgørelse lukker princip-5-spændingen — direkte SECDEF-RPC m. audit)",
+  "K-5: ingen RPC i pakkens flade omgår hvilen (flade-enumeration; break-glass eksplicit afvist af Mathias og udelukket af flade_filter)",
+  "K-6: anden gældende tilladelse for samme klient×lokation afvises (partial UNIQUE WHERE effective_to IS NULL + EXCLUDE gist no-overlap — linje-læst 1:1-skabelon)",
+  "K-6: kobling uden slutdato afvises IKKE (effective_to NULL er bærende i mønstret — daterange m. infinity)",
+  "K-6: sletning/omskrivning af tilladelses-historik afvises (version-lukning via SET effective_to, ingen delete-policy, immutabel audit)",
+  "K-6: dateret ændring træder ikke i kraft uden godkendelse + fortrydelses-periode (pending_change_apply-gate linje-læst: approved + undo_deadline + effective_from, ellers not_yet_due; ukendt change_type 42883)",
+  "K-6: ny change_type uden pending_changes_select-policy-udvidelse er usynlig for godkendere (kendt udvidelsespunkt — recon + bilag)",
+  "K-7: uklassificeret kolonne blokerer leverancen (migration-gate STRICT i CI — mekanisk)",
+  "K-7: sletning som anonymiserings-mekanisme afvises (generic_apply er UPDATE m. check-column; state-INSERT; gentagelse P0002; FK RESTRICT mod sletning)",
+  "K-7: persondata-felt uden anonymiserings-vej afvises (generic_apply PII-coverage P0001 + mapping test_run)",
+  "K-7: permanent-klassifikation af nye kolonner uden allowlist-udvidelse afvises (d1c-trigger P0001 — t10-udvidelsesmønstret findes)",
+  "K-8: direkte tabel-skrivning som authenticated afvises uanset session-vars (revoke af alle core_*-write-privileger — linje-læst)",
+  "K-8: mutation uden årsag afvises (stork_audit P0001); ændring/sletning af audit-spor afvises (immutability + TRUNCATE-blok)",
+  "K-8: nyt lokations-area får ikke automatisk superadmin-dækning — eksplicit seed i samme leverance påkrævet (t9_seed_owners-fælden; m1-permission-matrix fejler CI ellers)",
+  "K-9: strukturelt forbud kan ikke deaktiveres via UI (CHECK/FK/trigger er ikke data-drevet; kode-låste-flag-mønstret fra permission_actions)"
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    38,
+    43
+   ],
+   "excerpt_sha": "060be1a343c97983ec1f663fa217be12067b489303d127a1bfb0bd141ee73ea7"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    101,
+    109
+   ],
+   "excerpt_sha": "792c9e55b6f5776b5e2aa76f520fdcf91c21236aa5fbbfddf36698fb0e0efa34"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "b01d85fd12f1865352e6c082ebbe1fdb336ce46d",
+   "line_span": [
+    152,
+    152
+   ],
+   "excerpt_sha": "21e3c69494ed28d7b09b4cb986cf3dfe09467b9853152917f9c2e678be8dc7d7"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    323,
+    330
+   ],
+   "excerpt_sha": "839aa0db0bd8c506984292c71a56d72924670f64d7a321b0752c916408b89258"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    347,
+    352
+   ],
+   "excerpt_sha": "25bdf033f13ae992b6656a8db4e9f9d4348d04b8b6476afe0754668cc1e0ff49"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "blob_oid": "71cadac316a633ed7f58762755b4fd13ed2fe404",
+   "line_span": [
+    105,
+    152
+   ],
+   "excerpt_sha": "e0b36098e229a0a6527701db182c3fd122f74ce1fbbba5afa71c023adda57183"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "supabase/migrations/20260518000004_t9_client_node_placements.sql",
+   "blob_oid": "f49e7d5bf248af01d8a67ac2a5f1129ceb462a7a",
+   "line_span": [
+    29,
+    38
+   ],
+   "excerpt_sha": "14b81009c4f0786be2c3c262a10b27a7c335182be59063568404886b5e4acf54"
+  },
+  {
+   "commit_sha": "727ba0bbd31ee9f38a7862f9d14abf30dc32e350",
+   "path": "supabase/migrations/20260607110004_core_identity_revoke_authenticated_core_writes.sql",
+   "blob_oid": "408a96ff17ec2460919c678633b85e613036b9eb",
+   "line_span": [
+    11,
+    12
+   ],
+   "excerpt_sha": "7aa2b3ce3975d17278a3e6a943242edf6a99d5a48654d7bb3d73e03271e02ea5"
+  }
+ ],
+ "run": {
+  "run_id": "fase2-buildability-code-2026-09-03",
+  "run_attempt": 1,
+  "raw_output_sha256": "0f54b32bfd2adf587d426ddf00fff980ef87a3290eb890dd8d0af6e274f7e299",
+  "actor_server_id": "local-driver-spawn (server-provenance = residual til CI actor-runner)"
+ }
+}
