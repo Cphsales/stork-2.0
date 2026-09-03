@@ -64,4 +64,6 @@ M-29 svarer på disse fem (relæet til Mathias via mathias-78; R4-konteksten i M
 - Q4: »Aftale uden slutdato. Kan Trygs tilladelse i Bilka Hundige være "indtil videre" uden slutdato? Svar: ja / nej. Udkastet siger ja. Anbefaling: ja.«
 - Q5: »Ændring af hvileperiode. Hvileperioden for Bilka Hundige ændres fra 14 til 21 dage. Skal en anden godkende først, eller må rettighedshaveren ændre direkte med audit? Svar: godkendelse / direkte. Udkastet kræver godkendelses-livscyklus. Anbefaling: direkte, det er forretningskonfig, ikke datahåndtering.«
 
-M-30's referenter (mathias-78's omformulerede 2+4) står verbatim i M-30-rækkens kontekst-kolonne (leveret af mathias-78 sammen med R5).
+M-30's referenter (mathias-78's omformulerede 2+4, leveret verbatim af mathias-78 sammen med R5):
+- Q-R5-2: »Bilka Hundige er nedlagt. Skal I kunne registrere en aftale om at en klient skal stå der (fx klar til en genåbning) — eller skal lokationen genåbnes først, før aftalen kan laves? (må gerne / genåbn først)«
+- Q-R5-4: »Kan en aftale løbe 'indtil videre' — fx Tryg i Bilka Hundige uden slutdato, indtil én af jer opsiger — eller skal enhver aftale have en slutdato? (indtil videre ok / altid slutdato)«
