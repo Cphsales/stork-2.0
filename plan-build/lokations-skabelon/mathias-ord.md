@@ -30,3 +30,14 @@ Fra mathias-78 (modtaget dér 2026-09-02/03, hidtil kun som parafrase):
 de 7 svar fra spørgerunden — »stande-model«-svaret · »forstår ikke« ×2 ·
 »styres i retigheder« · »den skal væres åben« · »hvad menes der med aftaler? …«
 (+ fuld kontekst pr. svar). Tilføjes som M-17+ når de leveres ordret.
+
+## Runde 2 (appendet af driveren 2026-09-03 — leveret direkte i mathias-df)
+
+| id | tid (ca.) | kanal | ord | kontekst |
+|---|---|---|---|---|
+| M-17 | 2026-09-03, før 49d92e0 | mathias-df (direkte, verbatim) | »2. en lokation har minimum 1 stand 3. forstår ikke hvad der menes. loaktioner ejes af en gruppe: en gruppe oprettes i ui. en gruppe oprettes med navn og der kobles klienter på gruppen. disse klienter arver lokationerne og dermed kan loaktion kun have klienter som der er i gruppen. loaktioner kan godt fravælge klienter som gruppen har.« | svar på fremlæggelse-1 pkt. 2+3 → GRUPPE-MODELLEN (vender K-3's kæde-forbud) |
+| M-18 | 2026-09-03, før 49d92e0 | mathias-df (direkte, verbatim) | »altså med minimum en stand menes der at gruppe ejer lokation og lokation ejer stand« | ejerkæden gruppe→lokation→stand |
+| M-19 | 2026-09-03, før 95b2ed6 | mathias-df (direkte, verbatim) | »ja« | svar på: »Bilka Hundige nedlægges og genåbnes et år senere. Er Coop-gruppens klienter automatisk tilbage på butikken ved genåbning, eller skal de vælges til igen? Svar: automatisk / vælges til.« — læst som: automatisk tilbage |
+| M-20 | 2026-09-03, efter 95b2ed6 | mathias-df (direkte, verbatim) | »præsenter krav for mig« | → fremlæggelse runde 2 (i chat; fil-reglen nåede sessionen efter) |
+| M-21 | 2026-09-03, før 7fae51e | mathias-df (direkte, verbatim) | »5. kan hvis antal hvile dage er valgt i ui« | svar på fremlæggelse runde 2 pkt. 5 → auto-hvile kun ved valgt antal hviledage (UI-konfig) |
+| M-22 | 2026-09-03, ca. 18:50 | mathias-df (direkte, verbatim) | »krav upload« | runde 2-upload-ord — udkast-blob 4513a0de @ 7fae51e; upload afventer fresh-eyes-audit (B1) + ledger-citater (fold-ind-runden) |
