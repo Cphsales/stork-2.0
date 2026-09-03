@@ -161,3 +161,20 @@ if (fail > 0) process.exit(1);
   console.log(`consolidate-recon B2: ${p2} grønne, ${f2} røde`);
   if (f2 > 0) process.exit(1);
 }
+
+// --- mini-pas-regression: stale/tom konflikt-liste kan ikke skjule en divergens ---
+{
+  let p3 = 0, f3 = 0;
+  const t3 = (navn, fn) => { try { fn(); p3++; } catch (e) { f3++; console.error(`RØD  ${navn}: ${e.message}`); } };
+  const a3 = (c, m) => { if (!c) throw new Error(m); };
+  t3("render afleder divergens fra fund-data (tom konflikt-liste skjuler intet)", () => {
+    const c = alle({ codex: { fund: [mkFund({ hvad: "helt anden læsning" })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    a3(r.ok, r.reasons.join("; "));
+    const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: [], meta: {} });
+    a3(reconMd.includes("fund-divergens @ migration:a.sql") && reconMd.includes("uklassificeret → behandles som påstand"),
+       "stale konflikt-liste skjulte divergensen (falsk-grøn)");
+  });
+  console.log(`consolidate-recon mini-pas-regression: ${p3} grønne, ${f3} røde`);
+  if (f3 > 0) process.exit(1);
+}

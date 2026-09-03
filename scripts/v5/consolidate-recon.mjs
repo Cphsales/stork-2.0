@@ -212,13 +212,32 @@ export function renderReconFiles({ recon, konflikter, meta }) {
     ``,
     `_Påstands-konflikter (+ uklassificerede, fail-closed) er Mathias' bord; ordlyds-forskelle er AI-spor og står kun i listen herunder som note._`,
     ``,
-    ...(konflikter?.length
-      ? konflikter.map((k) => {
-          const kl = k.klassifikation ?? "uklassificeret";
-          const mark = kl === "ordlyds-forskel" ? " _(ordlyds-forskel — kun AI-spor)_" : kl === "påstands-konflikt" ? " **(påstands-konflikt — Mathias' bord)**" : " **(uklassificeret → behandles som påstand)**";
-          return `- ${k.type} @ ${k.punkt}${k.antal ? ` (${k.antal} bidrag)` : ""}${k.type === "fund-divergens" ? mark : ""}`;
-        })
-      : ["(ingen)"]),
+    // Codex-fund (2026-09-03): fund-divergenser AFLEDES af selve fund-dataene
+    // (bidrag.length > 1) — en stale/manglende konflikt-liste fra kalderen kan
+    // aldrig SKJULE en divergens. Konflikt-listen bruges kun som
+    // klassifikations-kilde; mangler klassifikationen → uklassificeret (påstand).
+    ...(() => {
+      const klassMap = new Map(
+        (konflikter ?? []).filter((k) => k?.type === "fund-divergens").map((k) => [k.punkt, k.klassifikation]),
+      );
+      const divergenser = recon.fund
+        .filter((f) => f.bidrag.length > 1)
+        .map((f) => ({ punkt: f.id, antal: f.bidrag.length, klassifikation: klassMap.get(f.id) ?? "uklassificeret" }));
+      const andre = (konflikter ?? []).filter((k) => k?.type !== "fund-divergens");
+      const linjer = [
+        ...andre.map((k) => `- ${k.type} @ ${k.punkt}${k.antal ? ` (${k.antal} bidrag)` : ""}`),
+        ...divergenser.map((d) => {
+          const mark =
+            d.klassifikation === "ordlyds-forskel"
+              ? " _(ordlyds-forskel — kun AI-spor)_"
+              : d.klassifikation === "påstands-konflikt"
+                ? " **(påstands-konflikt — Mathias' bord)**"
+                : " **(uklassificeret → behandles som påstand)**";
+          return `- fund-divergens @ ${d.punkt} (${d.antal} bidrag)${mark}`;
+        }),
+      ];
+      return linjer.length ? linjer : ["(ingen)"];
+    })(),
     ``,
     `## Usikkerheder (HALT-flag — til afklaring, aldrig oprundet til fund)`,
     ``,
