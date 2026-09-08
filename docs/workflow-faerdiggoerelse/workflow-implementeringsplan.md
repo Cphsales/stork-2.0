@@ -130,7 +130,7 @@ decide/udfoer-split (genbrug `dirigent.mjs`-arkitektur, ny logik). **`actors.loc
 Hver rolle-skill kompilerer til en output-kontrakt (CI ignorerer fri prosa). **Alle:** forstå-før-producér · antag-aldrig → HALT · byg fra committet OID, ikke hukommelse. **Mandate-canary pr. rolle** i red-teamet (DEL VI). **Rolle-sessioner implementerer ALDRIG workflow-rettelser (Mathias 2026-09-03):** mekanik/plan/rolletekst-ændringer er driver/fabrik-byggerens bord; en rolle-session modtager ændringer UDELUKKENDE via sin opdaterede rolletekst (ny session = ny tekst; aldrig via chat-instrukser om at bygge mekanik).
 - **code:** tre FRISKE sessioner — **recon-Code → planner-Code → builder-Code** (aldrig samme session to stadier). Builder: design fejlen UD (umulighed > korrekthed) · 1:1 · skriver aldrig måle-lag.
 - **code-reviewer:** frisk ≠ byggeren; dybde-inspektion → `claim_graph_refs` (kun gyldig ved eksekveret + dræbt).
-- **codex/ANGREB:** falsk-grøn-jagt, dybde intrinsisk (overfladisk test = falsk-grøn); ejer måle-laget; cross-vendor (gpt-5.5 xhigh); **ingen web**.
+- **codex/ANGREB:** falsk-grøn-jagt, dybde intrinsisk (overfladisk test = falsk-grøn); ejer måle-laget; cross-vendor (**gpt-6-astra xhigh** — Mathias' model-ord 2026-09-08, M-31; pin i `actors.lock`, altid EKSPLICIT `-m`/`-c` i kald, aldrig implicit lokal config); **ingen web**.
 - **codex/FORBEDRING:** bedre alternativer (test/forbyg/dybde); **web TILLADT**; rådgivende — ingen gate; separat agent.
 - **claude-ai:** forretnings-mening mod **låste** docs; med-forfatter af krav; ingen kode; kanal = frisk Code-terminal-session pr. gate i claude-ai-rollen (Mathias 2026-09-02; før: app).
 - **recon-roller:** friske, blinde, separat workdir, **web FORBUDT**, evidens-trace pr. fund.
@@ -311,3 +311,4 @@ teknik-/model-fork stillet til Mathias (→ spørgsmåls-devil skal fange den) �
 | 26 | Pakke-ordbog: Mathias' ord ↔ systemord; plan/kode arver navnene | (dette commit) · plan-build/<pakke>/ordbog.md + Fase 1/3 |
 | 27 | Rolle-sessioner implementerer aldrig workflow-mekanik (kun rolletekst-arv) | (dette commit) · 2.G + DEL I |
 | 28 | Retrospektiv + workflow-diff-godkendelse + 3 KPI-tal i Fase 6; proces-canaries i DEL VI | (dette commit) · Fase 6 + DEL VI (c) |
+| 29 | Codex-model-pin = gpt-6-astra xhigh (Mathias' model-ord M-31, 2026-09-08); actors.lock oprettet som pin-hjem; eksplicit -m/-c i alle kald; afsluttede passes genkøres ikke | 2026-09-08-commit · actors.lock + 2.G + preflight.mjs |

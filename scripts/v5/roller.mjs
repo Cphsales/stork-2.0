@@ -108,7 +108,7 @@ export const ROLLER = Object.freeze({
     kode: true,
     ejerMaalelag: true, // Codex EJER måle-laget (der måler ≠ der bygger)
     raadgivende: false,
-    freshness: "--ephemeral, cross-vendor (gpt-5.5 xhigh)",
+    freshness: "--ephemeral, cross-vendor (gpt-6-astra xhigh)",
     forbyg_input: "forstå artefaktet ved dets SHA før angreb",
     forbyg_output: "falsk-grøn-jagt · dybde intrinsisk (overfladisk test = falsk-grøn) · kill-list up-front",
   },

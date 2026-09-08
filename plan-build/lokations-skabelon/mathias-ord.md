@@ -67,3 +67,9 @@ M-29 svarer på disse fem (relæet til Mathias via mathias-78; R4-konteksten i M
 M-30's referenter (mathias-78's omformulerede 2+4, leveret verbatim af mathias-78 sammen med R5):
 - Q-R5-2: »Bilka Hundige er nedlagt. Skal I kunne registrere en aftale om at en klient skal stå der (fx klar til en genåbning) — eller skal lokationen genåbnes først, før aftalen kan laves? (må gerne / genåbn først)«
 - Q-R5-4: »Kan en aftale løbe 'indtil videre' — fx Tryg i Bilka Hundige uden slutdato, indtil én af jer opsiger — eller skal enhver aftale have en slutdato? (indtil videre ok / altid slutdato)«
+
+## Model-ord (appendet af driveren 2026-09-08 — leveret direkte i mathias-78)
+
+| id | tid | kanal | ord | kontekst |
+|---|---|---|---|---|
+| M-31 | 2026-09-08 | mathias-78 (direkte, verbatim) | »Når du bruger codex skal du bruge denne model: Model changed to gpt-6-astra xhigh« | model-skift for Codex-aktørerne (model = aktør-identitet, kræver hans ord) → actors.lock-pin gpt-6-astra/xhigh; gælder kørsler startet fra nu (runde-1-verdikter forbliver gpt-5.5 i provenance) |

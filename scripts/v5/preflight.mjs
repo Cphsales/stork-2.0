@@ -4,7 +4,8 @@
 // Grænsen (planens ord): "nyeste CLI" er TRANSPORT — opdateres automatisk før
 // aktør-spawn; "nyeste MODEL" er AKTØR-IDENTITET/provenance — et model-skift
 // kræver Mathias' ord + actors.lock-opdatering, aldrig automatik (gpt-5.6 var
-// fx afvist af kontoen). Driveren kalder disse PURE beslutninger med friske
+// fx afvist af kontoen; 2026-09-08 gav Mathias ordet: Codex-pin = gpt-6-astra
+// xhigh, ledger M-31). Driveren kalder disse PURE beslutninger med friske
 // opslag (installeret version · `npm view <pkg> version` · kontoens model-
 // liste) og handler på svaret. Fail-closed: malformet input → halt, aldrig
 // et tavst "ok".
