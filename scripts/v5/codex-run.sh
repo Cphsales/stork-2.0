@@ -20,14 +20,18 @@ run_once() {
   timeout --signal=KILL "${TIMEOUT_S}s" \
     codex exec --skip-git-repo-check --sandbox workspace-write \
       -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-      --cd "$WORKDIR" -o "$OUT" "$(cat "$PROMPTFIL")" >> "$OUT.log" 2>&1
+      --cd "$WORKDIR" -o "$OUT" "$(cat "$PROMPTFIL")" < /dev/null >> "$OUT.log" 2>&1
   rc=$?
   t1=$(date +%s)
   {
     echo "attempt=$attempt model=$MODEL effort=$EFFORT timeout_s=$TIMEOUT_S rc=$rc varighed_s=$((t1 - t0)) slut=$(date -Is)"
   } >> "$PROV"
-  [ $rc -eq 0 ] && : > "$OUT.attempt$attempt.done"
-  return $rc
+  # succes = rc 0 OG reel leverance (ikke-tom output-fil) — et dræbt/afbrudt
+  # codex kan exite 0 uden at have skrevet last-message (observeret 2026-09-08:
+  # pkill → rc=0, ingen fil = fail-open-fælde)
+  if [ $rc -eq 0 ] && [ -s "$OUT" ]; then : > "$OUT.attempt$attempt.done"; return 0; fi
+  [ $rc -eq 0 ] && echo "attempt=$attempt rc=0 men TOM/MANGLENDE output-fil → tælles som FEJL (fail-closed)" >> "$PROV"
+  return 1
 }
 
 echo "start=$(date -Is) workdir=$WORKDIR" >> "$PROV"
