@@ -187,3 +187,23 @@ if (fail > 0) process.exit(1);
   console.log(`consolidate-recon mini-pas-regression: ${p3} grønne, ${f3} røde`);
   if (f3 > 0) process.exit(1);
 }
+
+// --- delta-pas-regressioner F3/F4 ---
+{
+  let p4=0,f4=0; const t4=(n,fn)=>{try{fn();p4++;}catch(e){f4++;console.error(`RØD  ${n}: ${e.message}`);}};
+  const a4=(c,m)=>{if(!c)throw new Error(m);};
+  t4("F3: objekt-negativ vs streng-af-samme-JSON kolliderer ALDRIG (type-tag)", () => {
+    const c = alle({ code: { fund: [mkFund({ negativer: [{x:1}] })] }, codex: { fund: [mkFund({ hvad: "anden", negativer: ['{"x":1}'] })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    a4(r.ok, r.reasons.join(";"));
+    a4(r.konflikter.some((k)=>k.klassifikation==="uklassificeret"), "type-kollision gav ai-spor (falsk-grøn)");
+  });
+  t4("F4: ugyldigt negativer-format (streng) → uklassificeret, aldrig ai-spor", () => {
+    const c = alle({ code: { fund: [mkFund({ negativer: "slet" })] }, codex: { fund: [mkFund({ hvad: "anden", negativer: "skriv" })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    a4(r.ok, r.reasons.join(";"));
+    a4(r.konflikter.some((k)=>k.klassifikation==="uklassificeret"), "ugyldige formater kollapsede til ai-spor");
+  });
+  console.log(`consolidate-recon delta-pas F3/F4: ${p4} grønne, ${f4} røde`);
+  if (f4>0) process.exit(1);
+}

@@ -65,8 +65,17 @@ function runKravGateInner(commitSha, root, evidenceRef) {
 // symlink-sikker CLI-detektion (batch-pas-fund: import.meta.url ≠ argv[1] gennem
 // symlink → hele evalueringen sprunget over m. exit 0 = fail-open)
 const erCliKald = (() => {
-  try { return process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
-  catch { return false; }
+  if (!process.argv[1]) return false;
+  try {
+    // match både rå og realpath'et entry (dækker symlink + --preserve-symlinks-main)
+    if (import.meta.url === pathToFileURL(process.argv[1]).href) return true;
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch (e) {
+    // delta-pas-fund F1: identifikations-fejl må ALDRIG blive tavs exit 0 —
+    // fail-closed med nonzero (en legitim importør har altid resolverbar argv[1])
+    console.error(`CLI-entry-identifikation fejlede (fail-closed): ${e?.message ?? e}`);
+    process.exit(3);
+  }
 })();
 if (erCliKald) {
   const commitSha = process.argv[2];

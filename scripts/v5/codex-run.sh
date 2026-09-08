@@ -17,7 +17,8 @@ run_once() {
   local attempt="$1" t0 t1 rc
   # isolation pr. forsøg (batch-pas-fund): fjern gammel output FØR kørsel, så et
   # rc=0 uden NY levering aldrig godkender forrige kørsels/forsøgs fil
-  rm -f "$OUT"
+  rm -f "$OUT" || { echo "attempt=$attempt OPRYDNING FEJLEDE (rm $OUT) → BLOKER" >> "$PROV"; exit 1; }
+  [ -e "$OUT" ] && { echo "attempt=$attempt gammel output KUNNE IKKE fjernes → BLOKER" >> "$PROV"; exit 1; }
   : > "$OUT.attempt$attempt.started"
   t0=$(date +%s)
   timeout --signal=KILL "${TIMEOUT_S}s" \
@@ -38,7 +39,8 @@ run_once() {
 }
 
 # ryd stale markører fra tidligere kørsler (gamle .done må ikke overleve en ny fejlet kørsel)
-rm -f "$OUT".attempt*.done "$OUT".attempt*.started
+rm -f "$OUT".attempt*.done "$OUT".attempt*.started || { echo "markør-oprydning fejlede → BLOKER" >> "$PROV"; exit 1; }
+ls "$OUT".attempt*.done >/dev/null 2>&1 && { echo "stale .done kunne ikke fjernes → BLOKER" >> "$PROV"; exit 1; }
 echo "start=$(date -Is) workdir=$WORKDIR" >> "$PROV"
 if run_once 1; then exit 0; fi
 echo "attempt=1 FEJLEDE/TIMEOUT → ét genforsøg (samme model+effort — aldrig tavs sænkning)" >> "$PROV"

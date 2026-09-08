@@ -126,9 +126,14 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
   // normNeg (batch-pas-fund): canonical() i stedet for String() (objekter må
   // ikke kollapse til '[object Object]'), og en TOM negativer-liste skjuler
   // ikke et udfyldt forbyder-felt.
+  // F3/F4 (delta-pas): type-TAG pr. element (streng vs struktur må aldrig
+  // kollidere), og et UGYLDIGT negativer-format (ikke-array, ikke-undefined)
+  // giver en unik sentinel pr. bidrag → divergens kan aldrig fejl-klassificeres
+  // som ai-spor pga. tavs tom-liste-fallback.
   const normNeg = (f) => {
+    if (f.negativer !== undefined && !Array.isArray(f.negativer)) return "ugyldig:" + canonical(f.negativer);
     const liste = Array.isArray(f.negativer) && f.negativer.length > 0 ? f.negativer : f.forbyder !== undefined ? [f.forbyder] : [];
-    return JSON.stringify(liste.map((x) => (typeof x === "string" ? x.trim().toLowerCase() : canonical(x))).sort());
+    return JSON.stringify(liste.map((x) => (typeof x === "string" ? "s:" + x.trim().toLowerCase() : "c:" + canonical(x))).sort());
   };
   for (const [id, arr] of fundById)
     if (arr.length > 1) {
