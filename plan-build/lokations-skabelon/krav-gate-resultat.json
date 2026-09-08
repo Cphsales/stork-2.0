@@ -1,0 +1,12 @@
+{
+ "open": true,
+ "gate_id": "krav",
+ "reasons": [],
+ "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+ "recon_predecessor_fresh": {
+  "open": true,
+  "gate_id": "recon",
+  "reasons": []
+ },
+ "evalueret": "lokalt af driveren (frisk verifyProof+verifyVerdict mod rå git); CI-check-run = DEL V-residual"
+}

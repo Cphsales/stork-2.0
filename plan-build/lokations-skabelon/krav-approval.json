@@ -1,0 +1,19 @@
+{
+ "login_server_verified": "mgrubak",
+ "gate_id": "krav",
+ "scope_digest": "46b274c3a2c6dc24cc81ff056513cbf4ef2b2f519858a80492c0a96c9c467a91",
+ "prerequisite_digests": [
+  "52bb49b11c23c138f5bb06f54bfc5fe40d5fc2b884a61e583bd070c3d1a32392",
+  "992467d66b0cd64de2d4a22b6892cbaffa02a7f7790d328ae706ad0905114e37"
+ ],
+ "_provenance": {
+  "mathias_ord": "M-38 (»krav ok« 2026-09-08 ca. 15:06, krav-vinduet, efter fremlæggelse af de 4 berørte linjer)",
+  "krav_blob": "9402164d87a35fb939661058bea77c1a052493d0",
+  "upload_commit": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+  "verdikt_run_ids": [
+   "fase2-buildability-code-r4b",
+   "fase2-buildability-codex-r4b"
+  ],
+  "residual": "login_server_verified er DEKLARERET (ord i Mathias-terminal, relayet af claude-ai-rollen); server-side mgrubak-verifikation = CI-approver-flow (DEL V-residual)"
+ }
+}
