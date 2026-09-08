@@ -73,11 +73,21 @@ afledt svar er et FORSLAG med citeret kilde — Mathias' bekræftelse er sandhed
 (antag-aldrig gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til
 et acceptkriterie). Det sparer hans tid uden at flytte hans bord.
 
-**BORD-TESTEN (Mathias 2026-09-02 — kør den på HVERT spørgsmål før du stiller
-det):** (a) kan KUN Mathias svare — er det forretnings-sandhed/fakta kun han
-kender? OG (b) kan han svare UDEN teknik-viden — uden at skulle forholde sig
-til tabeller/felter/flows/enums som model? **Fejler bare ét af de to, er det
-IKKE et krav-spørgsmål.** Teknik-/model-forks (hierarki-dybde som datamodel,
+**BORD-TESTEN (Mathias 2026-09-02 + M-33 2026-09-08 — kør den på HVERT
+spørgsmål før du stiller det):** (a) kan KUN Mathias svare — er det
+forretnings-sandhed/fakta kun han kender? OG (b) kan han svare UDEN
+teknik-viden — uden at skulle forholde sig til tabeller/felter/flows/enums som
+model? OG (c) **MATERIALITET (M-33):** ændrer svaret hvad der bygges i DETTE
+trin, og skal det afgøres NU? Svar der først bliver materielle nedstrøms →
+nedstrøms-liste (»afgøres ved trin X«) med eksplicit default — INGEN spørgsmål.
+**Fejler bare ét af de tre, er det IKKE et krav-spørgsmål.**
+
+**ÉT-SKRIDTS-REGLEN (M-33, 2026-09-08):** følger konsekvensen af Mathias'
+ORDRETTE ord (ledgeren) i ét skridt, er det en **BEKRÆFTELSE** i fremlæggelsen
+(»dit ord siger X (M-n) → kravet siger Y — står medmindre du siger stop«,
+batchet, ét samlet ok) — ALDRIG et spørgsmål. Kun ægte åbne punkter (intet
+M-ord bærer dem i ét skridt) går videre som spørgsmål. INTET loft/takt-budget
+på spørgsmål (Mathias afviste værn 3) — værnet er kvalitativt, ikke et tal. Teknik-/model-forks (hierarki-dybde som datamodel,
 felt-lister, valuta-repræsentation, seeding, mekanik-valg) noteres i stedet
 EKSPLICIT som **plan-fase-afgørelser**: planner afgør inden for kravets ramme,
 Codex angriber, og Mathias' plan OK dækker dem. De forsvinder ALDRIG tavst —
@@ -153,8 +163,10 @@ nedstrøms-mekanisme kan fange en forkert intention. Uklar eller uudtalt intenti
   fremlæggelse gælder stadig; chatten bærer fremlæggelsen, filen durabiliteten.
 - **Fresh-eyes-audit:** før `krav upload` (og plan-låsning) auditerer en FRISK
   instans dit udkast for ubekræftede afledninger → committet audit-fil;
-  driveren afviser upload uden den. Auditens fund → bekræft hos Mathias eller
-  fjern afledningen.
+  driveren afviser upload uden den. Audit-fund KLASSIFICERES (M-33) FØR de når
+  nogen: **bekræftelse** (ét-skridts-afledning af et M-ord → batchet i
+  fremlæggelsen) vs **ægte spørgsmål** (→ spørgsmåls-devil → Mathias). Auditens
+  fund → bekræft hos Mathias eller fjern afledningen.
 - **Pakke-ordbog:** al din Mathias-flade bruger HANS ord fra
   `plan-build/<pakke>/ordbog.md` (stand, gruppe, …) — aldrig systemord i chatten.
 - **Ledger:** hvert Mathias-ord du modtager melder du til driveren til

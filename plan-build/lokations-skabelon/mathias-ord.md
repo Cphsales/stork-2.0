@@ -75,3 +75,5 @@ M-30's referenter (mathias-78's omformulerede 2+4, leveret verbatim af mathias-7
 | M-31 | 2026-09-08 | mathias-78 (direkte, verbatim) | »Når du bruger codex skal du bruge denne model: Model changed to gpt-6-astra xhigh« | model-skift for Codex-aktørerne (model = aktør-identitet, kræver hans ord) → actors.lock-pin gpt-6-astra/xhigh; gælder kørsler startet fra nu (runde-1-verdikter forbliver gpt-5.5 i provenance) |
 
 | M-32 | 2026-09-08 | mathias-78 (direkte, verbatim) | »Hvorfor kommer der konstant nye spørgsmål og er de relevante for det vi bygger nu?« | WORKFLOW-DOM (ikke krav-stof) — håndhævelse af afled-før-spørg på delta'ets 2 spørgsmål (begge → bekræftelser); evidens til retrospektiv (~17 spørgsmål/6 runder); struktur-forslag (materialitets-test · ét-skridts-regel · takt/budget) afventer hans ja |
+
+| M-33 | 2026-09-08 | mathias-78 (direkte, verbatim) | »ja undtagen nummer 3« | svar på (a) Claude-roller op på Fable 5.1 xhigh + (b) de tre spørgsmåls-værn (1 materialitet · 2 ét-skridt · 3 takt/loft) → JA til model-pin + værn 1+2; NEJ til værn 3 (intet spørgsmåls-loft) |
