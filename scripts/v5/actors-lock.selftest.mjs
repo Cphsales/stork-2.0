@@ -98,7 +98,10 @@ expectRed("web-alias 'browserSearch' (camelCase)", validate(mutated((l) => l["re
 expectRed("web-alias 'browseUrl' (camelCase)", validate(mutated((l) => l["recon-code"].allowed_tools.push("browseUrl"))), "web-værktøj");
 expectRed("web-alias 'webSearch' (camelCase)", validate(mutated((l) => l["recon-code"].allowed_tools.push("webSearch"))), "web-værktøj");
 expectGreen("ikke-web værktøj 'webhook' fejl-flag'es IKKE", validate(mutated((l) => l["recon-code"].allowed_tools.push("webhook"))));
-expectGreen("codex-forbedring MÅ have web", validate(derived()));
+// M-40 B6 (Codex O-12): "codex-forbedring MÅ have web"-casen slettet — den var
+// byte-identisk med grøn-stien (:58, samme validate(derived())-kald). Videns-
+// indholdet bæres af web-mandat-sektionen ovenfor: derived-låsen BEHOLDER web
+// på codex-forbedring, og :58 validerer netop dén lås grøn.
 
 console.log("\nnested-array renhed (Codex-P2 #A1):");
 {

@@ -23,7 +23,10 @@ const bad = (n, d) => {
 };
 const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, forventede ${JSON.stringify(want)}`));
 
-// --- container-tjek (spring rent over hvis den ikke kører) ---
+// --- container-tjek — FAIL-CLOSED (M-40 B3, Codex O-9): manglende DB må ALDRIG
+// give exit 0 som default; en vellykket kommando uden database er IKKE et
+// DB-bevis. Kun eksplicit `--skip-db` (lokal udvikling) exiter 0, og da med en
+// utvetydig SKIPPED-melding der aldrig kan læses som et ført bevis. ---
 function containerUp() {
   try {
     execFileSync("docker", ["exec", CONTAINER, "pg_isready", "-U", "postgres"], { stdio: "ignore" });
@@ -33,9 +36,14 @@ function containerUp() {
   }
 }
 if (!containerUp()) {
-  console.log(`⚠ container '${CONTAINER}' kører ikke — springer integrations-bevis over (ikke en fejl).`);
-  console.log("  Start: docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121");
-  process.exit(0);
+  if (process.argv.includes("--skip-db")) {
+    console.log(`⚠ SKIPPED (ikke et bevis): container '${CONTAINER}' kører ikke — integrations-beviset blev IKKE ført (0 prøver kørt; --skip-db er kun til lokal udvikling).`);
+    process.exit(0);
+  }
+  console.error(`✗ container '${CONTAINER}' kører ikke — integrations-bevis kan ikke føres (fail-closed: manglende DB ≠ grønt bevis).`);
+  console.error("  Start: docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121");
+  console.error("  Lokal udvikling uden DB: tilføj --skip-db (exit 0 med eksplicit SKIPPED-melding — ikke et bevis).");
+  process.exit(1);
 }
 
 // --- rigtig sql-runner: SET ROLE + SET settings + sætningen i ÉN psql-session ---

@@ -307,21 +307,39 @@ console.log("\nCodex-fund (final2) — E-strenge, dollar-quotes, identifier-norm
 }
 
 console.log("\nCodex-fund — git-show-fejl er fail-closed (ingen tavs tom SQL):");
+// M-40 B4 (Codex O-10): modulet læser migrations-indhold via git.BYTES
+// (coverage.mjs:217), ikke via git(). Den gamle mock kastede fra git("show") og
+// manglede .bytes — testen gik grøn på en ANDEN fejl (TypeError: git.bytes is
+// not a function) og udøvede aldrig den tilsigtede transport-fejl-sti. Nu:
+// fakeGit.bytes kaster den TILSIGTEDE fejl, og vi asserter at .bytes faktisk
+// blev KALDT + at netop dén fejl bæres videre i fail-closed-kastet.
 {
+  let bytesCalled = false;
   const fakeGit = (...args) => {
     if (args[0] === "ls-tree") return "supabase/migrations/0001.sql";
-    if (args[0] === "show") throw new Error("simuleret læsefejl (fx > maxBuffer)");
     return "";
   };
-  let threw = false;
+  fakeGit.bytes = (...args) => {
+    if (args[0] === "show") {
+      bytesCalled = true;
+      throw new Error("simuleret læsefejl (fx > maxBuffer)");
+    }
+    return Buffer.alloc(0);
+  };
+  let threwRight = false;
+  let msg = "";
   try {
     deriveSurface({ git: fakeGit, commitSha: "deadbeef" });
   } catch (e) {
-    threw = /fail-closed/.test(e.message);
+    msg = e.message;
+    threwRight = /fail-closed/.test(msg) && /simuleret læsefejl/.test(msg);
   }
-  threw
-    ? ok("ulæselig migration → deriveSurface kaster (fail-closed, ikke tom SQL)")
-    : bad("git-show-fail-closed", "slugte fejlen");
+  bytesCalled && threwRight
+    ? ok("ulæselig migration → git.bytes KALDT + den tilsigtede fejl kastet fail-closed (ikke tom SQL)")
+    : bad(
+        "git-show-fail-closed",
+        !bytesCalled ? "git.bytes blev ALDRIG kaldt (mocken rammer en anden sti)" : `forkert/ingen fejl: ${msg || "intet kast"}`,
+      );
 }
 
 console.log("\nCodex-fund — checkCoverage afviser arvede disposition-felter:");

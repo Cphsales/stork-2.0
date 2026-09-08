@@ -45,6 +45,22 @@ const posBreak = () => {
     return { ok: false };
   };
 };
+// POS FEJLER *OG* NEG TILLADES under mutanten (M-40 B2, Claude O-2): den eneste
+// fixture hvor killed=false alene BÆRES af positiveOk-klausulen i killMutant
+// (build-harness.mjs:169-170). posBreak ovenfor holder NEG afvist, så dér er
+// killed=false uanset klausulen — denne case FEJLER hvis klausulen fjernes
+// (verificeret ved midlertidig mutation 2026-09-08): "alt gik i stykker" må
+// aldrig tælle som "sikkerheds-assertionen flippede".
+const posBreakNegAllowed = () => {
+  let m = false;
+  return (t) => {
+    if (t === "APPLY") return (m = true), { ok: true };
+    if (t === "RESTORE") return (m = false), { ok: true };
+    if (t === "POS") return m ? { ok: false, error: "positiv brød", code: SYNTAX } : { ok: true };
+    if (t === "NEG") return m ? { ok: true } : rejRLS;
+    return { ok: false };
+  };
+};
 const underThrow = () => {
   let m = false;
   return (t) => {
@@ -107,6 +123,7 @@ console.log("\nkillMutant — dræbt ⟺ forbudt-op bliver EKSPLICIT TILLADT:");
 eq("ægte svækkelses-mutant (NEG→tilladt) → dræbt", killMutant(mutant, harness, flip()).killed, true);
 eq("findes-agtig (NEG afvist altid) → OVERLEVER", killMutant(mutant, harness, findes).killed, false);
 eq("positiv-break (POS fejler) → IKKE dræbt (#3)", killMutant(mutant, harness, posBreak()).killed, false);
+eq("POS fejler + NEG TILLADES under mutant → IKKE dræbt (positiveOk-klausulen bærer alene, O-2)", killMutant(mutant, harness, posBreakNegAllowed()).killed, false);
 eq("wrong-reason-under-mutant (NEG afvist-forkert-kode) → IKKE dræbt (#1)", killMutant(mutant, harness, wrongReasonUnder()).killed, false);
 eq("under-mutant runner kaster → IKKE dræbt (#2)", killMutant(mutant, harness, underThrow()).killed, false);
 {

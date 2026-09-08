@@ -23,7 +23,8 @@ const expectFailure = (n, gateId, result, needleName) => {
 };
 
 console.log("check-run-mapping — success KUN ved eksplicit open===true:");
-expectSuccess("åben gate → success", "build", { open: true, gate_id: "build", reasons: [] });
+// M-40 B6 (Codex O-12): separat "åben gate → success"-case for 'build' slettet —
+// loopet herunder dækker 'build' med identisk input OG skarpere assertion (navn).
 for (const g of GATE_IDS) expectSuccess(`${g}: åben → success (navn v5/gate/${g})`, g, { open: true, gate_id: g, reasons: [] });
 
 console.log("\nlukket / fail-closed → failure:");

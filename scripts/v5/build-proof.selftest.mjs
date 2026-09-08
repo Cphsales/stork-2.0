@@ -292,10 +292,13 @@ expectRed("plan-binding mangler i snapshot", verifyBuildProof(greenProof(), { ..
   expectRed("arvet ks (prototype) fanges", r, "K-sættet mangler");
 }
 
-console.log("\nclaim_graph proportional dækning (ÆRLIG RESIDUAL — plan-gate-beslutning):");
+// claim_graph proportional dækning (ÆRLIG RESIDUAL — plan-gate-beslutning):
 // build-proof kræver ≥1 git-forankret claim, IKKE én pr. K (plan 2.C: proportional
 // — høj-risiko/sikkerheds-K). Per-K-dækning håndhæves ved plan-wiring, ikke her.
-expectGreen("claim_graph dækker delmængde af K (K-1, ikke K-2) — tilladt", verify(mutated((p) => (p.claim_graph = [p.claim_graph[0]]))));
+// M-40 B6 (Codex O-12): den separate "delmængde tilladt"-case er slettet — dens
+// "mutation" (claim_graph = [claim_graph[0]]) var en no-op, fordi greenProof's
+// claim_graph ALLEREDE kun dækker K-1 (delmængde af {K-1,K-2}); grøn-stien
+// øverst BEVISER derfor allerede at delmængde-dækning er tilladt.
 
 console.log("\nrouter (makeProofVerifier) leder build-proof til verifikatoren:");
 const route = makeProofVerifier({ git });
