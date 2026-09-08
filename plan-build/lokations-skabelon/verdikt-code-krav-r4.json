@@ -1,0 +1,122 @@
+{
+ "schema_version": 1,
+ "gate_id": "krav",
+ "aktor": "code",
+ "artifact_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+ "bindings_oids": {
+  "recon": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293"
+ },
+ "input_oids_read": [
+  "9402164d87a35fb939661058bea77c1a052493d0",
+  "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "7096d2ecbebce37426899dce29ba1984f3225293",
+  "359c0b2301f38499704f8778292b0a6dd3892588",
+  "6083fecd79ff6ba167dd12222144824c02a78d2e"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "v5-delta selv-verificeret: git diff b9c5249b..9402164d = 8x1:1-linjeudskiftning (linje 9/57/134/138/181/399/401/407), ingen forskydning, ingen ny substans — F-01..F-04 er ærligheds-/dispositions-rettelser",
+  "F-01 bevis-reference efterprøvet: 58d2bac er commit; git rev-parse 58d2bac:recon/recon-coverage-proof.json = 6b4cbc48… = HEAD-blob — reproducérbar, ikke påstand",
+  "F-02 begge udfald kodbare: fast feltliste = domæne-tabel-skabelon (t10 clients, linjelæst); UI-udvidelig = client_field_definitions + fields-jsonb-skabelon 1:1; default deklareret ('som for klienter')",
+  "F-03 konsistens-tjekket: konservativ felt-default kolliderer IKKE med princip 4/K-7 ac 3 — ac 1 tvinger aktivt klassifikationsvalg pr. kolonne i leverancen (migration-gate STRICT), så defaulten er et aktivt byggevalg; aktivt PII-valg aktiverer ac 4-vejen (anonymized_at + mapping + dæknings-gate findes)",
+  "F-04 talrettelse efterprøvet mod recon (blob-identisk 7fbd3a2f): bøtte 3 = præcis 11 intet-data-fund",
+  "lokation/gruppe med blankt navn -> CHECK length(trim(name))>0; type uden for enum -> CHECK — K-1 ac1-2/K-3 ac3",
+  "lokation uden gruppe / stand uden lokation / kobling uden klient-eller-gruppe -> NOT NULL FK; cyklus -> P0001 (_org_node_cycle_check); under-stand -> leaf-trigger — K-2/K-3/K-6",
+  "status-skift uden årsag / skrivning uden om RPC -> stork_audit P0001 / permission denied (20260607110004-revoke) — K-4/K-8",
+  "til-valg uden for gruppen eller på nedlagt -> RPC-guard P0002/22023; fravalg/frakobling på nedlagt default-afvises (v4-disposition) — K-3 ac4/K-4 ac8/K-6 ac4",
+  "hviledage/hvile-stop uden rettighed -> 42501; blank årsag -> 22023 — K-5 ac2-3",
+  "uklassificeret kolonne -> migration-gate STRICT rød; audit-omskrivning -> P0001 immutability; anonymisering ved sletning -> default-deny + UPDATE-vej (r7h linjelæst; jsonb walkes ikke — plan-valg deklareret) — K-7/K-8",
+  "dateret ændring uden godkendelse/fortrydelse -> pending_changes (not_yet_due, self-approve-forbud, undo 0..30d) — K-6 ac10",
+  "nyt lokations-area uden superadmin-seed -> m1_permission_matrix rød — K-8 ac5"
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    9,
+    11
+   ],
+   "excerpt_sha": "58044e10e3b44544577de619d48b9bba6aff15da7ff2d941c81dda177c90d3b8"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    52,
+    67
+   ],
+   "excerpt_sha": "1032fed99ed9f24bc663af92e3c2aed2e63c0fab15c9be93a088302427df8c99"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    132,
+    145
+   ],
+   "excerpt_sha": "5f2ed67fea6b768bd3f96c31e3fadfedcc6a122149e5644b167302df994ef4ae"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    179,
+    182
+   ],
+   "excerpt_sha": "61e287c66a99fe89560792fcf44cc4d785bb1a9c565c4117cb7fc418b2a8c3ee"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    405,
+    408
+   ],
+   "excerpt_sha": "8ff4fbb6171c4bdfa1ac0b6c22d4edeac45d803b257e8ae3e354534bf4a66d44"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    1361,
+    1407
+   ],
+   "excerpt_sha": "7bd4e48fcf1a2dfa6d3ac44f1bc07fa6c0171f798fa91e7acbbbc7768d4a2911"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "supabase/migrations/20260521000001_t10_tables.sql",
+   "blob_oid": "359c0b2301f38499704f8778292b0a6dd3892588",
+   "line_span": [
+    24,
+    80
+   ],
+   "excerpt_sha": "b1b75f015e14c783ada847cf8c6b85dfce92eb862f504c92858fff91fcf19b4d"
+  },
+  {
+   "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
+   "path": "supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql",
+   "blob_oid": "6083fecd79ff6ba167dd12222144824c02a78d2e",
+   "line_span": [
+    22,
+    127
+   ],
+   "excerpt_sha": "b0e9386622ed2be60f85ce1ade46c818c552cb0b55a5df9815dab206db783429"
+  }
+ ],
+ "run": {
+  "run_id": "fase2-buildability-code-r4",
+  "run_attempt": 1,
+  "raw_output_sha256": "355677f641b11a7e5158b1310ba8e6fad6c38a00c3760944ad6c51f2474e9890",
+  "actor_server_id": "local-driver-spawn (server-provenance = residual til CI actor-runner)"
+ }
+}
