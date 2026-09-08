@@ -66,9 +66,10 @@ export function pathZone(rawPath, repoRoot) {
 // - udenfor repo  → deny (mistænkeligt / uden for fabrikkens greb)
 // - sandhed       → deny (Mathias' bord; AI skriver aldrig) — MED én smal,
 //   eksplicit driver-rute (Mathias 2026-09-02, terminal-krav-modellen):
-//   kravUpload = { pakke, udkastBlobOid } tillader skriv til PRÆCIS
-//   `docs/sandhed/krav/<pakke>-krav.md` — driverens byte-identiske flyt af
-//   udkastet på Mathias' `krav upload`-ord. Alle andre sandhed-stier forbliver
+//   kravUpload = { pakke, udkastBlobOid, auditBlobOid } tillader skriv til
+//   PRÆCIS `docs/sandhed/krav/<pakke>-krav.md` — driverens byte-identiske
+//   flyt af udkastet (M-34 2026-09-08: automatik ved committet udkast + REN
+//   fresh-eyes-audit; Mathias' upload-ord bortfaldt — hans ord er krav ok). Alle andre sandhed-stier forbliver
 //   deny (sandhed-protect slækkes ALDRIG generelt); byte-identiteten
 //   (krav-blob-OID == udkast-blob-OID) håndhæves af driver-flytten + er
 //   re-verificerbar ved krav-gatens OID-binding.

@@ -119,14 +119,18 @@ nedstrøms-mekanisme kan fange en forkert intention. Uklar eller uudtalt intenti
   UDTØMMENDE, OID-bundet checkliste — så en udeladelse er SYNLIG for ham.
 - **Med-forfat krav:** kun HVAD (forretnings-sprog, ingen kode) + acceptkriterie
   inkl. negativer. Du udfører skrivningen; Mathias ejer sandheden.
-- **Udkast + upload:** du skriver KUN udkastet — `plan-build/<pakke>/krav-udkast.md`
-  (AI-zone). Du skriver ALDRIG selv i `docs/sandhed/` (sandhed-protect gælder
-  også dig). **Upload = driverens flyt på Mathias' ord** (`krav upload` i
-  terminalen): udkastet kopieres byte-identisk til `docs/sandhed/krav/<pakke>-krav.md`
-  — committet krav-blob-OID SKAL == udkast-blob-OID (ingen anden version kan
-  smugles ind). **Upload ≠ krav OK** — Mathias signerer sidst. Finder Code/Codex
-  en buildability-mangel → nyt udkast + nyt upload-ord = ny runde; lad ALDRIG en
-  buildability-drevet ændring tavst flytte forretnings-intentionen.
+- **Udkast + upload (M-34, 2026-09-08):** du skriver KUN udkastet —
+  `plan-build/<pakke>/krav-udkast.md` (AI-zone). Du skriver ALDRIG selv i
+  `docs/sandhed/` (sandhed-protect gælder også dig). **Upload = driverens
+  AUTOMATIK, intet Mathias-ord:** når dit udkast er committet og fresh-eyes-
+  auditen af præcis den blob er REN, flytter driveren byte-identisk til
+  `docs/sandhed/krav/<pakke>-krav.md` (krav-blob-OID == udkast-blob-OID — ingen
+  anden version kan smugles ind). **Upload ≠ krav OK** — Mathias signerer sidst,
+  efter ÉN fuld fremlæggelse (hele doc'en i hans sprog + afledninger-til-
+  bekræftelse + ændret-siden-sidst + buildability-resultatet). Finder Code/Codex
+  en buildability-mangel → nyt udkast = ny runde (samme loop, én fremlæggelse
+  pr. runde); lad ALDRIG en buildability-drevet ændring tavst flytte
+  forretnings-intentionen.
 - **Fremlæggelses-pligt (Mathias 2026-09-02):** `krav ok` må KUN bedes om EFTER
   at den KOMPLETTE krav-doc er fremlagt i chatten — overskueligt og i HANS
   sprog: formål · pr. K-n én linje HVAD + det vigtigste negativ · hvad er
