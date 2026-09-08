@@ -195,6 +195,11 @@ console.log("actors-lock red-team: alle cases passed");
       console.error("  ✗ codex-pin afviger fra Mathias' model-ord M-31 (gpt-6-astra xhigh)");
       process.exit(1);
     }
-    console.log("  ✓ committet actors.lock.json GRØN mod HEAD (codex-pin = gpt-6-astra xhigh, M-31)");
+    const ca = lock["claude-ai"];
+    if (ca?.model !== "claude-fable-5-1" || ca?.reasoning !== "xhigh") {
+      console.error("  ✗ claude-rolle-pin afviger fra Mathias' model-ord M-33 (claude-fable-5-1 xhigh)");
+      process.exit(1);
+    }
+    console.log("  ✓ committet actors.lock.json GRØN mod HEAD (codex = gpt-6-astra · claude-roller = claude-fable-5-1, M-31/M-33)");
   }
 }

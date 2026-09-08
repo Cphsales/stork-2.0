@@ -3,8 +3,8 @@
   "role": "recon-code",
   "aktoer": "code",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/recon-code.md",
   "skill_oid": "8bc618d3b462fb7a51f5ee2dc69036cbe067ea90",
   "allowed_tools": [
@@ -38,8 +38,8 @@
   "role": "recon-claude-ai",
   "aktoer": "claude-ai",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/recon-claude-ai.md",
   "skill_oid": "7509016e84f2726981b413a6a2003da3a053984e",
   "allowed_tools": [
@@ -54,10 +54,10 @@
   "role": "claude-ai",
   "aktoer": "claude-ai",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/claude-ai.md",
-  "skill_oid": "e23a3fdc9db904fb27eafd22e13ed81098d189c4",
+  "skill_oid": "8f6b09856f19134edbe1860a65f8f6faa5e02e82",
   "allowed_tools": [
    "Read",
    "Bash"
@@ -70,8 +70,8 @@
   "role": "planner-code",
   "aktoer": "code",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/planner-code.md",
   "skill_oid": "7af458032e19a76aecac67eb2a414271189cb209",
   "allowed_tools": [
@@ -90,8 +90,8 @@
   "role": "builder-code",
   "aktoer": "code",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/builder-code.md",
   "skill_oid": "8c763be94589132bb1809dbbc48b2a2fb5c73929",
   "allowed_tools": [
@@ -110,8 +110,8 @@
   "role": "code-reviewer",
   "aktoer": "code-reviewer",
   "provider": "anthropic",
-  "model": "claude-fable-5",
-  "reasoning": "high",
+  "model": "claude-fable-5-1",
+  "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/code-reviewer.md",
   "skill_oid": "709ffee37b25fa2672587413d2b45b8c0656aafc",
   "allowed_tools": [
