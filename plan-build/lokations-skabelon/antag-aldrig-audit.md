@@ -149,3 +149,19 @@ Auditeret: `diff-v2-til-v3.patch` (alle 59 linjer — hunks: status-linje · K-1
 ### Konklusion addendum v3: REN (0 nye fund)
 
 Diffen gør præcis det den påstår: de to markeringer omskrevet til ærlige ét-skridts-afledninger med citat (Mathias-sanktioneret form), ledger re-pinnet i headeren, verifikations-grænsen deklareret. REN-dommen gælder forretningsindholdet i blob 66d15100 og er dermed upload-gate-opfyldende pr. M-34; det ene provenance-flag (stale fodnote-pin) rettes ved fold-ind og ændrer ikke dommen.
+
+---
+
+## Addendum v4 (blob b9c5249b)
+
+Auditeret: det FAKTISKE v3→v4-delta i dette dir (fil-diff), som er 4 ændrede linjer — bestillingens .patch indeholdt kun 2 af dem (K-3 HVAD + plan-fase-listen); patch-basen `43b3e0a` er ikke v3-blobben 66d15100, hvilket forklares af de 2 udeladte linjer: en mellemliggende pin-rettelse. Alle 4 linjer er dømt her.
+
+- **Pin-rettelserne (status-linje + fodnote-linje 424):** begge nu "M-1..M-34 @ 17c69a3, ledger-blob 6d41d2161fd2" — intervallet matcher ledgeren i dette dir (M-1..M-34 inkl. M-33/M-34) og er internt konsistent. **v3-rest-flagget er hermed LUKKET** (inkl. noten om at formens sanktion M-33 og upload-reglen M-34 lå uden for det pinnede interval).
+- **N1 (K-3's M-17-citat): VERBATIM — verificeret** tegn-for-tegn mod ledgeren ("…dermed kan loaktion kun have klienter som der er i gruppen. loaktioner kan godt fravælge klienter som gruppen har"). Det lukker også den sidste rest af runde 1's hygiejne-note (dette var det ene brødtekst-citat der forblev normaliseret gennem v2/v3).
+- **N2 (jsonb-anonymisering, K-7): ÆRLIG plan-fase-disposition.** Den tekniske præmis ("jsonb walkes ikke af den generiske anonymisering") er fundament-stof inden for den deklarerede verifikations-grænse — men dispositionen er fail-safe uanset: K-7 ac 4's eksisterende dæknings-gate fanger valget. Ingen forretnings-afledning.
+- **N3 (type-default, K-3): ÆRLIGT deklareret** som "default: valgfri ved oprettelse, krævet før rabat-brug i trin 29" INDE i plan-fase-listen — ingen Mathias-attribution; "valgfri ved oprettelse" flugter med M-17 (kun navn nævnt), "krævet før rabat-brug" med §1.12's rabat-anker. Lukker pænt FUND-3-residualen.
+- **N4 (fravalg/frakobling på nedlagt, K-6): ÆRLIGT deklareret** som "default: afvises, som til-valg i K-4 ac 8" — analogi-ankeret (K-4 ac 8) er selv M-30.2/M-13-båret, og defaulten er markeret som default, ikke som Mathias-ord. Ingen praktisk spænding mod M-12's "altid kunne kobles fra": på en nedlagt lokation er alle allerede automatisk koblet af (M-14), så frakoblings-grenen er reelt tom; fravalgs-grenen er netop det plan-fasen afgør (Codex angriber, plan-OK dækker).
+
+### Konklusion addendum v4: REN (0 nye fund)
+
+Ingen nye ubekræftede afledninger: én verbatim-rettelse, to pin-rettelser (lukker v3-rest-flagget), og tre plan-fase-udvidelser hvis defaults alle er deklareret som dispositioner — intet smuglet ind som Mathias-påstand. REN-dommen gælder blob b9c5249b og opfylder upload-gaten pr. M-34. Eneste transparens-note: bestillingens patch-fil var ufuldstændig (2 af 4 linjer); dommen bygger på fil-diffen af de faktiske blobs i dette dir.
