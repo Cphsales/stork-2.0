@@ -26,7 +26,9 @@ konkrete mutanter og prover-koden (måle-laget, som du aldrig rører).
 ## Dybden DØMMES ved plan-gaten — så skriv TIL panelet
 
 Effect-harness + mutant-kill MINDSKER, men TVINGER ikke, dybde — resten er
-plan-gatens dom. Codex' kill-list skrives først i Fase 4, EFTER plan-lås; derfor
+plan-gatens dom. Codex' kill-list-UDKAST skal FORELIGGE ved plan-gaten (så dens
+tilstrækkelighed kan dømmes dér — P-6-afgørelse 2026-09-08, M-35; den
+FINALISERES bid-bundet før byg i Fase 4); derfor
 skal planen SELV bære fejl-loci + harness-form konkret nok til at panelet kan
 dømme dybden nu. Panelet:
 

@@ -79,3 +79,5 @@ M-30's referenter (mathias-78's omformulerede 2+4, leveret verbatim af mathias-7
 | M-33 | 2026-09-08 | mathias-78 (direkte, verbatim) | »ja undtagen nummer 3« | svar på (a) Claude-roller op på Fable 5.1 xhigh + (b) de tre spørgsmåls-værn (1 materialitet · 2 ét-skridt · 3 takt/loft) → JA til model-pin + værn 1+2; NEJ til værn 3 (intet spørgsmåls-loft) |
 
 | M-34 | 2026-09-08 | mathias-9b (direkte, verbatim) | »godt, nu skal jeg præsenteres for krav doc og efter det kan jeg godkende det. ingen grund til først at godkende upload for derefter at skrive ok det man lige har godkendt.« | WORKFLOW-DOM: `krav upload` som Mathias-ord BORTFALDER — upload = driver-automatik (udkast committet + fresh-eyes-audit REN); derefter buildability → ÉN fuld fremlæggelse → hans ENE `krav ok` (orderedApproval/krav 5 uændret) |
+
+| M-35 | 2026-09-08 | mathias-9b (direkte, verbatim) | »Jeg synes vi lige så godt kan integrere det med det samme, så vi får det testet i denne pakke« | WORKFLOW-DOM: alle 9 Codex-integrationspunkter (P-1..P-9, Codex-analyse @ 00c583e) indføres NU og testes på lokations-skabelon; implementering = driverens bord |
