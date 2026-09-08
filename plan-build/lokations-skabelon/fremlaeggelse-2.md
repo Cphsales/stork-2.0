@@ -1,6 +1,6 @@
 # lokations-skabelon — fremlæggelse 2, version 2 (til `krav ok`)
 
-Dato: 2026-09-08 · kravet ligger i `docs/sandhed/krav/lokations-skabelon-krav.md` @ d5fa4be, blob `b9c5249b7ab90d8898992bde61b8cb018bc4f561` (= udkast @ 1dc4a12; uploadet automatisk efter ren audit) · Code og Codex: PASS i runde 2 mod forrige version (43b3e0aa @ 8e1830b); runde 3 mod denne version kører, resultatet indsættes her når driveren melder det · listen over dine ord (ledgeren): M-1..M-34 @ 17c69a3.
+Dato: 2026-09-08 · kravet ligger i `docs/sandhed/krav/lokations-skabelon-krav.md` @ d5fa4be, blob `b9c5249b7ab90d8898992bde61b8cb018bc4f561` (= udkast @ 1dc4a12; uploadet automatisk efter ren audit) · Code og Codex: PASS i runde 3 mod netop denne version (krav-blob b9c5249b @ d5fa4be; verdikter @ 846a3e2, læsebevis verificeret mod rå git) · listen over dine ord (ledgeren): M-1..M-34 @ 17c69a3.
 
 Her er hele kravet i dit sprog. Til sidst står to afledninger af dine ord, som du kan sige stop til. Dit ene ord bagefter er `krav ok`.
 
@@ -55,6 +55,6 @@ Her er hele kravet i dit sprog. Til sidst står to afledninger af dine ord, som 
 
 **Recon og de låste dokumenter.** Alle 216 fund fra gennemgangen er disponeret: 213 behandlet, 2 udskudt på dit ord om overførsel af gamle data, 1 ikke relevant, nemlig klient-logo. Ingen modsigelse mod vision, forretningsforståelse eller masterplan i forretnings-forstand. To flag til dig om masterplanens tekst: den beskriver klient-tilladelser som en liste pr. lokation, hvor din model er kobling på gruppen med fravalg pr. lokation, og en kildehenvisning om hvile passer ikke. Ingen af dem er rettet af mig. En frisk gennemgang fandt 10 steder, hvor jeg havde lukket huller uden dit ord; alle er rettet, og gen-gennemgangen var ren.
 
-**Kan det bygges.** Code og Codex har begge sagt ja: alle ni krav kan bygges på det, der allerede er bygget for klienter og medarbejdere, og hvert forbud kan testes. Ingen huller. Deres fire noter er alle med på plan-fase-listen ovenfor. Ingen spørgsmål til dig.
+**Kan det bygges.** Code og Codex har begge sagt ja til netop denne version: alle ni krav kan bygges på det, der allerede er bygget for klienter og medarbejdere, og hvert forbud kan testes. Ingen huller. Deres fire noter er alle med på plan-fase-listen ovenfor. Ingen spørgsmål til dig.
 
 **Dit ene ord er `krav ok`.**
