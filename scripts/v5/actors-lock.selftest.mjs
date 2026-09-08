@@ -170,3 +170,31 @@ if (failed > 0) {
   process.exit(1);
 }
 console.log("actors-lock red-team: alle cases passed");
+
+// --- committet actors.lock.json valideres mod HEAD (M-31: pin-hjemmet) ---
+// Rolletekst-ændring uden lock-opdatering → skill_oid-mismatch → RØD (samme
+// anti-drift-mønster som hærdet-registret).
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const lockPath = join(here, "actors.lock.json");
+  if (existsSync(lockPath)) {
+    const { makeGit } = await import("./git.mjs");
+    const rgit = makeGit(join(here, "..", ".."));
+    const head = rgit("rev-parse", "HEAD");
+    const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+    const v = validateActorsLock(lock, { git: rgit, commitSha: head });
+    if (!v.ok) {
+      console.error("  ✗ committet actors.lock.json valider IKKE mod HEAD: " + v.reasons.join(" | "));
+      process.exit(1);
+    }
+    const cx = lock["codex-angreb"];
+    if (cx?.model !== "gpt-6-astra" || cx?.reasoning !== "xhigh") {
+      console.error("  ✗ codex-pin afviger fra Mathias' model-ord M-31 (gpt-6-astra xhigh)");
+      process.exit(1);
+    }
+    console.log("  ✓ committet actors.lock.json GRØN mod HEAD (codex-pin = gpt-6-astra xhigh, M-31)");
+  }
+}
