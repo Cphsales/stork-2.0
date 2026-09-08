@@ -14,8 +14,9 @@ import { evaluateGate } from "./gates.mjs";
 import { buildSnapshot } from "./gate-eval.mjs";
 import { makeProofVerifier } from "./proofs.mjs";
 import { makeGit } from "./git.mjs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
+import { realpathSync } from "node:fs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -56,7 +57,11 @@ function runReconGateInner(commitSha, root) {
   return evaluateGate("recon", { ...snapshot, proof_result: proofResult }, { verifyProof: makeProofVerifier({ git }) });
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+const erCliKald = (() => {
+  try { return process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
+  catch { return false; }
+})();
+if (erCliKald) {
   const commitSha = process.argv[2];
   if (!commitSha) {
     console.error("brug: recon-gate-run.mjs <pinned-commit-oid>");

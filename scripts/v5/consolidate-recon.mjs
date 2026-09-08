@@ -123,7 +123,13 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
   // = "ai-spor-p2" (teknisk ordlyd — P-2-efterprøvningen afgør, aldrig Mathias).
   // Divergens i bøtte 2/3 ELLER i negativ-listerne = "uklassificeret" (behandles
   // som påstand, fail-closed — Mathias' bord). Rå bidrag bevares altid.
-  const normNeg = (f) => JSON.stringify(((f.negativer ?? (f.forbyder !== undefined ? [f.forbyder] : [])) || []).map((x) => String(x).trim().toLowerCase()).sort());
+  // normNeg (batch-pas-fund): canonical() i stedet for String() (objekter må
+  // ikke kollapse til '[object Object]'), og en TOM negativer-liste skjuler
+  // ikke et udfyldt forbyder-felt.
+  const normNeg = (f) => {
+    const liste = Array.isArray(f.negativer) && f.negativer.length > 0 ? f.negativer : f.forbyder !== undefined ? [f.forbyder] : [];
+    return JSON.stringify(liste.map((x) => (typeof x === "string" ? x.trim().toLowerCase() : canonical(x))).sort());
+  };
   for (const [id, arr] of fundById)
     if (arr.length > 1) {
       const boetter = new Set(arr.map((b) => b.boette));

@@ -14,8 +14,9 @@ import { makeProofVerifier } from "./proofs.mjs";
 import { makeVerdictVerifier } from "./verdikt.mjs";
 import { runReconGate } from "./recon-gate-run.mjs";
 import { makeGit } from "./git.mjs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
+import { realpathSync } from "node:fs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -38,13 +39,13 @@ function runKravGateInner(commitSha, root, evidenceRef) {
   const læs = (p) => JSON.parse(git.bytes("show", `${evidenceRef}:plan-build/${pakke}/${p}`).toString("utf8"));
   const verdicts = [læs("verdikt-code-krav-r4b.json"), læs("verdikt-codex-krav-r4b.json")];
   const approvalFil = læs("krav-approval.json");
-  // kun schema-felterne — provenance-noten er spor, ikke approval-data
-  const approval = {
-    login_server_verified: approvalFil.login_server_verified,
-    gate_id: approvalFil.gate_id,
-    scope_digest: approvalFil.scope_digest,
-    prerequisite_digests: approvalFil.prerequisite_digests,
-  };
+  // VERBATIM (batch-pas-fund 2026-09-08): approval-data læses som den er —
+  // plukning VASKEDE ukendte felter væk som kernens additionalProperties-værn
+  // ellers afviser (fail-open). Format: { approval: {…schema-felter…},
+  // _provenance: {…spor…} } — kun .approval sendes videre, U-RØRT; bagud-
+  // kompatibelt: fladt format sendes videre i sin HELHED (kernen afviser så
+  // selv _provenance som ukendt felt — fail-closed, aldrig laundering).
+  const approval = approvalFil.approval ?? approvalFil;
 
   // forgænger: recon-gaten re-dømmes FRISK ved samme pinnede commit
   const recon = runReconGate(commitSha, { root });
@@ -61,7 +62,13 @@ function runKravGateInner(commitSha, root, evidenceRef) {
   );
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// symlink-sikker CLI-detektion (batch-pas-fund: import.meta.url ≠ argv[1] gennem
+// symlink → hele evalueringen sprunget over m. exit 0 = fail-open)
+const erCliKald = (() => {
+  try { return process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
+  catch { return false; }
+})();
+if (erCliKald) {
   const commitSha = process.argv[2];
   if (!commitSha) { console.error("brug: krav-gate-run.mjs <pinned-commit-oid>"); process.exit(2); }
   const result = runKravGate(commitSha);
