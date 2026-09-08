@@ -57,7 +57,7 @@
   "model": "claude-fable-5-1",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/claude-ai.md",
-  "skill_oid": "8f6b09856f19134edbe1860a65f8f6faa5e02e82",
+  "skill_oid": "946284944deeb73bb62063f2892308c3502e8591",
   "allowed_tools": [
    "Read",
    "Bash"
@@ -73,7 +73,7 @@
   "model": "claude-fable-5-1",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/planner-code.md",
-  "skill_oid": "7af458032e19a76aecac67eb2a414271189cb209",
+  "skill_oid": "b8dda6bc711668f09b18710f0777713db1e03e2e",
   "allowed_tools": [
    "Read",
    "Grep",
