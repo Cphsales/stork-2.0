@@ -384,6 +384,24 @@ plantClosed(
   },
   "manglende felt",
 );
+// M-39 pkt. 4: effort er VALGFRIT provenance-felt — gyldigt = stadig grøn; tomt = rød
+{
+  const c = greenKrav();
+  c.snapshot.verdicts[0].run.effort = "xhigh";
+  c.snapshot.verdicts[1].run.effort = "xhigh";
+  // orderedApproval-digests skal matche de MUTEREDE verdikter (approval bindes til friske digests)
+  c.snapshot.approval.prerequisite_digests = c.snapshot.verdicts.map((v) => digestOf(v));
+  expectOpen("run.effort som gyldigt valgfrit provenance-felt (M-39)", c, "krav");
+}
+plantClosed(
+  "run.effort tomt (angiv niveauet eller udelad feltet)",
+  "krav",
+  greenKrav,
+  (c) => {
+    c.snapshot.verdicts[0].run.effort = "";
+  },
+  "run.effort tom",
+);
 plantClosed(
   "tom evidens-liste (ord uden læsning)",
   "krav",

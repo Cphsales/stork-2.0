@@ -46,6 +46,10 @@ const VERDIKT_KEYS = Object.freeze([
 ]);
 const EVIDENCE_KEYS = Object.freeze(["commit_sha", "path", "blob_oid", "line_span", "excerpt_sha"]);
 const RUN_KEYS = Object.freeze(["run_id", "run_attempt", "raw_output_sha256", "actor_server_id"]);
+// M-39 pkt. 4 (2026-09-08): effort LOGGES i provenance — VALGFRIT felt (historiske
+// verdikter uden det består; nye kørsler bærer det, så pin-afvigelser er synlige).
+// Ændrer IKKE model/effort-pinnen (M-31/M-33: xhigh) — kun ærlig registrering.
+const RUN_OPTIONAL_KEYS = Object.freeze(["effort"]);
 export const CONCLUSIONS = Object.freeze(["PASS", "FAIL", "HALT"]);
 
 export function validateVerdiktSchema(v) {
@@ -111,8 +115,9 @@ export function validateVerdiktSchema(v) {
 
   if (!isPlainObject(v.run)) fail("run mangler/ugyldigt");
   else {
-    for (const k of Object.keys(v.run)) if (!RUN_KEYS.includes(k)) fail(`run: ukendt felt '${k}'`);
+    for (const k of Object.keys(v.run)) if (!RUN_KEYS.includes(k) && !RUN_OPTIONAL_KEYS.includes(k)) fail(`run: ukendt felt '${k}'`);
     for (const k of RUN_KEYS) if (!hasOwn(v.run, k)) fail(`run: manglende felt '${k}'`);
+    if (hasOwn(v.run, "effort") && !isNonEmptyString(v.run.effort)) fail("run.effort tom (udelad feltet eller angiv niveauet)");
     if (hasOwn(v.run, "run_id") && !isNonEmptyString(v.run.run_id)) fail("run.run_id tom");
     if (hasOwn(v.run, "run_attempt") && (!Number.isInteger(v.run.run_attempt) || v.run.run_attempt < 1))
       fail("run.run_attempt skal være heltal ≥ 1");
