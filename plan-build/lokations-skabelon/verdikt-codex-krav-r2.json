@@ -1,0 +1,135 @@
+{
+ "schema_version": 1,
+ "gate_id": "krav",
+ "aktor": "codex",
+ "artifact_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+ "bindings_oids": {
+  "recon": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293"
+ },
+ "input_oids_read": [
+  "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+  "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "7096d2ecbebce37426899dce29ba1984f3225293",
+  "bb9ee808bc6f57d571f975646bbdf62ae0459870",
+  "d1b4d601ef273e62dbaba42261cc20ba051882c5"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "K-1: Manglende eller blankt lokationsnavn og type uden for den faste liste skal afvises; gyldig master-data skal kunne oprettes via offentlig indgang.",
+  "K-1/K-2: Prisændring må ikke ændre tidligere datoers egen eller arvede dagspris; ny pris skal kunne genlæses entydigt.",
+  "K-1/K-3: Nul klienter er tilladt på en lokation; manglende gruppe og lokationsbaseret attributions-/provisionskobling er fortsat forbudt.",
+  "K-2: Stand uden lokation, lokation uden gruppe, selvreference, cyklus og under-stand skal være strukturelt afvist.",
+  "K-2: Oprettelse, fjernelse eller flytning må ikke efterlade en lokation uden stand; også to konkurrerende fjernelser skal bevare minimum én.",
+  "K-2/K-6: Flere klienter må have ret til samme lokation; én klient pr. stand samtidig er byggelig via stand-identiteten, med bookingafvisningen udtrykkeligt placeret i trin 24.",
+  "K-3/K-6: Gruppe-kobling skal give arv på eksisterende og senere oprettede lokationer; klient uden for gruppen må ikke tilvælges lokalt.",
+  "K-3/K-6: Lokalt fravalg og ophævelse må kun ændre retten på den pågældende lokation; søsterlokationer og gruppe-kobling skal bestå.",
+  "K-3: Gruppe uden navn og sletning af gruppe med lokationer skal afvises.",
+  "K-4: Ugyldig status, manglende årsag og statusændring gennem generel redigering eller direkte DML skal afvises; historiske statusopslag skal bestå.",
+  "K-4/K-6: Dvale skal tillade klientforberedelse og bevare koblinger, mens aktiv-opslaget afviser datoer under dvalen.",
+  "K-4/K-6: Nedlæggelse skal atomisk fjerne effektiv klientret, bevare stande/historik og afvise lokalt tilvalg; genåbning skal automatisk arve den da gældende gruppe.",
+  "K-4/K-6: Gruppeændring mens en lokation er nedlagt eller senere apply af en tidligere bestilt ændring må ikke skabe aktive klienter på den nedlagte lokation.",
+  "K-5: Uden valgt antal hviledage må der ikke være implicit automatisk hvile; kampagneslut-triggeren er nedstrøms og er ikke påstået runtime-bevist i denne pakke.",
+  "K-5: Hvile skal afskære bookbarhed på tværs af klienter uden book-alligevel-vej; tidlig afslutning uden rettighed afvises og med rettighed skal den åbne synligt med årsag/audit.",
+  "K-5: Autoriseret hviledagsændring skal kunne læses straks uden godkendelsesventetid og med årsag/audit; samme ændring uden rettighed afvises.",
+  "K-6: Manglende klient/gruppe og dobbelt samtidig kobling af samme klient på samme gruppe skal afvises; kobling uden slutdato tillades.",
+  "K-6: Gruppefrakobling skal fjerne ret på alle gruppens lokationer fra datoen uden at ændre tidligere svar; historiksletning og destruktiv omskrivning skal afvises.",
+  "K-6: Dateret ændring må ikke få effekt før godkendelse, gældende dato og undo-frist; lovlig fortrydelse skal bevare den effektive tilstand, og uberettiget godkendelse skal afvises.",
+  "K-7: Manglende kolonnes klassifikationsentry skal blokere leverancen; uden aktivt valg må PII og retention ikke blive implicit aktiveret.",
+  "K-7: Anonymisering skal erstatte kontaktpersonværdier uden at slette gruppe, kontaktens bevarede række, lokationskoblinger eller audit; dynamiske og udfasede personfelter kræver anonymiserings- og replaydækning.",
+  "K-7/K-9: Direct-PII-nedgradering eller omgåelse via anden klassifikationsindgang skal afvises; senere aktivt PII-valg på lokation må ikke kræve en ny udviklerleverance.",
+  "K-8: Direkte app-INSERT/UPDATE/DELETE/TRUNCATE skal afvises også for bruger med superadmin-forretningsrettigheder og ved forsøg med write-sessionvariabel.",
+  "K-8: Mutation uden årsag, audit-UPDATE/DELETE/TRUNCATE, skrivning med kun læseret og læsning uden synlighedsret skal afvises; gyldige indgange skal auditeres.",
+  "K-8/K-9: Nye sider/actions skal være tildelbare og superadmin dækket fra leverancen; enhver krævet driftshandling skal kunne udføres via offentlig indgang uden service-adgang eller migration.",
+  "K-9: UI-konfiguration må ikke kunne ophæve navn, ejerkæde, minimumsstand, entydighed, historik eller årsagskrav; frontend-formularerne er udtrykkeligt lag F."
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    35,
+    46
+   ],
+   "excerpt_sha": "74391d1855395ec6c0e8c53b91a75e33b522aa8fa9042261b2da1f6bc84bc96d"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    97,
+    105
+   ],
+   "excerpt_sha": "822d39c798441a7666dde3347975499f72272b56127c385f527b8306577744cd"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    111,
+    126
+   ],
+   "excerpt_sha": "e6831e95812a165bf3aa2b4ab249cebc58e536b9f0737c459f67f951506eb202"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    134,
+    143
+   ],
+   "excerpt_sha": "acb87102fe77ae58dfa358e3d2305aaa68b3e0ac82b56ea5743759082a339fd5"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    165,
+    175
+   ],
+   "excerpt_sha": "b51480250968dbc394719caec8c6b96f683452c8d3d4537b25b437b8761b1f86"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    309,
+    328
+   ],
+   "excerpt_sha": "09d371512b43dcb3dc803c8dc678630939425d09cd34497345ff5bedc7419471"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "supabase/migrations/20260521000009_t10_client_rpcs.sql",
+   "blob_oid": "bb9ee808bc6f57d571f975646bbdf62ae0459870",
+   "line_span": [
+    29,
+    41
+   ],
+   "excerpt_sha": "e14f406db22619f3ca89fd6a31bd695925b9892412122375a01977266c6347c3"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "scripts/fitness.mjs",
+   "blob_oid": "d1b4d601ef273e62dbaba42261cc20ba051882c5",
+   "line_span": [
+    1709,
+    1725
+   ],
+   "excerpt_sha": "700ef341b9476146bb2f5c952c7d34ad7f03d97998886be1abdbf1d119c58724"
+  }
+ ],
+ "run": {
+  "run_id": "fase2-buildability-codex-2026-09-03",
+  "run_attempt": 1,
+  "raw_output_sha256": "a90fcce66b2b1d6fc70179174c1f070d3cb89425f163fc0ffc4a471207cede0a",
+  "actor_server_id": "local-driver-spawn (server-provenance = residual til CI actor-runner)"
+ }
+}

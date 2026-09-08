@@ -1,0 +1,124 @@
+{
+ "schema_version": 1,
+ "gate_id": "krav",
+ "aktor": "code",
+ "artifact_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+ "bindings_oids": {
+  "recon": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "anker": "7096d2ecbebce37426899dce29ba1984f3225293"
+ },
+ "input_oids_read": [
+  "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+  "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+  "7096d2ecbebce37426899dce29ba1984f3225293",
+  "71cadac316a633ed7f58762755b4fd13ed2fe404",
+  "359c0b2301f38499704f8778292b0a6dd3892588",
+  "6083fecd79ff6ba167dd12222144824c02a78d2e"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "lokation/gruppe med blankt navn -> CHECK length(trim(name))>0 (t10 clients-skabelon) — K-1 ac1/K-3 ac3",
+  "type uden for {butik,messe,marked,event,andet} -> CHECK-violation — K-1 ac2",
+  "lokation uden gruppe / stand uden lokation / kobling uden klient-eller-gruppe -> NOT NULL FK-afvisning — K-3 ac1/K-2 ac6/K-6 ac1",
+  "cyklus i hierarki -> P0001 (_org_node_cycle_check-skabelon, dybde-loft 100); under-stand -> leaf-trigger (team_no_children-mønster) — K-2 ac1/ac6",
+  "dobbelt åben kobling samme klient x gruppe -> partial UNIQUE; overlappende daterede perioder -> EXCLUDE gist — K-6 ac2",
+  "status uden for {aktiv,dvale,nedlagt} -> CHECK; status-skift/mutation uden årsag -> stork_audit P0001 change_reason påkrævet — K-4 ac1-2/K-8 ac2",
+  "skrivning uden om dedikerede indgange -> permission denied (20260607110004 revoke af al app-DML, uanset session-vars); upsert-RPC rører bevidst ikke status (client_upsert/set_active-mønster) — K-4 ac3/K-8 ac1",
+  "til-valg af klient uden for gruppen eller på nedlagt lokation -> RPC-guard P0002/22023 (client_node_place-mønster) — K-3 ac4/K-4 ac8/K-6 ac4",
+  "hviledage-ændring/hvile-stop uden rettighed -> 42501 (has_permission); blank årsag -> 22023 — K-5 ac2-3",
+  "uklassificeret kolonne -> migration-gate STRICT rød (fail-closed CI); audit-omskrivning/TRUNCATE -> P0001 immutability — K-7 ac1/K-8 ac3/K-4 ac4",
+  "anonymisering ved sletning -> ingen delete-policy (default-deny) + anonymize=UPDATE m. state-log (r7h-body linjelæst); jsonb-PII kræver bevidst plan-valg: kolonner, entity-specifik internal_rpc (config-drevet dispatch) eller generic_apply-udvidelse — 0 direct-kolonner giver P0001 — K-7 ac2/ac4",
+  "nedlagt lokation med aktive klienter kan ikke findes -> afledt prædikat eller atomisk frakobling, begge testbare via dato-opslag; genåbning re-arver automatisk (M-19) — K-4 ac9/K-6 ac9",
+  "dateret ændring uden godkendelse/fortrydelses-periode -> pending_changes-maskineriet (not_yet_due, self-approve-forbud, undo_deadline 0..30d) — K-6 ac10",
+  "nyt lokations-area uden eksplicit superadmin-seed -> m1_permission_matrix rød (superadmin-area-grants dækker kun dengang-eksisterende areas) — K-8 ac5"
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    35,
+    50
+   ],
+   "excerpt_sha": "581f0690bf771bb58815b0465436ae917afa286f563f8901b6a2f6977d744e7e"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    52,
+    67
+   ],
+   "excerpt_sha": "0de3fbced1f3b7cf75f866c8fe983990e72b94552479dad51a8eda646bca7929"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    89,
+    107
+   ],
+   "excerpt_sha": "f92ab7c809b6969fe6f30c45c01b0d3be3ea11873930fee1e7a9947e8940e464"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "43b3e0aa760e2060391b70f018ef64ca8fe34284",
+   "line_span": [
+    109,
+    131
+   ],
+   "excerpt_sha": "4d83ea0ecc178d598f165bffe921d2a5a0666d93c61191fee5fe748e2b5e1fef"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "recon/recon.md",
+   "blob_oid": "7fbd3a2f43c03ce239aa81e20483326bf438463c",
+   "line_span": [
+    347,
+    358
+   ],
+   "excerpt_sha": "e74fb5d5e09a675eebc6398c6881ab559e2df98e390f96ad6eb01f2198fa5c9c"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "supabase/migrations/20260518000001_t9_org_nodes.sql",
+   "blob_oid": "71cadac316a633ed7f58762755b4fd13ed2fe404",
+   "line_span": [
+    104,
+    146
+   ],
+   "excerpt_sha": "07111d88c6d7d0ffda041259ec6fbb30dc0a3ae161ab642e922e63050a1fd0d3"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "supabase/migrations/20260521000001_t10_tables.sql",
+   "blob_oid": "359c0b2301f38499704f8778292b0a6dd3892588",
+   "line_span": [
+    24,
+    80
+   ],
+   "excerpt_sha": "b1b75f015e14c783ada847cf8c6b85dfce92eb862f504c92858fff91fcf19b4d"
+  },
+  {
+   "commit_sha": "8e1830bb84e85fb8e893ce6fed37c89a11451a4a",
+   "path": "supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql",
+   "blob_oid": "6083fecd79ff6ba167dd12222144824c02a78d2e",
+   "line_span": [
+    22,
+    127
+   ],
+   "excerpt_sha": "b0e9386622ed2be60f85ce1ade46c818c552cb0b55a5df9815dab206db783429"
+  }
+ ],
+ "run": {
+  "run_id": "fase2-buildability-code-2026-09-03",
+  "run_attempt": 1,
+  "raw_output_sha256": "9668dbacd3ebdc7963dbc7ab6b6d7108d01a45ab40282fd3b5fec39d74306485",
+  "actor_server_id": "local-driver-spawn (server-provenance = residual til CI actor-runner)"
+ }
+}
