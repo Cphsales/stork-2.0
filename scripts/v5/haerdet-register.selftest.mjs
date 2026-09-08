@@ -18,10 +18,10 @@ const ROOT = resolve(HERE, "..", "..");
 
 // gate-entrypoints: filerne hvis dom åbner/lukker en gate. Udvides når
 // build-/chain-gatens transport bygges (behov-drevet, aldrig i drift u-hærdet).
-const GATE_ENTRYPOINTS = ["recon-gate-run.mjs", "gate-eval.mjs"];
+const GATE_ENTRYPOINTS = ["recon-gate-run.mjs", "krav-gate-run.mjs", "gate-eval.mjs"];
 // producenter af gatede artefakter (ikke i import-closuret, men deres output
 // er det gaten dømmer på):
-const ARTEFAKT_PRODUCENTER = ["consolidate-recon.mjs"];
+const ARTEFAKT_PRODUCENTER = ["consolidate-recon.mjs", "verdikt-byg.mjs", "codex-run.sh"];
 
 let pass = 0, fail = 0;
 const ok = (n) => { pass++; console.log(`  ✓ ${n}`); };
@@ -34,8 +34,14 @@ while (queue.length) {
   const f = queue.pop();
   if (closure.has(f)) continue;
   closure.add(f);
-  const src = readFileSync(join(HERE, f), "utf8");
-  for (const m of src.matchAll(/from "\.\/([a-z0-9-]+\.mjs)"/g)) if (!closure.has(m[1])) queue.push(m[1]);
+  if (f.endsWith(".mjs")) {
+    const src = readFileSync(join(HERE, f), "utf8");
+    // alle import-skrivemåder: import ... from "./x.mjs" · import("./x.mjs") · export ... from "./x.mjs"
+    for (const m of src.matchAll(/from\s+"\.\/([a-z0-9-]+\.mjs)"|import\("\.\/([a-z0-9-]+\.mjs)"\)/g)) {
+      const dep = m[1] ?? m[2];
+      if (dep && !closure.has(dep)) queue.push(dep);
+    }
+  }
 }
 
 const register = JSON.parse(readFileSync(join(HERE, "haerdet-register.json"), "utf8"));

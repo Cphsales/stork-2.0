@@ -45,7 +45,9 @@ dømme dybden nu. Panelet:
 
 For hvert K-negativ: spørg _"kan en constraint/type/RLS gøre denne negativ
 UMULIG?"_ Ja → planlæg umuligheden (navngiv det konkrete `NOT NULL`/type/`WITH
-CHECK`) — det er stærkere end en test der fanger fejlen bagefter. Kun hvor
+CHECK`) — **OG bevis beskyttelsen gennem rigtig indgang med effekt-test +
+targeted mutant (M-40 D13: en constraint ERSTATTER aldrig effekt-testen —
+"designet ud" uden observeret afvisning er en findes-påstand).** Kun hvor
 umulighed ikke kan → planlæg en effect-harness-test. HVER design-out besluttes og
 navngives HER; byggeren realiserer den og opfinder ingen (ellers ville build
 træffe en beslutning → ikke 1:1).
@@ -59,7 +61,10 @@ træffe en beslutning → ikke 1:1).
   harness til det bid hvor slut-effekten FØRST er nåbar.
 - **Forudsætnings-bid vs. forbudt findes-test-bid** (skarp skelnen): et
   forudsætnings-bid BÆRER intet eget K — det er ren forudsætning (fx tilføj
-  kolonne/scaffold) hvis effekt bevises i det senere bid der bruger det; det er
+  kolonne/scaffold) hvis effekt bevises i det senere bid der bruger det. **M-40
+  D12: forudsætnings-biddet SKAL i planen binde eksplicit til det senere
+  effekt-bid + dets K (validatoren tjekker afhængighed + samlet K-dækning);**
+  det er
   legitimt at det ikke har sin egen effect-harness. Forbudt er et bid der HAR et
   K, men efterlades med kun en findes-test fordi K's slut-effekt aldrig blev
   tildelt et bid hvor den er nåbar. Regel: hvert K's effekt SKAL være tildelt ét

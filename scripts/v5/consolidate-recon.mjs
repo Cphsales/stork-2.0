@@ -118,12 +118,19 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
     }
   }
   // divergens-markering (samme id, forskellig substans) — bevares, mærkes.
-  // B2 (Mathias 2026-09-03): klassifikation starter "uklassificeret"; omission-
-  // devil'en dømmer påstands-konflikt (modstridende GØR/AFVISER — Mathias' bord)
-  // vs ordlyds-forskel (kun AI-spor). Uklassificeret behandles som påstand
-  // (fail-closed: hellere én for meget til Mathias end en tabt modsigelse).
+  // B2 + M-40 D15 (2026-09-08, ændrer DEL VIII #25's default): bøtte-1-divergens
+  // hvor bøtterne er ENIGE og AFVISER-/negativ-listerne matcher (normaliseret)
+  // = "ai-spor-p2" (teknisk ordlyd — P-2-efterprøvningen afgør, aldrig Mathias).
+  // Divergens i bøtte 2/3 ELLER i negativ-listerne = "uklassificeret" (behandles
+  // som påstand, fail-closed — Mathias' bord). Rå bidrag bevares altid.
+  const normNeg = (f) => JSON.stringify(((f.negativer ?? (f.forbyder !== undefined ? [f.forbyder] : [])) || []).map((x) => String(x).trim().toLowerCase()).sort());
   for (const [id, arr] of fundById)
-    if (arr.length > 1) konflikter.push({ type: "fund-divergens", punkt: id, antal: arr.length, klassifikation: "uklassificeret" });
+    if (arr.length > 1) {
+      const boetter = new Set(arr.map((b) => b.boette));
+      const negSet = new Set(arr.map(normNeg));
+      const kunBoette1Ordlyd = boetter.size === 1 && boetter.has("nuvaerende-kode") && negSet.size === 1;
+      konflikter.push({ type: "fund-divergens", punkt: id, antal: arr.length, klassifikation: kunBoette1Ordlyd ? "ai-spor-p2" : "uklassificeret" });
+    }
 
   // 4) usikkerheder + forretnings-enumeration bevares rå (aktør-mærket)
   const usikkerheder = [];
@@ -228,8 +235,8 @@ export function renderReconFiles({ recon, konflikter, meta }) {
         ...andre.map((k) => `- ${k.type} @ ${k.punkt}${k.antal ? ` (${k.antal} bidrag)` : ""}`),
         ...divergenser.map((d) => {
           const mark =
-            d.klassifikation === "ordlyds-forskel"
-              ? " _(ordlyds-forskel — kun AI-spor)_"
+            d.klassifikation === "ordlyds-forskel" || d.klassifikation === "ai-spor-p2"
+              ? " _(" + d.klassifikation + " — kun AI-spor; P-2-efterprøvning afgør)_"
               : d.klassifikation === "påstands-konflikt"
                 ? " **(påstands-konflikt — Mathias' bord)**"
                 : " **(uklassificeret → behandles som påstand)**";

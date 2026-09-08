@@ -20,7 +20,7 @@ run_once() {
   timeout --signal=KILL "${TIMEOUT_S}s" \
     codex exec --skip-git-repo-check --sandbox workspace-write \
       -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-      --cd "$WORKDIR" -o "$OUT" - < "$PROMPTFIL"
+      --cd "$WORKDIR" -o "$OUT" "$(cat "$PROMPTFIL")" >> "$OUT.log" 2>&1
   rc=$?
   t1=$(date +%s)
   {

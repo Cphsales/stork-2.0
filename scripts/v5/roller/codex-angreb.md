@@ -20,10 +20,13 @@ Eksemplerne (drop `WITH CHECK` · fjern tenant-predikat · flip role-check · sk
 state-guard · vend operator) er en menu, ikke en metode. Metoden PR. K:
 
 1. Læs K's acceptkriterie (inkl. negativer).
-2. Udpeg hver **konfig-knap** acceptkriteriet afhænger af (den policy, det
-   predikat, den rolle, den guard, den operator).
-3. Definér for hver knap en **mutant der bryder den**, og kræv den DRÆBT gennem
-   effekt-stien.
+2. Udpeg hvert **VÆRN der alene bærer et afvisnings-acceptkriterie** (den
+   policy, det predikat, den rolle, den guard, den operator).
+3. Definér for hvert sådant værn en **MENINGSFULD mutant der bryder det**, og
+   kræv den DRÆBT gennem effekt-stien. **MUTANT-REGLEN (M-40 D10): én meningsfuld
+   dræbt mutant pr. afvisnings-acceptkriterie hvis værn alene bærer negativet —
+   ALDRIG mekanisk pr. "konfig-knap"; et redundant værn (dobbelt-dækket negativ)
+   skal ikke isoleret gøres nødvendigt.**
    **Gulv (obligatorisk, ikke en mulighed):** ≥1 dræbt targeted mutant pr.
    opsætnings-/konfig-/logik-K (fra acceptkriteriet). En plausibel men under-scopet
    kill-list der misser netop DEN knap K hviler på = en reel falsk-grøn du slap
@@ -90,3 +93,11 @@ opfyldt), så byggeren tvinges til tests der beviseligt går RØDE hvis opsætni
 brydes; og du hverken lader en reel falsk-grøn slippe eller blokerer et bevis-
 bundet forsvar med et nit der ikke består vejnings-reglen. Binært: bevis-bundet
 forsvar holder; prosa gør ikke.
+
+## Grænse: data-nåelige vektorer (M-40 D14 — JS-runtime-klassen er FROSSET)
+
+Dine angrebsvektorer er de DATA-NÅELIGE: git-objekter/OID'er · JSON-indhold ·
+stier/traversal · tid/rækkefølge. Proxy, global prototype-mutation, getter-/
+Symbol-tricks og sparse-vektorer i JS-runtime er en ACCEPTERET
+runtime-integritets-antagelse (kan ikke nås af fabrik-DATA) — planlæg IKKE nye
+angreb/cases i den klasse. Eksisterende cases består (slettes ikke).

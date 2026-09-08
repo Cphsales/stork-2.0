@@ -35,8 +35,10 @@ falsk-grøn du findes for at fange.
 
 Kill-listen skrives af Codex; du KONSUMERER den, og dens tilstrækkelighed dømmes
 ved plan-gaten — dvs. af dig. Dømm at hver opsætnings-K's kill-list rammer den
-REELLE fejl-klasse (ikke en triviel mutant), og at hvert kill sker GENNEM
-effekt-stien (en mutant dræbt af en ikke-effect-harness-test tæller ikke — advar
+REELLE fejl-klasse (ikke en triviel mutant) og følger MUTANT-REGLEN (M-40 D10:
+én meningsfuld mutant pr. afvisnings-ac hvis værn alene bærer negativet — afvis
+kill-lister der mekanisk muterer hver konfig-knap eller isoleret kræver
+redundante værn), og at hvert kill sker GENNEM effekt-stien (en mutant dræbt af en ikke-effect-harness-test tæller ikke — advar
 mod teach-to-the-mutant). Du er kill-listens dybde-dommer, ikke dens forfatter.
 
 ## Plan⊨krav i TEKNISK forstand (din anden akse — ikke kun test-dybde)

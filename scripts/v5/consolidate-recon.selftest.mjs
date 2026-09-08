@@ -142,13 +142,22 @@ if (fail > 0) process.exit(1);
   let p2 = 0, f2 = 0;
   const t2 = (navn, fn) => { try { fn(); p2++; } catch (e) { f2++; console.error(`RØD  ${navn}: ${e.message}`); } };
   const a2 = (c, m) => { if (!c) throw new Error(m); };
-  t2("B2: uklassificeret divergens behandles som påstand (fail-closed)", () => {
+  t2("D15: bøtte-1-ordlyds-divergens (enige bøtter+negativer) → ai-spor-p2, ALDRIG Mathias", () => {
     const c = alle({ codex: { fund: [mkFund({ hvad: "anden læsning" })] } });
     const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
     a2(r.ok, r.reasons.join("; "));
-    a2(r.konflikter.some((k) => k.klassifikation === "uklassificeret"), "klassifikation mangler");
+    a2(r.konflikter.some((k) => k.klassifikation === "ai-spor-p2"), "bøtte-1-ordlyd fik ikke ai-spor-p2");
     const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: r.konflikter, meta: {} });
-    a2(reconMd.includes("uklassificeret → behandles som påstand"), "uklassificeret ikke løftet til Mathias");
+    a2(reconMd.includes("ai-spor-p2"), "ai-spor-markering mangler");
+    a2(!reconMd.includes("uklassificeret → behandles"), "fejlagtigt løftet til Mathias");
+  });
+  t2("D15: negativ-liste-divergens → uklassificeret (påstand, Mathias' bord)", () => {
+    const c = alle({ codex: { fund: [mkFund({ hvad: "anden læsning", negativer: ["afviser cross-org"] })] } });
+    const r = consolidateRecon({ candidates: c, surface: SURFACE, bundleOid: OID });
+    a2(r.ok, r.reasons.join("; "));
+    a2(r.konflikter.some((k) => k.klassifikation === "uklassificeret"), "negativ-divergens ikke løftet");
+    const { reconMd } = renderReconFiles({ recon: r.recon, konflikter: r.konflikter, meta: {} });
+    a2(reconMd.includes("uklassificeret → behandles som påstand"), "påstands-løft mangler");
   });
   t2("B2: ordlyds-forskel markeres som AI-spor (ikke Mathias' bord)", () => {
     const c = alle({ codex: { fund: [mkFund({ hvad: "anden læsning" })] } });
