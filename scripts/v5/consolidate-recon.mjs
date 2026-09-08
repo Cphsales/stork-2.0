@@ -130,8 +130,8 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
   // kollidere), og et UGYLDIGT negativer-format (ikke-array, ikke-undefined)
   // giver en unik sentinel pr. bidrag → divergens kan aldrig fejl-klassificeres
   // som ai-spor pga. tavs tom-liste-fallback.
+  const harUgyldigtNegFormat = (f) => f.negativer !== undefined && !Array.isArray(f.negativer);
   const normNeg = (f) => {
-    if (f.negativer !== undefined && !Array.isArray(f.negativer)) return "ugyldig:" + canonical(f.negativer);
     const liste = Array.isArray(f.negativer) && f.negativer.length > 0 ? f.negativer : f.forbyder !== undefined ? [f.forbyder] : [];
     return JSON.stringify(liste.map((x) => (typeof x === "string" ? "s:" + x.trim().toLowerCase() : "c:" + canonical(x))).sort());
   };
@@ -139,7 +139,10 @@ export function consolidateRecon({ candidates, surface, bundleOid }) {
     if (arr.length > 1) {
       const boetter = new Set(arr.map((b) => b.boette));
       const negSet = new Set(arr.map(normNeg));
-      const kunBoette1Ordlyd = boetter.size === 1 && boetter.has("nuvaerende-kode") && negSet.size === 1;
+      // verifikations-pas-fund: UGYLDIGT negativer-format hos noget bidrag →
+      // ALDRIG ai-spor (sentinel-kollision kunne ellers skjule forbyder-divergens)
+      const nogenUgyldig = arr.some(harUgyldigtNegFormat);
+      const kunBoette1Ordlyd = !nogenUgyldig && boetter.size === 1 && boetter.has("nuvaerende-kode") && negSet.size === 1;
       konflikter.push({ type: "fund-divergens", punkt: id, antal: arr.length, klassifikation: kunBoette1Ordlyd ? "ai-spor-p2" : "uklassificeret" });
     }
 

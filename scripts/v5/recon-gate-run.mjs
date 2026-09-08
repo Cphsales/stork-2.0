@@ -58,7 +58,7 @@ function runReconGateInner(commitSha, root) {
 }
 
 const erCliKald = (() => {
-  if (!process.argv[1]) return false;
+  if (!process.argv[1] || process.argv[1] === "-") return false; // stdin-import er aldrig CLI
   try {
     // match både rå og realpath'et entry (dækker symlink + --preserve-symlinks-main)
     if (import.meta.url === pathToFileURL(process.argv[1]).href) return true;
