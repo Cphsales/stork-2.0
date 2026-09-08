@@ -165,3 +165,25 @@ Auditeret: det FAKTISKE v3→v4-delta i dette dir (fil-diff), som er 4 ændrede 
 ### Konklusion addendum v4: REN (0 nye fund)
 
 Ingen nye ubekræftede afledninger: én verbatim-rettelse, to pin-rettelser (lukker v3-rest-flagget), og tre plan-fase-udvidelser hvis defaults alle er deklareret som dispositioner — intet smuglet ind som Mathias-påstand. REN-dommen gælder blob b9c5249b og opfylder upload-gaten pr. M-34. Eneste transparens-note: bestillingens patch-fil var ufuldstændig (2 af 4 linjer); dommen bygger på fil-diffen af de faktiske blobs i dette dir.
+
+---
+
+## Addendum v5 (blob 9402164d)
+
+Auditeret: v4→v5 (patch-basen matcher denne gang v4-blobben b9c5249, og fil-diffen i dette dir matcher patchen 1:1 — ingen udeladte linjer) mod ledger M-1..M-37.
+
+**(1) De 4 kildetjek-fund — alle lukket ærligt:**
+- **F-01 (Grundlag):** den nøgne påstand "gate åben" erstattet med konkret bevis-reference (recon-gate open:true @ afcf408, `recon-gate-run.mjs` mod rå git, coverage-proof @ 58d2bac). Provenance-stof inden for den kendte verifikations-grænse (repo-artefakter uden for dette dir) — men strengt mere falsificerbart end før. Ingen forretnings-påstand.
+- **F-02 (feltliste): REN deklarations-form.** "Feltlisten er selv UI-data" (fakta-form) → "om feltlisten er fast eller UI-udvidelig via felt-registry afgøres i plan-fasen — klient-mønstret er analogi, ikke krav", konsistent gennemført alle fire steder (K-3 Værdi · K-7 Værdi · plan-fase-listen m. analogi-kilde + "default: som for klienter" · dispositions-rækken). Defaulten er mærket default, analogien mærket analogi — ingen Mathias-attribution.
+- **F-03 (felt-klassifikation): REN deklarations-form.** Blanket-påstanden "lokationens egne felter er forretningsdata og bevares evigt" (den var reelt en uafmærket afledning der slap gennem runde 1) → afgrænset til det §11 faktisk bærer (entiteten/rækken bevares), klassifikation pr. felt via det eksisterende ac 4-mønster, konservativ default med recon-eksemplet (adresse som indirekte persondata for enkelt-butik) — og eksplicit deklareret: "*vores læsning; intet Mathias-ord klassificerer lokationens felter*". "Konservativ default" kolliderer ikke med princip 4 (default = intet): klassifikations-AKTEN er obligatorisk pr. ac 1's gate; det konservative valg ligger inden i den aktive handling, intet bliver implicit.
+- **F-04 (12→11): VERIFICERET uafhængigt** — dispositions-tabellen indeholder præcis 11 intet-data-rækker; "12" var en tællefejl.
+
+**(2) Nye ubekræftede afledninger: INGEN.** Alle nye formuleringer er enten bevis-referencer, mærkede defaults/analogier eller deklarerede læsninger. Den gamle plan-fase-post "felt-registry-udformning …" er subsumeret i den nye feltliste-post — intet tabt.
+
+**(3) M-36-tjek: ingen modsigelse — tværtimod to opgraderinger.** M-36 fastholder "Gruppen oprettes i UI med navn" (navn-kravet står hårdt og uberørt af feltliste-plan-fasen, som kun angår ØVRIGE felter — ingen kollision) og siger intet om klassifikation eller feltlistens form. Bonus: M-36 konverterer to hidtil afledte/princip-bårne punkter til direkte Mathias-ord — "arver alle dens lokationer … også dem der kommer til senere" (runde 1's mindre note om "også senere"-afledningen i K-3/K-6 ac 4 er hermed ledger-lukket) og "Umuligt: … sletning af en gruppe der har lokationer" (K-3 ac 5 nu Mathias-båret, ikke kun princip 9/§11). Ved fold-ind bør K-3/K-6-kilderne citere M-36 for netop de to punkter.
+
+**M-37-note:** hans "krav ok" faldt mod den GAMLE blob (b9c5249b) mens F-runden kørte — korrekt HOLDT af rollen (orderedApproval krav 5: uændret krav-OID). Denne REN-dom gør IKKE M-37 gældende for 9402164d; hans ok skal gentages mod den endelige blob efter fremlæggelse af de berørte linjer.
+
+### Konklusion addendum v5: REN (0 nye fund)
+
+Alle 4 kildetjek-fund lukket i ren deklarations-form; F-04-tallet efterprøvet; M-36 styrker kravet og modsiges ikke. REN-dommen gælder blob 9402164d og opfylder upload-gaten pr. M-34 — med M-37-notens forbehold: Mathias' ok skal afgives på ny mod denne (eller senere) blob.
