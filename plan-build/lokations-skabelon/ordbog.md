@@ -21,3 +21,14 @@ recon-Claude.ai (fra pakke 2) og af krav-dialogen.
 
 Åbne kandidater (bekræftes i krav-/plan-dialogen): »§14-funktion« for
 tilladelse (nævnt i krav-arbejdet — mangler ordret Mathias-kilde i ledgeren).
+
+## Plan-fasens navne-entries (appendet af driveren FØR plan-gaten — plan.md §4)
+
+| Mathias' ord | systemord (planens navne) | kilde |
+|---|---|---|
+| stand / stande (OPDATERER tidligere entry) | `core_identity.stande` (egen tabel m. `lokation_id`-FK, S-1) — IKKE child-lokation m. parent_location_id; »placement« = masterplanens ord | plan.md §4 · M-14/M-17/M-18 |
+| gruppe (LUKKER afklaringen) | `core_identity.grupper` · `gruppe_id` — gruppen ER leverandør-entiteten: ÉN entitet | plan.md V5 · M-17/M-18/M-27c · §1.12 |
+| aktiv · dvale · nedlagt (RETTER »slut-tilstand«) | enum-værdier `'aktiv'`,`'dvale'`,`'nedlagt'` + tabel `lokation_status_skift`; nedlagt er GENÅBNELIG | plan.md §4 · M-25.1 · M-28 |
+| gruppens type | CHECK-værdier `'kaede','enkelt_butik','messe_operatoer','andet'` (ASCII æ/ø→ae/oe) | plan.md §4 · §1.12 |
+| kontaktperson | `core_identity.gruppe_kontakter` | plan.md §4 · K-7/§11 |
+| klient | eksisterende `core_identity.clients` · param-/kolonnenavn `klient_id` (dansk i pakkens flade; tabellen uændret) | plan.md §4 |
