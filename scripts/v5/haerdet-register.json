@@ -5,9 +5,9 @@
   "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
  },
  "verdikt.mjs": {
-  "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
-  "blob_oid": "01dc90cce8e522a409123fa1c792102dfc3871b2",
-  "note": "gør-klar-fasen: 3 Codex-P2-pas + kode-AAA-sweep (alle moduler AAA)"
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "4b65766b2968273f71438a8872ebdcddfc0ce477",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
  },
  "git.mjs": {
   "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
@@ -35,13 +35,28 @@
   "note": "fokuseret delta-pas 2026-09-03 (3 fund lukket: arvet punkt_ids · duplikat-nøgle · accessor-akser)"
  },
  "recon-gate-run.mjs": {
-  "pas_ref": "58d2bacb916d585db2de6f5c06d6379ada2ffdce",
-  "blob_oid": "d56ec19ae31af718cae21745f8750bcd1dcd0b44",
-  "note": "Codex-batch 2026-09-02 (3 fund lukket: proof-binding · bøtte-konsistens · render-backstop)"
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "b776d19d9d4fe8e3169e780d30c5ef4a2181a060",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
  },
  "consolidate-recon.mjs": {
-  "pas_ref": "d1f38a49b916d945142ab9ef21ad6a9f84d4eaf5",
-  "blob_oid": "2e009cc292fec4e3b9e1fef6c11cb55aee8e17d6",
-  "note": "mini-delta-pas 2026-09-03 (B2-delta: 1 fund lukket — render-afledt divergens)"
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "6db330c942387e6650463f73d1c96a941b9a715d",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
+ },
+ "krav-gate-run.mjs": {
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "bb987c3320fcbe099d5f58f491581408c9008d00",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
+ },
+ "verdikt-byg.mjs": {
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "d4a1b547d99911f34d55131e36bc82a37243ca07",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
+ },
+ "codex-run.sh": {
+  "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
+  "blob_oid": "ef8e7e04c200c6e0edc3ca981c74f3cdcc27ee4b",
+  "note": "M-40 batch+delta+verifikations+konvergens-pas 2026-09-08 (11 fund lukket over 4 runder, konvergens REN @ 45fd39a5c7b4222543d95bd79b9d8a8b5742dae9)"
  }
 }
