@@ -58,11 +58,17 @@ export const GATE_REGISTRY = deepFreeze([
     predecessor: "krav",
     predecessorBinding: "krav",
     artifact: "plan",
-    bindings: ["krav", "recon2"],
+    // M-41 B5 (validering V-2): planen dømmes sammen med ALT det den hviler på —
+    // P-8-slutprøve-spec, pakke-ordbog og Codex' blinde kill-list-udkast er
+    // gate-input, ikke løse bilag; mangler ét af dem @ pinned commit → fail-closed.
+    bindings: ["krav", "recon2", "p8", "ordbog", "killlist"],
     proofKind: null,
     expectedActors: ["code-reviewer", "codex", "claude-ai"],
     approver: APPROVER,
-    orderedApproval: false,
+    // M-41 B5 (validering V-F1): "Mathias sidst" er en HÆNDELSESKÆDE — plan ok
+    // skal bevise at det kom EFTER de endelige aktør-verdikter (prerequisite_digests),
+    // præcis som krav-gaten. Var false → M-38-situationen kunne gentages her.
+    orderedApproval: true,
   },
   {
     id: "build",

@@ -41,6 +41,10 @@ const FILES = {
   [`plan-build/${PAKKE}/recon2.md`]: "# recon2\n",
   [`docs/sandhed/krav/${PAKKE}-krav.md`]: "# krav\n## K-1\nAcceptkriterie: negativ.\n",
   [`plan-build/${PAKKE}/plan.md`]: "# plan\n",
+  // M-41 B5: plan-gatens øvrige bindinger
+  [`plan-build/${PAKKE}/p8-slutproeve-spec.md`]: "# p8\n",
+  [`plan-build/${PAKKE}/ordbog.md`]: "# ordbog\n",
+  [`plan-build/${PAKKE}/kill-list-udkast.md`]: "# kill-list-udkast (codex-angreb, blindt)\n",
   "supabase/migrations/0001.sql":
     "alter table salg enable row level security;\n" +
     'create policy "salg_egen" on salg for select using (org_id = auth_org());\n',
@@ -107,6 +111,31 @@ console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
   snap.bindings.recon2?.path === `plan-build/${PAKKE}/recon2.md`
     ? ok("plan-binding recon2 <pakke>-substitueret")
     : bad("recon2", JSON.stringify(snap.bindings.recon2));
+}
+{
+  // M-41 B5: planen dømmes sammen med P-8, ordbog og Codex' blinde kill-list-udkast
+  const snap = buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE });
+  const vil = { p8: `plan-build/${PAKKE}/p8-slutproeve-spec.md`, ordbog: `plan-build/${PAKKE}/ordbog.md`, killlist: `plan-build/${PAKKE}/kill-list-udkast.md` };
+  for (const [k, sti] of Object.entries(vil))
+    snap.bindings[k]?.path === sti && typeof snap.bindings[k]?.oid === "string"
+      ? ok(`plan-binding ${k} → ${sti} (M-41 B5)`)
+      : bad(`plan-binding ${k}`, JSON.stringify(snap.bindings[k]));
+  Object.keys(snap.bindings).sort().join(",") === "killlist,krav,ordbog,p8,recon2"
+    ? ok("plan-snapshot bærer PRÆCIS registryets 5 bindinger")
+    : bad("plan-bindinger sæt", Object.keys(snap.bindings).join(","));
+}
+{
+  // manglende kill-list-udkast @ commit → binding null-ref (evaluateGate fail-lukker)
+  const ROOT2 = mkdtempSync(join(tmpdir(), "v5-gate-eval-2-"));
+  execFileSync("git", ["init", "-q", ROOT2]); const g2 = makeGit(ROOT2);
+  g2("config", "user.name", "t"); g2("config", "user.email", "t@l");
+  for (const [pth, c] of Object.entries(FILES)) if (!pth.endsWith("kill-list-udkast.md")) { mkdirSync(join(ROOT2, dirname(pth)), { recursive: true }); writeFileSync(join(ROOT2, pth), c); }
+  g2("add", "-A"); g2("commit", "-qm", "uden kill-list");
+  const snap2 = buildSnapshot("plan", { git: g2, commitSha: g2("rev-parse", "HEAD"), pakke: PAKKE });
+  snap2.bindings.killlist === null || snap2.bindings.killlist?.oid == null
+    ? ok("plan uden Codex' kill-list-udkast @ commit → killlist-binding null (fail-closed i kernen)")
+    : bad("killlist mangler", JSON.stringify(snap2.bindings.killlist));
+  rmSync(ROOT2, { recursive: true, force: true });
 }
 
 console.log("\nende-til-ende — buildSnapshot + evaluateGate (recon-gaten):");

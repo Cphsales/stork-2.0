@@ -45,6 +45,10 @@ const FILES = {
     "## K-2: provision beregnes af godkendt sats\n" +
     "Acceptkriterie: slut-effekt i DB-row, inkl. negativ (ikke-godkendt sats afvises).\n",
   "plan-build/pakke-x/plan.md": "# pakke-x — plan\n\n| K-1 | bid 1 | step 1 | effect-harness + mutant-kill |\n",
+  // M-41 B5: plan-gatens øvrige bindinger (P-8 · ordbog · Codex' blinde kill-list-udkast)
+  "plan-build/pakke-x/p8-slutproeve-spec.md": "# p8 — slutprøve-spec\n\n- held-out: fuld population, bijektion\n",
+  "plan-build/pakke-x/ordbog.md": "# ordbog\n\n| stand | placement |\n",
+  "plan-build/pakke-x/kill-list-udkast.md": "# kill-list-udkast (codex-angreb, blindt)\n\n- K-1: WITH CHECK → true\n",
   "plan-build/pakke-x/build-proof.json": JSON.stringify({ bijektion: true, k_results: ["K-1", "K-2"] }) + "\n",
 };
 for (const [p, c] of Object.entries(FILES)) {
@@ -140,6 +144,37 @@ function greenBuild() {
   return { snapshot, deps };
 }
 
+// M-41 B5: plan-gaten m. 5 bindinger, 3 aktører og orderedApproval (Mathias sidst
+// som hændelseskæde — samme regel som krav-gaten, validering V-F1)
+function greenPlan() {
+  const artifact = ref("plan-build/pakke-x/plan.md");
+  const bindings = {
+    krav: ref("sandhed/krav/pakke-x-krav.md"),
+    recon2: ref("recon2/recon2.md"),
+    p8: ref("plan-build/pakke-x/p8-slutproeve-spec.md"),
+    ordbog: ref("plan-build/pakke-x/ordbog.md"),
+    killlist: ref("plan-build/pakke-x/kill-list-udkast.md"),
+  };
+  const bOids = Object.fromEntries(Object.entries(bindings).map(([k, r]) => [k, r.oid]));
+  const ev = [mkEvidence("plan-build/pakke-x/plan.md", 3, 3)];
+  const verdicts = ["code-reviewer", "codex", "claude-ai"].map((a) => mkVerdict(a, "plan", artifact, bOids, ev));
+  const snapshot = {
+    commit_sha: COMMIT,
+    artifact,
+    bindings,
+    proof_result: null,
+    verdicts,
+    approval: {
+      login_server_verified: APPROVER,
+      gate_id: "plan",
+      scope_digest: scopeDigest("plan", artifact.oid, bOids),
+      prerequisite_digests: verdicts.map(digestOf),
+    },
+    predecessor: { gate_id: "krav", conclusion: "success", artifact_oid: bindings.krav.oid },
+  };
+  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }) } };
+}
+
 function greenRecon() {
   const artifact = ref("recon/recon.md");
   const bindings = { anker: ref("launch/launch.json"), bundle: ref("recon/bundle.json") };
@@ -189,6 +224,17 @@ console.log("gate-kerne red-team — grønne stier (gaten KAN åbne):");
 expectOpen("krav-gate åbner på fuld gyldig evidens", greenKrav(), "krav");
 expectOpen("build-gate åbner på typed bevis + frisk re-verifikation", greenBuild(), "build");
 expectOpen("recon-gate (rod) åbner uden forgænger", greenRecon(), "recon");
+expectOpen("plan-gate åbner på 5 bindinger + 3 aktører + ordnet approval (M-41 B5)", greenPlan(), "plan");
+
+console.log("\nplantede falsk-grønne — plan-gaten (M-41 B5: bindinger + Mathias sidst):");
+plantClosed("plan uden Codex' kill-list-udkast (binding mangler)", "plan", greenPlan, (c) => { delete c.snapshot.bindings.killlist; }, "binding|killlist");
+plantClosed("plan uden P-8-binding", "plan", greenPlan, (c) => { delete c.snapshot.bindings.p8; }, "binding|p8");
+plantClosed("plan uden ordbog-binding", "plan", greenPlan, (c) => { delete c.snapshot.bindings.ordbog; }, "binding|ordbog");
+plantClosed("plan ok UDEN prerequisite_digests (rækkefølge ubevist — M-38-situationen)", "plan", greenPlan, (c) => { delete c.snapshot.approval.prerequisite_digests; }, "orderedApproval|prerequisite");
+plantClosed("plan ok der kun refererer 2 af 3 verdikter", "plan", greenPlan, (c) => { c.snapshot.approval.prerequisite_digests = c.snapshot.approval.prerequisite_digests.slice(0, 2); }, "orderedApproval|prerequisite");
+plantClosed("plan ok med digests fra ANDRE verdikter (ok før de endelige)", "plan", greenPlan, (c) => { c.snapshot.approval.prerequisite_digests = [sha256("gammel-1"), sha256("gammel-2"), sha256("gammel-3")]; }, "orderedApproval|prerequisite");
+plantClosed("manglende claude-ai-verdikt (tavshed ≠ ja)", "plan", greenPlan, (c) => { c.snapshot.verdicts = c.snapshot.verdicts.filter((v) => v.aktor !== "claude-ai"); c.snapshot.approval.prerequisite_digests = c.snapshot.verdicts.map(digestOf); }, "claude-ai|aktør|actor|mangler");
+plantClosed("plan-verdikt der ikke binder killlist-OID", "plan", greenPlan, (c) => { delete c.snapshot.verdicts[1].bindings_oids.killlist; c.snapshot.approval.prerequisite_digests = c.snapshot.verdicts.map(digestOf); }, "binding|killlist|bindings_oids");
 
 console.log("\nplantede falsk-grønne — approver/rækkefølge (krav 5):");
 plantClosed(

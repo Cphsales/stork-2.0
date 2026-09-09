@@ -23,6 +23,10 @@ export const DEFAULT_LAYOUT = Object.freeze({
   bundle: "recon/bundle.json",
   recon: "recon/recon.md",
   recon2: "plan-build/<pakke>/recon2.md",
+  // M-41 B5: plan-gatens øvrige bindinger (fast layout — driveren skriver dem her)
+  p8: "plan-build/<pakke>/p8-slutproeve-spec.md",
+  ordbog: "plan-build/<pakke>/ordbog.md",
+  killlist: "plan-build/<pakke>/kill-list-udkast.md",
   krav: "docs/sandhed/krav/<pakke>-krav.md",
   plan: "plan-build/<pakke>/plan.md",
   build: "plan-build/<pakke>/build-proof.json",
