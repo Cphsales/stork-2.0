@@ -23,13 +23,18 @@ har meldt »Trin A færdig« + SHA** (regler/pins/roller skal være endelige —
   i miljøet, fx `plan:<pinned commit>:plan-build/lokations-skabelon/plan.md`. Transport-kvitteringen
   bærer det som `gate_input`; `verdikt-byg` + `plan-gate-run` afviser en dom hvis gate/commit/artefakt
   ikke matcher. **Produktions-kørsler (B1 kill-list, B3 planner) må IKKE have `gate_input`.**
-- **Aktørens leverance indeholder dommen — kontrakt-ændring 2:** Codex' `-o`-leverance ved plan-gaten
-  skal indeholde PRÆCIS én fenced blok ` ```json verdikt-draft … ``` ` med draft-objektet
+- **Aktørens leverance indeholder dommen — kontrakt-ændring 2 (REVIDERET 09-09 ~14:40; den fenced
+  ` ```json verdikt-draft``` `-blok er AFSKAFFET — Markdown-parsning blev aldrig falsk-grøn-fri,
+  Codex P2 runde 4-8):** Codex' `-o`-leverance ved plan-gaten skal have som SIDSTE ikke-tomme linje
+  `VERDIKT-DRAFT: <base64 af JSON-draften>` — standard base64 MED padding; JSON = draft-objektet
   `{aktor:"codex", conclusion, negative_cases, claim_graph_refs?, evidence:[{path,line_span}]}`.
-  Verdikt-byg kaldes: `node scripts/v5/verdikt-byg.mjs - <gate> <gated_commit> <artifact_path> <$OUT.receipt.json> <$OUT>`
-  (draft-arg `-` = udtræk fra leverancen; `raw_output_sha256` beregnes, erklæres ikke). Skrives ind i
-  B6-prompten til Codex. Claude-aktører (code-reviewer · claude-ai) kører som før — selv-erklæret,
-  deklareret residual.
+  Der må findes PRÆCIS én linje i hele filen der begynder med `VERDIKT-DRAFT:` — et citeret eksempel
+  tæller også, så B6-prompten SKAL sige: »skriv aldrig strengen VERDIKT-DRAFT: andre steder end på
+  den afsluttende linje«. Verdikt-byg-kaldet er uændret:
+  `node scripts/v5/verdikt-byg.mjs - <gate> <gated_commit> <artifact_path> <$OUT.receipt.json> <$OUT>`
+  (draft-arg `-` = udtræk fra leverancen; `raw_output_sha256` beregnes, erklæres ikke). Leverancen
+  arkiveres som `provenance/verdikt-<aktør>-plan.leverance.md` ved siden af `.receipt.json`.
+  Claude-aktører (code-reviewer · claude-ai) kører som før — selv-erklæret, deklareret residual.
 - **Transport-kvitteringer arkiveres — kontrakt-ændring 3:** hver dom-kørsels `$OUT.receipt.json`
   committes byte-identisk som `plan-build/lokations-skabelon/provenance/<navn>.receipt.json` FØR gaten
   køres; `plan-gate-run` slår verdikternes `run.receipt_sha256` op dér — ingen kvittering = rød. Ligger
@@ -70,7 +75,7 @@ har meldt »Trin A færdig« + SHA** (regler/pins/roller skal være endelige —
 | B3 | Fold-ind → plan v2 | plan v1 423d9b20 · 46 fund (fund-log) · kill-list-udkast · låst forventningsliste · instruks `fold-ind-instruks-udkast.md` m. OID'er udfyldt | planner-code (Claude) · produktion | `plan.md` v2 + `fold-ind-rapport-r2.md`; fund-log opdateret (hver af 46 → tilstand + rettelses-OID/bevis); ordbogs-entries for nye navne | rapport: åbne = 0 · fund-log 46/46 med tilstand |
 | B4 | Delta + frit pas | plan v2-blob · fold-ind-rapport · berørte K/negativer/afhængigheder | codex-angreb (dom, delta + ét frit helheds-pas) ∥ fresh-eyes (frisk instans, plan v2) → derefter code-reviewer som frisk slutlæser | `plan-angreb-r2.md` · `plan-audit-fresh-eyes-r2.md` · fund-log (nye fund) | rest = ∅, eller ÉN dokumenteret ekstra runde (batch → v3) |
 | B5 | Gate-bindinger | fabrik-armens `gates.mjs` + selftest + Codex-pas | (fabrik-arm) | — (driveren pull'er) | suite grøn · bindinger = de fem filer @ pinned commit |
-| B6 | Plan-gate-verdikter | plan v2 @ pinned commit · citat-scope ⊆ gated input · `STORK_V5_GATE_INPUT=plan:<commit>:plan-build/lokations-skabelon/plan.md` sat for HVER dom-kørsel | code-reviewer · codex · claude-ai (dom, read-only). Codex-prompten kræver PRÆCIS én ` ```json verdikt-draft ``` `-blok i leverancen; verdikt-byg m. draft-arg `-` + `$OUT.receipt.json` + `$OUT` | `verdikt-code-plan.json` · `verdikt-codex-plan.json` · `verdikt-claude-ai-plan.json` + `provenance/<navn>.{prompt,provenance,receipt.json}` — receipts committet FØR `plan-gate-run.mjs` | tre PASS · `plan-gate-run.mjs` lokal dom åben (deklareret: lokal gate-beregning, ikke CI-autoritet) · ingen dom uden receipt |
+| B6 | Plan-gate-verdikter | plan v2 @ pinned commit · citat-scope ⊆ gated input · `STORK_V5_GATE_INPUT=plan:<commit>:plan-build/lokations-skabelon/plan.md` sat for HVER dom-kørsel | code-reviewer · codex · claude-ai (dom, read-only). Codex-prompten kræver at leverancens SIDSTE ikke-tomme linje er `VERDIKT-DRAFT: <base64 JSON>` og at strengen ikke forekommer andre steder; verdikt-byg m. draft-arg `-` + `$OUT.receipt.json` + `$OUT` | `verdikt-code-plan.json` · `verdikt-codex-plan.json` · `verdikt-claude-ai-plan.json` + `provenance/<navn>.{prompt.txt,provenance.txt,receipt.json,leverance.md}` — receipts committet FØR `plan-gate-run.mjs` | tre PASS · `plan-gate-run.mjs` lokal dom åben (deklareret: lokal gate-beregning, ikke CI-autoritet) · ingen dom uden receipt |
 | B7 | Fremlæggelse → devil → frys → kvittering → afsendelse → `plan ok` | plan v2 · verdikter · P-8 · ordbog · fund-log | spørgsmåls-devil (Codex/frisk agent, blind for forfatteren; troskabs-akse P-3 + mekanisk troskabs-liste). Devil-output = **JSON** med mindst `{"konklusion":"PASS","fremlaeggelse_blob":"<oid af fremlaeggelse-plan.md>"}` — kernen læser dommen fra blobben | `fremlaeggelse-plan.md` (durabel fil, Mathias' sprog, ordbogens ord, alle åbne punkter i ÉN liste) · `plan-devil.json` REN (committet) · `plan-kvittering.json` (commit A, m. devil{path, blob_oid, dom:"PASS"} og fremlaeggelse{path, blob_oid}) · afsendelse via driver/mathias-df · Mathias' `plan ok` → ledger M-n · `plan-approval.json` (commit B, kvittering_digest) | approval bundet mod uændret kvittering · plan-SHA låst · efter plan ok ændres planen aldrig tavst |
 
 ## Regler der gælder hele vejen
@@ -96,5 +101,8 @@ har meldt »Trin A færdig« + SHA** (regler/pins/roller skal være endelige —
 - 2026-09-09 13:50: køreplan v1 + B1-udkast fa420ba. ~14:00: kontrakt-ændringer 1-4 fra fabrik-armen
   indarbejdet (gate_input · verdikt-draft-blok · receipt-arkivering · devil-JSON) + binaries.lock;
   Trin A stadig ikke færdig (transport v4 bygget, Codex-runde 3 kører).
+- 2026-09-09 ~14:40: kontrakt-ændring 2 REVIDERET (fenced blok afskaffet → `VERDIKT-DRAFT:`-linje
+  m. base64, præcis én forekomst). Trin A: 15 commits lokalt hos fabrik-armen, runde 9-pas; registret
+  grønt når Codex siger PASS og Mathias har givet sit ord om den lokale residual.
 - Trin A færdig: <afventer mathias-9b — SHA>.
 - B1: <SHA> · B2 låst: <blob> · B3: <SHA> · B4: <SHA> · B5: <SHA> · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
