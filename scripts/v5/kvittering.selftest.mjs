@@ -187,7 +187,8 @@ red("gate_input andet artefakt", validateTransportReceipt({ ...rcOk(), gate_inpu
 red("leverance ≠ verdiktets raw_output_sha256", validateTransportReceipt(rcOk(), { ...tctx, rawOutputSha256: "d".repeat(64) }), "raw_output_sha256");
 red("forsøg m. andet effort", validateTransportReceipt({ ...rcOk(), attempts: [{ ...rcOk().attempts[0], effort: "low" }] }, tctx), "anden model");
 red("schema v1", validateTransportReceipt({ ...rcOk(), schema_version: 1 }, tctx), "schema_version");
-red("regel_commit 'HEAD' (flytbar ref) → rød (F-18)", validateTransportReceipt({ ...rcOk(), regel_commit: "HEAD" }, tctx), "fast commit-OID");
+red("regel_commit 'HEAD' (flytbar ref) → rød (F-18)", validateTransportReceipt({ ...rcOk(), regel_commit: "HEAD" }, tctx), "fast 40-hex commit-OID");
+red("regel_commit 64-hex → rød (præcis 40)", validateTransportReceipt({ ...rcOk(), regel_commit: "a".repeat(64) }, tctx), "fast 40-hex commit-OID");
 red("3 forsøg", validateTransportReceipt({ ...rcOk(), attempts: [rcOk().attempts[0], { ...rcOk().attempts[0], attempt: 2 }, { ...rcOk().attempts[0], attempt: 3 }] }, tctx), "antal forsøg");
 
 console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
@@ -207,6 +208,9 @@ console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
   !ud(" ```json verdikt-draft\n{\"a\":1}\n```\n").ok ? ok("indrykket aktiv-åbner (1 mellemrum) → ikke aktiv (kræver uindrykket)") : bad("indrykket aktiv", "accepteret");
   !ud("~~~json verdikt-draft\n{\"a\":1}\n~~~\n").ok ? ok("tilde-åbner m. draft-info → ikke aktiv (kræver backticks)") : bad("tilde aktiv", "accepteret");
   { const r2 = ud("~~~markdown\ntekst\n```\n~~~\n" + blok({ a: 1 }) + "\n"); r2.ok && r2.draft.a === 1 ? ok("``` inde i ~~~-fence lukker den ikke (kun samme tegn lukker) — den ægte blok bagefter findes") : bad("fence-tegn", JSON.stringify(r2)); }
+  !ud("Dom: FAIL\n~~~markdown\n~~~\u00a0\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. NBSP lukker IKKE den ydre fence → blokken forbliver citeret → rød (runde 5)") : bad("NBSP-lukker", "accepteret");
+  !ud("Dom: FAIL\n~~~markdown\n~~~\u000b\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. vertikal tab lukker IKKE → rød") : bad("VT-lukker", "accepteret");
+  { const r3 = ud("~~~x\n~~~ \t\n" + blok({ a: 1 }) + "\n"); r3.ok ? ok("lukker m. almindelige mellemrum/tab lukker (CommonMark)") : bad("space-lukker", JSON.stringify(r3)); }
   !ud("````json verdikt-draft\n{}\n````\n").ok ? ok("fire backticks som åbner → ikke aktiv (kræver præcis tre)") : bad("4-fence", "accepteret");
   !ud("```json verdikt-draft\nikke json\n```\n").ok ? ok("ugyldig JSON i blokken → rød") : bad("json", "accepteret");
 }
@@ -262,6 +266,18 @@ console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
     const r4 = { ...receipt, attempts: [{ ...receipt.attempts[0], output_sha256: cSha }] }; const b4 = Buffer.from(JSON.stringify(r4, null, 1) + "\n");
     skriv(`plan-build/${P}/provenance/r-cit.receipt.json`, b4); skriv(`plan-build/${P}/provenance/r-cit.leverance.md`, citeret); commit("citeret draft");
     red("draft kun som citeret eksempel i ````-blok → ingen aktiv blok → rød (F-16)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b4), raw_output_sha256: cSha })]), "PRÆCIS én aktiv");
+  }
+  {
+    // F-18 (runde 5): regel_commit = ROD-TREE-OID (samme lås-blob resolves via <tree>:sti) → rød (skal være commit)
+    const treeOid = git("rev-parse", `${LOCK_COMMIT}^{tree}`);
+    const r6 = { ...receipt, run_id: "r6", regel_commit: treeOid }; const b6 = Buffer.from(JSON.stringify(r6, null, 1) + "\n");
+    skriv(`plan-build/${P}/provenance/r6.receipt.json`, b6); commit("tree-regel_commit");
+    red("regel_commit er et TREE-OID (samme lås-blob) → rød (F-18: git-type commit kræves)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b6), run_id: "r6" })]), "ikke en commit");
+    // ældre commit m. IDENTISK lås-blob → grøn (legitimt)
+    skriv(`plan-build/${P}/støj2.md`, "x\n"); commit("støj efter lås");
+    const r7 = { ...receipt, run_id: "r7", regel_commit: LOCK_COMMIT }; const b7 = Buffer.from(JSON.stringify(r7, null, 1) + "\n");
+    skriv(`plan-build/${P}/provenance/r7.receipt.json`, b7); commit("ældre-commit-kvittering");
+    green("ældre commit m. identisk lås-blob → grøn", mk()([vCodex({ receipt_sha256: kvitteringDigest(b7), run_id: "r7" })]));
   }
   red("ingen committet leverance for kvitteringens output_sha256 → rød (F-14)", (() => { const r5 = { ...receipt, run_id: "r5", attempts: [{ ...receipt.attempts[0], output_sha256: "a".repeat(64) }] }; const b5 = Buffer.from(JSON.stringify(r5, null, 1) + "\n"); skriv(`plan-build/${P}/provenance/r5.receipt.json`, b5); commit("kvittering uden leverance"); return mk()([vCodex({ receipt_sha256: kvitteringDigest(b5), run_id: "r5", raw_output_sha256: "a".repeat(64) })]); })(), "ingen committet leverance");
   // historisk undtagelse (M-38/r4b): PRÆCIS det committede r4b-codex-verdikt accepteres uden receipt_sha256 — en ændret kopi ikke

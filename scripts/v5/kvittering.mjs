@@ -189,7 +189,7 @@ export function validateTransportReceipt(r, ctx) {
     if (gi.artifact_path !== ctx.artifactPath) fail(`gate_input.artifact_path '${String(gi.artifact_path)}' ≠ '${ctx.artifactPath}'`);
   }
   for (const k of ["rolle", "model", "effort", "skill_oid", "prompt_sha256", "run_id"]) if (typeof r[k] !== "string" || !r[k]) fail(`mangler ${k}`);
-  if (!isOid(r.regel_commit)) fail(`regel_commit '${String(r.regel_commit)}' er ikke en fast commit-OID (en flytbar ref som HEAD kan genopslås til en anden lås, F-18)`);
+  if (!/^[0-9a-f]{40}$/.test(String(r.regel_commit))) fail(`regel_commit '${String(r.regel_commit)}' er ikke en fast 40-hex commit-OID (en flytbar ref som HEAD kan genopslås til en anden lås, F-18)`);
   const at = Array.isArray(r.attempts) ? r.attempts : null;
   if (!at || at.length < 1 || at.length > 2) fail("ugyldigt antal forsøg");
   else {
@@ -252,6 +252,9 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
         if (v.run.run_attempt !== r.attempts.length) reasons.push(`codex (${hit.f}): verdiktets run_attempt (${String(v.run.run_attempt)}) ≠ kvitteringens antal forsøg (${r.attempts.length})`);
         if (v.run.effort !== r.effort) reasons.push(`codex (${hit.f}): verdiktets effort ≠ kvitteringens`);
         try {
+          // F-18 (runde 5): regel_commit SKAL være en COMMIT — et tree-OID m. samme lås-blob er også et gyldigt `<oid>:sti`-opslag
+          let typeR = null; try { typeR = git("cat-file", "-t", r.regel_commit); } catch { typeR = null; }
+          if (typeR !== "commit") { reasons.push(`codex (${hit.f}): regel_commit er ikke en commit (git-type ${String(typeR)})`); continue; }
           const lockE = git("rev-parse", `${E}:scripts/v5/actors.lock.json`);
           const lockR = git("rev-parse", `${r.regel_commit}:scripts/v5/actors.lock.json`);
           if (lockE !== lockR) reasons.push(`codex (${hit.f}): kørt under en anden lås (@${String(r.regel_commit).slice(0, 7)}) end den gældende @ evidens-commit ${E.slice(0, 7)}`);
@@ -298,7 +301,9 @@ export function udtraekVerdiktDraft(text) {
       }
       continue;
     }
-    const close = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line);
+    // lukker: kun mellemrum/tab efter fence-tegnene (runde 5: `\s*` accepterede NBSP/vertikal tab som CommonMark IKKE
+    // gør → en "falsk lukker" lod en citeret PASS-blok blive aktiv)
+    const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
     if (close && close[1][0] === fence.ch && close[1].length >= fence.len) { if (fence.aktiv) kandidater.push(fence.buf.join("\n")); fence = null; continue; }
     fence.buf.push(line);
   }

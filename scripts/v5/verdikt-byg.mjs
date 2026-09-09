@@ -140,7 +140,9 @@ const evidence = draft.evidence.map((e) => {
 // regel_commit med anden lås ikke kan bære en dom
 if (receipt) {
   if (!gate.codexRolle || receipt.rolle !== gate.codexRolle) { console.error(`PROVENANCE-RØD: kvitteringens rolle '${receipt.rolle}' ≠ gatens codex-rolle '${String(gate.codexRolle)}' (F-15)`); process.exit(1); }
-  let lock, lockR, lockH;
+  let lock, lockR, lockH, typeR = null;
+  try { typeR = git("cat-file", "-t", receipt.regel_commit); } catch { typeR = null; }
+  if (typeR !== "commit") { console.error(`PROVENANCE-RØD: regel_commit ${String(receipt.regel_commit).slice(0, 7)} er ikke en commit (git-type ${String(typeR)}) (F-18)`); process.exit(1); }
   try {
     lockR = git("rev-parse", `${receipt.regel_commit}:scripts/v5/actors.lock.json`);
     lockH = git("rev-parse", "HEAD:scripts/v5/actors.lock.json");

@@ -330,6 +330,12 @@ const vb = (draftArg, receipt, lev) => {
   const indr = "Dom: FAIL\n\n  ````markdown\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n  ````\n";
   const rInd = vb("-", mkReceipt(indr), indr);
   eq("draft citeret i indrykket ````-fence → RØD (rest-F-16)", rInd.status === 1 && /PRÆCIS én aktiv/.test(rInd.stderr), true);
+  const nbsp = "Dom: FAIL\n\n~~~markdown\n~~~\u00a0\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n~~~\n";
+  const rN = vb("-", mkReceipt(nbsp), nbsp);
+  eq("falsk fence-lukker m. NBSP → blokken forbliver citeret → RØD (runde 5)", rN.status === 1 && /PRÆCIS én aktiv|uafsluttet/.test(rN.stderr), true);
+  const treeOid = execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
+  const rTree = vb("-", mkReceipt(lev, { regel_commit: treeOid }), lev);
+  eq("kvittering m. regel_commit = tree-OID → RØD (F-18: git-type commit)", rTree.status === 1 && /ikke en commit/.test(rTree.stderr), true);
   const rHead = vb("-", mkReceipt(lev, { regel_commit: "HEAD" }), lev);
   eq("kvittering m. regel_commit='HEAD' → RØD (F-18: flytbar ref)", rHead.status === 1 && /fast commit-OID/.test(rHead.stderr), true);
   const rRolle = vb("-", mkReceipt(lev, { rolle: "codex-forbedring", skill_oid: realLock["codex-forbedring"].skill_oid }), lev);
