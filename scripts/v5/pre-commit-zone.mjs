@@ -22,6 +22,19 @@ const staged = execFileSync("git", ["-C", repoRoot, "diff", "--cached", "--name-
 
 if (staged.length === 0) process.exit(0);
 
+// M-41 Trin A4 (fabrik-frys, GRUNDPLAN-v2 princip 8): en rolletekst må ALDRIG
+// committes uden at actors.lock.json følger i SAMME commit — ellers kører næste
+// aktør-kald på en lås der peger på en anden tekst end HEAD (3 stale pins fundet
+// 2026-09-08). Atomisk rolletekst→lock. Registret (hærdet) håndhæves i CI, ikke
+// her: et Codex-pas kræver en commit at referere.
+const rollerStaged = staged.filter((p) => /^scripts\/v5\/roller\/[^/]+\.md$/.test(p));
+if (rollerStaged.length > 0 && !staged.includes("scripts/v5/actors.lock.json")) {
+  console.error("✗ commit-zone (M-41 A4): rolletekst staged uden scripts/v5/actors.lock.json i samme commit:");
+  for (const p of rollerStaged) console.error(`    ${p}`);
+  console.error("  Regenerér låsen (skill_oid = git hash-object af rolleteksten) og stage den sammen med teksten.");
+  process.exit(2);
+}
+
 const rolle = process.env.STORK_V5_ROLLE;
 let kravUpload;
 const mandat = process.env.STORK_V5_KRAV_UPLOAD;

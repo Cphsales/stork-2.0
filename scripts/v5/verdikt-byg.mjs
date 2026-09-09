@@ -6,9 +6,16 @@
 // FØR gate-eval — r4's fail-closed-afvisning var undgåelig med denne kontrol.
 //
 // Brug (fra aktør-workdir-roden, som ER repoet @ pinned commit):
-//   node <sti>/verdikt-byg.mjs <draft.json> <gate_id> <gated_commit> <artifact_path> > OUT-verdikt.json
+//   node <sti>/verdikt-byg.mjs <draft.json> <gate_id> <gated_commit> <artifact_path> [provenance-fil] > OUT-verdikt.json
 // draft.json = { aktor, conclusion, negative_cases, claim_graph_refs?,
 //                evidence: [{path, line_span:[a,b]}], raw_output_sha256, run_id?, effort? }
+// provenance-fil (M-41 Trin A3 / validering V-F2 "rollen bestemmer kaldet"):
+//   codex-run.sh's $OUT.provenance — run_attempt = antal forsøg der blev kørt, og
+//   effort = det FAKTISK kørte niveau (start-linjen). Er den givet, IGNORERES
+//   draft.effort ikke stiltiende: afviger den fra provenance → SCHEMA-RØD (en
+//   aktør må ikke erklære et andet niveau end det kørte). Uden provenance-fil
+//   (Claude-Agent-aktører uden wrapper) gælder v1-adfærd: run_attempt=1, effort
+//   fra draft — og det STÅR i run.actor_server_id at det er selv-erklæret.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { validateVerdiktSchema, readBlobLines, excerptAt } from "./verdikt.mjs";
@@ -16,10 +23,17 @@ import { GATE_REGISTRY } from "./gates.mjs";
 import { DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { makeGit } from "./git.mjs";
 
-const [draftPath, gateId, gatedCommit, artifactPath] = process.argv.slice(2);
+const [draftPath, gateId, gatedCommit, artifactPath, provenancePath] = process.argv.slice(2);
 if (!draftPath || !gateId || !gatedCommit || !artifactPath) {
   console.error("brug: verdikt-byg.mjs <draft.json> <gate_id> <gated_commit> <artifact_path>");
   process.exit(2);
+}
+if (provenancePath !== undefined) {
+  // fail-closed FØR noget andet: en provenance produceret under selvtest-override
+  // (fremmed lås/repo) er ALDRIG gate-evidens
+  const provTidlig = readFileSync(provenancePath, "utf8");
+  if (/\block=OVERRIDE\(/.test(provTidlig)) { console.error("PROVENANCE-RØD: kørslen brugte lås/repo-override (selftest) — ikke gyldig som gate-evidens"); process.exit(1); }
+  if (/^BLOKER:/m.test(provTidlig)) { console.error("PROVENANCE-RØD: transporten BLOKEREDE — der findes intet gyldigt aktør-resultat"); process.exit(1); }
 }
 const gate = GATE_REGISTRY.find((g) => g.id === gateId);
 if (!gate) { console.error(`ukendt gate: ${gateId}`); process.exit(2); }
@@ -62,13 +76,32 @@ const evidence = draft.evidence.map((e) => {
   return { commit_sha: gatedCommit, path: e.path, blob_oid, line_span: e.line_span, excerpt_sha: sha256(excerpt) };
 });
 
+// kørsels-fakta fra transportens provenance (aldrig fra aktørens erklæring, når den findes)
+let runAttempt = 1;
+let effortKoert = null;
+if (provenancePath !== undefined) {
+  const prov = readFileSync(provenancePath, "utf8");
+  const forsøg = prov.match(/^attempt=(\d+) rolle=/gm) ?? [];
+  if (forsøg.length === 0) { console.error(`PROVENANCE-RØD: ${provenancePath} indeholder ingen kørte forsøg`); process.exit(1); }
+  runAttempt = forsøg.length;
+  const m = prov.match(/^start=\S+ rolle=\S+ aktivitet=\S+ model=\S+ effort=(\S+) /m);
+  if (!m) { console.error(`PROVENANCE-RØD: ${provenancePath} har ingen start-linje med effort`); process.exit(1); }
+  effortKoert = m[1];
+  if (typeof draft.effort === "string" && draft.effort.length > 0 && draft.effort !== effortKoert) {
+    console.error(`SCHEMA-RØD: draft.effort='${draft.effort}' ≠ faktisk kørt effort='${effortKoert}' (provenance) — aktøren erklærer et andet niveau end det kørte`);
+    process.exit(1);
+  }
+}
 const run = {
   run_id: draft.run_id ?? `lokal-${gateId}-${draft.aktor}`,
-  run_attempt: 1,
+  run_attempt: runAttempt,
   raw_output_sha256: draft.raw_output_sha256,
-  actor_server_id: "local-driver-spawn (server-provenance = residual til CI actor-runner)",
+  actor_server_id: provenancePath !== undefined
+    ? "local-driver-spawn via codex-run.sh (provenance-bundet; server-signatur = residual til CI actor-runner)"
+    : "local-driver-spawn (SELV-ERKLÆRET run/effort — ingen transport-provenance; server-provenance = residual til CI actor-runner)",
 };
-if (typeof draft.effort === "string" && draft.effort.length > 0) run.effort = draft.effort; // M-39 pkt. 4
+if (effortKoert !== null) run.effort = effortKoert; // M-39 pkt. 4 + M-41 A3: det kørte niveau
+else if (typeof draft.effort === "string" && draft.effort.length > 0) run.effort = draft.effort;
 
 const verdikt = {
   schema_version: 1,

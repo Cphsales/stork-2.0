@@ -4,7 +4,7 @@
 // Kør: node scripts/v5/krav-gate-run.mjs <pinned-commit-oid>
 //
 // Læser ALT fra den pinnede commit + committede evidens-filer: launch → pakke,
-// verdikt-filer + approval fra plan-build/<pakke>/ (nyeste committede @ HEAD —
+// verdikt-filer (udvalgt via approval._provenance.verdikt_run_ids) + approval fra plan-build/<pakke>/ (@ HEAD —
 // evidens er durabel, dommen fældes FRISK her: verifyProof/verifyVerdict
 // re-køres mod rå git, forgængeren (recon) re-dømmes in-memory). Committede
 // filer er spor — aldrig autoritet. Exit 0 ⟺ gaten er åben.
@@ -19,6 +19,24 @@ import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+// Ren udvælgelse (testbar uden git): approval._provenance.verdikt_run_ids → præcis
+// én verdikt-fil pr. run_id blandt verdikt-*-krav*.json @ evidenceRef. Fail-closed
+// på manglende liste · tom liste · ikke-strenge · dubletter · 0 eller >1 match.
+export function vaelgVerdikter({ approvalFil, filer, læs, evidenceRef = "?" }) {
+  const runIds = approvalFil?._provenance?.verdikt_run_ids;
+  if (!Array.isArray(runIds) || runIds.length === 0 || !runIds.every((r) => typeof r === "string" && r.length > 0))
+    throw new Error("approval._provenance.verdikt_run_ids mangler/ugyldig — rundevalg kan ikke afledes (fail-closed)");
+  if (new Set(runIds).size !== runIds.length) throw new Error("approval.verdikt_run_ids har dubletter (fail-closed)");
+  const kandidater = filer.filter((f) => /^verdikt-[a-z0-9-]+-krav(-[a-z0-9]+)?\.json$/.test(f)).map((f) => ({ f, v: læs(f) }));
+  const verdicts = [];
+  for (const rid of runIds) {
+    const hits = kandidater.filter((x) => x?.v?.run?.run_id === rid);
+    if (hits.length !== 1) throw new Error(`run_id '${rid}' matcher ${hits.length} verdikt-filer @ ${evidenceRef} (kræver præcis 1; fail-closed)`);
+    verdicts.push(hits[0].v);
+  }
+  return verdicts;
+}
 
 export function runKravGate(commitSha, { root = repoRoot, evidenceRef = "HEAD" } = {}) {
   try {
@@ -37,8 +55,14 @@ function runKravGateInner(commitSha, root, evidenceRef) {
   // committet evidens (spor): verdikter + approval læses fra evidenceRef
   // (typisk HEAD — de ligger efter gate-committen i historikken)
   const læs = (p) => JSON.parse(git.bytes("show", `${evidenceRef}:plan-build/${pakke}/${p}`).toString("utf8"));
-  const verdicts = [læs("verdikt-code-krav-r4b.json"), læs("verdikt-codex-krav-r4b.json")];
   const approvalFil = læs("krav-approval.json");
+  // RUNDEVALG FRA EKSPLICIT LEVERANCEHENVISNING (M-41 Trin A4 / validering V-F3):
+  // approval._provenance.verdikt_run_ids navngiver de verdikter Mathias' ok
+  // hviler på — aldrig et hardkodet filnavn (r4b). Alle verdikt-*-krav*.json @
+  // evidenceRef læses; PRÆCIS dem hvis run.run_id står i listen sendes til
+  // kernen. Manglende liste, dublet-run_id eller run_id uden fil → fail-closed.
+  const filer = git("ls-tree", "--name-only", `${evidenceRef}:plan-build/${pakke}`).split("\n");
+  const verdicts = vaelgVerdikter({ approvalFil, filer, læs, evidenceRef });
   // VERBATIM (batch-pas-fund 2026-09-08): approval-data læses som den er —
   // plukning VASKEDE ukendte felter væk som kernens additionalProperties-værn
   // ellers afviser (fail-open). Format: { approval: {…schema-felter…},
