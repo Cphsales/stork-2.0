@@ -92,6 +92,7 @@ const mkVerdict = (aktor, gateId, artifactRef, bindingsOids, evidence) => ({
   },
 });
 
+const KV_DIGEST = "ab".repeat(32);
 function greenKrav() {
   const artifact = ref("sandhed/krav/pakke-x-krav.md");
   const bindings = { recon: ref("recon/recon.md"), anker: ref("launch/launch.json") };
@@ -109,10 +110,13 @@ function greenKrav() {
       gate_id: "krav",
       scope_digest: scopeDigest("krav", artifact.oid, bOids),
       prerequisite_digests: verdicts.map(digestOf),
+      kvittering_digest: KV_DIGEST, // krav kræver nu kvittering — kun den digest-bundne M-38 er undtaget
     },
     predecessor: { gate_id: "recon", conclusion: "success", artifact_oid: bindings.recon.oid },
   };
-  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }) } };
+  const verifyApproval = (a, ctx) => (a.kvittering_digest === KV_DIGEST && ctx.gateId === "krav" && ctx.verdictDigests.length === 2 ? { ok: true, reasons: [] } : { ok: false, reasons: ["stub"] });
+  const verifyTransport = (vs) => (Array.isArray(vs) && vs.length === 2 ? { ok: true, reasons: [] } : { ok: false, reasons: ["stub"] });
+  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }), verifyApproval, verifyTransport } };
 }
 
 function greenBuild() {
@@ -179,9 +183,10 @@ function greenPlan() {
     a.kvittering_digest === KV_DIGEST && ctx.gateId === "plan" && ctx.verdictDigests.length === 3 && ctx.expectedScope === snapshot.approval.scope_digest
       ? { ok: true, reasons: [] }
       : { ok: false, reasons: ["stub: forkert digest/ctx"] };
-  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }), verifyApproval } };
+  // verifyTransport-stub (M-41 A3 / P2 F-2): kernen skal KRÆVE deppen på gater m. transportReceipt
+  const verifyTransport = (vs) => (Array.isArray(vs) && vs.length === 3 ? { ok: true, reasons: [] } : { ok: false, reasons: ["stub: forkert verdikt-sæt"] });
+  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }), verifyApproval, verifyTransport } };
 }
-const KV_DIGEST = "ab".repeat(32);
 
 function greenRecon() {
   const artifact = ref("recon/recon.md");
@@ -252,7 +257,14 @@ plantClosed("verifyApproval siger nej → rød", "plan", greenPlan, (c) => { c.d
 plantClosed("verifyApproval returnerer 'sandt-agtigt' (ok:'true') → rød", "plan", greenPlan, (c) => { c.deps = { ...c.deps, verifyApproval: () => ({ ok: "true", reasons: [] }) }; }, "verifyApproval fejlede");
 plantClosed("kvittering_digest ikke sha256 → rød", "plan", greenPlan, (c) => { c.snapshot.approval.kvittering_digest = "kort"; }, "kvittering_digest");
 plantClosed("approval m. forkert digest → verifier afviser", "plan", greenPlan, (c) => { c.snapshot.approval.kvittering_digest = "cd".repeat(32); }, "verifyApproval fejlede");
-plantClosed("krav-gate (historisk undtagelse) m. kvittering_digest → uventet felt (fail-closed)", "krav", greenKrav, (c) => { c.snapshot.approval.kvittering_digest = KV_DIGEST; }, "kvittering_digest uventet");
+plantClosed("krav-approval UDEN kvittering_digest og IKKE den registrerede M-38-digest → rød (undtagelsen er digest-bundet)", "krav", greenKrav, (c) => { delete c.snapshot.approval.kvittering_digest; }, "ikke en registreret historisk undtagelse");
+plantClosed("recon-gate (approvalReceipt=false, ingen approver) m. approval → uventet (fail-closed)", "recon", greenRecon, (c) => { c.snapshot.approval = { login_server_verified: APPROVER, gate_id: "recon", scope_digest: "x", kvittering_digest: KV_DIGEST }; }, "uventet approval");
+
+console.log("\nplantede falsk-grønne — TRANSPORT-kvittering (M-41 A3 / P2 F-2, F-10):");
+plantClosed("verifyTransport-dep mangler på plan (transportReceipt) → rød", "plan", greenPlan, (c) => { const { verifyTransport, ...rest } = c.deps; void verifyTransport; c.deps = rest; }, "verifyTransport-dep mangler");
+plantClosed("verifyTransport siger nej → rød", "plan", greenPlan, (c) => { c.deps = { ...c.deps, verifyTransport: () => ({ ok: false, reasons: ["codex uden kvittering"] }) }; }, "verifyTransport fejlede");
+plantClosed("verifyTransport returnerer ok:'true' → rød", "plan", greenPlan, (c) => { c.deps = { ...c.deps, verifyTransport: () => ({ ok: "true", reasons: [] }) }; }, "verifyTransport fejlede");
+plantClosed("krav-gate uden verifyTransport-dep → rød (transportReceipt gælder også krav; M-38/r4b er digest-undtaget)", "krav", greenKrav, (c) => { const { verifyTransport, ...rest } = c.deps; void verifyTransport; c.deps = rest; }, "verifyTransport-dep mangler");
 
 console.log("\nplantede falsk-grønne — approver/rækkefølge (krav 5):");
 plantClosed(

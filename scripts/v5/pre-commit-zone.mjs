@@ -42,6 +42,30 @@ if (rollerStaged.length > 0 && !lockFoelgerMed) {
   console.error("  Regenerér låsen (skill_oid = git hash-object af rolleteksten) og stage den sammen med teksten.");
   process.exit(2);
 }
+// P2 F-8 (runde 2): en STAGED lås skal være gyldig JSON og pege på PRÆCIS de staged rolletekst-blobs —
+// ellers er "lock følger med" en tom gestus (status M med `{}` eller stale OID'er passerede før)
+if (lockFoelgerMed) {
+  let lock;
+  try { lock = JSON.parse(execFileSync("git", ["-C", repoRoot, "show", ":scripts/v5/actors.lock.json"], { encoding: "utf8" })); }
+  catch { console.error("✗ commit-zone (F-8): staged actors.lock.json er ikke gyldig JSON"); process.exit(2); }
+  const roller = Object.values(lock).filter((r) => r && typeof r === "object" && typeof r.skill_path === "string");
+  if (roller.length === 0) { console.error("✗ commit-zone (F-8): staged actors.lock.json indeholder ingen roller"); process.exit(2); }
+  const stagedOid = (p) => { try { return execFileSync("git", ["-C", repoRoot, "rev-parse", "--verify", "--quiet", `:${p}`], { encoding: "utf8" }).trim(); } catch { return null; } };
+  const drift = [];
+  for (const r of roller) {
+    // rolletekst der ER staged → låsen skal pege på den staged blob; ikke-staged → på HEAD-blobben
+    const staged = stagedStatus.has(r.skill_path) && stagedStatus.get(r.skill_path) !== "D";
+    let oid = null;
+    if (staged) oid = stagedOid(r.skill_path);
+    else { try { oid = execFileSync("git", ["-C", repoRoot, "rev-parse", "--verify", "--quiet", `HEAD:${r.skill_path}`], { encoding: "utf8" }).trim(); } catch { oid = null; } }
+    if (oid !== r.skill_oid) drift.push(`${r.skill_path}: lock ${String(r.skill_oid).slice(0, 12)} ≠ ${staged ? "staged" : "HEAD"} ${oid ? oid.slice(0, 12) : "(mangler)"}`);
+  }
+  if (drift.length > 0) {
+    console.error("✗ commit-zone (F-8): staged actors.lock.json matcher ikke rolleteksterne:");
+    for (const d of drift) console.error(`    ${d}`);
+    process.exit(2);
+  }
+}
 
 const rolle = process.env.STORK_V5_ROLLE;
 let kravUpload;

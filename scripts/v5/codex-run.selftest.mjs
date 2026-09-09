@@ -37,6 +37,8 @@ case "\${FAKE_MODE:-ok}" in
   hang) sleep 30; echo "for sent" > "$out"; exit 0 ;;
   fejl) exit 7 ;;
   symlink) ln -s /etc/hostname "$out"; exit 0 ;;
+  tomfil) : > "$out"; exit 0 ;;
+  mappe) mkdir -p "$out"; exit 0 ;;
 esac
 `);
 chmodSync(join(BIN, "codex"), 0o755);
@@ -59,9 +61,11 @@ function run(args, { mode = "ok", lock = lockPath, env = {}, selftest = "1" } = 
   const e = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, FAKE_MODE: mode, STORK_V5_SELFTEST: selftest, ...env };
   if (lock) e.STORK_V5_LOCK = lock; else delete e.STORK_V5_LOCK;
   const r = spawnSync("bash", [WRAPPER, ...fullArgs], { encoding: "utf8", env: e });
-  const prov = existsSync(out + ".provenance") ? readFileSync(out + ".provenance", "utf8") : "";
+  // v4: en BLOKER FØR låsen rører ingen fælles fil (F-7) og står kun på stderr — prov = fil + stderr
+  const provFil = existsSync(out + ".provenance") ? readFileSync(out + ".provenance", "utf8") : "";
+  const prov = provFil + "\n" + (r.stderr ?? "");
   const receipt = existsSync(out + ".receipt.json") ? JSON.parse(readFileSync(out + ".receipt.json", "utf8")) : null;
-  return { r, out, prov, receipt, calls: calls(), done: existsSync(out + ".attempt1.done"), done2: existsSync(out + ".attempt2.done"), pid: existsSync(out + ".pid") };
+  return { r, out, prov, provFil, receipt, calls: calls(), done: existsSync(out + ".attempt1.done"), done2: existsSync(out + ".attempt2.done"), pid: existsSync(out + ".pid") };
 }
 
 console.log("codex-run.sh v3 — kontrakt (mock-codex):");
@@ -78,7 +82,9 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
   const prompt = x.calls[0].slice(x.calls[0].indexOf("-o") + 2).join("\n").replace(/\n$/, ""); // printf tilføjer én hale-newline
   eq("prompten STARTER med rolleteksten (F-5: rollen sendes faktisk)", prompt.startsWith("# Rolle: codex-angreb"), true);
   eq("prompten SLUTTER med opgaven", prompt.trim().endsWith("sig OK"), true);
-  eq("kvittering: status success · lock_mode OVERRIDE(selftest)", x.receipt?.status === "success" && x.receipt?.lock_mode === "OVERRIDE(selftest)", true);
+  eq("kvittering: status success · lock_mode OVERRIDE(selftest) · schema v2 · selftest=true (F-11)", x.receipt?.status === "success" && x.receipt?.lock_mode === "OVERRIDE(selftest)" && x.receipt?.schema_version === 2 && x.receipt?.selftest === true, true);
+  eq("forsøgs-output ligger IKKE i OUT-navnerummet (privat kørselsmappe, F-7)", existsSync(x.out + ".attempt1.out"), false);
+  eq("privat kørselsmappe ryddet efter kørsel", execFileSync("ls", ["-a", OUTDIR], { encoding: "utf8" }).split("\n").some((f) => f.startsWith(".run-")), false);
   eq("kvittering: model/effort/sandbox/rolle", [x.receipt?.model, x.receipt?.effort, x.receipt?.sandbox, x.receipt?.rolle].join("|"), "gpt-6-astra|xhigh|read-only|codex-angreb");
   eq("kvittering: regel_commit + skill_oid + prompt_sha256 er OID/sha", /^[0-9a-f]{40}$/.test(x.receipt?.regel_commit) && /^[0-9a-f]{40}$/.test(x.receipt?.skill_oid) && /^[0-9a-f]{64}$/.test(x.receipt?.prompt_sha256), true);
   eq("kvittering: prompt_sha256 == sha256(faktisk sendt prompt)", x.receipt?.prompt_sha256, sha256(prompt));
@@ -96,6 +102,26 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
   eq("retry: BEGGE kald bar effort=xhigh (argv, ikke log)", x.calls.every((c) => c.includes("model_reasoning_effort=xhigh")), true);
   eq("retry: BEGGE kald bar samme model + sandbox", x.calls.every((c) => argOf(c, "-m") === "gpt-6-astra" && argOf(c, "--sandbox") === "read-only"), true);
   eq("kvittering: status fejl · 2 forsøg · sidste output_sha256 null", x.receipt?.status === "fejl" && x.receipt?.attempts?.length === 2 && x.receipt.attempts[1].output_sha256 === null, true);
+}
+{
+  const x = run(undefined, { mode: "tomfil" });
+  eq("tom EKSISTERENDE fil som leverance → afvist (-s alene)", x.r.status === 1 && !x.done && !existsSync(x.out), true);
+  const y = run(undefined, { mode: "mappe" });
+  eq("mappe som leverance → afvist (-f alene)", y.r.status === 1 && !y.done && !existsSync(y.out), true);
+}
+{
+  // eksisterende men FORKERT rolleblob i låsen (recon-codex' tekst under codex-angreb) → frys-BLOKER (ikke git-show-fejl)
+  const wrong = structuredClone(realLock); wrong["codex-angreb"].skill_oid = realLock["recon-codex"].skill_oid;
+  const wp = join(T, "wrong.json"); writeFileSync(wp, JSON.stringify(wrong));
+  const x = run(undefined, { lock: wp });
+  eq("eksisterende forkert rolleblob i låsen → rolletekst-drift BLOKER (mutant c: frys-check)", x.r.status === 1 && /rolletekst-drift/.test(x.prov) && x.calls.length === 0, true);
+}
+{
+  // anden model/effort i låsen SKAL nå argv (mutant g: hardkodede værdier)
+  const alt = structuredClone(realLock); alt["codex-angreb"].model = "gpt-alt-model"; alt["codex-angreb"].reasoning = "medium";
+  const ap = join(T, "alt.json"); writeFileSync(ap, JSON.stringify(alt));
+  const x = run(undefined, { lock: ap });
+  eq("lås m. anden model/effort → argv bærer PRÆCIS dem (ingen hardkodning)", x.r.status === 0 && argOf(x.calls[0], "-m") === "gpt-alt-model" && x.calls[0].includes("model_reasoning_effort=medium") && x.receipt?.model === "gpt-alt-model" && x.receipt?.effort === "medium", true);
 }
 {
   const x = run(undefined, { mode: "symlink" });
@@ -137,12 +163,26 @@ console.log("\ncodex-run.sh v3 — BLOKER FØR kaldet (rollen bestemmer kaldet �
 {
   const x = run(["codex-angreb", "skriv", WORKDIR, "5", join(OUTDIR, "a.md"), promptFil]);
   eq("ukendt aktivitet → BLOKER", x.r.status === 1 && /ukendt aktivitet/.test(x.prov), true);
+  eq("BLOKER før låsen rører INGEN fælles fil (ingen provenance/kvittering, F-7)", x.provFil === "" && x.receipt === null, true);
 }
 {
   const x = run(["codex-angreb", "dom", WORKDIR, "0", join(OUTDIR, "t0.md"), promptFil]);
   eq("timeout 0 (= ingen grænse) → BLOKER", x.r.status === 1 && /≥ 1 s/.test(x.prov), true);
   const y = run(["codex-angreb", "dom", WORKDIR, "5s", join(OUTDIR, "t.md"), promptFil]);
   eq("ikke-numerisk timeout → BLOKER", y.r.status === 1 && /heltal-sekunder/.test(y.prov), true);
+}
+{
+  const d = join(OUTDIR, "er-mappe.md"); mkdirSync(d);
+  const x = run(["codex-angreb", "dom", WORKDIR, "5", d, promptFil]);
+  eq("OUT er en mappe → BLOKER før kaldet (F-12)", x.r.status === 1 && /MAPPE/.test(x.prov) && x.calls.length === 0, true);
+}
+{
+  const x = run(undefined, { env: { STORK_V5_GATE_INPUT: `krav:${"a".repeat(40)}:docs/sandhed/krav/x-krav.md` } });
+  eq("gate_input bindes i kvitteringen (F-10)", x.receipt?.gate_input?.gate_id === "krav" && x.receipt?.gate_input?.gated_commit === "a".repeat(40) && x.receipt?.gate_input?.artifact_path === "docs/sandhed/krav/x-krav.md", true);
+  const y = run(["recon-codex", "produktion", WORKDIR, "5", join(OUTDIR, "gp.md"), promptFil], { env: { STORK_V5_GATE_INPUT: `krav:${"a".repeat(40)}:x.md` } });
+  eq("gate_input + produktion → BLOKER (en gate-dom kommer aldrig fra en produktions-kørsel)", y.r.status === 1 && /kræver aktivitet=dom/.test(y.prov), true);
+  const z = run(undefined, { env: { STORK_V5_GATE_INPUT: "krav:kort:x.md" } });
+  eq("gate_input m. ugyldig commit → BLOKER", z.r.status === 1 && /40-hex/.test(z.prov), true);
 }
 {
   const x = run(["codex-angreb", "dom", WORKDIR, "5", join(WORKDIR, "inde.md"), promptFil]);
@@ -173,6 +213,16 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
   copyFileSync(WRAPPER, join(CLONE, "scripts/v5/codex-run.sh")); // klonen skal køre DENNE wrapper-version (arbejdstræ), ikke HEAD's
   const x = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE } });
   eq("committed lås (klon, ingen override) → kører · kvittering lock_mode=committed", x.r.status === 0 && x.receipt?.lock_mode === "committed", true);
+  eq("… men kvittering.selftest=true — STORK_V5_REPO er en selvtest-lempelse (F-11)", x.receipt?.selftest, true);
+  {
+    // F-13: `git replace` af rolleblobben i klonen må IKKE ændre den tekst der sendes (--no-replace-objects + hash-verifikation)
+    const skill = realLock["codex-angreb"].skill_oid; const anden = realLock["recon-codex"].skill_oid;
+    execFileSync("git", ["-C", CLONE, "replace", skill, anden]);
+    const z = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE } });
+    const prompt = z.calls[0]?.slice(z.calls[0].indexOf("-o") + 2).join("\n") ?? "";
+    eq("git replace på rolleblobben ignoreres — original rolletekst sendes, kørslen grøn (F-13)", z.r.status === 0 && prompt.startsWith("# Rolle: codex-angreb"), true);
+    execFileSync("git", ["-C", CLONE, "replace", "-d", skill]);
+  }
   eq("kvittering: regel_commit = klonens HEAD", x.receipt?.regel_commit, execFileSync("git", ["-C", CLONE, "rev-parse", "HEAD"], { encoding: "utf8" }).trim());
   writeFileSync(join(CLONE, "scripts/v5/actors.lock.json"), JSON.stringify(realLock) + "\n// ændret lokalt\n");
   const y = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE } });
@@ -204,48 +254,63 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
   eq("gammel .done ryddes FØR validering — BLOKER efterlader ingen grøn markør", x.r.status === 1 && !existsSync(out + ".attempt1.done") && !existsSync(out + ".receipt.json.tmp"), true);
 }
 
-console.log("\nverdikt-byg.mjs — kvitterings-binding (F-1/F-2):");
+console.log("\nverdikt-byg.mjs — kvitterings-binding v4 (F-1/F-2/F-10/F-11):");
 const VB = join(HERE, "verdikt-byg.mjs");
 const GATED = execFileSync("git", ["-C", ROOT, "rev-parse", "efc85d5"], { encoding: "utf8" }).trim();
+const HEADC = execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const ART = "docs/sandhed/krav/lokations-skabelon-krav.md";
-const vb = (draft, receiptP, levP) => {
-  const dp = join(T, `draft${++n}.json`); writeFileSync(dp, JSON.stringify(draft));
-  const args = [VB, dp, "krav", GATED, ART]; if (receiptP) args.push(receiptP, levP);
-  return spawnSync("node", args, { encoding: "utf8", cwd: ROOT });
+const draftObj = { aktor: "codex", conclusion: "PASS", negative_cases: ["n1"], evidence: [{ path: ART, line_span: [3, 3] }] };
+const levTekst = (d) => `# Analyse\n\nTekst.\n\n\`\`\`json verdikt-draft\n${JSON.stringify(d)}\n\`\`\`\n`;
+const mkReceipt = (lev, over = {}) => ({ schema_version: 2, status: "success", run_id: "run-x", rolle: "codex-angreb", aktivitet: "dom", model: "gpt-6-astra", effort: "xhigh", sandbox: "read-only",
+  regel_commit: HEADC, lock_mode: "committed", lock_blob: "0".repeat(40), skill_path: "scripts/v5/roller/codex-angreb.md", skill_oid: realLock["codex-angreb"].skill_oid, prompt_sha256: "0".repeat(64),
+  gate_input: { gate_id: "krav", gated_commit: GATED, artifact_path: ART }, selftest: false, attempts: [{ attempt: 1, rc: 0, model: "gpt-6-astra", effort: "xhigh", sandbox: "read-only", output_sha256: sha256(lev), output_bytes: Buffer.byteLength(lev) }], ...over });
+const vb = (draftArg, receipt, lev) => {
+  const rp = join(T, `rec${++n}.json`); writeFileSync(rp, JSON.stringify(receipt));
+  const lp = join(T, `lev${n}.md`); writeFileSync(lp, lev);
+  let dp = "-"; if (draftArg !== "-") { dp = join(T, `draft${n}.json`); writeFileSync(dp, JSON.stringify(draftArg)); }
+  return spawnSync("node", [VB, dp, "krav", GATED, ART, rp, lp], { encoding: "utf8", cwd: ROOT });
 };
 {
-  const x = run(); // gyldig kørsel (override-lås) → kvittering m. lock_mode OVERRIDE
-  const lev = readFileSync(x.out);
-  const draft = { aktor: "codex", conclusion: "PASS", negative_cases: ["n1"], evidence: [{ path: ART, line_span: [3, 3] }], raw_output_sha256: sha256(lev) };
-  const r = vb(draft, x.out + ".receipt.json", x.out);
-  eq("kvittering m. lås-override → PROVENANCE-RØD (ikke gate-evidens)", r.status === 1 && /lås-override/.test(r.stderr), true);
-  const r2 = vb(draft);
-  eq("codex-aktør UDEN kvittering → PROVENANCE-RØD (F-2)", r2.status === 1 && /uden transport-kvittering/.test(r2.stderr), true);
-  // fabrikér en 'committed'-kvittering ud fra den ægte (kun lock_mode ændret) → binding af bytes skal stadig holde
-  const rec = JSON.parse(readFileSync(x.out + ".receipt.json", "utf8")); rec.lock_mode = "committed";
-  const recP = join(T, "rec-ok.json"); writeFileSync(recP, JSON.stringify(rec));
-  const r3 = vb(draft, recP, x.out);
-  eq("gyldig kvittering + leverance + matchende hash → verdikt bygget (exit 0)", r3.status, 0);
-  const v = r3.status === 0 ? JSON.parse(r3.stdout) : {};
-  eq("verdikt.run: run_attempt=1 · effort=xhigh · run_id fra kvittering · actor_server_id nævner kvittering", v.run?.run_attempt === 1 && v.run?.effort === "xhigh" && v.run?.run_id === rec.run_id && /kvittering/.test(v.run?.actor_server_id ?? ""), true);
-  const r4 = vb({ ...draft, raw_output_sha256: "0".repeat(64) }, recP, x.out);
-  eq("draft.raw_output_sha256 ≠ leverance → PROVENANCE-RØD (hashen erklæres ikke)", r4.status === 1 && /raw_output_sha256/.test(r4.stderr), true);
-  const levF = join(T, "anden-leverance.md"); writeFileSync(levF, "andet indhold");
-  const r5 = vb(draft, recP, levF);
-  eq("leverance-fil ≠ kvitteringens output_sha256 → PROVENANCE-RØD", r5.status === 1 && /leverance-fil/.test(r5.stderr), true);
-  const r6 = vb({ ...draft, effort: "low" }, recP, x.out);
-  eq("draft.effort ≠ kørt effort → PROVENANCE-RØD", r6.status === 1 && /draft\.effort/.test(r6.stderr), true);
-  const recF = { ...rec, status: "fejl" }; const recFP = join(T, "rec-fejl.json"); writeFileSync(recFP, JSON.stringify(recF));
-  const r7 = vb(draft, recFP, x.out);
-  eq("kvittering status=fejl → PROVENANCE-RØD (F-1: intet gyldigt resultat)", r7.status === 1 && /leverede ikke/.test(r7.stderr), true);
-  const recM = structuredClone(rec); recM.attempts = [{ ...rec.attempts[0], attempt: 1, effort: "low" }]; const recMP = join(T, "rec-mix.json"); writeFileSync(recMP, JSON.stringify(recM));
-  const r8 = vb(draft, recMP, x.out);
-  eq("forsøg m. andet effort end kvitteringen → PROVENANCE-RØD (F-1: tavs sænkning)", r8.status === 1 && /anden model\/effort\/sandbox/.test(r8.stderr), true);
-  const recA = structuredClone(rec); recA.attempts = [rec.attempts[0], { ...rec.attempts[0], attempt: 3 }]; const recAP = join(T, "rec-999.json"); writeFileSync(recAP, JSON.stringify(recA));
-  const r9 = vb(draft, recAP, x.out);
-  eq("forsøg ude af rækkefølge (1,3) → PROVENANCE-RØD", r9.status === 1 && /ude af rækkefølge/.test(r9.stderr), true);
-  const r10 = vb({ ...draft, aktor: "code", raw_output_sha256: sha256("x") });
-  eq("claude-aktør uden kvittering → tilladt men mærket SELV-ERKLÆRET", r10.status === 0 && /SELV-ERKLÆRET/.test(JSON.parse(r10.stdout).run.actor_server_id), true);
+  const lev = levTekst(draftObj);
+  const r = vb("-", mkReceipt(lev), lev);
+  eq("gyldig v4-kvittering + leverance m. verdikt-draft-blok → verdikt bygget (exit 0)", r.status, 0);
+  const v = r.status === 0 ? JSON.parse(r.stdout) : {};
+  eq("verdikt.run: run_attempt=1 · effort=xhigh · run_id · receipt_sha256 · raw_output_sha256 = sha256(leverance)", v.run?.run_attempt === 1 && v.run?.effort === "xhigh" && v.run?.run_id === "run-x" && /^[0-9a-f]{64}$/.test(v.run?.receipt_sha256 ?? "") && v.run?.raw_output_sha256 === sha256(lev), true);
+  const r2 = vb(draftObj, mkReceipt(lev), lev);
+  eq("separat draft identisk m. blokken → ok", r2.status, 0);
+  const r3 = vb({ ...draftObj, conclusion: "FAIL" }, mkReceipt(lev), lev);
+  eq("separat draft ≠ blokken (dom forsøgt byttet) → PROVENANCE-RØD (F-10)", r3.status === 1 && /byttet/.test(r3.stderr), true);
+  const r4 = vb("-", mkReceipt(lev), "# Analyse uden blok\n");
+  eq("leverance uden verdikt-draft-blok → RØD (hash matcher ikke først; ellers blok-krav)", r4.status, 1);
+  const lev2 = levTekst(draftObj) + "\n\`\`\`json verdikt-draft\n{}\n\`\`\`\n";
+  const r5 = vb("-", mkReceipt(lev2), lev2);
+  eq("to verdikt-draft-blokke → RØD", r5.status === 1 && /PRÆCIS én/.test(r5.stderr), true);
+  const r6 = vb("-", mkReceipt(lev, { selftest: true }), lev);
+  eq("kvittering m. selftest=true → RØD (F-11)", r6.status === 1 && /SELVTEST/.test(r6.stderr), true);
+  const r7 = vb("-", mkReceipt(lev, { gate_input: { gate_id: "plan", gated_commit: GATED, artifact_path: ART } }), lev);
+  eq("kvittering m. andet gate_input → RØD (F-10: dommen skrevet på andet input)", r7.status === 1 && /gate_input/.test(r7.stderr), true);
+  const r8 = vb("-", mkReceipt(lev, { aktivitet: "produktion", sandbox: "workspace-write", attempts: [{ attempt: 1, rc: 0, model: "gpt-6-astra", effort: "xhigh", sandbox: "workspace-write", output_sha256: sha256(lev), output_bytes: 1 }] }), lev);
+  eq("kvittering fra produktions-kørsel → RØD (F-10)", r8.status === 1 && /≠ dom/.test(r8.stderr), true);
+  const r9 = vb("-", mkReceipt(lev, { rolle: "codex-forbedring" }), lev);
+  eq("kvitteringens rolle matcher ikke låsen (skill_oid tilhører codex-angreb) → RØD (F-10 rolle-binding)", r9.status === 1 && /matcher ikke låsen/.test(r9.stderr), true);
+  const r10 = vb("-", mkReceipt(lev, { lock_mode: "OVERRIDE(selftest)" }), lev);
+  eq("lås-override → RØD", r10.status === 1 && /lås-override/.test(r10.stderr), true);
+  const r11 = vb("-", mkReceipt(lev, { status: "fejl" }), lev);
+  eq("status=fejl → RØD (F-1)", r11.status === 1 && /leverede ikke/.test(r11.stderr), true);
+  const r12 = vb("-", mkReceipt(lev, { attempts: [{ attempt: 1, rc: 0, model: "gpt-6-astra", effort: "low", sandbox: "read-only", output_sha256: sha256(lev), output_bytes: 1 }] }), lev);
+  eq("forsøg m. andet effort end kvitteringen → RØD (tavs sænkning)", r12.status === 1 && /anden model\/effort\/sandbox/.test(r12.stderr), true);
+  const r13 = vb("-", mkReceipt(lev, { schema_version: 1 }), lev);
+  eq("kvittering schema v1 (gammel wrapper) → RØD", r13.status === 1 && /schema/.test(r13.stderr), true);
+  const rp = join(T, "d-only.json"); writeFileSync(rp, JSON.stringify({ ...draftObj, raw_output_sha256: sha256("x") }));
+  const r14 = spawnSync("node", [VB, rp, "krav", GATED, ART], { encoding: "utf8", cwd: ROOT });
+  eq("codex-aktør UDEN kvittering → RØD (F-2)", r14.status === 1 && /uden transport-kvittering/.test(r14.stderr), true);
+  const cp = join(T, "claude.json"); writeFileSync(cp, JSON.stringify({ ...draftObj, aktor: "code", raw_output_sha256: sha256("x") }));
+  const r15 = spawnSync("node", [VB, cp, "krav", GATED, ART], { encoding: "utf8", cwd: ROOT });
+  eq("claude-aktør uden kvittering → tilladt, mærket SELV-ERKLÆRET, ingen receipt_sha256", r15.status === 0 && /SELV-ERKLÆRET/.test(JSON.parse(r15.stdout).run.actor_server_id) && JSON.parse(r15.stdout).run.receipt_sha256 === undefined, true);
+  // ægte selvtest-kvittering fra wrapperen (STORK_V5_REPO=ROOT, ingen lås-override) → lock_mode committed men selftest=true → RØD
+  const x = run(undefined, { lock: null, env: { STORK_V5_REPO: ROOT } });
+  const r16 = spawnSync("node", [VB, "-", "krav", GATED, ART, x.out + ".receipt.json", x.out], { encoding: "utf8", cwd: ROOT });
+  eq("ÆGTE wrapper-kvittering fra selvtest (committed lås, selftest=true) → RØD i verdikt-byg (F-11 lukket e2e)", x.receipt?.lock_mode === "committed" && x.receipt?.selftest === true && r16.status === 1 && /SELVTEST/.test(r16.stderr), true);
 }
 
 rmSync(T, { recursive: true, force: true });

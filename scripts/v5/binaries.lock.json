@@ -1,0 +1,9 @@
+{
+ "schema_version": 1,
+ "note": "M-41 Trin A / P2 F-3: pin af codex-CLI'ens entry-fil (realpath af shim) \u2014 version + sha256. Opdateres BEVIDST i en commit n\u00e5r preflight opdaterer CLI'en (aldrig automatisk). Fuld integritet (signeret bin\u00e6r/betroet runner) = deklareret residual til CI (DEL I: lokal = candidate).",
+ "codex": {
+  "version": "codex-cli 0.153.0",
+  "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+  "entry_suffix": "/node_modules/@openai/codex/bin/codex.js"
+ }
+}

@@ -6,7 +6,12 @@
 // FØR gate-eval — r4's fail-closed-afvisning var undgåelig med denne kontrol.
 //
 // Brug (fra aktør-workdir-roden, som ER repoet @ pinned commit):
-//   node <sti>/verdikt-byg.mjs <draft.json> <gate_id> <gated_commit> <artifact_path> [receipt.json leverance-fil] > OUT-verdikt.json
+//   node <sti>/verdikt-byg.mjs <draft.json|-> <gate_id> <gated_commit> <artifact_path> [receipt.json leverance-fil] > OUT-verdikt.json
+//   P2 F-10 (v4): i kvitterings-mode udtrækkes draften FRA LEVERANCEN (præcis ét ```json verdikt-draft-blok)
+//   så dommen ikke kan byttes uafhængigt af den leverede tekst; draft.json = "-" eller skal være
+//   kanonisk identisk med blokken. Kvitteringen skal bære gate_input == (gate_id, gated_commit,
+//   artifact_path), aktivitet=dom, selftest=false, og rollen skal være en codex-rolle i låsen med
+//   samme skill_oid. run.receipt_sha256 = sha256(kvitterings-bytes) → gate-runnerens verifyTransport.
 // draft.json = { aktor, conclusion, negative_cases, claim_graph_refs?,
 //                evidence: [{path, line_span:[a,b]}], raw_output_sha256, run_id?, effort? }
 // kvittering (M-41 Trin A3 · P2-pas 2026-09-09 F-1/F-2 → v3): 5. arg = codex-run.sh's
@@ -35,23 +40,27 @@ if (!draftPath || !gateId || !gatedCommit || !artifactPath) {
   process.exit(2);
 }
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
-const draft = JSON.parse(readFileSync(draftPath, "utf8"));
+const canon = (v) => JSON.stringify(v, Object.keys(flatKeys(v)).sort());
+function flatKeys(v, acc = {}) { if (v && typeof v === "object") for (const k of Object.keys(v)) { acc[k] = true; flatKeys(v[k], acc); } return acc; }
 if ((receiptPath === undefined) !== (leverancePath === undefined)) {
   console.error("brug: kvittering OG leverance-fil skal gives sammen (eller ingen af dem)"); process.exit(2);
 }
-if (draft.aktor === "codex" && receiptPath === undefined) {
-  console.error("PROVENANCE-RØD: Codex-verdikt uden transport-kvittering — en Codex-dom kan ikke konstrueres uden et Codex-kald (P2 F-2)"); process.exit(1);
-}
-let receipt = null;
+let receipt = null, receiptSha = null, draft;
 if (receiptPath !== undefined) {
   // fail-closed FØR noget andet, læst PRÆCIS én gang
-  const raw = readFileSync(receiptPath, "utf8");
-  try { receipt = JSON.parse(raw); } catch { console.error("PROVENANCE-RØD: kvittering er ikke gyldig JSON"); process.exit(1); }
+  const rawReceipt = readFileSync(receiptPath);
+  receiptSha = sha256(rawReceipt);
+  try { receipt = JSON.parse(rawReceipt.toString("utf8")); } catch { console.error("PROVENANCE-RØD: kvittering er ikke gyldig JSON"); process.exit(1); }
   const fejl = (m) => { console.error(`PROVENANCE-RØD: ${m}`); process.exit(1); };
   const isPlain = (o) => o !== null && typeof o === "object" && !Array.isArray(o) && Object.getPrototypeOf(o) === Object.prototype;
-  if (!isPlain(receipt) || receipt.schema_version !== 1) fejl("kvittering: ukendt schema");
+  if (!isPlain(receipt) || receipt.schema_version !== 2) fejl("kvittering: ukendt schema (kræver v2 — codex-run.sh v4)");
   if (receipt.status !== "success") fejl(`transporten leverede ikke (status=${String(receipt.status)}) — der findes intet gyldigt aktør-resultat`);
-  if (typeof receipt.lock_mode !== "string" || receipt.lock_mode !== "committed") fejl(`kørslen brugte lås-override (${String(receipt.lock_mode)}) — ikke gyldig som gate-evidens`);
+  if (receipt.selftest !== false) fejl("kørslen var en SELVTEST (eller flaget mangler) — ikke gyldig som gate-evidens (F-11)");
+  if (receipt.lock_mode !== "committed") fejl(`kørslen brugte lås-override (${String(receipt.lock_mode)}) — ikke gyldig som gate-evidens`);
+  if (receipt.aktivitet !== "dom") fejl(`aktivitet '${String(receipt.aktivitet)}' ≠ dom — en gate-dom kommer kun fra en dom-kørsel (F-10)`);
+  const gi = receipt.gate_input;
+  if (!isPlain(gi) || gi.gate_id !== gateId || gi.gated_commit !== gatedCommit || gi.artifact_path !== artifactPath)
+    fejl(`kvitteringens gate_input (${JSON.stringify(gi)}) ≠ (${gateId}, ${gatedCommit.slice(0, 7)}, ${artifactPath}) — dommen er skrevet på et andet input (F-10)`);
   const at = receipt.attempts;
   if (!Array.isArray(at) || at.length < 1 || at.length > 2) fejl(`ugyldigt antal forsøg (${Array.isArray(at) ? at.length : "?"})`);
   for (const [i, a] of at.entries()) {
@@ -60,12 +69,29 @@ if (receiptPath !== undefined) {
   }
   const last = at[at.length - 1];
   if (last.rc !== 0 || !(Number(last.output_bytes) > 0) || typeof last.output_sha256 !== "string") fejl("sidste forsøg leverede ikke (rc≠0 eller tom)");
-  for (const k of ["model", "effort", "regel_commit", "skill_oid", "prompt_sha256", "rolle"]) if (typeof receipt[k] !== "string" || !receipt[k]) fejl(`kvittering mangler ${k}`);
-  // BIND leverancen: bytes her ↔ kvittering ↔ draft (hashen beregnes, erklæres ikke)
-  const levSha = sha256(readFileSync(leverancePath));
+  for (const k of ["model", "effort", "regel_commit", "skill_oid", "prompt_sha256", "rolle", "run_id"]) if (typeof receipt[k] !== "string" || !receipt[k]) fejl(`kvittering mangler ${k}`);
+  // BIND leverancen: bytes her ↔ kvittering (hashen beregnes, erklæres ikke)
+  const levBytes = readFileSync(leverancePath);
+  const levSha = sha256(levBytes);
   if (levSha !== last.output_sha256) fejl(`leverance-fil (${levSha.slice(0, 12)}) ≠ kvitteringens output_sha256 (${String(last.output_sha256).slice(0, 12)})`);
-  if (draft.raw_output_sha256 !== levSha) fejl(`draft.raw_output_sha256 (${String(draft.raw_output_sha256).slice(0, 12)}) ≠ faktisk leverance (${levSha.slice(0, 12)})`);
+  // DRAFT FRA LEVERANCEN (F-10): dommen kan ikke byttes uafhængigt af den leverede tekst
+  const blokke = [...levBytes.toString("utf8").matchAll(/```json verdikt-draft\n([\s\S]*?)\n```/g)];
+  if (blokke.length !== 1) fejl(`leverancen skal indeholde PRÆCIS én \`\`\`json verdikt-draft-blok (fandt ${blokke.length})`);
+  try { draft = JSON.parse(blokke[0][1]); } catch { fejl("verdikt-draft-blokken er ikke gyldig JSON"); }
+  if (draftPath !== "-") {
+    const separat = JSON.parse(readFileSync(draftPath, "utf8"));
+    if (canon(separat) !== canon(draft)) fejl("separat draft.json ≠ verdikt-draft-blokken i leverancen (dommen forsøgt byttet)");
+  }
+  if (draft.raw_output_sha256 !== undefined && draft.raw_output_sha256 !== levSha) fejl("draft.raw_output_sha256 ≠ faktisk leverance");
+  draft.raw_output_sha256 = levSha; // hashen ER leverancen — aldrig erklæret
   if (typeof draft.effort === "string" && draft.effort.length > 0 && draft.effort !== receipt.effort) fejl(`draft.effort='${draft.effort}' ≠ kørt effort='${receipt.effort}'`);
+  if (draft.aktor !== "codex") fejl(`kvitterings-mode kræver aktor 'codex' (fik '${String(draft.aktor)}')`);
+} else {
+  if (draftPath === "-") { console.error("brug: draft.json kræves uden kvittering"); process.exit(2); }
+  draft = JSON.parse(readFileSync(draftPath, "utf8"));
+  if (draft.aktor === "codex") {
+    console.error("PROVENANCE-RØD: Codex-verdikt uden transport-kvittering — en Codex-dom kan ikke konstrueres uden et Codex-kald (P2 F-2)"); process.exit(1);
+  }
 }
 const gate = GATE_REGISTRY.find((g) => g.id === gateId);
 if (!gate) { console.error(`ukendt gate: ${gateId}`); process.exit(2); }
@@ -106,16 +132,26 @@ const evidence = draft.evidence.map((e) => {
   return { commit_sha: gatedCommit, path: e.path, blob_oid, line_span: e.line_span, excerpt_sha: sha256(excerpt) };
 });
 
+// rolle-binding (F-10): kvitteringens rolle skal være en codex-rolle i låsen @ regel_commit med samme skill_oid
+if (receipt) {
+  let lock;
+  try { lock = JSON.parse(git.bytes("show", `${receipt.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8")); }
+  catch { console.error(`PROVENANCE-RØD: actors.lock.json findes ikke @ kvitteringens regel_commit ${String(receipt.regel_commit).slice(0, 7)}`); process.exit(1); }
+  const r = Object.prototype.hasOwnProperty.call(lock, receipt.rolle) ? lock[receipt.rolle] : null;
+  if (!r || r.aktoer !== "codex" || r.skill_oid !== receipt.skill_oid || r.model !== receipt.model || r.reasoning !== receipt.effort) {
+    console.error(`PROVENANCE-RØD: kvitteringens rolle '${receipt.rolle}' matcher ikke låsen @ ${String(receipt.regel_commit).slice(0, 7)} (aktoer/skill_oid/model/effort)`); process.exit(1);
+  }
+}
 // kørsels-fakta fra transportens KVITTERING (aldrig fra aktørens erklæring, når den findes)
 const run = {
   run_id: receipt ? receipt.run_id : (draft.run_id ?? `lokal-${gateId}-${draft.aktor}`),
   run_attempt: receipt ? receipt.attempts.length : 1,
   raw_output_sha256: draft.raw_output_sha256,
   actor_server_id: receipt
-    ? `local-driver-spawn via codex-run.sh v3 (kvittering ${receipt.run_id}; usigneret = residual til CI actor-runner)`
+    ? `local-driver-spawn via codex-run.sh v4 (kvittering ${receipt.run_id}; usigneret = residual til CI actor-runner, DEL I: lokal = candidate)`
     : "local-driver-spawn (SELV-ERKLÆRET run/effort — ingen transport-kvittering; kun tilladt for Claude-Agent-aktører; server-provenance = residual til CI actor-runner)",
 };
-if (receipt) run.effort = receipt.effort; // M-39 pkt. 4 + M-41 A3: det kørte niveau
+if (receipt) { run.effort = receipt.effort; run.receipt_sha256 = receiptSha; }
 else if (typeof draft.effort === "string" && draft.effort.length > 0) run.effort = draft.effort;
 const verdikt = {
   schema_version: 1,

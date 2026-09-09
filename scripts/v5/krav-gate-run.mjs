@@ -14,6 +14,8 @@ import { makeProofVerifier } from "./proofs.mjs";
 import { makeVerdictVerifier } from "./verdikt.mjs";
 import { runReconGate } from "./recon-gate-run.mjs";
 import { makeGit } from "./git.mjs";
+import { resolveEvidence, makeApprovalVerifier, makeTransportVerifier } from "./kvittering.mjs";
+import { DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
@@ -48,8 +50,9 @@ export function runKravGate(commitSha, { root = repoRoot, evidenceRef = "HEAD" }
   }
 }
 
-function runKravGateInner(commitSha, root, evidenceRef) {
+function runKravGateInner(commitSha, root, evidenceRefIn) {
   const git = makeGit(root);
+  const evidenceRef = resolveEvidence(git, evidenceRefIn); // P2 F-7: ÉN opløsning
   const launch = JSON.parse(git.bytes("show", `${commitSha}:launch/launch.json`).toString("utf8"));
   const pakke = launch.pakke;
   const snapshot = buildSnapshot("krav", { git, commitSha, pakke });
@@ -81,11 +84,18 @@ function runKravGateInner(commitSha, root, evidenceRef) {
     artifact_oid: snapshot.bindings?.recon?.oid ?? null,
   };
 
-  return evaluateGate(
+  const r = evaluateGate(
     "krav",
     { ...snapshot, verdicts, approval, predecessor },
-    { verifyProof: makeProofVerifier({ git }), verifyVerdict: makeVerdictVerifier({ git }) },
+    {
+      verifyProof: makeProofVerifier({ git }),
+      verifyVerdict: makeVerdictVerifier({ git }),
+      // kvittering kræves for alt undtagen den digest-bundne M-38-godkendelse / r4b-verdiktet (gates.mjs)
+      verifyApproval: makeApprovalVerifier({ git, pakke, evidenceRef }),
+      verifyTransport: makeTransportVerifier({ git, pakke, evidenceRef, gateId: "krav", commitSha, artifactPath: DEFAULT_LAYOUT.krav.replaceAll("<pakke>", pakke) }),
+    },
   );
+  return { ...r, evidence_commit: evidenceRef };
 }
 
 // symlink-sikker CLI-detektion (batch-pas-fund: import.meta.url ≠ argv[1] gennem

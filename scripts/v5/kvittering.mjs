@@ -9,18 +9,22 @@
 //   bindings_oids, scope_digest, prerequisite_digests (de endelige verdikters digests),
 //   fremlaeggelse {path, blob_oid}, devil {path, blob_oid, dom:"PASS"}, frosset (ISO) }.
 // Approval (senere commit) bærer kvittering_digest = sha256(kvitteringens committede bytes).
-// Kernen (gates.mjs, gate.approvalReceipt) kræver frisk verifyApproval, som her beviser:
+// Kernen (gates.mjs, gate.approvalReceipt) kræver frisk verifyApproval, som her kontrollerer (mekanisk,
+// mod git-historik — IKKE en autentificeret menneske-hændelse; se residual nederst):
 //   (1) digest: approval.kvittering_digest == sha256 af kvitteringen @ evidenceRef
 //   (2) indhold: gate/pakke/artefakt/bindinger/scope/prerequisite_digests == gatens FAKTISKE
 //   (3) fremlæggelse + devil-dom er de COMMITTEDE blobs @ evidenceRef (den tekst han så)
-//   (4) RÆKKEFØLGE: kvitteringens sidste berørings-commit er ÆGTE forfader til approvalens
-//       (aldrig samme commit, aldrig efter) — git-historik = beviset, som ved blindhed.
+//   (4) RÆKKEFØLGE i git-historikken: kvitteringens sidste berørings-commit er ÆGTE forfader til
+//       approvalens (aldrig samme commit, aldrig efter). Det beviser commit-orden, ikke hvem der skrev
+//       approval-filen — den autentiske menneske-hændelse (server-verificeret mgrubak) er CI-approver-
+//       flowets bord.
 // Enhver ændring efter kvitteringen (ny tekst, nyt verdikt) → ny kvittering + ny fremlæggelse.
 // DEKLARERET RESIDUAL: kvitteringen er ikke signeret af en betroet server (CI-approver-flow,
 // plan DEL V/2.F). Lokalt hviler den på git-historik + fabrik-frys — samme tillidsniveau som
 // alt andet i den lokale gate-dom, og ærligt stærkere end digests alene.
 import { createHash } from "node:crypto";
-import { isOid } from "./gates.mjs";
+import { isOid, digestOf, HISTORISKE_UNDTAGELSER } from "./gates.mjs";
+export const PROVENANCE_DIR = (pakke) => `plan-build/${pakke}/provenance`;
 
 const hasOwn = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 const isPlain = (o) => o !== null && typeof o === "object" && !Array.isArray(o) && (Object.getPrototypeOf(o) === Object.prototype || Object.getPrototypeOf(o) === null);
@@ -75,12 +79,22 @@ export function validateKvittering(kv, ctx) {
 
 // makeApprovalVerifier({git, pakke, evidenceRef, paths?}) → verifyApproval(approval, ctx) → {ok, reasons}
 // git = makeGit(root) · evidenceRef = commit/ref hvor kvittering + approval + fremlæggelse er committet.
+// resolveEvidence(git, ref) → pinned commit-OID (P2 F-7: HEAD må aldrig læses flere gange under en dom —
+// to læsninger under et ref-skift blandede to ugyldige tilstande til én grøn). Runnere opløser ÉN gang og
+// giver OID'en videre til alle verifikatorer og læsninger.
+export function resolveEvidence(git, ref = "HEAD") {
+  const oid = git("rev-parse", "--verify", `${ref}^{commit}`);
+  if (!isOid(oid)) throw new Error(`evidens-ref '${ref}' opløser ikke til en commit`);
+  return oid;
+}
+
 export function makeApprovalVerifier({ git, pakke, evidenceRef = "HEAD", paths } = {}) {
   if (typeof git !== "function") throw new Error("makeApprovalVerifier: git-dep mangler");
   if (typeof pakke !== "string" || !PAKKE_RE.test(pakke)) throw new Error("makeApprovalVerifier: ugyldig pakke");
+  const E = resolveEvidence(git, evidenceRef); // pinned én gang (F-7)
   return (approval, ctx) => {
     try {
-      return verifyInner(git, pakke, evidenceRef, paths, approval, ctx);
+      return verifyInner(git, pakke, E, paths, approval, ctx);
     } catch (e) {
       return { ok: false, reasons: [`verifyApproval kastede (fail-closed): ${e?.message ?? String(e)}`] };
     }
@@ -102,11 +116,24 @@ function verifyInner(git, pakke, evidenceRef, paths, approval, ctx) {
   const v = validateKvittering(kv, { ...ctx, pakke });
   reasons.push(...v.reasons);
   if (v.ok) {
-    // (3) den tekst Mathias så + devilens PASS er de committede blobs @ evidenceRef
+    // (3) den tekst Mathias så + devilens dom er de committede BLOBS @ evidens-commit (P2 F-6: et tree-OID
+    // for en mappe "findes" også — typen skal være blob)
     for (const f of ["fremlaeggelse", "devil"]) {
-      let oid = null;
-      try { oid = git("rev-parse", "--verify", "--quiet", `${evidenceRef}:${kv[f].path}`); } catch { oid = null; }
-      if (oid !== kv[f].blob_oid) fail(`${f}: ${kv[f].path} @ ${evidenceRef} er ${oid ? oid.slice(0, 12) : "fraværende"} ≠ kvitteringens blob ${kv[f].blob_oid.slice(0, 12)} (teksten er ændret efter kvitteringen)`);
+      let oid = null, type = null;
+      try { oid = git("rev-parse", "--verify", "--quiet", `${evidenceRef}:${kv[f].path}`); type = git("cat-file", "-t", oid); } catch { oid = null; }
+      if (oid !== kv[f].blob_oid) fail(`${f}: ${kv[f].path} @ ${evidenceRef.slice(0, 7)} er ${oid ? oid.slice(0, 12) : "fraværende"} ≠ kvitteringens blob ${kv[f].blob_oid.slice(0, 12)} (teksten er ændret efter kvitteringen)`);
+      else if (type !== "blob") fail(`${f}: ${kv[f].path} er ikke en fil (git-type ${String(type)})`);
+    }
+    // (3b) devilens DOM læses fra blobben — kvitteringens dom:"PASS" er en påstand, blobben er kilden (P2 F-5).
+    // Devil-filen er JSON: { konklusion: "PASS", fremlaeggelse_blob: <oid af den dømte fremlæggelse>, … }
+    if (!reasons.length) {
+      let devil = null;
+      try { devil = JSON.parse(git.bytes("show", `${evidenceRef}:${kv.devil.path}`).toString("utf8")); } catch { devil = null; }
+      if (!isPlain(devil)) fail("devil: filen er ikke et JSON-objekt — dommen kan ikke læses");
+      else {
+        if (devil.konklusion !== "PASS") fail(`devil: blobbens konklusion er '${String(devil.konklusion)}', ikke PASS — kvitteringens dom:PASS modsiges af kilden`);
+        if (devil.fremlaeggelse_blob !== kv.fremlaeggelse.blob_oid) fail(`devil: dommen gælder fremlæggelses-blob ${String(devil.fremlaeggelse_blob).slice(0, 12)}, ikke kvitteringens ${kv.fremlaeggelse.blob_oid.slice(0, 12)}`);
+      }
     }
   }
   // (4) rækkefølge: kvitteringens sidste berøring er ÆGTE forfader til approvalens sidste berøring
@@ -123,4 +150,86 @@ function verifyInner(git, pakke, evidenceRef, paths, approval, ctx) {
     }
   }
   return { ok: reasons.length === 0, reasons };
+}
+
+// ---------- TRANSPORT-kvittering (codex-run.sh $OUT.receipt.json) — P2 F-2/F-10 ----------
+// makeTransportVerifier({git, pakke, evidenceRef, gateId, commitSha, artifactPath}) → verifyTransport(verdicts)
+// For hvert verdikt m. aktor "codex": run.receipt_sha256 SKAL findes, og en fil *.receipt.json i
+// plan-build/<pakke>/provenance/ @ evidenceRef SKAL hashe til den; kvitteringen SKAL være status success,
+// selftest false, lock_mode committed, aktivitet dom, gate_input == {gateId, commitSha, artifactPath}, og
+// attempts.last.output_sha256 == verdiktets run.raw_output_sha256 (leverancen der bærer dommen).
+// Claude-Agent-aktører (code · code-reviewer · claude-ai) har ingen wrapper → SELV-ERKLÆRET (deklareret
+// residual til CI actor-runner) — de springes over her, men kræves at have IKKE receipt_sha256 (ingen
+// forfalsket transport-lighed).
+const SHA256 = /^[0-9a-f]{64}$/;
+export function validateTransportReceipt(r, ctx) {
+  const reasons = [];
+  const fail = (m) => reasons.push(`transport-kvittering: ${m}`);
+  if (!isPlain(r)) return { ok: false, reasons: ["transport-kvittering: ikke et plain object"] };
+  if (r.schema_version !== 2) fail(`schema_version ${String(r.schema_version)} ≠ 2`);
+  if (r.status !== "success") fail(`status '${String(r.status)}' ≠ success`);
+  if (r.selftest === true || r.selftest !== false) fail("selftest-flag mangler eller er sat — kørslen er ikke gate-evidens");
+  if (r.lock_mode !== "committed") fail(`lock_mode '${String(r.lock_mode)}' ≠ committed`);
+  if (r.aktivitet !== "dom") fail(`aktivitet '${String(r.aktivitet)}' ≠ dom (en gate-dom skrives kun af en dom-kørsel)`);
+  const gi = r.gate_input;
+  if (!isPlain(gi)) fail("gate_input mangler — kørslen var ikke bundet til nogen gate");
+  else {
+    if (gi.gate_id !== ctx.gateId) fail(`gate_input.gate_id '${String(gi.gate_id)}' ≠ '${ctx.gateId}'`);
+    if (gi.gated_commit !== ctx.commitSha) fail("gate_input.gated_commit ≠ gatens pinnede commit");
+    if (gi.artifact_path !== ctx.artifactPath) fail(`gate_input.artifact_path '${String(gi.artifact_path)}' ≠ '${ctx.artifactPath}'`);
+  }
+  for (const k of ["rolle", "model", "effort", "regel_commit", "skill_oid", "prompt_sha256", "run_id"]) if (typeof r[k] !== "string" || !r[k]) fail(`mangler ${k}`);
+  const at = Array.isArray(r.attempts) ? r.attempts : null;
+  if (!at || at.length < 1 || at.length > 2) fail("ugyldigt antal forsøg");
+  else {
+    for (const [i, a] of at.entries()) if (!isPlain(a) || a.attempt !== i + 1 || a.model !== r.model || a.effort !== r.effort || a.sandbox !== r.sandbox) fail(`forsøg ${i + 1} ude af rækkefølge eller med anden model/effort/sandbox`);
+    const last = at[at.length - 1];
+    if (!isPlain(last) || last.rc !== 0 || !(Number(last.output_bytes) > 0) || !SHA256.test(String(last.output_sha256))) fail("sidste forsøg leverede ikke");
+    else if (ctx.rawOutputSha256 !== undefined && last.output_sha256 !== ctx.rawOutputSha256) fail(`leverance (${String(last.output_sha256).slice(0, 12)}) ≠ verdiktets raw_output_sha256 (${String(ctx.rawOutputSha256).slice(0, 12)})`);
+  }
+  return { ok: reasons.length === 0, reasons };
+}
+
+export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId, commitSha, artifactPath } = {}) {
+  if (typeof git !== "function") throw new Error("makeTransportVerifier: git-dep mangler");
+  if (typeof pakke !== "string" || !PAKKE_RE.test(pakke)) throw new Error("makeTransportVerifier: ugyldig pakke");
+  if (typeof gateId !== "string" || !isOid(commitSha) || typeof artifactPath !== "string") throw new Error("makeTransportVerifier: gate/commit/artefakt kræves");
+  const E = resolveEvidence(git, evidenceRef); // pinned én gang (F-7)
+  return (verdicts) => {
+    try {
+      const reasons = [];
+      if (!Array.isArray(verdicts)) return { ok: false, reasons: ["verifyTransport: verdicts er ikke et array"] };
+      // alle committede kvitteringer @ evidenceRef, hashet én gang
+      let filer = [];
+      try { filer = git("ls-tree", "--name-only", `${E}:${PROVENANCE_DIR(pakke)}`).split("\n").filter((f) => /\.receipt\.json$/.test(f)); } catch { filer = []; }
+      const bySha = new Map();
+      for (const f of filer) {
+        const bytes = git.bytes("show", `${E}:${PROVENANCE_DIR(pakke)}/${f}`);
+        bySha.set(kvitteringDigest(bytes), { f, bytes });
+      }
+      for (const v of verdicts) {
+        if (!isPlain(v) || !isPlain(v.run)) { reasons.push("verdikt/run ugyldig"); continue; }
+        const rs = v.run.receipt_sha256;
+        if (v.aktor !== "codex") {
+          if (rs !== undefined) reasons.push(`${String(v.aktor)}: receipt_sha256 på en aktør uden transport-kvittering (forfalsket lighed)`);
+          continue; // SELV-ERKLÆRET residual (Claude-Agent-aktører) — deklareret
+        }
+        if (!SHA256.test(String(rs))) {
+          // PRÆCIS det historiske r4b-verdikt (digest-bundet) accepteres uden kvittering — intet andet
+          let historisk = false;
+          try { historisk = rs === undefined && HISTORISKE_UNDTAGELSER.verdikter.includes(digestOf(v)); } catch { historisk = false; } // u-digestbart verdikt = ikke historisk
+          if (historisk) continue;
+          reasons.push("codex: run.receipt_sha256 mangler — dommen er ikke bundet til nogen kørsel (F-2; ikke en registreret historisk undtagelse)"); continue;
+        }
+        const hit = bySha.get(rs);
+        if (!hit) { reasons.push(`codex: ingen committet kvittering @ ${E.slice(0, 7)}:${PROVENANCE_DIR(pakke)} hasher til ${rs.slice(0, 12)}`); continue; }
+        let r; try { r = JSON.parse(hit.bytes.toString("utf8")); } catch { reasons.push(`codex: kvittering ${hit.f} er ikke JSON`); continue; }
+        const val = validateTransportReceipt(r, { gateId, commitSha, artifactPath, rawOutputSha256: v.run.raw_output_sha256 });
+        if (!val.ok) reasons.push(...val.reasons.map((x) => `codex (${hit.f}): ${x}`));
+      }
+      return { ok: reasons.length === 0, reasons };
+    } catch (e) {
+      return { ok: false, reasons: [`verifyTransport kastede (fail-closed): ${e?.message ?? String(e)}`] };
+    }
+  };
 }

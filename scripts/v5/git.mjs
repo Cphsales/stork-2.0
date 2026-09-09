@@ -12,7 +12,8 @@ const MAX_BUFFER = 64 * 1024 * 1024;
 // lossy string-decode ellers ville gøre citat-bevis upålideligt.
 export function makeGit(repoRoot) {
   const exec = (args, encoding) =>
-    execFileSync("git", ["-C", repoRoot, ...args], {
+    // F-13 (P2 2026-09-09): refs/replace må aldrig ændre hvad en OID betyder for en gate-dom
+    execFileSync("git", ["--no-replace-objects", "-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: MAX_BUFFER,
       ...(encoding === null ? {} : { encoding }),

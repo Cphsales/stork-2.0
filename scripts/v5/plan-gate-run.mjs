@@ -12,7 +12,8 @@
 import { evaluateGate } from "./gates.mjs";
 import { buildSnapshot } from "./gate-eval.mjs";
 import { makeVerdictVerifier } from "./verdikt.mjs";
-import { makeApprovalVerifier } from "./kvittering.mjs";
+import { makeApprovalVerifier, makeTransportVerifier, resolveEvidence } from "./kvittering.mjs";
+import { DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { runKravGate, vaelgVerdikter } from "./krav-gate-run.mjs";
 import { makeGit } from "./git.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -29,8 +30,9 @@ export function runPlanGate(commitSha, { root = repoRoot, evidenceRef = "HEAD" }
   }
 }
 
-function runPlanGateInner(commitSha, root, evidenceRef) {
+function runPlanGateInner(commitSha, root, evidenceRefIn) {
   const git = makeGit(root);
+  const evidenceRef = resolveEvidence(git, evidenceRefIn); // P2 F-7: ÉN opløsning, samme E i alle læsninger + forgænger + verifikatorer
   const launch = JSON.parse(git.bytes("show", `${commitSha}:launch/launch.json`).toString("utf8"));
   const pakke = launch.pakke;
   const snapshot = buildSnapshot("plan", { git, commitSha, pakke });
@@ -50,14 +52,16 @@ function runPlanGateInner(commitSha, root, evidenceRef) {
     artifact_oid: snapshot.bindings?.krav?.oid ?? null,
   };
 
-  return evaluateGate(
+  const r = evaluateGate(
     "plan",
     { ...snapshot, verdicts, approval, predecessor },
     {
       verifyVerdict: makeVerdictVerifier({ git }),
       verifyApproval: makeApprovalVerifier({ git, pakke, evidenceRef }),
+      verifyTransport: makeTransportVerifier({ git, pakke, evidenceRef, gateId: "plan", commitSha, artifactPath: DEFAULT_LAYOUT.plan.replaceAll("<pakke>", pakke) }),
     },
   );
+  return { ...r, evidence_commit: evidenceRef };
 }
 
 // symlink-sikker CLI-detektion (samme mønster som krav-gate-run)

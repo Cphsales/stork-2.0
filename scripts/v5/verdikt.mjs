@@ -49,7 +49,10 @@ const RUN_KEYS = Object.freeze(["run_id", "run_attempt", "raw_output_sha256", "a
 // M-39 pkt. 4 (2026-09-08): effort LOGGES i provenance — VALGFRIT felt (historiske
 // verdikter uden det består; nye kørsler bærer det, så pin-afvigelser er synlige).
 // Ændrer IKKE model/effort-pinnen (M-31/M-33: xhigh) — kun ærlig registrering.
-const RUN_OPTIONAL_KEYS = Object.freeze(["effort"]);
+// M-41 A3 (P2 F-2/F-10): receipt_sha256 = sha256 af transport-kvitteringen (codex-run.sh) — gate-
+// runnerens verifyTransport slår den op i det committede provenance-arkiv og binder dommen til
+// kørslen (rolle · aktivitet=dom · gate_input · leverance-hash). Valgfrit for Claude-aktører (residual).
+const RUN_OPTIONAL_KEYS = Object.freeze(["effort", "receipt_sha256"]);
 export const CONCLUSIONS = Object.freeze(["PASS", "FAIL", "HALT"]);
 
 export function validateVerdiktSchema(v) {

@@ -30,6 +30,16 @@ const deepFreeze = (o) => {
   return o;
 };
 
+// HISTORISKE UNDTAGELSER (M-41 / P2-gates runde 2 F-1: en undtagelse skal være MEKANISK afgrænset til den
+// historiske godkendelse, ikke til en gate). Krav-gaten for lokations-skabelon blev godkendt (M-38, 2026-09-08
+// 15:06) og dømt på r4b-verdikter FØR kvitterings-kæden (godkendelses- + transport-kvittering) fandtes. PRÆCIS
+// disse artefakter (kanonisk digest) accepteres uden kvittering — enhver anden krav-approval eller ethvert nyt
+// Codex-verdikt på krav-gaten kræver kvittering. Listen udvides ALDRIG uden Mathias' ord + DEL VIII-punkt.
+export const HISTORISKE_UNDTAGELSER = deepFreeze({
+  approvals: ["5b8f3922db1c4932e8473f6235aeac16223a447ac1c344d99cc931f4413efe14"], // digestOf(krav-approval.approval), M-38
+  verdikter: ["992467d66b0cd64de2d4a22b6892cbaffa02a7f7790d328ae706ad0905114e37"], // digestOf(verdikt-codex-krav-r4b), 2026-09-08 15:10
+});
+
 export const GATE_REGISTRY = deepFreeze([
   {
     id: "recon",
@@ -42,6 +52,7 @@ export const GATE_REGISTRY = deepFreeze([
     approver: null,
     orderedApproval: false,
     approvalReceipt: false,
+    transportReceipt: false,
   },
   {
     id: "krav",
@@ -53,11 +64,12 @@ export const GATE_REGISTRY = deepFreeze([
     expectedActors: ["code", "codex"],
     approver: APPROVER,
     orderedApproval: true,
-    // HISTORISK UNDTAGELSE (M-41, validering V-F1): krav-gaten for lokations-skabelon
-    // blev godkendt (M-38 15:06) FØR kvitterings-kæden fandtes — r4b-verdikterne kom
-    // 15:10. Hullet er DOKUMENTERET (plan Fase 2 pkt. 5), ikke retro-fikset: en
-    // kvittering kan ikke fabrikeres bagud. Fra plan-gaten og frem er kvittering et krav.
-    approvalReceipt: false,
+    // Kvittering KRÆVES også her — den historiske M-38-godkendelse og r4b-Codex-verdiktet er de ENESTE
+    // undtagelser, afgrænset ved digest i HISTORISKE_UNDTAGELSER (P2 F-1 runde 2: en gate-bred undtagelse
+    // lod nye krav-run-ID'er m. genberegnet approval passere uden kvittering). Hullet i M-38's rækkefølge er
+    // DOKUMENTERET (plan Fase 2 pkt. 5), ikke retro-fikset — en kvittering kan ikke fabrikeres bagud.
+    approvalReceipt: true,
+    transportReceipt: true,
   },
   {
     id: "plan",
@@ -80,6 +92,9 @@ export const GATE_REGISTRY = deepFreeze([
     // sendes, approval refererer dens digest, og kernen kræver frisk verifyApproval:
     // digest · indhold · commit-orden (kvittering er ægte forfader til approval).
     approvalReceipt: true,
+    // P2 F-2/F-10: hvert Codex-verdikt SKAL bæres af en committet transport-kvittering (codex-run.sh)
+    // bundet til netop denne gate/commit/artefakt — en Codex-dom kan ikke konstrueres uden et Codex-kald.
+    transportReceipt: true,
   },
   {
     id: "build",
@@ -92,6 +107,7 @@ export const GATE_REGISTRY = deepFreeze([
     approver: null,
     orderedApproval: false,
     approvalReceipt: false,
+    transportReceipt: false, // ingen aktør-verdikter på build (maskinbevis)
   },
   {
     id: "slut",
@@ -104,6 +120,7 @@ export const GATE_REGISTRY = deepFreeze([
     approver: APPROVER,
     orderedApproval: false,
     approvalReceipt: true, // slut-gaten binder også maskinbeviset i kvitteringen (princip 9)
+    transportReceipt: false, // ingen aktør-verdikter på slut
   },
 ]);
 
@@ -317,6 +334,17 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
   } else if (hasOwn(snapshot, "verdicts") && Array.isArray(snapshot.verdicts) && snapshot.verdicts.length > 0) {
     fail("uventede verdikter på gate uden expectedActors (fail-closed)");
   }
+  // 5b) transport-kvittering (M-41 A3 / P2 F-2, F-10): på gater m. transportReceipt SKAL Codex-verdikter
+  // være bundet til en committet codex-run-kvittering for PRÆCIS denne gate/commit/artefakt. Kernen
+  // kræver deppen og lader dens friske dom afgøre (kvittering.mjs: makeTransportVerifier).
+  if (gate.expectedActors.length > 0 && gate.transportReceipt) {
+    if (typeof deps.verifyTransport !== "function")
+      fail("verifyTransport-dep mangler (fail-closed: ingen frisk transport-kvitterings-verifikation = rød)");
+    else if (Array.isArray(snapshot.verdicts)) {
+      const rt = deps.verifyTransport(snapshot.verdicts);
+      if (rt?.ok !== true) fail(`frisk verifyTransport fejlede: ${(rt?.reasons ?? ["intet resultat"]).join("; ")}`);
+    }
+  }
 
   // 6) approver: server-verificeret login + indholds-bundet scope (anti-replay) + rækkefølge-bevis
   if (gate.approver !== null) {
@@ -355,11 +383,14 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
       // approval, verificeret frisk mod git: digest · indhold · commit-orden) beviser at
       // godkendelsen kom EFTER de endelige verdikter og den præcise fremlæggelse.
       if (gate.approvalReceipt) {
-        if (!hasOwn(a, "kvittering_digest") || !/^[0-9a-f]{64}$/.test(String(a.kvittering_digest)))
-          fail("approval: kvittering_digest mangler/ugyldig (hændelseskæden er ubevist)");
-        if (typeof deps.verifyApproval !== "function")
+        const historisk = !hasOwn(a, "kvittering_digest") && HISTORISKE_UNDTAGELSER.approvals.includes(digestOf(a));
+        if (historisk) {
+          // registreret historisk godkendelse (M-38) — accepteres uden kvittering, PRÆCIS denne (digest-bundet)
+        } else if (!hasOwn(a, "kvittering_digest") || !/^[0-9a-f]{64}$/.test(String(a.kvittering_digest)))
+          fail("approval: kvittering_digest mangler/ugyldig (hændelseskæden er ubevist; ikke en registreret historisk undtagelse)");
+        if (!historisk && typeof deps.verifyApproval !== "function")
           fail("verifyApproval-dep mangler (fail-closed: ingen frisk kvitterings-verifikation = rød)");
-        else if (hasOwn(a, "kvittering_digest")) {
+        else if (!historisk && hasOwn(a, "kvittering_digest")) {
           const ra = deps.verifyApproval(a, { gateId, expectedScope, verdictDigests: [...verdictDigests], artifactOid, expectedOids });
           if (ra?.ok !== true) fail(`frisk verifyApproval fejlede: ${(ra?.reasons ?? ["intet resultat"]).join("; ")}`);
         }
