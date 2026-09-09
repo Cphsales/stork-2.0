@@ -15,3 +15,13 @@ supabase/.branches/
 
 # Codex review-output er raw AI-output (ikke menneske-skrevet markdown — fri-tekst)
 docs/coordination/codex-reviews/
+
+# v5 (M-41): blob-bundne gate-artefakter og rå aktør-output må ALDRIG reformatteres —
+# en reformattering ændrer blob-OID og bryder gate-bindingen (krav/plan/recon/launch)
+plan-build/
+docs/sandhed/
+launch/
+recon/
+# fabrikkens egne artefakter er blob-bundne (hærdet-register + actors.lock skill_oid) — blob-stabilitet > formatering
+scripts/v5/
+docs/workflow-faerdiggoerelse/

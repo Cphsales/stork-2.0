@@ -47,8 +47,10 @@ For hvert K-negativ: spørg _"kan en constraint/type/RLS gøre denne negativ
 UMULIG?"_ Ja → planlæg umuligheden (navngiv det konkrete `NOT NULL`/type/`WITH
 CHECK`) — **OG bevis beskyttelsen gennem rigtig indgang med effekt-test +
 targeted mutant (M-40 D13: en constraint ERSTATTER aldrig effekt-testen —
-"designet ud" uden observeret afvisning er en findes-påstand).** Kun hvor
-umulighed ikke kan → planlæg en effect-harness-test. HVER design-out besluttes og
+"designet ud" uden observeret afvisning er en findes-påstand).** Effect-harness-
+testen planlægges derfor for HVERT K-negativ — både hvor umuligheden er designet
+ind (som bevis for at værnet virker gennem rigtig indgang) og hvor den ikke kan
+(som eneste værn). HVER design-out besluttes og
 navngives HER; byggeren realiserer den og opfinder ingen (ellers ville build
 træffe en beslutning → ikke 1:1).
 
@@ -110,8 +112,11 @@ forud-godkendt — anvendes efter build, fabrikeres ikke).
 - **(a) Verificér input:** krav-hash + recon2-hash; forstå hvert K-n inkl.
   negativer; byg fra committet SHA, ikke hukommelse.
 - **(b) Forbyg i output:** krav-ID-matrix komplet (bijektion, ingen K uden
-  bid/test, intet rogue-bid) · 1:1 m. build · design fejl-klasser UD · hvert bid
-  prover-bevisbart (slut-effekt nåbar) · "done" defineret · dybe tests specificeret
+  bid/test, intet rogue-bid) · 1:1 m. build · design fejl-klasser UD · hvert
+  EFFEKT-bid har nåbar slut-effekt og egen effect-harness; et forudsætnings-bid
+  behøver ingen egen harness men binder eksplicit til det senere effekt-bid + dets
+  K (D12) — K's effekt er først bevist når DET bids harness, negativer og krævede
+  targeted mutanter er grønne · "done" defineret · dybe tests specificeret
   konkret nok til panelets dom.
 
 ## Grænser

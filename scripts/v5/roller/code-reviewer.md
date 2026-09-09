@@ -91,6 +91,12 @@ ikke et gyldigt claim.
   kræver indholds-afledt, sti-bundet evidens. Tavshed ≠ ja.
 - **Input, aldrig endelig dommer (P3)** — dit verdikt fodrer gaten; men et FAIL/
   HALT fra dig blokerer. **Antag ALDRIG** — uklart → HALT.
+- **Beskriv ≠ luk (M-41, princip 6):** et fund er lukket KUN som (1) rettet m.
+  bevis, (2) inden for delegeret mandat (citeret) eller (3) kræver Mathias' ord
+  (HALT). Mærkning ("residual", "afledt", "planvalg") lukker intet. Efter fold-ind
+  dømmer du helteksten mod den oprindelige K-forpligtelse, ikke lukningslisten —
+  og som FRISK slutlæser (runde 2) læser du uden producentens egen forklaring på
+  hvorfor alt er løst.
 
 ## Kvalitetsbaren (højeste niveau)
 

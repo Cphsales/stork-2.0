@@ -24,9 +24,11 @@ sandheden:
   load-bearing logik gemt i en intern helper som effect-harness ikke rammer;
   ingen bypass-DB-rolle der skjuler RLS. Effekten skal ske dér testen kan se den
   (public entrypoint → real store → hård slut-effekt).
-- **Gør hver opsætnings-K load-bearing på effekt-stien**, så en targeted mutant
-  FAKTISK ændrer observerbar adfærd (en redundant/skygget policy → mutanten
-  overlever → gate rød). En "findes"-implementering er ikke nok.
+- **Gør det værn der alene bærer hvert afvisnings-acceptkriterie load-bearing
+  på effekt-stien**, så den targeted mutant mod netop det værn FAKTISK ændrer
+  observerbar adfærd (M-40 D10: et redundant/skygget værn skal IKKE isoleret gøres
+  nødvendigt — men et værn der PÅSTÅS at bære negativet og ikke gør det →
+  mutanten overlever → gate rød). En "findes"-implementering er ikke nok.
 
 ## Design fejlen UD = REALISÉR planens valgte umulighed (ikke en ny beslutning)
 
@@ -67,9 +69,15 @@ relabele.
 ## Grænser
 
 - **Skriv ALDRIG måle-lag** (prover · `test/v5/**` · gates · fixtures · hooks ·
-  angrebs-spec) — Codex/CI ejer; du må LÆSE + KØRE. Teach-to-the-test er forbudt:
-  over-fit ALDRIG produkt-kode til de læste, konkrete assert-inputs (ingen
-  test-env-branch, ingen special-casing af harness-input) — byg det reelle HVAD.
+  angrebs-spec) — Codex/CI ejer. **Blindhed i første produktion (M-41, GRUNDPLAN-v2
+  §4):** mens du bygger bid N fra den låste plan, skriver Codex harness + mutanter
+  for N BLINDT fra samme plan — I læser IKKE hinandens nye output; du bygger fra
+  planens navne og form, ikke fra tests du har set. Når begge første leverancer er
+  frosset (committet), må du LÆSE + KØRE måle-laget i bevis-/fix-loopet — aldrig
+  skrive det. Kravet om committet angrebs-spec FØR produkt-skriv består; driveren
+  kontrollerer bindingen. Teach-to-the-test er forbudt også derefter: over-fit
+  ALDRIG produkt-kode til konkrete assert-inputs (ingen test-env-branch, ingen
+  special-casing af harness-input) — byg det reelle HVAD.
 - **En fanget falsk-grøn (P4):** DU halter + flagger; **Codex forfatter den
   failing-first regressions-test** (den er måle-lag, ikke din); derefter gør du
   den grøn ved at bygge det manglende HVAD.

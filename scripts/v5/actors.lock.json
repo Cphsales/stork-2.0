@@ -73,7 +73,7 @@
   "model": "claude-fable-5-1",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/planner-code.md",
-  "skill_oid": "ce8ebf5ceb4bffcd86dc8879b690c49fc6efe467",
+  "skill_oid": "eb190c0882aebf978dc42efbfd342be8ee8d0dc6",
   "allowed_tools": [
    "Read",
    "Grep",
@@ -93,7 +93,7 @@
   "model": "claude-fable-5-1",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/builder-code.md",
-  "skill_oid": "8c763be94589132bb1809dbbc48b2a2fb5c73929",
+  "skill_oid": "c87da62c5348cc1ac5d7aaee499111b05031c4dc",
   "allowed_tools": [
    "Read",
    "Grep",
@@ -113,7 +113,7 @@
   "model": "claude-fable-5-1",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/code-reviewer.md",
-  "skill_oid": "1c99ae68f1dbbcdf88be56c86816026743e29b8c",
+  "skill_oid": "cf1a135b745b8f709e718bb2257964afb064aeb4",
   "allowed_tools": [
    "Read",
    "Grep",
@@ -131,7 +131,7 @@
   "model": "gpt-6-astra",
   "reasoning": "xhigh",
   "skill_path": "scripts/v5/roller/codex-angreb.md",
-  "skill_oid": "c9ec57257eb13059a6c801d4740d31c7742eaa77",
+  "skill_oid": "f6e64979941b55b57d6000306ccf9404dd2a15d1",
   "allowed_tools": [
    "exec-sandbox"
   ],
