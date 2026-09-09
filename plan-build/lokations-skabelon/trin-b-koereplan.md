@@ -37,7 +37,10 @@ har meldt »Trin A færdig« + SHA** (regler/pins/roller skal være endelige —
 - **Devil-dom på fremlæggelsen er JSON — kontrakt-ændring 4 (B7):** devil-filen der bindes i
   `plan-kvittering.json` skal være JSON med mindst `{ "konklusion": "PASS", "fremlaeggelse_blob": "<oid af den dømte fremlæggelses-fil>" }`
   — kernen læser dommen fra blobben, ikke fra kvitteringens dom-felt. Devil-prompten beder om netop
-  disse felter.
+  disse felter. **Devil-kørslen kører UDEN `STORK_V5_GATE_INPUT`** (dom over fremlæggelses-teksten,
+  ikke gate-verdikt — bekræftet af mathias-9b 09-09 ~14:20); dens `$OUT.receipt.json` arkiveres
+  alligevel som `provenance/plan-devil.receipt.json` (sporbarhed, ikke gate-krav). Receipt-navne for
+  gate-verdikter: `provenance/verdikt-<aktør>-plan.receipt.json` (bekræftet).
 - **`scripts/v5/binaries.lock.json`:** pinner codex-CLI'ens entry (version + sha256). Opdaterer
   preflight CLI'en, SKAL låsen opdateres i en commit FØR næste kald — wrapperen blokerer ellers.
   (Låsen er fabrik-mekanik; driveren melder til fabrik-armen hvis preflight opdaterer.)
