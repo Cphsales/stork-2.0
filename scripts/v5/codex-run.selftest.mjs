@@ -25,21 +25,26 @@ const T = mkdtempSync(join(tmpdir(), "v5-codex-run-"));
 const BIN = join(T, "bin"); mkdirSync(BIN);
 const CALLS = join(T, "calls"); mkdirSync(CALLS);
 // falsk codex: nægter at køre hvis stdin ikke er /dev/null · gemmer argv PR. KALD · sidste arg = prompt
-writeFileSync(join(BIN, "codex"), `#!/usr/bin/env bash
-if [ "\${1:-}" = "--version" ]; then echo "codex-cli FAKE"; exit 0; fi
-n=$(ls "${CALLS}" | wc -l); n=$((n+1))
-printf '%s\\n' "$@" > "${CALLS}/argv.$n"
-[ "$(readlink /proc/self/fd/0)" = "/dev/null" ] || exit 99
-out=""; prev=""; for a in "$@"; do [ "$prev" = "-o" ] && out="$a"; prev="$a"; done
-case "\${FAKE_MODE:-ok}" in
-  ok) echo "RESULTAT $n" > "$out"; exit 0 ;;
-  tom) exit 0 ;;
-  hang) sleep 30; echo "for sent" > "$out"; exit 0 ;;
-  fejl) exit 7 ;;
-  symlink) ln -s /etc/hostname "$out"; exit 0 ;;
-  tomfil) : > "$out"; exit 0 ;;
-  mappe) mkdir -p "$out"; exit 0 ;;
-esac
+// falsk codex som NODE-script (den ægte codex-shim er `#!/usr/bin/env node` — runde-4-regression: wrapperen
+// satte PATH=system-PATH og codex døde med rc=127 fordi node ikke fandtes): nægter at køre hvis stdin ikke er
+// /dev/null · gemmer argv PR. KALD · sidste arg = prompt
+writeFileSync(join(BIN, "codex"), `#!/usr/bin/env node
+const fs = require("fs"); const path = require("path");
+const args = process.argv.slice(2);
+if (args[0] === "--version") { process.stdout.write("codex-cli FAKE\\n"); process.exit(0); }
+const n = fs.readdirSync(${JSON.stringify(CALLS)}).length + 1;
+fs.writeFileSync(path.join(${JSON.stringify(CALLS)}, "argv." + n), args.join("\\n") + "\\n");
+let stdin = ""; try { stdin = fs.readlinkSync("/proc/self/fd/0"); } catch {}
+if (stdin !== "/dev/null") process.exit(99);
+let out = ""; for (let i = 0; i < args.length; i++) if (args[i] === "-o") out = args[i + 1];
+const mode = process.env.FAKE_MODE || "ok";
+if (mode === "ok") { fs.writeFileSync(out, "RESULTAT " + n + "\\n"); process.exit(0); }
+if (mode === "tom") process.exit(0);
+if (mode === "hang") { setTimeout(() => { fs.writeFileSync(out, "for sent\\n"); process.exit(0); }, 30000); }
+else if (mode === "fejl") process.exit(7);
+else if (mode === "symlink") { fs.symlinkSync("/etc/hostname", out); process.exit(0); }
+else if (mode === "tomfil") { fs.writeFileSync(out, ""); process.exit(0); }
+else if (mode === "mappe") { fs.mkdirSync(out, { recursive: true }); process.exit(0); }
 `);
 chmodSync(join(BIN, "codex"), 0o755);
 const realLock = JSON.parse(readFileSync(join(HERE, "actors.lock.json"), "utf8"));

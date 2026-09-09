@@ -143,7 +143,10 @@ if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; t
 fi
 BIN_JSON=$(printf '{"codex":{"path":"%s","sha256":"%s"},"node":{"path":"%s","sha256":"%s"},"git":{"path":"%s","sha256":"%s"},"timeout":{"path":"%s","sha256":"%s"},"flock":{"path":"%s","sha256":"%s"}}' \
   "$CODEX" "$(sha_of "$CODEX")" "$NODE" "$(sha_of "$NODE")" "$GIT" "$(sha_of "$GIT")" "$TIMEOUT" "$(sha_of "$TIMEOUT")" "$FLOCK" "$(sha_of "$FLOCK")")
-CODEX_VER=$("$CODEX" --version 2>/dev/null | head -1); CODEX_VER=${CODEX_VER:-ukendt}
+# codex-shim'en er `#!/usr/bin/env node` → den SKAL kunne finde node; vi giver den PRÆCIS den verificerede
+# node-mappe + system-PATH (ikke kalderens PATH) — runde-4-regression: SYSPATH alene gav rc=127 på 1 s
+CODEX_PATH="$(dirname -- "$NODE"):$SYSPATH"
+CODEX_VER=$(PATH="$CODEX_PATH" "$CODEX" --version 2>/dev/null | head -1); CODEX_VER=${CODEX_VER:-ukendt}
 
 # --- gate-input (F-10): hvilken gate/commit/artefakt dommen gælder — bindes i kvitteringen ---
 if [ -n "${STORK_V5_GATE_INPUT:-}" ]; then
@@ -197,7 +200,7 @@ run_once() {
   a_out="$RUNDIR/attempt$attempt.out"
   : > "$OUT.attempt$attempt.started"
   started=$("$DATE" -Is); s0=$SECONDS; t0=$("$DATE" +%s)
-  "$TIMEOUT" --signal=KILL "${TIMEOUT_S}s" \
+  PATH="$CODEX_PATH" "$TIMEOUT" --signal=KILL "${TIMEOUT_S}s" \
     "$CODEX" exec --skip-git-repo-check --sandbox "$SANDBOX" \
       -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
       --cd "$WORKDIR" -o "$a_out" "$PROMPT" < /dev/null >> "$OUT.log" 2>> "$ERRLOG" &
