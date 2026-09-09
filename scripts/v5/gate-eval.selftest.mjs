@@ -125,6 +125,15 @@ console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
     : bad("plan-bindinger sæt", Object.keys(snap.bindings).join(","));
 }
 {
+  // P2-gates F-2: layout-alias (killlist → recon2-stien) må kaste, aldrig resolve fem nøgler til fire filer
+  let threw = null;
+  try { buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE, layout: { ...DEFAULT_LAYOUT, killlist: DEFAULT_LAYOUT.recon2 } }); } catch (e) { threw = e.message; }
+  /sammenfaldende input-stier/.test(threw ?? "") ? ok("layout-alias (killlist=recon2-sti) → kaster 'sammenfaldende input-stier' (F-2)") : bad("layout-alias", String(threw));
+  let threw2 = null;
+  try { buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE, layout: { ...DEFAULT_LAYOUT, p8: "plan-build/<pakke>/./p8-slutproeve-spec.md", ordbog: "plan-build/<pakke>/p8-slutproeve-spec.md" } }); } catch (e) { threw2 = e.message; }
+  /sammenfaldende/.test(threw2 ?? "") ? ok("normaliserede sti-dubletter (./) fanges også") : bad("normalisering", String(threw2));
+}
+{
   // manglende kill-list-udkast @ commit → binding null-ref (evaluateGate fail-lukker)
   const ROOT2 = mkdtempSync(join(tmpdir(), "v5-gate-eval-2-"));
   execFileSync("git", ["init", "-q", ROOT2]); const g2 = makeGit(ROOT2);

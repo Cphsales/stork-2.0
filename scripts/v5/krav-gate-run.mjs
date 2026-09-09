@@ -23,12 +23,14 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 // Ren udvælgelse (testbar uden git): approval._provenance.verdikt_run_ids → præcis
 // én verdikt-fil pr. run_id blandt verdikt-*-krav*.json @ evidenceRef. Fail-closed
 // på manglende liste · tom liste · ikke-strenge · dubletter · 0 eller >1 match.
-export function vaelgVerdikter({ approvalFil, filer, læs, evidenceRef = "?" }) {
+export function vaelgVerdikter({ approvalFil, filer, læs, evidenceRef = "?", gate = "krav" }) {
   const runIds = approvalFil?._provenance?.verdikt_run_ids;
   if (!Array.isArray(runIds) || runIds.length === 0 || !runIds.every((r) => typeof r === "string" && r.length > 0))
     throw new Error("approval._provenance.verdikt_run_ids mangler/ugyldig — rundevalg kan ikke afledes (fail-closed)");
   if (new Set(runIds).size !== runIds.length) throw new Error("approval.verdikt_run_ids har dubletter (fail-closed)");
-  const kandidater = filer.filter((f) => /^verdikt-[a-z0-9-]+-krav(-[a-z0-9]+)?\.json$/.test(f)).map((f) => ({ f, v: læs(f) }));
+  if (!/^[a-z]+$/.test(gate)) throw new Error("vaelgVerdikter: ugyldig gate");
+  const re = new RegExp(`^verdikt-[a-z0-9-]+-${gate}(-[a-z0-9]+)?\\.json$`);
+  const kandidater = filer.filter((f) => re.test(f)).map((f) => ({ f, v: læs(f) }));
   const verdicts = [];
   for (const rid of runIds) {
     const hits = kandidater.filter((x) => x?.v?.run?.run_id === rid);

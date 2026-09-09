@@ -14,6 +14,7 @@
 // testbar lokalt mod et git-fixture.
 
 import { GATE_REGISTRY, isOid } from "./gates.mjs";
+import { posix } from "node:path";
 import { resolveRef } from "./git.mjs";
 
 // node-navn → sti-skabelon (<pakke> substitueres). Dækker alle artefakter +
@@ -61,6 +62,12 @@ export function buildSnapshot(gateId, opts) {
 
   // artefakt resolves fra git; findes den ikke @ commit → null-ref (evaluateGate
   // fail-lukker på manglende artefakt).
+  // P2-gates F-2 (2026-09-09): to layout-nøgler må ALDRIG resolve til samme fil for én gate —
+  // et layout-alias (killlist → recon2-stien) ville lade fem nøgler dække fire inputroller.
+  const noder = [gate.artifact, ...gate.bindings];
+  const stier = noder.map((n) => posix.normalize(nodePath(n, pakke, layout)));
+  if (new Set(stier).size !== stier.length)
+    throw new Error(`gate-eval: sammenfaldende input-stier for gate '${gateId}' (${stier.join(" · ")})`);
   const artifact = resolveRef(git, commitSha, nodePath(gate.artifact, pakke, layout));
   const bindings = {};
   for (const b of gate.bindings) bindings[b] = resolveRef(git, commitSha, nodePath(b, pakke, layout));

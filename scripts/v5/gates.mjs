@@ -41,6 +41,7 @@ export const GATE_REGISTRY = deepFreeze([
     expectedActors: [],
     approver: null,
     orderedApproval: false,
+    approvalReceipt: false,
   },
   {
     id: "krav",
@@ -52,6 +53,11 @@ export const GATE_REGISTRY = deepFreeze([
     expectedActors: ["code", "codex"],
     approver: APPROVER,
     orderedApproval: true,
+    // HISTORISK UNDTAGELSE (M-41, validering V-F1): krav-gaten for lokations-skabelon
+    // blev godkendt (M-38 15:06) FØR kvitterings-kæden fandtes — r4b-verdikterne kom
+    // 15:10. Hullet er DOKUMENTERET (plan Fase 2 pkt. 5), ikke retro-fikset: en
+    // kvittering kan ikke fabrikeres bagud. Fra plan-gaten og frem er kvittering et krav.
+    approvalReceipt: false,
   },
   {
     id: "plan",
@@ -69,6 +75,11 @@ export const GATE_REGISTRY = deepFreeze([
     // skal bevise at det kom EFTER de endelige aktør-verdikter (prerequisite_digests),
     // præcis som krav-gaten. Var false → M-38-situationen kunne gentages her.
     orderedApproval: true,
+    // M-41 princip 9 / P2-gates F-1: digests beviser LIGHED, ikke HÆNDELSEN — approval-
+    // filen er data. Godkendelses-KVITTERINGEN (kvittering.mjs) committes FØR fremlæggelsen
+    // sendes, approval refererer dens digest, og kernen kræver frisk verifyApproval:
+    // digest · indhold · commit-orden (kvittering er ægte forfader til approval).
+    approvalReceipt: true,
   },
   {
     id: "build",
@@ -80,6 +91,7 @@ export const GATE_REGISTRY = deepFreeze([
     expectedActors: [],
     approver: null,
     orderedApproval: false,
+    approvalReceipt: false,
   },
   {
     id: "slut",
@@ -91,6 +103,7 @@ export const GATE_REGISTRY = deepFreeze([
     expectedActors: [],
     approver: APPROVER,
     orderedApproval: false,
+    approvalReceipt: true, // slut-gaten binder også maskinbeviset i kvitteringen (princip 9)
   },
 ]);
 
@@ -310,7 +323,7 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
     const a = hasOwn(snapshot, "approval") ? snapshot.approval : null;
     if (!isPlainObj(a)) fail(`approval mangler (gate kræver ${gate.approver})`);
     else {
-      const allowedKeys = ["login_server_verified", "gate_id", "scope_digest", "prerequisite_digests"];
+      const allowedKeys = ["login_server_verified", "gate_id", "scope_digest", "prerequisite_digests", "kvittering_digest"];
       for (const k of Object.keys(a)) if (!allowedKeys.includes(k)) fail(`approval: uventet felt '${k}' (fail-closed)`);
       // egne felter kræves (arvet login/scope må ikke godkende)
       if (!hasOwn(a, "login_server_verified") || a.login_server_verified !== gate.approver)
@@ -336,6 +349,22 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
         }
       } else if (hasOwn(a, "prerequisite_digests")) {
         fail("approval: prerequisite_digests uventet på ikke-ordered gate (fail-closed)");
+      }
+      // 6b) M-41 princip 9: godkendelses-KVITTERING — "Mathias sidst" som hændelseskæde.
+      // Digests beviser lighed; kvitteringen (committet FØR fremlæggelsen, refereret af
+      // approval, verificeret frisk mod git: digest · indhold · commit-orden) beviser at
+      // godkendelsen kom EFTER de endelige verdikter og den præcise fremlæggelse.
+      if (gate.approvalReceipt) {
+        if (!hasOwn(a, "kvittering_digest") || !/^[0-9a-f]{64}$/.test(String(a.kvittering_digest)))
+          fail("approval: kvittering_digest mangler/ugyldig (hændelseskæden er ubevist)");
+        if (typeof deps.verifyApproval !== "function")
+          fail("verifyApproval-dep mangler (fail-closed: ingen frisk kvitterings-verifikation = rød)");
+        else if (hasOwn(a, "kvittering_digest")) {
+          const ra = deps.verifyApproval(a, { gateId, expectedScope, verdictDigests: [...verdictDigests], artifactOid, expectedOids });
+          if (ra?.ok !== true) fail(`frisk verifyApproval fejlede: ${(ra?.reasons ?? ["intet resultat"]).join("; ")}`);
+        }
+      } else if (hasOwn(a, "kvittering_digest")) {
+        fail("approval: kvittering_digest uventet på gate uden approvalReceipt (fail-closed)");
       }
     }
   } else if (hasOwn(snapshot, "approval") && snapshot.approval != null) {

@@ -169,11 +169,19 @@ function greenPlan() {
       gate_id: "plan",
       scope_digest: scopeDigest("plan", artifact.oid, bOids),
       prerequisite_digests: verdicts.map(digestOf),
+      kvittering_digest: KV_DIGEST, // M-41 princip 9: peger på den committede kvittering
     },
     predecessor: { gate_id: "krav", conclusion: "success", artifact_oid: bindings.krav.oid },
   };
-  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }) } };
+  // verifyApproval-stub: kernen skal KRÆVE deppen og lade dens dom afgøre (kvittering.mjs
+  // har egen selvtest mod rigtig git-historik) — stubben tjekker at kernen sender det rigtige
+  const verifyApproval = (a, ctx) =>
+    a.kvittering_digest === KV_DIGEST && ctx.gateId === "plan" && ctx.verdictDigests.length === 3 && ctx.expectedScope === snapshot.approval.scope_digest
+      ? { ok: true, reasons: [] }
+      : { ok: false, reasons: ["stub: forkert digest/ctx"] };
+  return { snapshot, deps: { verifyVerdict: makeVerdictVerifier({ git }), verifyApproval } };
 }
+const KV_DIGEST = "ab".repeat(32);
 
 function greenRecon() {
   const artifact = ref("recon/recon.md");
@@ -235,6 +243,16 @@ plantClosed("plan ok der kun refererer 2 af 3 verdikter", "plan", greenPlan, (c)
 plantClosed("plan ok med digests fra ANDRE verdikter (ok før de endelige)", "plan", greenPlan, (c) => { c.snapshot.approval.prerequisite_digests = [sha256("gammel-1"), sha256("gammel-2"), sha256("gammel-3")]; }, "orderedApproval|prerequisite");
 plantClosed("manglende claude-ai-verdikt (tavshed ≠ ja)", "plan", greenPlan, (c) => { c.snapshot.verdicts = c.snapshot.verdicts.filter((v) => v.aktor !== "claude-ai"); c.snapshot.approval.prerequisite_digests = c.snapshot.verdicts.map(digestOf); }, "claude-ai|aktør|actor|mangler");
 plantClosed("plan-verdikt der ikke binder killlist-OID", "plan", greenPlan, (c) => { delete c.snapshot.verdicts[1].bindings_oids.killlist; c.snapshot.approval.prerequisite_digests = c.snapshot.verdicts.map(digestOf); }, "binding|killlist|bindings_oids");
+plantClosed("plan approval med ekstra digest-dublet (P2-gates F-4: multiset, ikke sæt)", "plan", greenPlan, (c) => { c.snapshot.approval.prerequisite_digests.push(c.snapshot.approval.prerequisite_digests[0]); }, "orderedApproval");
+
+console.log("\nplantede falsk-grønne — godkendelses-KVITTERING (M-41 princip 9 / P2-gates F-1):");
+plantClosed("plan approval UDEN kvittering_digest (hændelseskæden ubevist)", "plan", greenPlan, (c) => { delete c.snapshot.approval.kvittering_digest; }, "kvittering_digest");
+plantClosed("verifyApproval-dep mangler → rød (aldrig default-grøn)", "plan", greenPlan, (c) => { c.deps = { verifyVerdict: c.deps.verifyVerdict }; }, "verifyApproval-dep mangler");
+plantClosed("verifyApproval siger nej → rød", "plan", greenPlan, (c) => { c.deps = { ...c.deps, verifyApproval: () => ({ ok: false, reasons: ["kvittering ikke forfader"] }) }; }, "verifyApproval fejlede");
+plantClosed("verifyApproval returnerer 'sandt-agtigt' (ok:'true') → rød", "plan", greenPlan, (c) => { c.deps = { ...c.deps, verifyApproval: () => ({ ok: "true", reasons: [] }) }; }, "verifyApproval fejlede");
+plantClosed("kvittering_digest ikke sha256 → rød", "plan", greenPlan, (c) => { c.snapshot.approval.kvittering_digest = "kort"; }, "kvittering_digest");
+plantClosed("approval m. forkert digest → verifier afviser", "plan", greenPlan, (c) => { c.snapshot.approval.kvittering_digest = "cd".repeat(32); }, "verifyApproval fejlede");
+plantClosed("krav-gate (historisk undtagelse) m. kvittering_digest → uventet felt (fail-closed)", "krav", greenKrav, (c) => { c.snapshot.approval.kvittering_digest = KV_DIGEST; }, "kvittering_digest uventet");
 
 console.log("\nplantede falsk-grønne — approver/rækkefølge (krav 5):");
 plantClosed(

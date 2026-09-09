@@ -18,7 +18,7 @@ const ROOT = resolve(HERE, "..", "..");
 
 // gate-entrypoints: filerne hvis dom åbner/lukker en gate. Udvides når
 // build-/chain-gatens transport bygges (behov-drevet, aldrig i drift u-hærdet).
-const GATE_ENTRYPOINTS = ["recon-gate-run.mjs", "krav-gate-run.mjs", "gate-eval.mjs"];
+const GATE_ENTRYPOINTS = ["recon-gate-run.mjs", "krav-gate-run.mjs", "plan-gate-run.mjs", "gate-eval.mjs"];
 // producenter af gatede artefakter (ikke i import-closuret, men deres output
 // er det gaten dømmer på):
 const ARTEFAKT_PRODUCENTER = ["consolidate-recon.mjs", "verdikt-byg.mjs", "codex-run.sh"];
