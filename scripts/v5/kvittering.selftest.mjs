@@ -187,6 +187,7 @@ red("gate_input andet artefakt", validateTransportReceipt({ ...rcOk(), gate_inpu
 red("leverance ≠ verdiktets raw_output_sha256", validateTransportReceipt(rcOk(), { ...tctx, rawOutputSha256: "d".repeat(64) }), "raw_output_sha256");
 red("forsøg m. andet effort", validateTransportReceipt({ ...rcOk(), attempts: [{ ...rcOk().attempts[0], effort: "low" }] }, tctx), "anden model");
 red("schema v1", validateTransportReceipt({ ...rcOk(), schema_version: 1 }, tctx), "schema_version");
+red("regel_commit 'HEAD' (flytbar ref) → rød (F-18)", validateTransportReceipt({ ...rcOk(), regel_commit: "HEAD" }, tctx), "fast commit-OID");
 red("3 forsøg", validateTransportReceipt({ ...rcOk(), attempts: [rcOk().attempts[0], { ...rcOk().attempts[0], attempt: 2 }, { ...rcOk().attempts[0], attempt: 3 }] }, tctx), "antal forsøg");
 
 console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
@@ -200,6 +201,12 @@ console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
   !ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n").ok ? ok("én aktiv + én citeret → PRÆCIS én? nej: den citerede ignoreres → ok=true forventes", "") : ok("én aktiv + én citeret → kun den aktive tæller");
   const r = ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n"); r.ok && r.draft.a === 1 ? ok("… og det er den aktive (a:1) der udtrækkes") : bad("aktiv vs citeret", JSON.stringify(r));
   !ud("```json verdikt-draft\n{\"a\":1}\n").ok ? ok("uafsluttet fence → rød") : bad("uafsluttet", "accepteret");
+  !ud("Dom: FAIL\n~~~markdown\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("blok citeret i ~~~-fence → ikke aktiv (rest-F-16)") : bad("tilde-fence", "accepteret");
+  !ud("Dom: FAIL\n  ````markdown\n" + blok({ a: 1 }) + "\n  ````\n").ok ? ok("blok citeret i INDRYKKET ````-fence (2 mellemrum) → ikke aktiv (rest-F-16)") : bad("indrykket fence", "accepteret");
+  !ud("Dom: FAIL\n   ~~~~\n" + blok({ a: 1 }) + "\n   ~~~~\n").ok ? ok("blok citeret i indrykket ~~~~-fence (3 mellemrum) → ikke aktiv") : bad("indrykket tilde", "accepteret");
+  !ud(" ```json verdikt-draft\n{\"a\":1}\n```\n").ok ? ok("indrykket aktiv-åbner (1 mellemrum) → ikke aktiv (kræver uindrykket)") : bad("indrykket aktiv", "accepteret");
+  !ud("~~~json verdikt-draft\n{\"a\":1}\n~~~\n").ok ? ok("tilde-åbner m. draft-info → ikke aktiv (kræver backticks)") : bad("tilde aktiv", "accepteret");
+  { const r2 = ud("~~~markdown\ntekst\n```\n~~~\n" + blok({ a: 1 }) + "\n"); r2.ok && r2.draft.a === 1 ? ok("``` inde i ~~~-fence lukker den ikke (kun samme tegn lukker) — den ægte blok bagefter findes") : bad("fence-tegn", JSON.stringify(r2)); }
   !ud("````json verdikt-draft\n{}\n````\n").ok ? ok("fire backticks som åbner → ikke aktiv (kræver præcis tre)") : bad("4-fence", "accepteret");
   !ud("```json verdikt-draft\nikke json\n```\n").ok ? ok("ugyldig JSON i blokken → rød") : bad("json", "accepteret");
 }

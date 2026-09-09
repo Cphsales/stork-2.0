@@ -70,7 +70,8 @@ if (receiptPath !== undefined) {
   }
   const last = at[at.length - 1];
   if (last.rc !== 0 || !(Number(last.output_bytes) > 0) || typeof last.output_sha256 !== "string") fejl("sidste forsøg leverede ikke (rc≠0 eller tom)");
-  for (const k of ["model", "effort", "regel_commit", "skill_oid", "prompt_sha256", "rolle", "run_id"]) if (typeof receipt[k] !== "string" || !receipt[k]) fejl(`kvittering mangler ${k}`);
+  for (const k of ["model", "effort", "skill_oid", "prompt_sha256", "rolle", "run_id"]) if (typeof receipt[k] !== "string" || !receipt[k]) fejl(`kvittering mangler ${k}`);
+  if (!/^[0-9a-f]{40}$/.test(String(receipt.regel_commit))) fejl(`regel_commit '${String(receipt.regel_commit)}' er ikke en fast commit-OID (F-18: en flytbar ref kan genopslås til en anden lås)`);
   // BIND leverancen: bytes her ↔ kvittering (hashen beregnes, erklæres ikke)
   const levBytes = readFileSync(leverancePath);
   const levSha = sha256(levBytes);
@@ -143,7 +144,7 @@ if (receipt) {
   try {
     lockR = git("rev-parse", `${receipt.regel_commit}:scripts/v5/actors.lock.json`);
     lockH = git("rev-parse", "HEAD:scripts/v5/actors.lock.json");
-    lock = JSON.parse(git.bytes("show", `${receipt.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8"));
+    lock = JSON.parse(git.bytes("show", lockR).toString("utf8")); // F-18: præcis den sammenlignede blob
   } catch { console.error(`PROVENANCE-RØD: actors.lock.json findes ikke @ kvitteringens regel_commit ${String(receipt.regel_commit).slice(0, 7)}`); process.exit(1); }
   if (lockR !== lockH) { console.error(`PROVENANCE-RØD: kørt under en anden lås (@${String(receipt.regel_commit).slice(0, 7)}) end den gældende @ HEAD (F-15)`); process.exit(1); }
   const r = Object.prototype.hasOwnProperty.call(lock, receipt.rolle) ? lock[receipt.rolle] : null;

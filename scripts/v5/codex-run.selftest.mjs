@@ -324,6 +324,14 @@ const vb = (draftArg, receipt, lev) => {
   const inline = "tekst ```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n";
   const rI = vb("-", mkReceipt(inline), inline);
   eq("inline åbner (tekst før backticks) → RØD (F-16)", rI.status === 1, true);
+  const tilde = "Dom: FAIL\n\n~~~markdown\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n~~~\n";
+  const rT = vb("-", mkReceipt(tilde), tilde);
+  eq("draft citeret i ~~~-fence → RØD (rest-F-16)", rT.status === 1 && /PRÆCIS én aktiv/.test(rT.stderr), true);
+  const indr = "Dom: FAIL\n\n  ````markdown\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n  ````\n";
+  const rInd = vb("-", mkReceipt(indr), indr);
+  eq("draft citeret i indrykket ````-fence → RØD (rest-F-16)", rInd.status === 1 && /PRÆCIS én aktiv/.test(rInd.stderr), true);
+  const rHead = vb("-", mkReceipt(lev, { regel_commit: "HEAD" }), lev);
+  eq("kvittering m. regel_commit='HEAD' → RØD (F-18: flytbar ref)", rHead.status === 1 && /fast commit-OID/.test(rHead.stderr), true);
   const rRolle = vb("-", mkReceipt(lev, { rolle: "codex-forbedring", skill_oid: realLock["codex-forbedring"].skill_oid }), lev);
   eq("kvitteringens rolle er ikke gatens codex-rolle → RØD (F-15)", rRolle.status === 1 && /gatens codex-rolle/.test(rRolle.stderr), true);
   const r6 = vb("-", mkReceipt(lev, { selftest: true }), lev);

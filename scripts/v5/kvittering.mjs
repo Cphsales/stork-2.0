@@ -188,7 +188,8 @@ export function validateTransportReceipt(r, ctx) {
     if (gi.gated_commit !== ctx.commitSha) fail("gate_input.gated_commit ≠ gatens pinnede commit");
     if (gi.artifact_path !== ctx.artifactPath) fail(`gate_input.artifact_path '${String(gi.artifact_path)}' ≠ '${ctx.artifactPath}'`);
   }
-  for (const k of ["rolle", "model", "effort", "regel_commit", "skill_oid", "prompt_sha256", "run_id"]) if (typeof r[k] !== "string" || !r[k]) fail(`mangler ${k}`);
+  for (const k of ["rolle", "model", "effort", "skill_oid", "prompt_sha256", "run_id"]) if (typeof r[k] !== "string" || !r[k]) fail(`mangler ${k}`);
+  if (!isOid(r.regel_commit)) fail(`regel_commit '${String(r.regel_commit)}' er ikke en fast commit-OID (en flytbar ref som HEAD kan genopslås til en anden lås, F-18)`);
   const at = Array.isArray(r.attempts) ? r.attempts : null;
   if (!at || at.length < 1 || at.length > 2) fail("ugyldigt antal forsøg");
   else {
@@ -254,7 +255,8 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
           const lockE = git("rev-parse", `${E}:scripts/v5/actors.lock.json`);
           const lockR = git("rev-parse", `${r.regel_commit}:scripts/v5/actors.lock.json`);
           if (lockE !== lockR) reasons.push(`codex (${hit.f}): kørt under en anden lås (@${String(r.regel_commit).slice(0, 7)}) end den gældende @ evidens-commit ${E.slice(0, 7)}`);
-          const lock = JSON.parse(git.bytes("show", `${r.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8"));
+          // F-18: læs PRÆCIS den sammenlignede låseblob (blob-OID), aldrig et nyt ref-opslag
+          const lock = JSON.parse(git.bytes("show", lockR).toString("utf8"));
           const rolle = Object.prototype.hasOwnProperty.call(lock, r.rolle) ? lock[r.rolle] : null;
           if (!rolle || rolle.aktoer !== "codex" || rolle.skill_oid !== r.skill_oid || rolle.model !== r.model || rolle.reasoning !== r.effort) reasons.push(`codex (${hit.f}): kvitteringens rolle/skill/model/effort matcher ikke låsen @ ${String(r.regel_commit).slice(0, 7)}`);
         } catch (e) { reasons.push(`codex (${hit.f}): lås-opslag fejlede (${e?.message ?? e})`); }
@@ -282,15 +284,22 @@ export function udtraekVerdiktDraft(text) {
   if (typeof text !== "string") return { ok: false, reasons: ["leverance er ikke tekst"] };
   const lines = text.split(/\r?\n/);
   const kandidater = [];
-  let fence = null;
+  let fence = null; // { ch, len, aktiv, buf }
   for (const line of lines) {
     if (fence === null) {
-      const m = /^(`{3,})(.*)$/.exec(line);
-      if (m) fence = { len: m[1].length, aktiv: m[1].length === 3 && m[2].trim() === "json verdikt-draft", buf: [] };
+      // CommonMark: fence-åbner = 0-3 mellemrums indrykning + ≥3 backticks ELLER ≥3 tilder (runde 4 rest-F-16:
+      // ~~~-fences og indrykkede ````-fences blev ikke set som citerende ydre fences)
+      const m = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
+      if (m) {
+        const ch = m[2][0]; const info = m[3].trim();
+        // kun en UINDRYKKET, PRÆCIS tre-backtick-fence med info "json verdikt-draft" er en aktiv draft
+        const aktiv = m[1].length === 0 && ch === "`" && m[2].length === 3 && info === "json verdikt-draft";
+        fence = { ch, len: m[2].length, aktiv, buf: [] };
+      }
       continue;
     }
-    const close = /^(`{3,})\s*$/.exec(line);
-    if (close && close[1].length >= fence.len) { if (fence.aktiv) kandidater.push(fence.buf.join("\n")); fence = null; continue; }
+    const close = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line);
+    if (close && close[1][0] === fence.ch && close[1].length >= fence.len) { if (fence.aktiv) kandidater.push(fence.buf.join("\n")); fence = null; continue; }
     fence.buf.push(line);
   }
   if (fence !== null) return { ok: false, reasons: ["uafsluttet kode-fence i leverancen"] };
