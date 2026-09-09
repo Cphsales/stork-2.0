@@ -1,0 +1,7 @@
+Du er Codex i P-4-rollen (M-35/M-40): KILDETJEK af PLAN-UDKASTET før plan-lås. Workdir = repo @ ec4a3d9 (plan-blob 423d9b20 — verificér m. git rev-parse ec4a3d9:plan-build/lokations-skabelon/plan.md).
+
+Kildegrundlag (versionsbundet @ ec4a3d9): docs/sandhed/krav/lokations-skabelon-krav.md (blob 9402164d) · plan-build/lokations-skabelon/{recon2.md, mathias-ord.md, ordbog.md, p8-slutproeve-spec.md} · recon/recon.md + recon/recon-2-bilag.md.
+
+Pr. PÅSTAND i planen (afgørelser V1-V29, matrix-rækker, DDL-begrundelser): klassificér {DIREKTE BELÆG · DEKLARERET AFLEDNING · MODSTRID · MANGLER KILDE} — særligt: (a) citerer planen recon-2-fakta korrekt (linje-referencerne)? (b) respekterer hvert plan-valg kravets ramme OG M-ordene (maks 1 klient pr. stand M-29 · min 1 stand M-17/M-18 · genåbnings-arv M-19 · dvale-stop i UI M-27 · straks-virkning M-29.5)? (c) er plan-fase-valgene fra kravets liste ALLE afgjort (ingen efterladt)? Cross-vendor-komplement til fresh-eyes (den kører kilde-TROSKAB; du kører komplet påstand↔kilde-klassifikation).
+
+OUTPUT: OUT-p4-plan.md i workdir-roden: klassifikations-tabel + bundlinje pr. klasse + eksplicit MODSTRID/MANGLER-liste + konklusion. Web forbudt.

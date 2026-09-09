@@ -1,0 +1,2 @@
+start=2026-09-08T17:17:26+02:00 workdir=/tmp/claude-1000/-home-mathias/61d9c799-0bdc-4346-ac4a-8909ab7d9987/tmp/fase3/wt-angreb
+attempt=1 model=gpt-6-astra effort=xhigh timeout_s=2400 rc=0 varighed_s=844 slut=2026-09-08T17:31:30+02:00
