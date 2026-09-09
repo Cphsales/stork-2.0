@@ -54,7 +54,11 @@ tilgængelig) kører før spawn som altid. **To regler fra v3-wrapperen (mathias
 (1) rolleteksten @ `skill_oid` injiceres AUTOMATISK som første del af prompten (P2 F-5) — kopiér
 den IKKE ind; prompt-filen indeholder KUN opgaven. (2) `$OUT` (Codex' slutbesked · provenance ·
 PID) SKAL ligge uden for workdir'en — wrapperen blokerer ellers; leverancen `kill-list-udkast.md`
-skrives af Codex i workdir-roden og hentes derfra byte-identisk.
+skrives af Codex i workdir-roden og hentes derfra byte-identisk. (3) B1 er PRODUKTION: miljøet må
+IKKE have `STORK_V5_GATE_INPUT` sat (kontrakt-ændring 1) — `unset` før kaldet. Skriver wrapperen en
+`$OUT.receipt.json`, arkiveres den også (`provenance/kill-list-udkast.receipt.json`). (4)
+`scripts/v5/binaries.lock.json` skal matche den installerede codex-CLI; opdaterer preflight CLI'en,
+skal låsen committes FØR kaldet (fabrik-armens fil — meld, kør ikke selv).
 
 **Efter kørsel (driveren):** `cmp` + sha256 af `$W/kill-list-udkast.md` → kopi byte-identisk til
 `plan-build/lokations-skabelon/kill-list-udkast.md` (gate-bundet navn, `DEFAULT_LAYOUT.killlist`)
@@ -119,6 +123,8 @@ forbillede.
 
 - [ ] mathias-9b: »Trin A færdig« + SHA modtaget; branch pullet; suite grøn lokalt.
 - [ ] `actors.lock[codex-angreb]` = rolletekst@HEAD (wrapperen blokerer ellers).
+- [ ] `binaries.lock.json` matcher installeret codex-CLI (ellers: meld til fabrik-armen, vent på lås-commit).
+- [ ] `STORK_V5_GATE_INPUT` er IKKE sat (produktion).
 - [ ] Preflight: nyeste Codex-CLI · pinned model tilgængelig (`preflight.mjs`).
 - [ ] Blind workdir bygget efter recepten; grep-tjekket TOM; blobs matcher.
 - [ ] Prompt: `<PIN>` og `<LEDGER-BLOB>` udfyldt; KUN opgaven (rolletekst injiceres af wrapperen);
