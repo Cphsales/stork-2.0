@@ -16,9 +16,15 @@ import { execFileSync } from "node:child_process";
 import { commitZoneDecision, pathZone } from "./hooks.mjs";
 
 const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
-const staged = execFileSync("git", ["-C", repoRoot, "diff", "--cached", "--name-only"], { encoding: "utf8" })
-  .split("\n")
-  .filter((l) => l.length > 0);
+// P2-pas 2026-09-09 F-8: --no-renames (en flyttet rolletekst = delete+add, ikke usynlig) ·
+// -z (rå stier, ingen quotePath-escaping) · name-status så en SLETTET lås ikke tæller som "følger med"
+const statusRaw = execFileSync("git", ["-C", repoRoot, "diff", "--cached", "--no-renames", "--name-status", "-z"], { encoding: "utf8" });
+const stagedStatus = new Map();
+{
+  const parts = statusRaw.split("\0").filter((x) => x.length > 0);
+  for (let i = 0; i + 1 < parts.length; i += 2) stagedStatus.set(parts[i + 1], parts[i]);
+}
+const staged = [...stagedStatus.keys()];
 
 if (staged.length === 0) process.exit(0);
 
@@ -28,7 +34,9 @@ if (staged.length === 0) process.exit(0);
 // 2026-09-08). Atomisk rolletekst→lock. Registret (hærdet) håndhæves i CI, ikke
 // her: et Codex-pas kræver en commit at referere.
 const rollerStaged = staged.filter((p) => /^scripts\/v5\/roller\/[^/]+\.md$/.test(p));
-if (rollerStaged.length > 0 && !staged.includes("scripts/v5/actors.lock.json")) {
+const lockStatus = stagedStatus.get("scripts/v5/actors.lock.json");
+const lockFoelgerMed = lockStatus !== undefined && lockStatus !== "D"; // slettet lås = mangler
+if (rollerStaged.length > 0 && !lockFoelgerMed) {
   console.error("✗ commit-zone (M-41 A4): rolletekst staged uden scripts/v5/actors.lock.json i samme commit:");
   for (const p of rollerStaged) console.error(`    ${p}`);
   console.error("  Regenerér låsen (skill_oid = git hash-object af rolleteksten) og stage den sammen med teksten.");
