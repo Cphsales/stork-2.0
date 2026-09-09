@@ -297,6 +297,9 @@ export function udtraekVerdiktDraft(text) {
       const m = /^( {0,3})(`{3,}|~{3,})([\s\S]*)$/.exec(line);
       if (m) {
         const ch = m[2][0]; const info = m[3].trim();
+        // CommonMark: en BACKTICK-fence må ikke have backticks i info-strengen — så er linjen IKKE en åbner
+        // (runde 7: "```json verdikt-draft `x" oprettede en falsk fence, som den næste ``` "lukkede" → citeret PASS aktiv)
+        if (ch === "`" && info.includes("`")) continue;
         // kun en UINDRYKKET, PRÆCIS tre-backtick-fence med info "json verdikt-draft" er en aktiv draft
         const aktiv = m[1].length === 0 && ch === "`" && m[2].length === 3 && info === "json verdikt-draft";
         fence = { ch, len: m[2].length, aktiv, buf: [] };
