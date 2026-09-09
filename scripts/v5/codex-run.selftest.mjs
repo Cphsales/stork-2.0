@@ -206,14 +206,42 @@ console.log("\ncodex-run.sh v3 — BLOKER FØR kaldet (rollen bestemmer kaldet �
   eq("v1-signatur (model som argument) → BLOKER, aldrig kørt", x.r.status !== 0 && x.calls.length === 0, true);
 }
 
+{
+  // T-F3: falsk `cat` på kalderens PATH må IKKE kunne bytte rolleteksten efter hash-kontrollen (system-PATH for værktøjer)
+  const FAKEBIN2 = join(T, "bin2"); mkdirSync(FAKEBIN2);
+  writeFileSync(join(FAKEBIN2, "cat"), "#!/usr/bin/env bash\necho 'INJICERET ROLLETEKST'\n"); chmodSync(join(FAKEBIN2, "cat"), 0o755);
+  const x = run(undefined, { env: { PATH: `${FAKEBIN2}:${BIN}:${process.env.PATH}` } });
+  const prompt = x.calls[0]?.slice(x.calls[0].indexOf("-o") + 2).join("\n") ?? "";
+  eq("falsk `cat` på kalderens PATH ignoreres — rolleteksten er den ægte (T-F3)", x.r.status === 0 && prompt.startsWith("# Rolle: codex-angreb") && !prompt.includes("INJICERET"), true);
+}
+{
+  // T-F7: OUT må ikke bruge et reserveret suffix (fx en anden kørsels låsefil)
+  for (const navn of ["a.lock", "b.receipt.json", "c.provenance", "d.pid", "e.log", "f.attempt1.out", ".run-x"]) {
+    const x = run(["codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, navn), promptFil]);
+    eq(`OUT='${navn}' (reserveret navnerum) → BLOKER før kaldet (T-F7)`, x.r.status === 1 && /reserveret/.test(x.prov) && x.calls.length === 0, true);
+  }
+}
+
 console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen udøves, F-9):");
 // temp-KLON af repoet (STORK_V5_REPO under selftest holder lock_mode=committed) — arbejdstræets lås ændres → BLOKER
 {
   const CLONE = join(T, "klon"); execFileSync("git", ["clone", "-q", "--no-hardlinks", ROOT, CLONE]);
+  const CLONE_HEAD0 = execFileSync("git", ["-C", CLONE, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   copyFileSync(WRAPPER, join(CLONE, "scripts/v5/codex-run.sh")); // klonen skal køre DENNE wrapper-version (arbejdstræ), ikke HEAD's
   const x = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE } });
   eq("committed lås (klon, ingen override) → kører · kvittering lock_mode=committed", x.r.status === 0 && x.receipt?.lock_mode === "committed", true);
   eq("… men kvittering.selftest=true — STORK_V5_REPO er en selvtest-lempelse (F-11)", x.receipt?.selftest, true);
+  {
+    // F-17: binaries.lock-pinnen NÅS (FORCE_BINCHECK) — klonens lås matcher ikke den falske codex → BLOKER; matcher → kører
+    const w = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("binaries.lock-pin ≠ faktisk codex-entry → BLOKER (F-3 nået, ikke kun læst)", w.r.status === 1 && /binaries\.lock/.test(w.prov) && w.calls.length === 0, true);
+    const fakeSha = sha256(readFileSync(join(BIN, "codex")));
+    const bl = JSON.parse(readFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), "utf8")); bl.codex.sha256 = fakeSha;
+    writeFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), JSON.stringify(bl, null, 1) + "\n");
+    execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", "pin falsk codex"]);
+    const w2 = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("binaries.lock-pin == codex-entry → kører", w2.r.status, 0);
+  }
   {
     // F-13: `git replace` af rolleblobben i klonen må IKKE ændre den tekst der sendes (--no-replace-objects + hash-verifikation)
     const skill = realLock["codex-angreb"].skill_oid; const anden = realLock["recon-codex"].skill_oid;
@@ -223,7 +251,7 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
     eq("git replace på rolleblobben ignoreres — original rolletekst sendes, kørslen grøn (F-13)", z.r.status === 0 && prompt.startsWith("# Rolle: codex-angreb"), true);
     execFileSync("git", ["-C", CLONE, "replace", "-d", skill]);
   }
-  eq("kvittering: regel_commit = klonens HEAD", x.receipt?.regel_commit, execFileSync("git", ["-C", CLONE, "rev-parse", "HEAD"], { encoding: "utf8" }).trim());
+  eq("kvittering: regel_commit = klonens HEAD (ved kørslen)", x.receipt?.regel_commit, CLONE_HEAD0);
   writeFileSync(join(CLONE, "scripts/v5/actors.lock.json"), JSON.stringify(realLock) + "\n// ændret lokalt\n");
   const y = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE } });
   eq("arbejdstræets lås ≠ pinned commit → BLOKER (fabrik-frys uden override)", y.r.status === 1 && /≠ pinned/.test(y.prov) && y.calls.length === 0, true);
@@ -285,6 +313,14 @@ const vb = (draftArg, receipt, lev) => {
   const lev2 = levTekst(draftObj) + "\n\`\`\`json verdikt-draft\n{}\n\`\`\`\n";
   const r5 = vb("-", mkReceipt(lev2), lev2);
   eq("to verdikt-draft-blokke → RØD", r5.status === 1 && /PRÆCIS én/.test(r5.stderr), true);
+  const citeret = "Dom: FAIL\n\n````markdown\neksempel:\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n````\n";
+  const rC = vb("-", mkReceipt(citeret), citeret);
+  eq("draft kun som CITERET eksempel i ````-blok → RØD (F-16: ingen aktiv blok)", rC.status === 1 && /PRÆCIS én aktiv/.test(rC.stderr), true);
+  const inline = "tekst ```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n";
+  const rI = vb("-", mkReceipt(inline), inline);
+  eq("inline åbner (tekst før backticks) → RØD (F-16)", rI.status === 1, true);
+  const rRolle = vb("-", mkReceipt(lev, { rolle: "codex-forbedring", skill_oid: realLock["codex-forbedring"].skill_oid }), lev);
+  eq("kvitteringens rolle er ikke gatens codex-rolle → RØD (F-15)", rRolle.status === 1 && /gatens codex-rolle/.test(rRolle.stderr), true);
   const r6 = vb("-", mkReceipt(lev, { selftest: true }), lev);
   eq("kvittering m. selftest=true → RØD (F-11)", r6.status === 1 && /SELVTEST/.test(r6.stderr), true);
   const r7 = vb("-", mkReceipt(lev, { gate_input: { gate_id: "plan", gated_commit: GATED, artifact_path: ART } }), lev);
@@ -292,7 +328,7 @@ const vb = (draftArg, receipt, lev) => {
   const r8 = vb("-", mkReceipt(lev, { aktivitet: "produktion", sandbox: "workspace-write", attempts: [{ attempt: 1, rc: 0, model: "gpt-6-astra", effort: "xhigh", sandbox: "workspace-write", output_sha256: sha256(lev), output_bytes: 1 }] }), lev);
   eq("kvittering fra produktions-kørsel → RØD (F-10)", r8.status === 1 && /≠ dom/.test(r8.stderr), true);
   const r9 = vb("-", mkReceipt(lev, { rolle: "codex-forbedring" }), lev);
-  eq("kvitteringens rolle matcher ikke låsen (skill_oid tilhører codex-angreb) → RØD (F-10 rolle-binding)", r9.status === 1 && /matcher ikke låsen/.test(r9.stderr), true);
+  eq("kvitteringens rolle er en anden codex-rolle (forbedring m. angrebs skill_oid) → RØD (F-15 gatens rolle / F-10 lås-binding)", r9.status === 1 && /gatens codex-rolle|matcher ikke låsen/.test(r9.stderr), true);
   const r10 = vb("-", mkReceipt(lev, { lock_mode: "OVERRIDE(selftest)" }), lev);
   eq("lås-override → RØD", r10.status === 1 && /lås-override/.test(r10.stderr), true);
   const r11 = vb("-", mkReceipt(lev, { status: "fejl" }), lev);

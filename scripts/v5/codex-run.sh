@@ -57,6 +57,13 @@ for b in git timeout sha256sum realpath flock mktemp stat date; do
   case "$b" in git) GIT=$v;; timeout) TIMEOUT=$v;; sha256sum) SHASUM=$v;; realpath) REALPATH=$v;; flock) FLOCK=$v;; mktemp) MKTEMP=$v;; stat) STAT=$v;; date) DATE=$v;; esac
 done
 g() { "$GIT" --no-replace-objects "$@"; }   # F-13: refs/replace må aldrig ændre hvad en OID betyder
+# T-F3 (runde 3): codex/node findes i kalderens RENSEDE PATH (nvm); ALT andet (cat, cut, mv, rm, ls, dirname,
+# head, tee, wc …) skal komme fra system-PATH — en falsk `cat` på kalderens PATH kunne ellers bytte rolleteksten
+# EFTER hash-kontrollen. Kalder-PATH gemmes renset, og PATH sættes til system-PATH for resten af scriptet.
+CALLER_PATH=""
+IFS=: read -r -a PATH_DELE <<<"${PATH:-}"
+for d in "${PATH_DELE[@]}"; do case "$d" in /*) CALLER_PATH="${CALLER_PATH:+$CALLER_PATH:}$d" ;; esac; done
+export PATH="$SYSPATH"
 sha_of() { "$SHASUM" -- "$1" | cut -d' ' -f1; }
 RUN_ID="$("$DATE" +%Y%m%dT%H%M%S)-$$-$RANDOM"
 STARTED="$("$DATE" -Is)"
@@ -95,6 +102,9 @@ WD_REAL=$("$REALPATH" -e -- "$WORKDIR") || blok "workdir kan ikke resolves"
 OUT_DIR_REAL=$("$REALPATH" -m -- "$(dirname -- "$OUT")") || blok "output-mappe kan ikke resolves"
 case "$OUT_DIR_REAL/" in "$WD_REAL/"*) blok "output-fil må IKKE ligge i workdir ($WD_REAL) — aktøren kunne skrive den (F-7)" ;; esac
 [ -d "$OUT_DIR_REAL" ] || blok "output-mappe findes ikke: $OUT_DIR_REAL"
+case "$(basename -- "$OUT")" in
+  .run-*|*.lock|*.receipt.json|*.provenance|*.pid|*.stderr.log|*.log|*.attempt*|*.tmp) blok "output-filnavn bruger et reserveret suffix/prefix (lock/receipt/provenance/pid/log/attempt/tmp/.run-) — kollision med en anden kørsels sidefiler (T-F7)" ;;
+esac
 [ -d "$OUT" ] && blok "output-fil er en MAPPE: $OUT (mv ville flytte leverancen ind i den, F-12)"
 [ -L "$OUT" ] && blok "output-fil er et symlink: $OUT"
 [ -f "$PROMPTFIL" ] && [ ! -L "$PROMPTFIL" ] || blok "prompt-fil findes ikke eller er symlink: $PROMPTFIL"
@@ -118,17 +128,15 @@ fi
 REGEL_COMMIT=$(g -C "$REPO" rev-parse --verify 'HEAD^{commit}' 2>/dev/null) || blok "kan ikke læse HEAD i $REPO"
 
 # --- codex + node fra RENSET kalder-PATH, kun kendte prefixer; codex pinnet mod binaries.lock (F-3) ---
-CLEAN_PATH=""
-IFS=: read -r -a PATH_DELE <<<"${PATH:-}"
-for d in "${PATH_DELE[@]}"; do case "$d" in /*) CLEAN_PATH="${CLEAN_PATH:+$CLEAN_PATH:}$d" ;; esac; done
-export PATH="$CLEAN_PATH"
-resolve_bin() { local p; p=$(command -v -- "$1" 2>/dev/null) || return 1; "$REALPATH" -e -- "$p"; }
+resolve_bin() { local p; p=$(PATH="$CALLER_PATH" command -v -- "$1" 2>/dev/null) || return 1; "$REALPATH" -e -- "$p"; }
 NODE=$(resolve_bin node) || blok "node ikke fundet"
 CODEX=$(resolve_bin codex) || blok "codex ikke fundet"
 kendt_prefix() { case "$1" in "$HOME"/.nvm/versions/node/*/bin/*|"$HOME"/.nvm/versions/node/*/lib/node_modules/*|/usr/local/bin/*|/usr/local/lib/node_modules/*|/usr/bin/*|/usr/lib/node_modules/*) return 0;; *) return 1;; esac; }
 if [ "$SELFTEST" -ne 1 ]; then
   kendt_prefix "$CODEX" || blok "codex-binær uden for pinnet prefix: $CODEX (PATH-injektion? F-3)"
   kendt_prefix "$NODE" || blok "node-binær uden for pinnet prefix: $NODE"
+fi
+if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
   BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
   PIN_SHA=$(printf '%s' "$BINLOCK" | "$NODE" -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.codex||typeof l.codex.sha256!=="string") process.exit(3); console.log(l.codex.sha256)') || blok "binaries.lock.json er ugyldig"
   [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"

@@ -23,7 +23,7 @@
 // plan DEL V/2.F). Lokalt hviler den på git-historik + fabrik-frys — samme tillidsniveau som
 // alt andet i den lokale gate-dom, og ærligt stærkere end digests alene.
 import { createHash } from "node:crypto";
-import { isOid, digestOf, HISTORISKE_UNDTAGELSER } from "./gates.mjs";
+import { isOid, digestOf, HISTORISKE_UNDTAGELSER, GATE_REGISTRY } from "./gates.mjs";
 export const PROVENANCE_DIR = (pakke) => `plan-build/${pakke}/provenance`;
 
 const hasOwn = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
@@ -136,6 +136,16 @@ function verifyInner(git, pakke, evidenceRef, paths, approval, ctx) {
       }
     }
   }
+  // (3c) approval-objektet SKAL være PRÆCIS den committede approval @ E (eksistens + kanonisk indhold) — runde 3:
+  // en slettet approval har stadig en "sidste berørings-commit", og et in-memory approval-objekt kunne afvige fra filen
+  try {
+    const apFil = JSON.parse(git.bytes("show", `${evidenceRef}:${apP}`).toString("utf8"));
+    const apCommitted = isPlain(apFil) && isPlain(apFil.approval) ? apFil.approval : apFil;
+    if (digestOf(apCommitted) !== digestOf(approval)) fail(`approval-objektet ≠ den committede approval @ ${evidenceRef.slice(0, 7)}:${apP} (digest-mismatch)`);
+  } catch (e) {
+    if (/canonicalJson/.test(String(e?.message))) fail("approval kan ikke digestes kanonisk (ugyldige felter)");
+    else fail(`approval mangler @ ${evidenceRef.slice(0, 7)}:${apP} — ingen committet godkendelse at binde til`);
+  }
   // (4) rækkefølge: kvitteringens sidste berøring er ÆGTE forfader til approvalens sidste berøring
   const sidste = (p) => { const c = git("log", "-1", "--format=%H", evidenceRef, "--", p); return isOid(c) ? c : null; };
   const cK = sidste(kvP), cA = sidste(apP);
@@ -207,6 +217,14 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
         const bytes = git.bytes("show", `${E}:${PROVENANCE_DIR(pakke)}/${f}`);
         bySha.set(kvitteringDigest(bytes), { f, bytes });
       }
+      // committede leverancer (F-14): <navn>.leverance.md — slås op på sha256 af bytes
+      const leverancer = new Map();
+      let levFiler = [];
+      try { levFiler = git("ls-tree", "--name-only", `${E}:${PROVENANCE_DIR(pakke)}`).split("\n").filter((f) => /\.leverance\.md$/.test(f)); } catch { levFiler = []; }
+      for (const f of levFiler) {
+        const bytes = git.bytes("show", `${E}:${PROVENANCE_DIR(pakke)}/${f}`);
+        leverancer.set(kvitteringDigest(bytes), { f, bytes });
+      }
       for (const v of verdicts) {
         if (!isPlain(v) || !isPlain(v.run)) { reasons.push("verdikt/run ugyldig"); continue; }
         const rs = v.run.receipt_sha256;
@@ -225,11 +243,74 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
         if (!hit) { reasons.push(`codex: ingen committet kvittering @ ${E.slice(0, 7)}:${PROVENANCE_DIR(pakke)} hasher til ${rs.slice(0, 12)}`); continue; }
         let r; try { r = JSON.parse(hit.bytes.toString("utf8")); } catch { reasons.push(`codex: kvittering ${hit.f} er ikke JSON`); continue; }
         const val = validateTransportReceipt(r, { gateId, commitSha, artifactPath, rawOutputSha256: v.run.raw_output_sha256 });
-        if (!val.ok) reasons.push(...val.reasons.map((x) => `codex (${hit.f}): ${x}`));
+        if (!val.ok) { reasons.push(...val.reasons.map((x) => `codex (${hit.f}): ${x}`)); continue; }
+        // F-15: forventet rolle for gaten · kørsels-identitet · lås @ regel_commit == lås @ evidens-commit
+        const gate = GATE_REGISTRY.find((g) => g.id === gateId);
+        if (!gate?.codexRolle || r.rolle !== gate.codexRolle) reasons.push(`codex (${hit.f}): kvitteringens rolle '${String(r.rolle)}' ≠ gatens codex-rolle '${String(gate?.codexRolle)}'`);
+        if (v.run.run_id !== r.run_id) reasons.push(`codex (${hit.f}): verdiktets run_id ≠ kvitteringens`);
+        if (v.run.run_attempt !== r.attempts.length) reasons.push(`codex (${hit.f}): verdiktets run_attempt (${String(v.run.run_attempt)}) ≠ kvitteringens antal forsøg (${r.attempts.length})`);
+        if (v.run.effort !== r.effort) reasons.push(`codex (${hit.f}): verdiktets effort ≠ kvitteringens`);
+        try {
+          const lockE = git("rev-parse", `${E}:scripts/v5/actors.lock.json`);
+          const lockR = git("rev-parse", `${r.regel_commit}:scripts/v5/actors.lock.json`);
+          if (lockE !== lockR) reasons.push(`codex (${hit.f}): kørt under en anden lås (@${String(r.regel_commit).slice(0, 7)}) end den gældende @ evidens-commit ${E.slice(0, 7)}`);
+          const lock = JSON.parse(git.bytes("show", `${r.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8"));
+          const rolle = Object.prototype.hasOwnProperty.call(lock, r.rolle) ? lock[r.rolle] : null;
+          if (!rolle || rolle.aktoer !== "codex" || rolle.skill_oid !== r.skill_oid || rolle.model !== r.model || rolle.reasoning !== r.effort) reasons.push(`codex (${hit.f}): kvitteringens rolle/skill/model/effort matcher ikke låsen @ ${String(r.regel_commit).slice(0, 7)}`);
+        } catch (e) { reasons.push(`codex (${hit.f}): lås-opslag fejlede (${e?.message ?? e})`); }
+        // F-14: dommens felter GENUDLEDES fra den hash-bundne, COMMITTEDE leverance (<navn>.leverance.md)
+        const levHit = leverancer.get(r.attempts[r.attempts.length - 1].output_sha256);
+        if (!levHit) { reasons.push(`codex (${hit.f}): ingen committet leverance @ ${E.slice(0, 7)}:${PROVENANCE_DIR(pakke)} hasher til kvitteringens output_sha256 — dommen kan ikke genudledes`); continue; }
+        const ud = udtraekVerdiktDraft(levHit.bytes.toString("utf8"));
+        if (!ud.ok) { reasons.push(...ud.reasons.map((x) => `codex (${levHit.f}): ${x}`)); continue; }
+        reasons.push(...draftMatcherVerdikt(ud.draft, v).map((x) => `codex (${levHit.f}): ${x}`));
       }
       return { ok: reasons.length === 0, reasons };
     } catch (e) {
       return { ok: false, reasons: [`verifyTransport kastede (fail-closed): ${e?.message ?? String(e)}`] };
     }
   };
+}
+
+// ---------- verdikt-draft i leverancen (P2 F-10/F-16) ----------
+// udtraekVerdiktDraft(text) → {ok, draft?, reasons}. Kun en fence der ÅBNER på linjestart med PRÆCIS tre
+// backticks og info-strengen "json verdikt-draft" på top-niveau tæller. En blok citeret inde i en anden
+// fence (fx ````-blok med et "eksempel") eller en inline åbner (tekst før backticks) er IKKE en draft.
+// Præcis én aktiv blok kræves. Fence-tilstand følges linje for linje (CommonMark: en fence lukkes af en
+// linje med ≥ samme antal backticks og intet andet).
+export function udtraekVerdiktDraft(text) {
+  if (typeof text !== "string") return { ok: false, reasons: ["leverance er ikke tekst"] };
+  const lines = text.split(/\r?\n/);
+  const kandidater = [];
+  let fence = null;
+  for (const line of lines) {
+    if (fence === null) {
+      const m = /^(`{3,})(.*)$/.exec(line);
+      if (m) fence = { len: m[1].length, aktiv: m[1].length === 3 && m[2].trim() === "json verdikt-draft", buf: [] };
+      continue;
+    }
+    const close = /^(`{3,})\s*$/.exec(line);
+    if (close && close[1].length >= fence.len) { if (fence.aktiv) kandidater.push(fence.buf.join("\n")); fence = null; continue; }
+    fence.buf.push(line);
+  }
+  if (fence !== null) return { ok: false, reasons: ["uafsluttet kode-fence i leverancen"] };
+  if (kandidater.length !== 1) return { ok: false, reasons: [`leverancen skal indeholde PRÆCIS én aktiv \`\`\`json verdikt-draft-blok på top-niveau (fandt ${kandidater.length})`] };
+  let draft;
+  try { draft = JSON.parse(kandidater[0]); } catch { return { ok: false, reasons: ["verdikt-draft-blokken er ikke gyldig JSON"] }; }
+  if (!isPlain(draft)) return { ok: false, reasons: ["verdikt-draft er ikke et objekt"] };
+  return { ok: true, draft, reasons: [] };
+}
+
+// draftMatcherVerdikt(draft, v) → reasons[] — dommens felter i verdiktet SKAL være dem leverancen bærer (F-14)
+export function draftMatcherVerdikt(draft, v) {
+  const reasons = [];
+  const canon = (x) => JSON.stringify(x, (k, val) => (val && typeof val === "object" && !Array.isArray(val) ? Object.fromEntries(Object.keys(val).sort().map((kk) => [kk, val[kk]])) : val));
+  if (draft.aktor !== v.aktor) reasons.push(`leverancens draft.aktor '${String(draft.aktor)}' ≠ verdiktets '${String(v.aktor)}'`);
+  if (draft.conclusion !== v.conclusion) reasons.push(`leverancens draft.conclusion '${String(draft.conclusion)}' ≠ verdiktets '${String(v.conclusion)}' (dommen er byttet efter kørslen)`);
+  if (canon(draft.negative_cases ?? null) !== canon(v.negative_cases ?? null)) reasons.push("negative_cases i verdiktet ≠ leverancens");
+  if (canon(draft.claim_graph_refs ?? []) !== canon(v.claim_graph_refs ?? [])) reasons.push("claim_graph_refs i verdiktet ≠ leverancens");
+  const evD = Array.isArray(draft.evidence) ? draft.evidence.map((e) => ({ path: e?.path, line_span: e?.line_span })) : null;
+  const evV = Array.isArray(v.evidence) ? v.evidence.map((e) => ({ path: e?.path, line_span: e?.line_span })) : null;
+  if (canon(evD) !== canon(evV)) reasons.push("evidence (path + line_span) i verdiktet ≠ leverancens");
+  return reasons;
 }

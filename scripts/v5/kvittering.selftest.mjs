@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { makeGit } from "./git.mjs";
 import { scopeDigest } from "./gates.mjs";
-import { validateKvittering, makeApprovalVerifier, kvitteringDigest, KVITTERING_KEYS, validateTransportReceipt, makeTransportVerifier } from "./kvittering.mjs";
+import { validateKvittering, makeApprovalVerifier, kvitteringDigest, KVITTERING_KEYS, validateTransportReceipt, makeTransportVerifier, udtraekVerdiktDraft } from "./kvittering.mjs";
 
 let pass = 0, fail = 0;
 const ok = (n) => { pass++; console.log(`  ✓ ${n}`); };
@@ -131,7 +131,7 @@ const approval = (d) => ({ login_server_verified: "mgrubak", gate_id: "plan", sc
   const treeOid = git("rev-parse", `HEAD:plan-build/${P}/mappe`);
   const kv = kvOk(); kv.frosset = "2026-09-09T22:00:00+02:00"; kv.fremlaeggelse = { path: `plan-build/${P}/mappe`, blob_oid: treeOid };
   const d = skrivKv(kv); commit("kv tree"); skrivAp(d); commit("ap tree");
-  red("fremlaeggelse peger på et TREE (mappe) → rød (F-6: kun blob)", verifier()(approval(d), ctx), "ikke en fil|devil|fremlaeggelse");
+  red("fremlaeggelse peger på et TREE (mappe) → rød (F-6: kun blob)", verifier()(approval(d), ctx), "ikke en fil \\(git-type tree\\)");
 }
 {
   const v = makeApprovalVerifier({ git, pakke: P, evidenceRef: "HEAD", paths: { kvittering: `plan-build/${P}/findes-ikke.json`, approval: AP } });
@@ -143,13 +143,31 @@ let threw = false; try { makeApprovalVerifier({ pakke: P }); } catch { threw = t
 threw ? ok("verifier uden git-dep kaster (fail-closed)") : bad("git-dep", "kastede ikke");
 {
   // P2 F-7: evidens-ref opløses ÉN gang ved konstruktion — en ref der flyttes bagefter ændrer ikke dommen
-  const HEAD0 = git("rev-parse", "HEAD");
+  // gyldig kæde @ H1 → verifier konstrueres (E = H1) → approval SLETTES i H2 → dommen SKAL stadig være grøn (E fastholdt)
+  const kv = kvOk(); kv.frosset = "2026-09-09T23:00:00+02:00"; const d = skrivKv(kv); commit("kv H1"); skrivAp(d); commit("ap H1");
   const v = makeApprovalVerifier({ git, pakke: P, evidenceRef: "HEAD" });
-  skriv(`plan-build/${P}/støj.md`, "ny commit efter konstruktion\n"); commit("HEAD flyttes");
-  const r0 = v(approval("0".repeat(64)), ctx);
-  r0.reasons.some((x) => x.includes(HEAD0.slice(0, 7))) || !r0.ok ? ok("verifier dømmer mod den pinnede evidens-commit, ikke det nye HEAD (F-7)") : bad("F-7", JSON.stringify(r0));
+  green("sanity @ H1: grøn", v(approval(d), ctx));
+  rmSync(join(ROOT, AP)); commit("H2: approval slettet");
+  green("verifier pinned @ H1 dømmer stadig grøn efter at HEAD flyttede til H2 (F-7: mutant j — flytbar ref — ville blive rød)", v(approval(d), ctx));
+  red("NY verifier @ H2 (approval-fil slettet) → rød (approval mangler @ E — en slettet fil har stadig en berørings-commit)", makeApprovalVerifier({ git, pakke: P, evidenceRef: "HEAD" })(approval(d), ctx), "approval mangler @");
+  // approval-objektet afviger fra den committede fil @ E → rød
+  skrivAp(d); commit("H3a: approval tilbage");
+  red("approval-objekt m. andet indhold end den committede approval → rød (indholds-binding)", makeApprovalVerifier({ git, pakke: P, evidenceRef: "HEAD" })({ ...approval(d), prerequisite_digests: [...digests].reverse() }, ctx), "digest-mismatch|prerequisite");
+  // (approval allerede genskabt ovenfor)
   let t2 = false; try { makeApprovalVerifier({ git, pakke: P, evidenceRef: "findes-ikke" }); } catch { t2 = true; }
   t2 ? ok("ukendt evidens-ref kaster ved konstruktion (fail-closed)") : bad("evidens-ref", "kastede ikke");
+}
+{
+  // P2 F-13 via git.mjs (mutant d): `git replace` af devil-blobben med en FAIL-blob må IKKE ændre dommen
+  const kv = kvOk(); kv.frosset = "2026-09-09T23:30:00+02:00"; const d = skrivKv(kv); commit("kv rep"); skrivAp(d); commit("ap rep");
+  green("sanity før replace: grøn", verifier()(approval(d), ctx));
+  skriv(`plan-build/${P}/devil-fail-2.json`, devilJson("FAIL")); commit("fail-blob");
+  const failOid = oid(`plan-build/${P}/devil-fail-2.json`);
+  execFileSync("git", ["-C", ROOT, "replace", kv.devil.blob_oid, failOid]);
+  const rawGit = (...a) => execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8" }).trim();
+  rawGit("show", kv.devil.blob_oid).includes('"FAIL"') ? ok("kontrol: rå git (m. replace) viser nu FAIL-indholdet") : bad("replace-setup", "replace virkede ikke");
+  green("verifier læser den ORIGINALE devil-blob trods git replace (--no-replace-objects i git.mjs, F-13)", verifier()(approval(d), ctx));
+  execFileSync("git", ["-C", ROOT, "replace", "-d", kv.devil.blob_oid]);
 }
 
 console.log("\nvalidateTransportReceipt — ren logik (codex-run v4-kvittering):");
@@ -171,14 +189,36 @@ red("forsøg m. andet effort", validateTransportReceipt({ ...rcOk(), attempts: [
 red("schema v1", validateTransportReceipt({ ...rcOk(), schema_version: 1 }, tctx), "schema_version");
 red("3 forsøg", validateTransportReceipt({ ...rcOk(), attempts: [rcOk().attempts[0], { ...rcOk().attempts[0], attempt: 2 }, { ...rcOk().attempts[0], attempt: 3 }] }, tctx), "antal forsøg");
 
+console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
+{
+  const ud = (t) => udtraekVerdiktDraft(t);
+  const blok = (o) => "```json verdikt-draft\n" + JSON.stringify(o) + "\n```";
+  ud("x\n" + blok({ a: 1 }) + "\ny\n").ok ? ok("én aktiv blok → ok") : bad("aktiv blok", "");
+  !ud("Dom: FAIL\n\n````markdown\n" + blok({ a: 1 }) + "\n````\n").ok ? ok("blok citeret i ````-fence → ikke aktiv (F-16)") : bad("citeret", "accepteret");
+  !ud("tekst " + blok({ a: 1 }) + "\n").ok ? ok("inline åbner (tekst før backticks) → ikke aktiv") : bad("inline", "accepteret");
+  !ud(blok({ a: 1 }) + "\n" + blok({ b: 2 }) + "\n").ok ? ok("to aktive blokke → rød") : bad("to blokke", "accepteret");
+  !ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n").ok ? ok("én aktiv + én citeret → PRÆCIS én? nej: den citerede ignoreres → ok=true forventes", "") : ok("én aktiv + én citeret → kun den aktive tæller");
+  const r = ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n"); r.ok && r.draft.a === 1 ? ok("… og det er den aktive (a:1) der udtrækkes") : bad("aktiv vs citeret", JSON.stringify(r));
+  !ud("```json verdikt-draft\n{\"a\":1}\n").ok ? ok("uafsluttet fence → rød") : bad("uafsluttet", "accepteret");
+  !ud("````json verdikt-draft\n{}\n````\n").ok ? ok("fire backticks som åbner → ikke aktiv (kræver præcis tre)") : bad("4-fence", "accepteret");
+  !ud("```json verdikt-draft\nikke json\n```\n").ok ? ok("ugyldig JSON i blokken → rød") : bad("json", "accepteret");
+}
+
 console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
 {
-  const lev = "leverance-bytes"; const levSha = kvitteringDigest(Buffer.from(lev));
-  const receipt = { ...rcOk(), attempts: [{ ...rcOk().attempts[0], output_sha256: levSha }] };
+  // realistisk kæde: lås @ HEAD, rolle codex-angreb, leverance m. verdikt-draft-blok committet i provenance/
+  const REPO_ROOT0 = new URL("../../", import.meta.url).pathname;
+  const realLock = JSON.parse(readFileSync(join(REPO_ROOT0, "scripts/v5/actors.lock.json"), "utf8"));
+  skriv("scripts/v5/actors.lock.json", JSON.stringify(realLock)); commit("lås i temp-repo");
+  const LOCK_COMMIT = git("rev-parse", "HEAD");
+  const draftObj = { aktor: "codex", conclusion: "PASS", negative_cases: ["n1"], claim_graph_refs: [], evidence: [{ path: ARTP, line_span: [1, 1] }] };
+  const levTekst = (dr) => `# Analyse\n\nDom: se blok.\n\n\`\`\`json verdikt-draft\n${JSON.stringify(dr)}\n\`\`\`\n`;
+  const lev = levTekst(draftObj); const levSha = kvitteringDigest(Buffer.from(lev));
+  const receipt = { ...rcOk(), rolle: "codex-angreb", model: realLock["codex-angreb"].model, effort: realLock["codex-angreb"].reasoning, regel_commit: LOCK_COMMIT, skill_oid: realLock["codex-angreb"].skill_oid, attempts: [{ ...rcOk().attempts[0], model: realLock["codex-angreb"].model, effort: realLock["codex-angreb"].reasoning, output_sha256: levSha }] };
   const rb = Buffer.from(JSON.stringify(receipt, null, 1) + "\n"); const rsha = kvitteringDigest(rb);
-  skriv(`plan-build/${P}/provenance/r1.receipt.json`, rb); commit("provenance: kvittering r1");
+  skriv(`plan-build/${P}/provenance/r1.receipt.json`, rb); skriv(`plan-build/${P}/provenance/r1.leverance.md`, lev); commit("provenance: kvittering + leverance r1");
   const mk = (over = {}) => makeTransportVerifier({ git, pakke: P, evidenceRef: "HEAD", gateId: "plan", commitSha: GC, artifactPath: ARTP, ...over });
-  const vCodex = (run) => ({ aktor: "codex", run: { run_id: "r1", run_attempt: 1, raw_output_sha256: levSha, actor_server_id: "x", receipt_sha256: rsha, ...run } });
+  const vCodex = (run, top = {}) => ({ aktor: "codex", conclusion: "PASS", negative_cases: ["n1"], claim_graph_refs: [], evidence: [{ path: ARTP, line_span: [1, 1], blob_oid: "x", excerpt_sha: "y", commit_sha: GC }], ...top, run: { run_id: "r1", run_attempt: 1, raw_output_sha256: levSha, actor_server_id: "x", effort: realLock["codex-angreb"].reasoning, receipt_sha256: rsha, ...run } });
   const vClaude = (run = {}) => ({ aktor: "code-reviewer", run: { run_id: "c", run_attempt: 1, raw_output_sha256: "1".repeat(64), actor_server_id: "SELV-ERKLÆRET", ...run } });
   green("codex-verdikt m. committet kvittering + matchende leverance-hash → grøn", mk()([vCodex(), vClaude()]));
   red("codex-verdikt UDEN receipt_sha256 → rød (F-2)", mk()([vCodex({ receipt_sha256: undefined })]), "receipt_sha256 mangler");
@@ -189,6 +229,34 @@ console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
   red("claude-aktør m. receipt_sha256 (forfalsket lighed) → rød", mk()([vClaude({ receipt_sha256: rsha })]), "forfalsket lighed");
   green("kun claude-aktører (residual: SELV-ERKLÆRET) → grøn", mk()([vClaude()]));
   red("verdicts ikke et array → rød", mk()(null), "ikke et array");
+  // F-14: PASS-verdikt bundet til en leverance hvis draft siger noget andet → rød (dommen genudledes fra leverancen)
+  red("verdikt.conclusion PASS men leverancens draft ≠ (FAIL) → rød (F-14)", mk()([vCodex({}, { conclusion: "FAIL" })]), "byttet efter kørslen|conclusion");
+  red("verdikt.negative_cases ≠ leverancens → rød (F-14)", mk()([vCodex({}, { negative_cases: ["andet"] })]), "negative_cases");
+  red("verdikt.evidence ≠ leverancens → rød (F-14)", mk()([vCodex({}, { evidence: [{ path: ARTP, line_span: [2, 2] }] })]), "evidence");
+  // F-15: rolle/run-identitet/lås
+  red("kvitteringens rolle ≠ gatens codex-rolle → rød (F-15)", (() => { const r2 = { ...receipt, rolle: "codex-forbedring", skill_oid: realLock["codex-forbedring"].skill_oid }; const b2 = Buffer.from(JSON.stringify(r2, null, 1) + "\n"); skriv(`plan-build/${P}/provenance/r-forb.receipt.json`, b2); commit("forbedring-kvittering"); return mk()([vCodex({ receipt_sha256: kvitteringDigest(b2) })]); })(), "gatens codex-rolle");
+  red("verdiktets run_id ≠ kvitteringens → rød (F-15)", mk()([vCodex({ run_id: "andet" })]), "run_id");
+  red("verdiktets run_attempt ≠ antal forsøg → rød (F-15)", mk()([vCodex({ run_attempt: 2 })]), "run_attempt");
+  red("verdiktets effort ≠ kvitteringens → rød (F-15)", mk()([vCodex({ effort: "low" })]), "effort");
+  {
+    // ældre regel_commit m. ANDEN lås → rød
+    const alt = structuredClone(realLock); alt["codex-angreb"].reasoning = "low";
+    skriv("scripts/v5/actors.lock.json", JSON.stringify(alt)); commit("anden lås (low)");
+    const OLD = git("rev-parse", "HEAD");
+    skriv("scripts/v5/actors.lock.json", JSON.stringify(realLock)); commit("lås tilbage");
+    const r3 = { ...receipt, regel_commit: OLD, effort: "low", attempts: [{ ...receipt.attempts[0], effort: "low" }] };
+    const b3 = Buffer.from(JSON.stringify(r3, null, 1) + "\n"); skriv(`plan-build/${P}/provenance/r-old.receipt.json`, b3); commit("gammel-lås-kvittering");
+    red("kvittering kørt under en ældre lås (low) end den gældende → rød (F-15)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b3), effort: "low" })]), "anden lås");
+  }
+  // F-16: leverance hvor draften kun står som CITERET eksempel i en ````-blok → ingen aktiv blok → rød
+  {
+    const citeret = "Dom: FAIL\n\n````markdown\neksempel:\n```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n````\n";
+    const cSha = kvitteringDigest(Buffer.from(citeret));
+    const r4 = { ...receipt, attempts: [{ ...receipt.attempts[0], output_sha256: cSha }] }; const b4 = Buffer.from(JSON.stringify(r4, null, 1) + "\n");
+    skriv(`plan-build/${P}/provenance/r-cit.receipt.json`, b4); skriv(`plan-build/${P}/provenance/r-cit.leverance.md`, citeret); commit("citeret draft");
+    red("draft kun som citeret eksempel i ````-blok → ingen aktiv blok → rød (F-16)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b4), raw_output_sha256: cSha })]), "PRÆCIS én aktiv");
+  }
+  red("ingen committet leverance for kvitteringens output_sha256 → rød (F-14)", (() => { const r5 = { ...receipt, run_id: "r5", attempts: [{ ...receipt.attempts[0], output_sha256: "a".repeat(64) }] }; const b5 = Buffer.from(JSON.stringify(r5, null, 1) + "\n"); skriv(`plan-build/${P}/provenance/r5.receipt.json`, b5); commit("kvittering uden leverance"); return mk()([vCodex({ receipt_sha256: kvitteringDigest(b5), run_id: "r5", raw_output_sha256: "a".repeat(64) })]); })(), "ingen committet leverance");
   // historisk undtagelse (M-38/r4b): PRÆCIS det committede r4b-codex-verdikt accepteres uden receipt_sha256 — en ændret kopi ikke
   const REPO_ROOT = new URL("../../", import.meta.url).pathname;
   const r4b = JSON.parse(readFileSync(join(REPO_ROOT, "plan-build/lokations-skabelon/verdikt-codex-krav-r4b.json"), "utf8"));

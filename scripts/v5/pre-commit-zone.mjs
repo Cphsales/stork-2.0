@@ -54,7 +54,8 @@ if (lockFoelgerMed) {
   const drift = [];
   for (const r of roller) {
     // rolletekst der ER staged → låsen skal pege på den staged blob; ikke-staged → på HEAD-blobben
-    const staged = stagedStatus.has(r.skill_path) && stagedStatus.get(r.skill_path) !== "D";
+    if (stagedStatus.get(r.skill_path) === "D") { drift.push(`${r.skill_path}: rolletekst SLETTES men låsen refererer den stadig (T-F8) — fjern rollen fra låsen i samme commit`); continue; }
+    const staged = stagedStatus.has(r.skill_path);
     let oid = null;
     if (staged) oid = stagedOid(r.skill_path);
     else { try { oid = execFileSync("git", ["-C", repoRoot, "rev-parse", "--verify", "--quiet", `HEAD:${r.skill_path}`], { encoding: "utf8" }).trim(); } catch { oid = null; } }

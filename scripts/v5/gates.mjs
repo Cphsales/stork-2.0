@@ -53,6 +53,7 @@ export const GATE_REGISTRY = deepFreeze([
     orderedApproval: false,
     approvalReceipt: false,
     transportReceipt: false,
+    codexRolle: null,
   },
   {
     id: "krav",
@@ -70,6 +71,7 @@ export const GATE_REGISTRY = deepFreeze([
     // DOKUMENTERET (plan Fase 2 pkt. 5), ikke retro-fikset — en kvittering kan ikke fabrikeres bagud.
     approvalReceipt: true,
     transportReceipt: true,
+    codexRolle: "codex-angreb", // F-15: den ENESTE codex-rolle der må afgive gate-verdikt her (buildability-angreb på krav)
   },
   {
     id: "plan",
@@ -95,6 +97,7 @@ export const GATE_REGISTRY = deepFreeze([
     // P2 F-2/F-10: hvert Codex-verdikt SKAL bæres af en committet transport-kvittering (codex-run.sh)
     // bundet til netop denne gate/commit/artefakt — en Codex-dom kan ikke konstrueres uden et Codex-kald.
     transportReceipt: true,
+    codexRolle: "codex-angreb", // F-15: den ENESTE codex-rolle der må afgive gate-verdikt her
   },
   {
     id: "build",
@@ -108,6 +111,7 @@ export const GATE_REGISTRY = deepFreeze([
     orderedApproval: false,
     approvalReceipt: false,
     transportReceipt: false, // ingen aktør-verdikter på build (maskinbevis)
+    codexRolle: null,
   },
   {
     id: "slut",
@@ -121,6 +125,7 @@ export const GATE_REGISTRY = deepFreeze([
     orderedApproval: false,
     approvalReceipt: true, // slut-gaten binder også maskinbeviset i kvitteringen (princip 9)
     transportReceipt: false, // ingen aktør-verdikter på slut
+    codexRolle: null,
   },
 ]);
 

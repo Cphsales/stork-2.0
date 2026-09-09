@@ -33,6 +33,7 @@ import { validateVerdiktSchema, readBlobLines, excerptAt } from "./verdikt.mjs";
 import { GATE_REGISTRY } from "./gates.mjs";
 import { DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { makeGit } from "./git.mjs";
+import { udtraekVerdiktDraft } from "./kvittering.mjs";
 
 const [draftPath, gateId, gatedCommit, artifactPath, receiptPath, leverancePath] = process.argv.slice(2);
 if (!draftPath || !gateId || !gatedCommit || !artifactPath) {
@@ -74,10 +75,11 @@ if (receiptPath !== undefined) {
   const levBytes = readFileSync(leverancePath);
   const levSha = sha256(levBytes);
   if (levSha !== last.output_sha256) fejl(`leverance-fil (${levSha.slice(0, 12)}) ≠ kvitteringens output_sha256 (${String(last.output_sha256).slice(0, 12)})`);
-  // DRAFT FRA LEVERANCEN (F-10): dommen kan ikke byttes uafhængigt af den leverede tekst
-  const blokke = [...levBytes.toString("utf8").matchAll(/```json verdikt-draft\n([\s\S]*?)\n```/g)];
-  if (blokke.length !== 1) fejl(`leverancen skal indeholde PRÆCIS én \`\`\`json verdikt-draft-blok (fandt ${blokke.length})`);
-  try { draft = JSON.parse(blokke[0][1]); } catch { fejl("verdikt-draft-blokken er ikke gyldig JSON"); }
+  // DRAFT FRA LEVERANCEN (F-10/F-16): kun en aktiv top-niveau ```json verdikt-draft-blok tæller — citerede
+  // eksempler i en ````-blok eller inline åbnere ignoreres (fence-parser i kvittering.mjs)
+  const ud = udtraekVerdiktDraft(levBytes.toString("utf8"));
+  if (!ud.ok) fejl(ud.reasons.join("; "));
+  draft = ud.draft;
   if (draftPath !== "-") {
     const separat = JSON.parse(readFileSync(draftPath, "utf8"));
     if (canon(separat) !== canon(draft)) fejl("separat draft.json ≠ verdikt-draft-blokken i leverancen (dommen forsøgt byttet)");
@@ -132,11 +134,18 @@ const evidence = draft.evidence.map((e) => {
   return { commit_sha: gatedCommit, path: e.path, blob_oid, line_span: e.line_span, excerpt_sha: sha256(excerpt) };
 });
 
-// rolle-binding (F-10): kvitteringens rolle skal være en codex-rolle i låsen @ regel_commit med samme skill_oid
+// rolle-binding (F-10/F-15): kvitteringens rolle skal være GATENS codex-rolle, findes i låsen @ regel_commit med
+// samme skill_oid/model/effort — og låsen @ regel_commit skal være den GÆLDENDE (== HEAD's), så en ældre
+// regel_commit med anden lås ikke kan bære en dom
 if (receipt) {
-  let lock;
-  try { lock = JSON.parse(git.bytes("show", `${receipt.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8")); }
-  catch { console.error(`PROVENANCE-RØD: actors.lock.json findes ikke @ kvitteringens regel_commit ${String(receipt.regel_commit).slice(0, 7)}`); process.exit(1); }
+  if (!gate.codexRolle || receipt.rolle !== gate.codexRolle) { console.error(`PROVENANCE-RØD: kvitteringens rolle '${receipt.rolle}' ≠ gatens codex-rolle '${String(gate.codexRolle)}' (F-15)`); process.exit(1); }
+  let lock, lockR, lockH;
+  try {
+    lockR = git("rev-parse", `${receipt.regel_commit}:scripts/v5/actors.lock.json`);
+    lockH = git("rev-parse", "HEAD:scripts/v5/actors.lock.json");
+    lock = JSON.parse(git.bytes("show", `${receipt.regel_commit}:scripts/v5/actors.lock.json`).toString("utf8"));
+  } catch { console.error(`PROVENANCE-RØD: actors.lock.json findes ikke @ kvitteringens regel_commit ${String(receipt.regel_commit).slice(0, 7)}`); process.exit(1); }
+  if (lockR !== lockH) { console.error(`PROVENANCE-RØD: kørt under en anden lås (@${String(receipt.regel_commit).slice(0, 7)}) end den gældende @ HEAD (F-15)`); process.exit(1); }
   const r = Object.prototype.hasOwnProperty.call(lock, receipt.rolle) ? lock[receipt.rolle] : null;
   if (!r || r.aktoer !== "codex" || r.skill_oid !== receipt.skill_oid || r.model !== receipt.model || r.reasoning !== receipt.effort) {
     console.error(`PROVENANCE-RØD: kvitteringens rolle '${receipt.rolle}' matcher ikke låsen @ ${String(receipt.regel_commit).slice(0, 7)} (aktoer/skill_oid/model/effort)`); process.exit(1);
