@@ -277,46 +277,33 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
   };
 }
 
-// ---------- verdikt-draft i leverancen (P2 F-10/F-16) ----------
-// udtraekVerdiktDraft(text) → {ok, draft?, reasons}. Kun en fence der ÅBNER på linjestart med PRÆCIS tre
-// backticks og info-strengen "json verdikt-draft" på top-niveau tæller. En blok citeret inde i en anden
-// fence (fx ````-blok med et "eksempel") eller en inline åbner (tekst før backticks) er IKKE en draft.
-// Præcis én aktiv blok kræves. Fence-tilstand følges linje for linje (CommonMark: en fence lukkes af en
-// linje med ≥ samme antal backticks og intet andet).
+// ---------- verdikt-draft i leverancen (P2 F-10/F-16 → runde 9: INGEN Markdown-parsing) ----------
+// Runde 4-8 lærte: en CommonMark-parser (fences · info-strenge · indrykning · linjeskift · containere) kan ikke
+// gøres falsk-grøn-fri ét skridt ad gangen — hver runde fandt en ny regel. Vejnings-reglen: det simpleste der fuldt
+// dækker. Kontrakten er nu uden Markdown-semantik:
+//   * leverancens SIDSTE ikke-tomme linje er  `VERDIKT-DRAFT: <base64(JSON)>`
+//   * der må findes PRÆCIS én linje i hele filen der (trimmet) begynder med `VERDIKT-DRAFT:` — også et citeret
+//     eksempel tæller, så et citat kan aldrig smugle en anden dom ind (2 linjer = rød), og intet citat kan blive
+//     "aktivt" på bekostning af den ægte (den ægte SKAL være sidst)
+//   * base64 skal være kanonisk (round-trip-identisk) og dekode til ét plain JSON-objekt
+// Ingen fence-tilstand, ingen containere, ingen Unicode-whitespace-semantik — kun linjer, trim og base64.
+export const DRAFT_MARK = "VERDIKT-DRAFT:";
 export function udtraekVerdiktDraft(text) {
   if (typeof text !== "string") return { ok: false, reasons: ["leverance er ikke tekst"] };
-  // CommonMark linjeskift = LF, CRLF ELLER lone CR (runde 6: "\r~~~" skjulte en åbner); U+2028/U+2029 er IKKE linjeskift
   const lines = text.split(/\r\n|\r|\n/);
-  const kandidater = [];
-  let fence = null; // { ch, len, aktiv, buf }
-  for (const line of lines) {
-    if (fence === null) {
-      // CommonMark: fence-åbner = 0-3 mellemrums indrykning + ≥3 backticks ELLER ≥3 tilder (runde 4 rest-F-16:
-      // ~~~-fences og indrykkede ````-fences blev ikke set som citerende ydre fences)
-      // dotAll-agtig rest ([\s\S]*): `.` matcher ikke U+2028/U+2029, så "~~~mark\u2028down" blev ellers ikke set som fence
-      const m = /^( {0,3})(`{3,}|~{3,})([\s\S]*)$/.exec(line);
-      if (m) {
-        const ch = m[2][0]; const info = m[3].trim();
-        // CommonMark: en BACKTICK-fence må ikke have backticks i info-strengen — så er linjen IKKE en åbner
-        // (runde 7: "```json verdikt-draft `x" oprettede en falsk fence, som den næste ``` "lukkede" → citeret PASS aktiv)
-        if (ch === "`" && info.includes("`")) continue;
-        // kun en UINDRYKKET, PRÆCIS tre-backtick-fence med info "json verdikt-draft" er en aktiv draft
-        const aktiv = m[1].length === 0 && ch === "`" && m[2].length === 3 && info === "json verdikt-draft";
-        fence = { ch, len: m[2].length, aktiv, buf: [] };
-      }
-      continue;
-    }
-    // lukker: kun mellemrum/tab efter fence-tegnene (runde 5: `\s*` accepterede NBSP/vertikal tab som CommonMark IKKE
-    // gør → en "falsk lukker" lod en citeret PASS-blok blive aktiv)
-    const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
-    if (close && close[1][0] === fence.ch && close[1].length >= fence.len) { if (fence.aktiv) kandidater.push(fence.buf.join("\n")); fence = null; continue; }
-    fence.buf.push(line);
-  }
-  if (fence !== null) return { ok: false, reasons: ["uafsluttet kode-fence i leverancen"] };
-  if (kandidater.length !== 1) return { ok: false, reasons: [`leverancen skal indeholde PRÆCIS én aktiv \`\`\`json verdikt-draft-blok på top-niveau (fandt ${kandidater.length})`] };
+  const hits = [];
+  for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith(DRAFT_MARK)) hits.push({ i, t }); }
+  if (hits.length !== 1) return { ok: false, reasons: [`leverancen skal indeholde PRÆCIS én linje der begynder med ${DRAFT_MARK} (fandt ${hits.length}) — også citerede eksempler tæller`] };
+  let last = -1;
+  for (let i = lines.length - 1; i >= 0; i--) if (lines[i].trim() !== "") { last = i; break; }
+  if (hits[0].i !== last) return { ok: false, reasons: [`${DRAFT_MARK}-linjen skal være leverancens SIDSTE ikke-tomme linje (den står på linje ${hits[0].i + 1}, sidste er ${last + 1})`] };
+  const b64 = hits[0].t.slice(DRAFT_MARK.length).trim();
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return { ok: false, reasons: [`${DRAFT_MARK}: værdien er ikke base64`] };
+  const buf = Buffer.from(b64, "base64");
+  if (buf.toString("base64") !== b64) return { ok: false, reasons: [`${DRAFT_MARK}: base64 er ikke kanonisk (round-trip afviger)`] };
   let draft;
-  try { draft = JSON.parse(kandidater[0]); } catch { return { ok: false, reasons: ["verdikt-draft-blokken er ikke gyldig JSON"] }; }
-  if (!isPlain(draft)) return { ok: false, reasons: ["verdikt-draft er ikke et objekt"] };
+  try { draft = JSON.parse(buf.toString("utf8")); } catch { return { ok: false, reasons: [`${DRAFT_MARK}: dekoder ikke til gyldig JSON`] }; }
+  if (!isPlain(draft)) return { ok: false, reasons: [`${DRAFT_MARK}: JSON er ikke et objekt`] };
   return { ok: true, draft, reasons: [] };
 }
 

@@ -7,9 +7,9 @@
 //
 // Brug (fra aktør-workdir-roden, som ER repoet @ pinned commit):
 //   node <sti>/verdikt-byg.mjs <draft.json|-> <gate_id> <gated_commit> <artifact_path> [receipt.json leverance-fil] > OUT-verdikt.json
-//   P2 F-10 (v4): i kvitterings-mode udtrækkes draften FRA LEVERANCEN (præcis ét ```json verdikt-draft-blok)
-//   så dommen ikke kan byttes uafhængigt af den leverede tekst; draft.json = "-" eller skal være
-//   kanonisk identisk med blokken. Kvitteringen skal bære gate_input == (gate_id, gated_commit,
+//   P2 F-10 (v4) → runde 9: i kvitterings-mode udtrækkes draften FRA LEVERANCEN som dens SIDSTE ikke-tomme
+//   linje `VERDIKT-DRAFT: <base64(JSON)>` — præcis én sådan linje i hele filen (ingen Markdown-parsing; se
+//   kvittering.mjs udtraekVerdiktDraft). draft.json = "-" eller skal være kanonisk identisk. Kvitteringen skal bære gate_input == (gate_id, gated_commit,
 //   artifact_path), aktivitet=dom, selftest=false, og rollen skal være en codex-rolle i låsen med
 //   samme skill_oid. run.receipt_sha256 = sha256(kvitterings-bytes) → gate-runnerens verifyTransport.
 // draft.json = { aktor, conclusion, negative_cases, claim_graph_refs?,
@@ -76,8 +76,8 @@ if (receiptPath !== undefined) {
   const levBytes = readFileSync(leverancePath);
   const levSha = sha256(levBytes);
   if (levSha !== last.output_sha256) fejl(`leverance-fil (${levSha.slice(0, 12)}) ≠ kvitteringens output_sha256 (${String(last.output_sha256).slice(0, 12)})`);
-  // DRAFT FRA LEVERANCEN (F-10/F-16): kun en aktiv top-niveau ```json verdikt-draft-blok tæller — citerede
-  // eksempler i en ````-blok eller inline åbnere ignoreres (fence-parser i kvittering.mjs)
+  // DRAFT FRA LEVERANCEN (F-10/F-16 → runde 9): sidste ikke-tomme linje `VERDIKT-DRAFT: <base64(JSON)>`,
+  // præcis én i hele filen — ingen Markdown-semantik (kvittering.mjs udtraekVerdiktDraft)
   const ud = udtraekVerdiktDraft(levBytes.toString("utf8"));
   if (!ud.ok) fejl(ud.reasons.join("; "));
   draft = ud.draft;

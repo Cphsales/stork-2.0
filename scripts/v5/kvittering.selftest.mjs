@@ -191,44 +191,26 @@ red("regel_commit 'HEAD' (flytbar ref) → rød (F-18)", validateTransportReceip
 red("regel_commit 64-hex → rød (præcis 40)", validateTransportReceipt({ ...rcOk(), regel_commit: "a".repeat(64) }, tctx), "fast 40-hex commit-OID");
 red("3 forsøg", validateTransportReceipt({ ...rcOk(), attempts: [rcOk().attempts[0], { ...rcOk().attempts[0], attempt: 2 }, { ...rcOk().attempts[0], attempt: 3 }] }, tctx), "antal forsøg");
 
-console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
+console.log("\nudtraekVerdiktDraft — VERDIKT-DRAFT-linje (F-16 → runde 9, ingen Markdown-parsing):");
 {
   const ud = (t) => udtraekVerdiktDraft(t);
-  const blok = (o) => "```json verdikt-draft\n" + JSON.stringify(o) + "\n```";
-  ud("x\n" + blok({ a: 1 }) + "\ny\n").ok ? ok("én aktiv blok → ok") : bad("aktiv blok", "");
-  !ud("Dom: FAIL\n\n````markdown\n" + blok({ a: 1 }) + "\n````\n").ok ? ok("blok citeret i ````-fence → ikke aktiv (F-16)") : bad("citeret", "accepteret");
-  !ud("tekst " + blok({ a: 1 }) + "\n").ok ? ok("inline åbner (tekst før backticks) → ikke aktiv") : bad("inline", "accepteret");
-  !ud(blok({ a: 1 }) + "\n" + blok({ b: 2 }) + "\n").ok ? ok("to aktive blokke → rød") : bad("to blokke", "accepteret");
-  !ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n").ok ? ok("én aktiv + én citeret → PRÆCIS én? nej: den citerede ignoreres → ok=true forventes", "") : ok("én aktiv + én citeret → kun den aktive tæller");
-  const r = ud(blok({ a: 1 }) + "\n````markdown\n" + blok({ b: 2 }) + "\n````\n"); r.ok && r.draft.a === 1 ? ok("… og det er den aktive (a:1) der udtrækkes") : bad("aktiv vs citeret", JSON.stringify(r));
-  !ud("```json verdikt-draft\n{\"a\":1}\n").ok ? ok("uafsluttet fence → rød") : bad("uafsluttet", "accepteret");
-  !ud("Dom: FAIL\n~~~markdown\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("blok citeret i ~~~-fence → ikke aktiv (rest-F-16)") : bad("tilde-fence", "accepteret");
-  !ud("Dom: FAIL\n  ````markdown\n" + blok({ a: 1 }) + "\n  ````\n").ok ? ok("blok citeret i INDRYKKET ````-fence (2 mellemrum) → ikke aktiv (rest-F-16)") : bad("indrykket fence", "accepteret");
-  !ud("Dom: FAIL\n   ~~~~\n" + blok({ a: 1 }) + "\n   ~~~~\n").ok ? ok("blok citeret i indrykket ~~~~-fence (3 mellemrum) → ikke aktiv") : bad("indrykket tilde", "accepteret");
-  !ud(" ```json verdikt-draft\n{\"a\":1}\n```\n").ok ? ok("indrykket aktiv-åbner (1 mellemrum) → ikke aktiv (kræver uindrykket)") : bad("indrykket aktiv", "accepteret");
-  !ud("~~~json verdikt-draft\n{\"a\":1}\n~~~\n").ok ? ok("tilde-åbner m. draft-info → ikke aktiv (kræver backticks)") : bad("tilde aktiv", "accepteret");
-  { const r2 = ud("~~~markdown\ntekst\n```\n~~~\n" + blok({ a: 1 }) + "\n"); r2.ok && r2.draft.a === 1 ? ok("``` inde i ~~~-fence lukker den ikke (kun samme tegn lukker) — den ægte blok bagefter findes") : bad("fence-tegn", JSON.stringify(r2)); }
-  !ud("Dom: FAIL\n~~~markdown\n~~~\u00a0\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. NBSP lukker IKKE den ydre fence → blokken forbliver citeret → rød (runde 5)") : bad("NBSP-lukker", "accepteret");
-  !ud("Dom: FAIL\n~~~markdown\n~~~\u000b\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. vertikal tab lukker IKKE → rød") : bad("VT-lukker", "accepteret");
-  { const r3 = ud("~~~x\n~~~ \t\n" + blok({ a: 1 }) + "\n"); r3.ok ? ok("lukker m. almindelige mellemrum/tab lukker (CommonMark)") : bad("space-lukker", JSON.stringify(r3)); }
-  // runde 6: skjulte ÅBNERE (U+2028/U+2029 i info-strengen, lone CR som linjeskift) skal ses som ydre fence → blokken forbliver citeret
-  !ud("Dom: FAIL\n~~~mark\u2028down\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("åbner m. U+2028 i info → fence ses, blok citeret → rød") : bad("U+2028-åbner", "accepteret");
-  !ud("Dom: FAIL\n~~~mark\u2029down\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("åbner m. U+2029 i info → rød") : bad("U+2029-åbner", "accepteret");
-  !ud("Dom: FAIL\r~~~markdown\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("lone CR som linjeskift før åbner → fence ses → rød") : bad("CR-åbner", "accepteret");
-  !ud("Dom: FAIL\r  ````md\r" + blok({ a: 1 }) + "\r  ````\r").ok ? ok("lone-CR-dokument m. indrykket ````-citat → rød") : bad("CR-doc", "accepteret");
-  // målehul (runde 6 mutant a): falsk-lukker-cases UDEN afsluttende ydre fence — en `\s*`-lukker ville gøre blokken aktiv (ok:true)
-  !ud("Dom: FAIL\n~~~markdown\n~~~\u00a0\n" + blok({ a: 1 })).ok ? ok("NBSP-falsk-lukker uden afsluttende fence → stadig citeret (uafsluttet) → rød [dræber mutant a]") : bad("NBSP uden slut", "accepteret");
-  !ud("Dom: FAIL\n~~~markdown\n~~~\u000b\n" + blok({ a: 1 })).ok ? ok("VT-falsk-lukker uden afsluttende fence → rød [dræber mutant a]") : bad("VT uden slut", "accepteret");
-  { const r4 = ud("~~~x\n~~~\n" + blok({ a: 1 })); r4.ok ? ok("ægte lukker uden trailing whitespace → blokken efter er aktiv (kontrol)") : bad("ægte lukker", JSON.stringify(r4)); }
-  // runde 7: backtick-fence m. backtick i info er IKKE en åbner (CommonMark) → den næste ``` ÅBNER en blok der citerer PASS-blokken
-  !ud("Dom: FAIL\n```json verdikt-draft `x\n```\n" + blok({ a: 1 })).ok ? ok("```-linje m. backtick i info er ingen åbner; næste ``` åbner citat → blok citeret → rød (runde 7)") : bad("backtick-info", "accepteret");
-  { const r5 = ud("~~~info `med` backticks\ntekst\n~~~\n" + blok({ a: 1 })); r5.ok ? ok("tilde-fence må have backticks i info (CommonMark) — citerer korrekt, aktiv blok efter") : bad("tilde-info", JSON.stringify(r5)); }
-  // målehul (runde 7 mutant a/b): CR- og U+2028-åbnere UDEN afsluttende ydre fence — mutanten ville aktivere blokken
-  !ud("Dom: FAIL\r~~~markdown\n" + blok({ a: 1 })).ok ? ok("CR-åbner uden afsluttende fence → uafsluttet → rød [dræber mutant a]") : bad("CR uden slut", "accepteret");
-  !ud("Dom: FAIL\n~~~mark\u2028down\n" + blok({ a: 1 })).ok ? ok("U+2028-åbner uden afsluttende fence → rød [dræber mutant b]") : bad("U+2028 uden slut", "accepteret");
-  !ud("Dom: FAIL\n~~~mark\u2029down\n" + blok({ a: 1 })).ok ? ok("U+2029-åbner uden afsluttende fence → rød [dræber mutant b]") : bad("U+2029 uden slut", "accepteret");
-  !ud("````json verdikt-draft\n{}\n````\n").ok ? ok("fire backticks som åbner → ikke aktiv (kræver præcis tre)") : bad("4-fence", "accepteret");
-  !ud("```json verdikt-draft\nikke json\n```\n").ok ? ok("ugyldig JSON i blokken → rød") : bad("json", "accepteret");
+  const mark = (o) => "VERDIKT-DRAFT: " + Buffer.from(JSON.stringify(o)).toString("base64");
+  const P = { aktor: "codex", conclusion: "PASS" };
+  { const r = ud("# Analyse\n\ntekst\n\n" + mark(P) + "\n"); r.ok && r.draft.conclusion === "PASS" ? ok("én marker-linje sidst → ok") : bad("én marker", JSON.stringify(r)); }
+  { const r = ud("x\n" + mark(P)); r.ok ? ok("uden afsluttende newline → ok") : bad("ingen newline", JSON.stringify(r)); }
+  { const r = ud("x\n   " + mark(P) + "  \n\n\n"); r.ok ? ok("indrykning + trailing whitespace/tomme linjer → ok (trim)") : bad("trim", JSON.stringify(r)); }
+  !ud("Dom: FAIL\n\nkun tekst\n").ok ? ok("ingen marker → rød") : bad("ingen marker", "accepteret");
+  !ud("Dom: FAIL\n\nEksempel:\n```\n" + mark(P) + "\n```\n\n" + mark({ aktor: "codex", conclusion: "FAIL" }) + "\n").ok ? ok("citeret eksempel + ægte = TO marker-linjer → rød (citater kan ikke smugle en dom)") : bad("to markers", "accepteret");
+  !ud("Dom: FAIL\n" + mark(P) + "\n\nEfterskrift.\n").ok ? ok("marker der ikke er sidste ikke-tomme linje → rød") : bad("ikke sidst", JSON.stringify(ud("Dom: FAIL\n" + mark(P) + "\n\nEfterskrift.\n")));
+  !ud("x\nVERDIKT-DRAFT: ikke*base64!\n").ok ? ok("ugyldig base64 → rød") : bad("base64", "accepteret");
+  !ud("x\nVERDIKT-DRAFT: " + Buffer.from(JSON.stringify(P)).toString("base64").replace(/=+$/, "") + "\n").ok ? ok("ikke-kanonisk base64 (padding strippet) → rød") : bad("kanonisk", "accepteret");
+  !ud("x\nVERDIKT-DRAFT: " + Buffer.from("ikke json").toString("base64") + "\n").ok ? ok("base64 der ikke er JSON → rød") : bad("json", "accepteret");
+  !ud("x\nVERDIKT-DRAFT: " + Buffer.from("[1,2]").toString("base64") + "\n").ok ? ok("JSON der ikke er et objekt → rød") : bad("objekt", "accepteret");
+  // Markdown-containere/fences/Unicode er IRRELEVANTE nu: en marker inde i lister/fences/blockquotes er stadig én linje
+  { const r = ud("Dom: FAIL\n\n- ```\n  ```\n```\n" + "```json verdikt-draft\n{}\n```\n" + mark(P)); r.ok ? ok("runde-8-liste-repro er harmløs: kun marker-linjen tæller") : bad("liste-repro", JSON.stringify(r)); }
+  { const r = ud("Dom: FAIL\r~~~mark\u2028down\r" + mark(P) + "\r"); r.ok ? ok("CR/U+2028-dokument: kun marker-linjen tæller") : bad("CR/U+2028", JSON.stringify(r)); }
+  !ud("x\n> " + mark(P) + "\n").ok ? ok("marker i blockquote ('> ' foran) er ikke en marker (trimmet linje starter ikke med marken) → rød (ingen dom)") : bad("blockquote", "accepteret");
+  !ud("x\nverdikt-draft: " + Buffer.from("{}").toString("base64") + "\n").ok ? ok("forkert kasus i marken → rød") : bad("kasus", "accepteret");
 }
 
 console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
@@ -239,7 +221,7 @@ console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
   skriv("scripts/v5/actors.lock.json", JSON.stringify(realLock)); commit("lås i temp-repo");
   const LOCK_COMMIT = git("rev-parse", "HEAD");
   const draftObj = { aktor: "codex", conclusion: "PASS", negative_cases: ["n1"], claim_graph_refs: [], evidence: [{ path: ARTP, line_span: [1, 1] }] };
-  const levTekst = (dr) => `# Analyse\n\nDom: se blok.\n\n\`\`\`json verdikt-draft\n${JSON.stringify(dr)}\n\`\`\`\n`;
+  const levTekst = (dr) => `# Analyse\n\nDom: se sidste linje.\n\nVERDIKT-DRAFT: ${Buffer.from(JSON.stringify(dr)).toString("base64")}\n`;
   const lev = levTekst(draftObj); const levSha = kvitteringDigest(Buffer.from(lev));
   const receipt = { ...rcOk(), rolle: "codex-angreb", model: realLock["codex-angreb"].model, effort: realLock["codex-angreb"].reasoning, regel_commit: LOCK_COMMIT, skill_oid: realLock["codex-angreb"].skill_oid, attempts: [{ ...rcOk().attempts[0], model: realLock["codex-angreb"].model, effort: realLock["codex-angreb"].reasoning, output_sha256: levSha }] };
   const rb = Buffer.from(JSON.stringify(receipt, null, 1) + "\n"); const rsha = kvitteringDigest(rb);
@@ -277,11 +259,11 @@ console.log("\nmakeTransportVerifier — mod committet provenance-arkiv:");
   }
   // F-16: leverance hvor draften kun står som CITERET eksempel i en ````-blok → ingen aktiv blok → rød
   {
-    const citeret = "Dom: FAIL\n\n````markdown\neksempel:\n```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n````\n";
+    const citeret = "Dom: FAIL\n\nEksempel:\n```\nVERDIKT-DRAFT: " + Buffer.from(JSON.stringify(draftObj)).toString("base64") + "\n```\n";
     const cSha = kvitteringDigest(Buffer.from(citeret));
     const r4 = { ...receipt, attempts: [{ ...receipt.attempts[0], output_sha256: cSha }] }; const b4 = Buffer.from(JSON.stringify(r4, null, 1) + "\n");
     skriv(`plan-build/${P}/provenance/r-cit.receipt.json`, b4); skriv(`plan-build/${P}/provenance/r-cit.leverance.md`, citeret); commit("citeret draft");
-    red("draft kun som citeret eksempel i ````-blok → ingen aktiv blok → rød (F-16)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b4), raw_output_sha256: cSha })]), "PRÆCIS én aktiv");
+    red("draft kun som citeret eksempel (marker ikke sidste ikke-tomme linje) → rød (F-16)", mk()([vCodex({ receipt_sha256: kvitteringDigest(b4), raw_output_sha256: cSha })]), "SIDSTE ikke-tomme linje|PRÆCIS én");
   }
   {
     // F-18 (runde 5): regel_commit = ROD-TREE-OID (samme lås-blob resolves via <tree>:sti) → rød (skal være commit)
