@@ -285,14 +285,16 @@ export function makeTransportVerifier({ git, pakke, evidenceRef = "HEAD", gateId
 // linje med ≥ samme antal backticks og intet andet).
 export function udtraekVerdiktDraft(text) {
   if (typeof text !== "string") return { ok: false, reasons: ["leverance er ikke tekst"] };
-  const lines = text.split(/\r?\n/);
+  // CommonMark linjeskift = LF, CRLF ELLER lone CR (runde 6: "\r~~~" skjulte en åbner); U+2028/U+2029 er IKKE linjeskift
+  const lines = text.split(/\r\n|\r|\n/);
   const kandidater = [];
   let fence = null; // { ch, len, aktiv, buf }
   for (const line of lines) {
     if (fence === null) {
       // CommonMark: fence-åbner = 0-3 mellemrums indrykning + ≥3 backticks ELLER ≥3 tilder (runde 4 rest-F-16:
       // ~~~-fences og indrykkede ````-fences blev ikke set som citerende ydre fences)
-      const m = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
+      // dotAll-agtig rest ([\s\S]*): `.` matcher ikke U+2028/U+2029, så "~~~mark\u2028down" blev ellers ikke set som fence
+      const m = /^( {0,3})(`{3,}|~{3,})([\s\S]*)$/.exec(line);
       if (m) {
         const ch = m[2][0]; const info = m[3].trim();
         // kun en UINDRYKKET, PRÆCIS tre-backtick-fence med info "json verdikt-draft" er en aktiv draft

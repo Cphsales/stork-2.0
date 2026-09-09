@@ -211,6 +211,15 @@ console.log("\nudtraekVerdiktDraft — fence-parser (F-16):");
   !ud("Dom: FAIL\n~~~markdown\n~~~\u00a0\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. NBSP lukker IKKE den ydre fence → blokken forbliver citeret → rød (runde 5)") : bad("NBSP-lukker", "accepteret");
   !ud("Dom: FAIL\n~~~markdown\n~~~\u000b\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("falsk lukker m. vertikal tab lukker IKKE → rød") : bad("VT-lukker", "accepteret");
   { const r3 = ud("~~~x\n~~~ \t\n" + blok({ a: 1 }) + "\n"); r3.ok ? ok("lukker m. almindelige mellemrum/tab lukker (CommonMark)") : bad("space-lukker", JSON.stringify(r3)); }
+  // runde 6: skjulte ÅBNERE (U+2028/U+2029 i info-strengen, lone CR som linjeskift) skal ses som ydre fence → blokken forbliver citeret
+  !ud("Dom: FAIL\n~~~mark\u2028down\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("åbner m. U+2028 i info → fence ses, blok citeret → rød") : bad("U+2028-åbner", "accepteret");
+  !ud("Dom: FAIL\n~~~mark\u2029down\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("åbner m. U+2029 i info → rød") : bad("U+2029-åbner", "accepteret");
+  !ud("Dom: FAIL\r~~~markdown\n" + blok({ a: 1 }) + "\n~~~\n").ok ? ok("lone CR som linjeskift før åbner → fence ses → rød") : bad("CR-åbner", "accepteret");
+  !ud("Dom: FAIL\r  ````md\r" + blok({ a: 1 }) + "\r  ````\r").ok ? ok("lone-CR-dokument m. indrykket ````-citat → rød") : bad("CR-doc", "accepteret");
+  // målehul (runde 6 mutant a): falsk-lukker-cases UDEN afsluttende ydre fence — en `\s*`-lukker ville gøre blokken aktiv (ok:true)
+  !ud("Dom: FAIL\n~~~markdown\n~~~\u00a0\n" + blok({ a: 1 })).ok ? ok("NBSP-falsk-lukker uden afsluttende fence → stadig citeret (uafsluttet) → rød [dræber mutant a]") : bad("NBSP uden slut", "accepteret");
+  !ud("Dom: FAIL\n~~~markdown\n~~~\u000b\n" + blok({ a: 1 })).ok ? ok("VT-falsk-lukker uden afsluttende fence → rød [dræber mutant a]") : bad("VT uden slut", "accepteret");
+  { const r4 = ud("~~~x\n~~~\n" + blok({ a: 1 })); r4.ok ? ok("ægte lukker uden trailing whitespace → blokken efter er aktiv (kontrol)") : bad("ægte lukker", JSON.stringify(r4)); }
   !ud("````json verdikt-draft\n{}\n````\n").ok ? ok("fire backticks som åbner → ikke aktiv (kræver præcis tre)") : bad("4-fence", "accepteret");
   !ud("```json verdikt-draft\nikke json\n```\n").ok ? ok("ugyldig JSON i blokken → rød") : bad("json", "accepteret");
 }

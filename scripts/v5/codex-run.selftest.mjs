@@ -333,6 +333,15 @@ const vb = (draftArg, receipt, lev) => {
   const nbsp = "Dom: FAIL\n\n~~~markdown\n~~~\u00a0\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n~~~\n";
   const rN = vb("-", mkReceipt(nbsp), nbsp);
   eq("falsk fence-lukker m. NBSP → blokken forbliver citeret → RØD (runde 5)", rN.status === 1 && /PRÆCIS én aktiv|uafsluttet/.test(rN.stderr), true);
+  const nbsp2 = "Dom: FAIL\n\n~~~markdown\n~~~\u00a0\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n";
+  const rN2 = vb("-", mkReceipt(nbsp2), nbsp2);
+  eq("NBSP-falsk-lukker UDEN afsluttende ydre fence → RØD (uafsluttet fence; dræber `\\s*`-mutanten)", rN2.status === 1 && /uafsluttet/.test(rN2.stderr), true);
+  const u2028 = "Dom: FAIL\n~~~mark\u2028down\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n~~~\n";
+  const rU = vb("-", mkReceipt(u2028), u2028);
+  eq("skjult åbner m. U+2028 → fence ses → RØD (runde 6)", rU.status === 1 && /PRÆCIS én aktiv/.test(rU.stderr), true);
+  const cr = "Dom: FAIL\r~~~markdown\n" + "```json verdikt-draft\n" + JSON.stringify(draftObj) + "\n```\n~~~\n";
+  const rCR = vb("-", mkReceipt(cr), cr);
+  eq("lone CR før åbner → fence ses → RØD (runde 6)", rCR.status === 1 && /PRÆCIS én aktiv/.test(rCR.stderr), true);
   const treeOid = execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
   const rTree = vb("-", mkReceipt(lev, { regel_commit: treeOid }), lev);
   eq("kvittering m. regel_commit = tree-OID → RØD (F-18: git-type commit)", rTree.status === 1 && /ikke en commit/.test(rTree.stderr), true);
