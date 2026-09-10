@@ -136,17 +136,39 @@ if [ "$SELFTEST" -ne 1 ]; then
   kendt_prefix "$CODEX" || blok "codex-binær uden for pinnet prefix: $CODEX (PATH-injektion? F-3)"
   kendt_prefix "$NODE" || blok "node-binær uden for pinnet prefix: $NODE"
 fi
-if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
-  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
-  PIN_SHA=$(printf '%s' "$BINLOCK" | "$NODE" -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.codex||typeof l.codex.sha256!=="string") process.exit(3); console.log(l.codex.sha256)') || blok "binaries.lock.json er ugyldig"
-  [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"
-fi
-BIN_JSON=$(printf '{"codex":{"path":"%s","sha256":"%s"},"node":{"path":"%s","sha256":"%s"},"git":{"path":"%s","sha256":"%s"},"timeout":{"path":"%s","sha256":"%s"},"flock":{"path":"%s","sha256":"%s"}}' \
-  "$CODEX" "$(sha_of "$CODEX")" "$NODE" "$(sha_of "$NODE")" "$GIT" "$(sha_of "$GIT")" "$TIMEOUT" "$(sha_of "$TIMEOUT")" "$FLOCK" "$(sha_of "$FLOCK")")
 # codex-shim'en er `#!/usr/bin/env node` → den SKAL kunne finde node; vi giver den PRÆCIS den verificerede
 # node-mappe + system-PATH (ikke kalderens PATH) — runde-4-regression: SYSPATH alene gav rc=127 på 1 s
 CODEX_PATH="$(dirname -- "$NODE"):$SYSPATH"
 CODEX_VER=$(PATH="$CODEX_PATH" "$CODEX" --version 2>/dev/null | head -1); CODEX_VER=${CODEX_VER:-ukendt}
+CODEX_NATIVE=""
+if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
+  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
+  # F-3b (2026-09-10): shim-filen bin/codex.js var BYTE-IDENTISK 0.153.0→0.154.0 — shim-hash alene fanger ikke et CLI-skift.
+  # Låsen SKAL derfor pinne (1) shim-sha, (2) versionsstrengen fra `codex --version`, (3) den native binær (sti fra pakkeroden + sha).
+  PIN=$(printf '%s' "$BINLOCK" | "$NODE" -e '
+    const l = JSON.parse(require("fs").readFileSync(0, "utf8"));
+    const hex64 = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
+    const str = (s) => typeof s === "string" && s.length > 0 && !/[\r\n]/.test(s);
+    if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);
+    const n = l.codex_native;
+    if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !n.path_from_pkg_root.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(n.path_from_pkg_root)) process.exit(4);
+    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));
+  ') || blok "binaries.lock.json er ugyldig eller mangler codex_native{sha256,path_from_pkg_root}/codex.version (F-3b: låsen skal pinne shim + native binær + version)"
+  PIN_SHA=$(printf '%s\n' "$PIN" | sed -n 1p); PIN_VER=$(printf '%s\n' "$PIN" | sed -n 2p)
+  PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p)
+  [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"
+  # native binær: pakkeroden = mappen over shim'ens bin/ (realpath) + låsens sti; skal være en almindelig fil i kendt prefix med pinnet sha
+  CODEX_PKG_ROOT=$("$REALPATH" -e -- "$(dirname -- "$CODEX")/..") || blok "codex-pakkerod kan ikke resolves (F-3b)"
+  CODEX_NATIVE=$("$REALPATH" -e -- "$CODEX_PKG_ROOT$PIN_NATIVE_REL" 2>/dev/null) || blok "native codex-binær findes ikke: $CODEX_PKG_ROOT$PIN_NATIVE_REL (F-3b)"
+  [ -f "$CODEX_NATIVE" ] && [ ! -L "$CODEX_NATIVE" ] || blok "native codex-binær er ikke en almindelig fil: $CODEX_NATIVE (F-3b)"
+  if [ "$SELFTEST" -ne 1 ]; then kendt_prefix "$CODEX_NATIVE" || blok "native codex-binær uden for pinnet prefix: $CODEX_NATIVE (F-3b)"; fi
+  [ "$(sha_of "$CODEX_NATIVE")" = "$PIN_NATIVE_SHA" ] || blok "native codex-binær ($CODEX_NATIVE) matcher ikke binaries.lock.json (${PIN_NATIVE_SHA:0:12}) — binæren er ændret/opdateret uden bevidst lås-opdatering (F-3b)"
+  [ "$CODEX_VER" = "$PIN_VER" ] || blok "codex --version »$CODEX_VER« ≠ låsens »$PIN_VER« — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3b)"
+fi
+BIN_JSON=$(printf '{"codex":{"path":"%s","sha256":"%s"},"node":{"path":"%s","sha256":"%s"},"git":{"path":"%s","sha256":"%s"},"timeout":{"path":"%s","sha256":"%s"},"flock":{"path":"%s","sha256":"%s"}' \
+  "$CODEX" "$(sha_of "$CODEX")" "$NODE" "$(sha_of "$NODE")" "$GIT" "$(sha_of "$GIT")" "$TIMEOUT" "$(sha_of "$TIMEOUT")" "$FLOCK" "$(sha_of "$FLOCK")")
+if [ -n "$CODEX_NATIVE" ]; then BIN_JSON="$BIN_JSON,$(printf '"codex_native":{"path":"%s","sha256":"%s"}' "$CODEX_NATIVE" "$(sha_of "$CODEX_NATIVE")")"; fi
+BIN_JSON="$BIN_JSON}"
 
 # --- gate-input (F-10): hvilken gate/commit/artefakt dommen gælder — bindes i kvitteringen ---
 if [ -n "${STORK_V5_GATE_INPUT:-}" ]; then

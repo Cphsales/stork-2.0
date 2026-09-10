@@ -7,7 +7,7 @@
 // verdikt-byg's binding af leverance-bytes testes ende-til-ende.
 import { spawnSync, spawn, execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, chmodSync, rmSync, mkdirSync, symlinkSync, copyFileSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
@@ -241,11 +241,42 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
     const w = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("binaries.lock-pin ≠ faktisk codex-entry → BLOKER (F-3 nået, ikke kun læst)", w.r.status === 1 && /binaries\.lock/.test(w.prov) && w.calls.length === 0, true);
     const fakeSha = sha256(readFileSync(join(BIN, "codex")));
-    const bl = JSON.parse(readFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), "utf8")); bl.codex.sha256 = fakeSha;
-    writeFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), JSON.stringify(bl, null, 1) + "\n");
-    execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", "pin falsk codex"]);
+    const blPath = join(CLONE, "scripts/v5/binaries.lock.json");
+    const bl0 = JSON.parse(readFileSync(blPath, "utf8"));
+    const commitLock = (bl, msg) => { writeFileSync(blPath, JSON.stringify(bl, null, 1) + "\n"); execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", msg]); };
+    // F-3b: den native binær ligger under pakkeroden = mappen over shim'ens bin/ → her T + path_from_pkg_root
+    const NATIVE_REL = "/native/vendor/bin/codex"; const nativePath = join(T, NATIVE_REL);
+    mkdirSync(join(T, "native/vendor/bin"), { recursive: true }); writeFileSync(nativePath, "FAKE NATIVE BINÆR v1\n"); const nativeSha = sha256(readFileSync(nativePath));
+    // (a) kun shim-sha rettet → native findes ikke → BLOKER (F-3b: shim-hash alene er ikke nok)
+    let bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex" }; commitLock(bl, "pin falsk codex (kun shim; native-sti fra den ægte maskine findes ikke under T)");
+    const wa = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("shim-sha matcher men native binær findes ikke på låsens sti → BLOKER (F-3b)", wa.r.status === 1 && /native codex-binær findes ikke/.test(wa.prov) && wa.calls.length === 0, true);
+    // (b) native på plads m. FORKERT sha → BLOKER
+    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: "0".repeat(64), path_from_pkg_root: NATIVE_REL }; commitLock(bl, "native forkert sha");
+    const wb = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("native binær ≠ låsens sha → BLOKER (F-3b)", wb.r.status === 1 && /native codex-binær .* matcher ikke binaries\.lock/.test(wb.prov) && wb.calls.length === 0, true);
+    // (c) native ok, men versionsstrengen ≠ låsen → BLOKER
+    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli 0.0.0"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "version forkert");
+    const wc = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("codex --version ≠ låsens version → BLOKER (F-3b)", wc.r.status === 1 && /--version .* ≠ låsens/.test(wc.prov) && wc.calls.length === 0, true);
+    // (d) låsen uden codex_native → BLOKER (fail-closed: en gammel lås må ikke åbne)
+    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; delete bl.codex_native; commitLock(bl, "uden native");
+    const wd = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("lås uden codex_native → BLOKER (F-3b fail-closed)", wd.r.status === 1 && /mangler codex_native/.test(wd.prov) && wd.calls.length === 0, true);
+    // (e) sti-traversal i path_from_pkg_root afvises af lås-valideringen
+    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/../" + basename(T) + NATIVE_REL }; commitLock(bl, "traversal");
+    const we = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("path_from_pkg_root m. '..' → BLOKER (F-3b)", we.r.status === 1 && /mangler codex_native|ugyldig/.test(we.prov) && we.calls.length === 0, true);
+    // (f) alt pinnet korrekt → kører; kvitteringen bærer native sti+sha
+    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "pin falsk codex + native + version");
     const w2 = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
-    eq("binaries.lock-pin == codex-entry → kører", w2.r.status, 0);
+    eq("binaries.lock-pin == codex-entry + native + version → kører", w2.r.status, 0);
+    eq("kvittering: binaries.codex_native = realpath + sha af den native binær (F-3b)", w2.receipt?.binaries?.codex_native?.path === nativePath && w2.receipt?.binaries?.codex_native?.sha256 === nativeSha, true);
+    // (g) binæren byttes EFTER låsen → BLOKER (det er præcis 0.153→0.154-hullet)
+    writeFileSync(nativePath, "FAKE NATIVE BINÆR v2\n");
+    const wg = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("native binær udskiftet efter låsen (shim uændret) → BLOKER (F-3b: 0.153→0.154-hullet)", wg.r.status === 1 && /native codex-binær .* matcher ikke/.test(wg.prov) && wg.calls.length === 0, true);
+    writeFileSync(nativePath, "FAKE NATIVE BINÆR v1\n");
   }
   {
     // F-13: `git replace` af rolleblobben i klonen må IKKE ændre den tekst der sendes (--no-replace-objects + hash-verifikation)
