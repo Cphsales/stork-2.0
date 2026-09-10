@@ -2,17 +2,17 @@
  "gates.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "9c94efde403d26312f72557b3bfb5dcf1a223429",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "verdikt.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "4d80c7b05f01540d6a3a65438fb07ad172e334b7",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "git.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "9bc53ebfd7ea1a4e56906a567f276638297620cb",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "build-proof.mjs": {
   "pas_ref": "960ffc4a670dcb1b3de2ae7e0188ff0c6a12ff10",
@@ -22,7 +22,7 @@
  "gate-eval.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "1f9934570739d2b14b7ab27833f9084fbf15fe5b",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "coverage.mjs": {
   "pas_ref": "aa6ba0b6025e06be9a5f4efd591fb1a91133ae02",
@@ -37,7 +37,7 @@
  "recon-gate-run.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "b776d19d9d4fe8e3169e780d30c5ef4a2181a060",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "consolidate-recon.mjs": {
   "pas_ref": "45fd39a5c7b4222543d95bd79b9d8a8b5742dae9",
@@ -47,26 +47,26 @@
  "krav-gate-run.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "a8723a5321e733b4b5fc385559087ad2195daf9f",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "verdikt-byg.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "411f47f6a482384e3e0adc58e89cbf98222c627f",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "codex-run.sh": {
-  "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
-  "blob_oid": "24ef8499f390ddca460cee1f90f11ec9353e5309",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — wrapper-blobben er dømt eksplicit i runde 4 (blob-tabel; runde 4's fund lå alle i kvittering.mjs/mandat), lå uændret i angrebs-udsnittet runde 5-9 og er dækket af runde 9's »G-F1 eneste udestående«; Codex' PASS-entry-liste i runde 9 nævner kun de ni .mjs-moduler (prompt-scope)"
+  "pas_ref": "5ae0f3d030a1f90fad023430988e9980483cb357",
+  "blob_oid": "5102d31b37e1b793d7e8e406c3fa4583448190c8",
+  "note": "M-41 Trin A efterspil 2026-09-10: Codex-P2 runde 10-10h (codex-angreb gpt-6-astra xhigh) efter CLI 0.153→0.154 — F-3b native binær pinnet + eksekveret direkte (rækkefølge lås→shim→native→version→exec) · F-3c privat CODEX_HOME uden config + auth-kopi + allowlist-env · F-3d node.pin (én kilde, streng grammatik, før første node-start) · F-3e NODE_*-rens · F-3f BINCHECK styret af selvtest-tilstand · F-3g native = ELF i platform-pakkens vendor/bin/codex · F-3h ptrace-målelag (exec-tracer.py) m. mutant-bevis (docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/f3h-mutant-bevis/). Runde 10h PASS @ regel_commit 5ae0f3d (run_id 20260910T181507-1485234-1196); bevis-logs committet i c2b6dfe. Kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår uden for koden."
  },
  "kvittering.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "a9f13ed38449d8961a361dead87e4076f36fee91",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "plan-gate-run.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
   "blob_oid": "8b4f60f529262e353a9f8f3a89c72819a3aee5f3",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen"
+  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  }
 }

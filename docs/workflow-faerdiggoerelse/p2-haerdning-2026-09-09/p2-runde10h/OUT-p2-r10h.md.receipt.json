@@ -1,0 +1,78 @@
+{
+ "schema_version": 2,
+ "status": "success",
+ "run_id": "20260910T181507-1485234-1196",
+ "rolle": "codex-angreb",
+ "aktivitet": "dom",
+ "model": "gpt-6-astra",
+ "effort": "xhigh",
+ "sandbox": "read-only",
+ "sandbox_policy": {
+  "network_access": false,
+  "exclude_slash_tmp": true,
+  "exclude_tmpdir_env_var": true
+ },
+ "service_tier": "default",
+ "codex_version": "codex-cli 0.154.0",
+ "regel_commit": "5ae0f3d030a1f90fad023430988e9980483cb357",
+ "lock_mode": "committed",
+ "lock_blob": "023e51765e49687db514d3e26c95cdf6adca2194",
+ "skill_path": "scripts/v5/roller/codex-angreb.md",
+ "skill_oid": "f6e64979941b55b57d6000306ccf9404dd2a15d1",
+ "prompt_sha256": "4cc7a8eb553f1cba7902587f8bad4ed569b797075cb32c62f6d10fbdacaefe76",
+ "gate_input": null,
+ "selftest": false,
+ "workdir": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-runde10h/wd",
+ "out": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-runde10h/OUT-p2-r10h.md",
+ "codex_home": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-runde10h/.run-a4NEaODl/codex-home",
+ "codex_home_mode": "privat-uden-config",
+ "auth_source": "/home/mathias/.codex/auth.json",
+ "env_mode": "allowlist(HOME,PATH,LANG,CODEX_HOME,CODEX_MANAGED_PACKAGE_ROOT,CODEX_MANAGED_BY_NPM)",
+ "binaries": {
+  "codex": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/lib/node_modules/@openai/codex/bin/codex.js",
+   "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+  },
+  "codex_exec": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+   "sha256": "3188814c35471432d4123203e0eb38e5bddc60226e3d7ddf0e59e649ea140022"
+  },
+  "node": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/bin/node",
+   "sha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c"
+  },
+  "git": {
+   "path": "/usr/bin/git",
+   "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668"
+  },
+  "timeout": {
+   "path": "/usr/bin/timeout",
+   "sha256": "12690a043dfd555a6c14ccc1564f5649c18f1762c0d6ff66729948130898ec52"
+  },
+  "flock": {
+   "path": "/usr/bin/flock",
+   "sha256": "e619344dc3eec4023498465679262f9ca27d1e8cef9cfc4c1ae72b428577b806"
+  },
+  "codex_native": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+   "sha256": "3188814c35471432d4123203e0eb38e5bddc60226e3d7ddf0e59e649ea140022"
+  }
+ },
+ "attempts": [
+  {
+   "attempt": 1,
+   "rc": 0,
+   "model": "gpt-6-astra",
+   "effort": "xhigh",
+   "sandbox": "read-only",
+   "output_sha256": "222d44ba7c8b3c5db89c06bf6c2ab4609be9347b7e8304e7667d46fba8f45ccf",
+   "output_bytes": 4997,
+   "varighed_mono_s": 362,
+   "varighed_vaeg_s": 362,
+   "started": "2026-09-10T18:15:08+02:00",
+   "ended": "2026-09-10T18:21:10+02:00"
+  }
+ ],
+ "started": "2026-09-10T18:15:07+02:00",
+ "ended": "2026-09-10T18:21:10+02:00"
+}
