@@ -131,6 +131,8 @@ optælling (mutanter pr. K · to-sessions-krav · skal-leveres) og din binding (
 Ingen påstande om udførte kørsler — dette er angrebs-spec, ikke runtime-PASS. Web forbudt. Læs
 ikke uden for workdir'en. Opfind ikke fund; skriv »MANGLER KILDE« hvor recon-2 ikke bærer et
 forbillede.
+Din afsluttende besked (slutbeskeden — ikke filen) skal være kort: filnavn + sha256 af
+kill-list-udkast.md + optællingen + bindingerne — intet andet.
 ```
 
 ## Tjekliste før kørsel (driveren)

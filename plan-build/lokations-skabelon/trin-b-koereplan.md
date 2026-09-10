@@ -116,5 +116,12 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   (register 12/12 pas-bundne). Trin A IKKE færdig: wrapper @ 5eb3736 = v2-signatur ·
   `binaries.lock.json` mangler · plan DEL VIII pkt. 35-36 ikke på origin. Aktør-stop holdes. SHA =
   denne commit.
-- Trin A færdig: <afventer mathias-9b — SHA>.
+- 2026-09-10 09:54: **Trin A færdig (mekanik) — fd443c4** (mathias-9b: Codex P2 runde 9 PASS · register
+  14/14 grønt @ regel-commit 8a5755f · suite grøn). Aktør-stop OPHÆVET for B1-B5; **B6/B7 venter på
+  Mathias' ord om residualen (DEL VIII pkt. 36)**. Driver-commit rebaset på fd443c4 → a66d1eb (suite
+  grøn @ a66d1eb, kørt selv). B1-tjekliste grøn på nær preflight: codex-cli 0.153.0 installeret,
+  npm nyeste 0.154.0 → »opdater før spawn« (2.F); `binaries.lock.json` pinner 0.153.0 → CLI +
+  lås-commit er fabrik-armens; meldt 10:0x, B1/B2-Codex holdes til svar (opdatering eller
+  deklareret afvig). SHA = denne commit.
+- Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
 - B1: <SHA> · B2 låst: <blob> · B3: <SHA> · B4: <SHA> · B5: <SHA> · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
