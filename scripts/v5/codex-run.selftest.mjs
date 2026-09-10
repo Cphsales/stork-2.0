@@ -18,7 +18,8 @@ const WRAPPER = join(HERE, "codex-run.sh");
 const sha256 = (b) => createHash("sha256").update(b).digest("hex");
 let pass = 0, fail = 0;
 const ok = (n) => { pass++; console.log(`  ✓ ${n}`); };
-const bad = (n, r) => { fail++; console.error(`  ✗ ${n}: ${r}`); };
+let lastRun = null;
+const bad = (n, r) => { fail++; console.error(`  ✗ ${n}: ${r}`); if (process.env.SELFTEST_DEBUG && lastRun) console.error(`      [debug] status=${lastRun.r.status} starts=${lastRun.starts.length} stderr/prov-hale: ${(lastRun.prov || "").replace(/\s+/g, " ").slice(-420)}`); };
 const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, forventede ${JSON.stringify(want)}`));
 
 const T = mkdtempSync(join(tmpdir(), "v5-codex-run-"));
@@ -28,15 +29,24 @@ const CALLS = join(T, "calls"); mkdirSync(CALLS);
 // falsk codex som NODE-script (den ægte codex-shim er `#!/usr/bin/env node` — runde-4-regression: wrapperen
 // satte PATH=system-PATH og codex døde med rc=127 fordi node ikke fandtes): nægter at køre hvis stdin ikke er
 // /dev/null · gemmer argv PR. KALD · sidste arg = prompt
+const MODE_FILE = join(T, "fake-mode"); const VERSION_MODE_FILE = join(T, "fake-version-mode");
+const NATIVE_FIXTURE = join(T, "native/vendor/bin/codex");   // findes kun i FORCE_BINCHECK-blokken; så er shim'en en FÆLDE
+const FAKE_AUTH = join(T, "auth.json"); writeFileSync(FAKE_AUTH, '{"auth_mode":"chatgpt","tokens":{"fake":true}}\n');
 writeFileSync(join(BIN, "codex"), `#!/usr/bin/env node
 const fs = require("fs"); const path = require("path");
 const args = process.argv.slice(2);
-// F-3b (runde 10): ENHVER start logges — også --version — så selvtesten kan bevise »ingen start før pins«
+const SELF = path.resolve(process.argv[1]);
+const NATIVE = ${JSON.stringify(NATIVE_FIXTURE)};
+const rd = (f, d) => { try { return fs.readFileSync(f, "utf8").trim() || d; } catch { return d; } };
+// F-3b (runde 10): ENHVER start logges — også --version — så selvtesten kan bevise »ingen start før pins«; og HVEM der startede
 const n = fs.readdirSync(${JSON.stringify(CALLS)}).filter((f) => f.startsWith("argv.")).length + 1;
 fs.writeFileSync(path.join(${JSON.stringify(CALLS)}, "argv." + n), args.join("\\n") + "\\n");
-fs.writeFileSync(path.join(${JSON.stringify(CALLS)}, "env." + n), JSON.stringify({ CODEX_HOME: process.env.CODEX_HOME ?? null, OPENAI_BASE_URL: process.env.OPENAI_BASE_URL ?? null, CODEX_MANAGED_PACKAGE_ROOT: process.env.CODEX_MANAGED_PACKAGE_ROOT ?? null, CODEX_MANAGED_BY_NPM: process.env.CODEX_MANAGED_BY_NPM ?? null }));
+const CH = process.env.CODEX_HOME;
+fs.writeFileSync(path.join(${JSON.stringify(CALLS)}, "env." + n), JSON.stringify({ self: SELF, CODEX_HOME: CH ?? null, OPENAI_BASE_URL: process.env.OPENAI_BASE_URL ?? null, CODEX_MANAGED_PACKAGE_ROOT: process.env.CODEX_MANAGED_PACKAGE_ROOT ?? null, CODEX_MANAGED_BY_NPM: process.env.CODEX_MANAGED_BY_NPM ?? null, envKeys: Object.keys(process.env).sort(), cfgExists: CH ? fs.existsSync(path.join(CH, "config.toml")) : null, authExists: CH ? fs.existsSync(path.join(CH, "auth.json")) : null }));
+// F-3b runde 10b fund 2: er native-fixturen til stede og er jeg IKKE den, er jeg shim'en = FÆLDE: log start, lever intet, fejl
+if (fs.existsSync(NATIVE) && SELF !== NATIVE) process.exit(3);
 if (args[0] === "--version") {
-  const vm = process.env.FAKE_VERSION_MODE || "ok";
+  const vm = rd(${JSON.stringify(VERSION_MODE_FILE)}, "ok");
   if (vm === "multi") { process.stdout.write("codex-cli FAKE\\nekstra linje\\n"); process.exit(0); }
   if (vm === "rc") { process.stdout.write("codex-cli FAKE\\n"); process.exit(7); }
   process.stdout.write("codex-cli FAKE\\n"); process.exit(0);
@@ -46,8 +56,9 @@ if (stdin !== "/dev/null") process.exit(99);
 // leverance-nummer = antal exec-kald (ikke starter), så "RESULTAT k" tæller som før --version blev logget
 const k = fs.readdirSync(${JSON.stringify(CALLS)}).filter((f) => f.startsWith("argv.")).filter((f) => fs.readFileSync(path.join(${JSON.stringify(CALLS)}, f), "utf8").split("\\n")[0] !== "--version").length;
 let out = ""; for (let i = 0; i < args.length; i++) if (args[i] === "-o") out = args[i + 1];
-const mode = process.env.FAKE_MODE || "ok";
+const mode = rd(${JSON.stringify(MODE_FILE)}, "ok");
 if (mode === "ok") { fs.writeFileSync(out, "RESULTAT " + k + "\\n"); process.exit(0); }
+if (mode === "auth") { fs.appendFileSync(path.join(CH, "auth.json"), "REFRESHED\\n"); fs.writeFileSync(out, "RESULTAT " + k + "\\n"); process.exit(0); }
 if (mode === "tom") process.exit(0);
 if (mode === "hang") { setTimeout(() => { fs.writeFileSync(out, "for sent\\n"); process.exit(0); }, 30000); }
 else if (mode === "fejl") process.exit(7);
@@ -71,17 +82,19 @@ const envs = () => argvFiler().map((f) => JSON.parse(readFileSync(join(CALLS, "e
 const argOf = (argv, flag) => argv[argv.indexOf(flag) + 1];
 
 let n = 0;
-function run(args, { mode = "ok", lock = lockPath, env = {}, selftest = "1" } = {}) {
+function run(args, { mode = "ok", versionMode = "ok", lock = lockPath, env = {}, selftest = "1", auth = FAKE_AUTH } = {}) {
   const fullArgs = args ?? ["codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, `out${++n}.md`), promptFil];
   const out = fullArgs[4];
-  clearCalls();
-  const e = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, FAKE_MODE: mode, STORK_V5_SELFTEST: selftest, ...env };
+  clearCalls(); writeFileSync(MODE_FILE, mode); writeFileSync(VERSION_MODE_FILE, versionMode);   // CLI'en får et allowlist-env → styring via filer, ikke env
+  const e = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: selftest, ...env };
+  if (auth) e.STORK_V5_AUTH_SRC = auth; else delete e.STORK_V5_AUTH_SRC;
   if (lock) e.STORK_V5_LOCK = lock; else delete e.STORK_V5_LOCK;
   const r = spawnSync("bash", [WRAPPER, ...fullArgs], { encoding: "utf8", env: e });
   // v4: en BLOKER FØR låsen rører ingen fælles fil (F-7) og står kun på stderr — prov = fil + stderr
   const provFil = existsSync(out + ".provenance") ? readFileSync(out + ".provenance", "utf8") : "";
   const prov = provFil + "\n" + (r.stderr ?? "");
   const receipt = existsSync(out + ".receipt.json") ? JSON.parse(readFileSync(out + ".receipt.json", "utf8")) : null;
+  lastRun = { r, prov, starts: starts() };
   return { r, out, prov, provFil, receipt, calls: calls(), starts: starts(), envs: envs(), done: existsSync(out + ".attempt1.done"), done2: existsSync(out + ".attempt2.done"), pid: existsSync(out + ".pid") };
 }
 
@@ -96,7 +109,10 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
   eq(".attempt1.done sat · PID-fil fjernet", x.done && !x.pid, true);
   eq("præcis ét codex-kald", x.calls.length, 1);
   eq("præcis to starter: --version (efter kontrollerne) + exec — intet andet program startes (F-3b)", x.starts.length === 2 && x.starts[0][0] === "--version" && x.starts[1][0] === "exec", true);
-  eq("codex-env pinnet (F-3c): CODEX_HOME=$HOME/.codex · OPENAI_BASE_URL fjernet · CODEX_MANAGED_PACKAGE_ROOT/BY_NPM sat som shim'en gør", x.envs[1]?.CODEX_HOME === `${process.env.HOME}/.codex` && x.envs[1]?.OPENAI_BASE_URL === null && typeof x.envs[1]?.CODEX_MANAGED_PACKAGE_ROOT === "string" && x.envs[1]?.CODEX_MANAGED_BY_NPM === "1", true);
+  const ALLOW = ["CODEX_HOME", "CODEX_MANAGED_BY_NPM", "CODEX_MANAGED_PACKAGE_ROOT", "HOME", "LANG", "PATH"];
+  eq("CLI-miljø = ALLOWLIST præcis (F-3c): kun HOME·PATH·LANG·CODEX_HOME·CODEX_MANAGED_* — intet andet arves", JSON.stringify(x.envs[1]?.envKeys), JSON.stringify(ALLOW));
+  eq("privat CODEX_HOME i den private kørselsmappe, UDEN config.toml, MED auth.json-kopi (F-3c)", typeof x.envs[1]?.CODEX_HOME === "string" && x.envs[1].CODEX_HOME.startsWith(OUTDIR + "/.run-") && x.envs[1].CODEX_HOME.endsWith("/codex-home") && x.envs[1]?.cfgExists === false && x.envs[1]?.authExists === true, true);
+  eq("kvittering: codex_home_mode privat-uden-config · auth_source = kilden · env_mode allowlist", x.receipt?.codex_home_mode === "privat-uden-config" && x.receipt?.auth_source === FAKE_AUTH && /^allowlist\(/.test(x.receipt?.env_mode ?? ""), true);
   eq("stdin var /dev/null (fake exiter ellers 99)", x.receipt?.attempts?.[0]?.rc, 0);
   eq("rolle → model fra låsen", argOf(x.calls[0], "-m"), "gpt-6-astra");
   eq("rolle → effort fra låsen", x.calls[0].includes("model_reasoning_effort=xhigh"), true);
@@ -157,8 +173,8 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
 }
 // hang: timeout → KILL, PID-fil observeres MENS processen lever (F-9)
 await (async () => {
-  const out = join(OUTDIR, "hang.md"); clearCalls();
-  const e = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, FAKE_MODE: "hang", STORK_V5_SELFTEST: "1", STORK_V5_LOCK: lockPath };
+  const out = join(OUTDIR, "hang.md"); clearCalls(); writeFileSync(MODE_FILE, "hang"); writeFileSync(VERSION_MODE_FILE, "ok");
+  const e = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: "1", STORK_V5_LOCK: lockPath, STORK_V5_AUTH_SRC: FAKE_AUTH };
   const child = spawn("bash", [WRAPPER, "codex-angreb", "dom", WORKDIR, "1", out, promptFil], { env: e, stdio: "ignore" });
   let sawPid = false, pidAlive = false;
   for (let i = 0; i < 40 && !sawPid; i++) { await new Promise((r) => setTimeout(r, 50)); if (existsSync(out + ".pid")) { sawPid = true; try { process.kill(Number(readFileSync(out + ".pid", "utf8")), 0); pidAlive = true; } catch {} } }
@@ -268,42 +284,53 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
     // den falske native er EKSEKVERBAR (wrapperen kører nu den hashede fil direkte — ikke shim'en): en kopi af den falske codex
     mkdirSync(join(T, "native/vendor/bin"), { recursive: true }); copyFileSync(join(BIN, "codex"), nativePath); chmodSync(nativePath, 0o755); const nativeSha = sha256(readFileSync(nativePath));
     const T_REAL = execFileSync("realpath", ["-e", T], { encoding: "utf8" }).trim();
+    const nodeSha = sha256(readFileSync(execFileSync("realpath", ["-e", process.execPath], { encoding: "utf8" }).trim()));
+    // F-3d: låsen skal kende node (den node der parser låsen) — tjekkes som TEKST før node startes
+    let bln = structuredClone(bl0); bln.codex.sha256 = fakeSha; bln.codex.version = "codex-cli FAKE"; bln.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; delete bln.node; commitLock(bln, "uden node");
+    const wn = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("lås uden node-sha → BLOKER før node startes (F-3d)", wn.r.status === 1 && /står ikke i binaries\.lock/.test(wn.prov) && wn.starts.length === 0 && wn.receipt?.node_pinned === false, true);
+    bln = structuredClone(bl0); bln.codex.sha256 = fakeSha; bln.codex.version = "codex-cli FAKE"; bln.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; bln.node = { sha256: "0".repeat(64) }; bln.andet = { sha256: nodeSha }; commitLock(bln, "node forkert men sha-strengen findes andetsteds i låsen");
+    const wn2 = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
+    eq("node-sha kun som løs tekst i låsen, node.sha256 forkert → BLOKER efter parse (F-3d)", wn2.r.status === 1 && /node\.sha256/.test(wn2.prov) && wn2.starts.length === 0, true);
+    const medNode = (bl) => { bl.node = { sha256: nodeSha }; return bl; };
     // (a) kun shim-sha rettet → native findes ikke → BLOKER (F-3b: shim-hash alene er ikke nok)
-    let bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex" }; commitLock(bl, "pin falsk codex (kun shim; native-sti fra den ægte maskine findes ikke under T)");
+    let bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex" }; commitLock(bl, "pin falsk codex (kun shim; native-sti fra den ægte maskine findes ikke under T)");
     const wa = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("shim-sha matcher men native binær findes ikke på låsens sti → BLOKER (F-3b)", wa.r.status === 1 && /native codex-binær findes ikke/.test(wa.prov) && wa.starts.length === 0, true);
     // (b) native på plads m. FORKERT sha → BLOKER
-    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: "0".repeat(64), path_from_pkg_root: NATIVE_REL }; commitLock(bl, "native forkert sha");
+    bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: "0".repeat(64), path_from_pkg_root: NATIVE_REL }; commitLock(bl, "native forkert sha");
     const wb = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("native binær ≠ låsens sha → BLOKER (F-3b)", wb.r.status === 1 && /native codex-binær .* matcher ikke binaries\.lock/.test(wb.prov) && wb.starts.length === 0, true);
     // (c) native ok, men versionsstrengen ≠ låsen → BLOKER
-    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli 0.0.0"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "version forkert");
+    bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli 0.0.0"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "version forkert");
     const wc = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("codex --version ≠ låsens version → BLOKER (F-3b) — versionskaldet er den ENESTE start, og den sker først efter byte-kontrollerne", wc.r.status === 1 && /--version .* ≠ låsens/.test(wc.prov) && wc.calls.length === 0 && wc.starts.length === 1 && wc.starts[0][0] === "--version", true);
     // (d) låsen uden codex_native → BLOKER (fail-closed: en gammel lås må ikke åbne)
-    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; delete bl.codex_native; commitLock(bl, "uden native");
+    bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; delete bl.codex_native; commitLock(bl, "uden native");
     const wd = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
-    eq("lås uden codex_native → BLOKER (F-3b fail-closed)", wd.r.status === 1 && /mangler codex_native/.test(wd.prov) && wd.starts.length === 0, true);
+    eq("lås uden codex_native → BLOKER (F-3b fail-closed)", wd.r.status === 1 && /codex_native/.test(wd.prov) && wd.starts.length === 0, true);
     // (e) sti-traversal i path_from_pkg_root afvises af lås-valideringen
-    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/../" + basename(T) + NATIVE_REL }; commitLock(bl, "traversal");
+    bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: "/../" + basename(T) + NATIVE_REL }; commitLock(bl, "traversal");
     const we = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
-    eq("path_from_pkg_root m. '..' → BLOKER (F-3b)", we.r.status === 1 && /mangler codex_native|ugyldig/.test(we.prov) && we.starts.length === 0, true);
+    eq("path_from_pkg_root m. '..' → BLOKER (F-3b)", we.r.status === 1 && /codex_native|ugyldig/.test(we.prov) && we.starts.length === 0, true);
     // (f) alt pinnet korrekt → kører; kvitteringen bærer native sti+sha
-    bl = structuredClone(bl0); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "pin falsk codex + native + version");
+    bl = medNode(structuredClone(bl0)); bl.codex.sha256 = fakeSha; bl.codex.version = "codex-cli FAKE"; bl.codex_native = { sha256: nativeSha, path_from_pkg_root: NATIVE_REL }; commitLock(bl, "pin falsk codex + native + version");
     const w2 = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("binaries.lock-pin == codex-entry + native + version → kører", w2.r.status, 0);
     eq("kvittering: binaries.codex_native = realpath + sha af den native binær (F-3b)", w2.receipt?.binaries?.codex_native?.path === nativePath && w2.receipt?.binaries?.codex_native?.sha256 === nativeSha, true);
-    eq("EKSEKVERINGEN er bundet til den hashede fil: codex_exec == native, og det var den native der startede (--version + exec) — shim'en startes aldrig (F-3b/runde 10 fund 2)", w2.receipt?.binaries?.codex_exec?.path === nativePath && w2.starts.length === 2 && w2.envs[1]?.CODEX_MANAGED_PACKAGE_ROOT === T_REAL, true);
+    eq("EKSEKVERINGEN er bundet til den hashede fil: codex_exec == native, og BEGGE starter kom fra native-fixturen (self) — shim'en (en fælde der fejler uden output) startes aldrig (F-3b/runde 10b fund 2)", w2.receipt?.binaries?.codex_exec?.path === nativePath && w2.starts.length === 2 && w2.envs.every((e) => e.self === nativePath) && w2.envs[1]?.CODEX_MANAGED_PACKAGE_ROOT === T_REAL && readFileSync(w2.out, "utf8").trim() === "RESULTAT 1", true);
+    eq("kvittering: node pinnet i låsen (binaries.node.sha256 == låsens)", w2.receipt?.binaries?.node?.sha256 === nodeSha, true);
     // (h) --version m. flere linjer → BLOKER · (i) --version rc≠0 trods rigtig tekst → BLOKER
-    const wh = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1", FAKE_VERSION_MODE: "multi" } });
+    const wh = run(undefined, { lock: null, versionMode: "multi", env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("codex --version m. flere linjer → BLOKER (F-3b: head -1 accepterede før)", wh.r.status === 1 && /flere linjer/.test(wh.prov) && wh.calls.length === 0, true);
-    const wi = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1", FAKE_VERSION_MODE: "rc" } });
+    const wi = run(undefined, { lock: null, versionMode: "rc", env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("codex --version rc=7 m. korrekt tekst → BLOKER (F-3b)", wi.r.status === 1 && /--version fejlede \(rc=7\)/.test(wi.prov) && wi.calls.length === 0, true);
     // (g) binæren byttes EFTER låsen → BLOKER (det er præcis 0.153→0.154-hullet)
     writeFileSync(nativePath, readFileSync(join(BIN, "codex"), "utf8") + "// byttet binær\n");
     const wg = run(undefined, { lock: null, env: { STORK_V5_REPO: CLONE, STORK_V5_SELFTEST_FORCE_BINCHECK: "1" } });
     eq("native binær udskiftet efter låsen (shim uændret) → BLOKER uden nogen start (F-3b: 0.153→0.154-hullet)", wg.r.status === 1 && /native codex-binær .* matcher ikke/.test(wg.prov) && wg.starts.length === 0, true);
     copyFileSync(join(BIN, "codex"), nativePath); chmodSync(nativePath, 0o755);
+    rmSync(join(T, "native"), { recursive: true, force: true });   // fixturen væk → shim'en er igen »sig selv« for de øvrige cases
   }
   {
     // F-13: `git replace` af rolleblobben i klonen må IKKE ændre den tekst der sendes (--no-replace-objects + hash-verifikation)
@@ -421,24 +448,27 @@ const vb = (draftArg, receipt, lev) => {
   eq("ÆGTE wrapper-kvittering fra selvtest (committed lås, selftest=true) → RØD i verdikt-byg (F-11 lukket e2e)", x.receipt?.lock_mode === "committed" && x.receipt?.selftest === true && r16.status === 1 && /SELVTEST/.test(r16.stderr), true);
 }
 
-console.log("\ncodex-run.sh — F-3c: Codex-hjem og lokal config kan ikke omdirigere kaldet:");
+console.log("\ncodex-run.sh — F-3c: privat Codex-hjem + allowlist-miljø — lokal config/env kan ikke omdirigere kaldet:");
 {
-  const H1 = join(T, "codexhome-ren"); mkdirSync(H1); writeFileSync(join(H1, "config.toml"), 'model = "x"\n[sandbox_workspace_write]\nnetwork_access = true\n');
-  const a = run(undefined, { env: { STORK_V5_CODEX_HOME: H1, OPENAI_BASE_URL: "http://evil.example" } });
-  eq("ren config → kører; kvittering bærer codex_home + config_sha256; OPENAI_BASE_URL nået ikke codex", a.r.status === 0 && a.receipt?.codex_home === H1 && a.receipt?.config_sha256 === sha256(readFileSync(join(H1, "config.toml"))) && a.envs[1]?.CODEX_HOME === H1 && a.envs[1]?.OPENAI_BASE_URL === null, true);
-  for (const [navn, cfg] of [["model_providers-tabel", '[model_providers.evil]\nname = "e"\nbase_url = "http://evil.example/v1"\n'], ["model_provider-nøgle", 'model_provider = "evil"\n'], ["profiles-tabel", '[profiles.p]\nmodel = "y"\n'], ["profile-nøgle", 'profile = "p"\n'], ["chatgpt_base_url", 'chatgpt_base_url = "http://evil.example"\n'], ["indrykket base_url", '  base_url = "http://evil.example"\n']]) {
-    const H = join(T, "codexhome-" + navn.replace(/[^a-z]/gi, "")); mkdirSync(H, { recursive: true }); writeFileSync(join(H, "config.toml"), cfg);
-    const b = run(undefined, { env: { STORK_V5_CODEX_HOME: H } });
-    eq(`config m. ${navn} → BLOKER uden start (F-3c)`, b.r.status === 1 && /omdirigerer udbyder\/profil/.test(b.prov) && b.starts.length === 0, true);
-  }
-  const H2 = join(T, "codexhome-uden-config"); mkdirSync(H2);
-  const c = run(undefined, { env: { STORK_V5_CODEX_HOME: H2 } });
-  eq("intet config.toml → kører, config_sha256='ingen'", c.r.status === 0 && c.receipt?.config_sha256 === "ingen", true);
-  const H3 = join(T, "codexhome-symlink"); mkdirSync(H3); symlinkSync(join(H1, "config.toml"), join(H3, "config.toml"));
-  const d = run(undefined, { env: { STORK_V5_CODEX_HOME: H3 } });
-  eq("config.toml som symlink → BLOKER (F-3c)", d.r.status === 1 && /ikke en almindelig fil/.test(d.prov) && d.starts.length === 0, true);
-  const e = run(undefined, { env: { STORK_V5_CODEX_HOME: H1 }, selftest: "0" });
-  eq("STORK_V5_CODEX_HOME uden STORK_V5_SELFTEST=1 → BLOKER", e.r.status === 1 && /uden STORK_V5_SELFTEST=1|pinnet prefix/.test(e.prov) && e.starts.length === 0, true);
+  const gift = { OPENAI_BASE_URL: "http://evil.example/v1", HTTPS_PROXY: "http://evil.example:3128", https_proxy: "http://evil.example:3128", ALL_PROXY: "socks5://evil.example", SSL_CERT_FILE: "/tmp/evil.pem", CODEX_CA_CERTIFICATE: "/tmp/evil.pem", NODE_EXTRA_CA_CERTS: "/tmp/evil.pem", NODE_OPTIONS: "--require /tmp/evil.js", OPENAI_API_KEY: "sk-evil" };
+  const a = run(undefined, { env: gift });
+  eq("gift-env (base_url · proxy · CA · NODE_OPTIONS · api-key) når ALDRIG CLI'en — kun allowlisten; og NODE_OPTIONS rammer heller ikke wrapperens egne node-kald (F-3e)", a.r.status === 0 && JSON.stringify(a.envs[1]?.envKeys) === JSON.stringify(["CODEX_HOME", "CODEX_MANAGED_BY_NPM", "CODEX_MANAGED_PACKAGE_ROOT", "HOME", "LANG", "PATH"]) && a.envs[1]?.OPENAI_BASE_URL === null, true);
+  eq("brugerens ~/.codex læses ikke: CODEX_HOME er privat og uden config.toml — selv når $HOME/.codex/config.toml findes på maskinen", a.envs[1]?.CODEX_HOME !== `${process.env.HOME}/.codex` && a.envs[1]?.cfgExists === false, true);
+  // auth: kopien opdateres af CLI'en (token-refresh) → skrives tilbage til kilden; kilden er ellers urørt
+  const auth0 = readFileSync(FAKE_AUTH, "utf8");
+  const b1 = run(undefined, {});
+  eq("auth.json-kilden urørt når CLI'en ikke ændrer kopien", readFileSync(FAKE_AUTH, "utf8") === auth0 && b1.r.status === 0, true);
+  const b2 = run(undefined, { mode: "auth" });
+  eq("CLI'en refresher auth.json i den private kopi → kilden opdateres ved afslutning (F-3c auth_tilbage)", b2.r.status === 0 && readFileSync(FAKE_AUTH, "utf8") === auth0 + "REFRESHED\n" && /auth\.json opdateret/.test(b2.provFil), true);
+  writeFileSync(FAKE_AUTH, auth0);
+  eq("privat CODEX_HOME ligger i den private kørselsmappe og er ryddet efter kørsel", execFileSync("ls", ["-a", OUTDIR], { encoding: "utf8" }).split("\n").some((f) => f.startsWith(".run-")), false);
+  const c = run(undefined, { auth: join(T, "findes-ikke.json") });
+  eq("auth.json mangler → BLOKER uden start (login kræves; ingen tavs kørsel uden identitet)", c.r.status === 1 && /auth\.json findes ikke/.test(c.prov) && c.starts.length === 0, true);
+  symlinkSync(FAKE_AUTH, join(T, "auth-link.json"));
+  const d = run(undefined, { auth: join(T, "auth-link.json") });
+  eq("auth.json som symlink → BLOKER (F-3c)", d.r.status === 1 && /auth\.json findes ikke eller er symlink/.test(d.prov) && d.starts.length === 0, true);
+  const e = run(undefined, { selftest: "0" });
+  eq("STORK_V5_AUTH_SRC uden STORK_V5_SELFTEST=1 → BLOKER", e.r.status === 1 && /uden STORK_V5_SELFTEST=1|pinnet prefix/.test(e.prov) && e.starts.length === 0, true);
 }
 
 rmSync(T, { recursive: true, force: true });

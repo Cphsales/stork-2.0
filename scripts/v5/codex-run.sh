@@ -44,7 +44,7 @@ fi
 ROLLE="$1"; AKT="$2"; WORKDIR="$3"; TIMEOUT_S="$4"; OUT="$5"; PROMPTFIL="$6"
 PROV="$OUT.provenance"; RECEIPT="$OUT.receipt.json"; PIDFIL="$OUT.pid"; ERRLOG="$OUT.stderr.log"; LOCKF="$OUT.lock"
 SELFTEST=0; [ "${STORK_V5_SELFTEST:-}" = "1" ] && SELFTEST=1
-HAS_LOCK=0; RUNDIR=""
+HAS_LOCK=0; RUNDIR=""; RUN_CODEX_HOME=""; NODE_PINNED=0; AUTH_SRC=""; AUTH_SHA0=""
 STATUS="blokeret"; ATTEMPTS_JSON="[]"
 MODEL=""; EFFORT=""; SANDBOX=""; SKILL_PATH=""; SKILL_OID=""; REGEL_COMMIT=""; LOCK_BLOB=""; LOCK_MODE=""; PROMPT_SHA=""
 CODEX_VER=""; BIN_JSON="{}"; GATE_JSON="null"
@@ -64,14 +64,22 @@ CALLER_PATH=""
 IFS=: read -r -a PATH_DELE <<<"${PATH:-}"
 for d in "${PATH_DELE[@]}"; do case "$d" in /*) CALLER_PATH="${CALLER_PATH:+$CALLER_PATH:}$d" ;; esac; done
 export PATH="$SYSPATH"
+# F-3e: wrapperens EGNE node-kald (lås-parsing, kvittering) må ikke kunne påvirkes af kalderens NODE_*-variabler
+# (NODE_OPTIONS --require, NODE_PATH, NODE_V8_COVERAGE …) — alle NODE_* fjernes fra wrapperens miljø her.
+while IFS= read -r v; do unset -v "$v"; done < <(compgen -e | grep -E '^NODE_' || true)
 sha_of() { "$SHASUM" -- "$1" | cut -d' ' -f1; }
 RUN_ID="$("$DATE" +%Y%m%dT%H%M%S)-$$-$RANDOM"
 STARTED="$("$DATE" -Is)"
 
 skriv_kvittering() {
+  if [ "$NODE_PINNED" -ne 1 ]; then   # F-3d: node er endnu ikke pinnet → INGEN node-start; minimal kvittering uden node
+    local r; r=$(printf '%s' "${1:-}" | tr -d '"\\\r\n' | cut -c1-300)
+    printf '{"schema_version":2,"status":"%s","reason":"%s (før node-pin)","selftest":%s,"node_pinned":false}\n' "$STATUS" "$r" "$([ "$SELFTEST" -eq 1 ] && echo true || echo false)" > "$RECEIPT.tmp" && mv -f -- "$RECEIPT.tmp" "$RECEIPT"
+    return
+  fi
   RUN_ID="$RUN_ID" STATUS="$STATUS" REASON="${1:-}" ROLLE="$ROLLE" AKT="$AKT" MODEL="$MODEL" EFFORT="$EFFORT" \
   SANDBOX="$SANDBOX" REGEL_COMMIT="$REGEL_COMMIT" LOCK_MODE="$LOCK_MODE" LOCK_BLOB="$LOCK_BLOB" SKILL_PATH="$SKILL_PATH" \
-  SKILL_OID="$SKILL_OID" PROMPT_SHA="$PROMPT_SHA" WORKDIR="$WORKDIR" OUT="$OUT" CODEX_VER="$CODEX_VER" BIN_JSON="$BIN_JSON" CODEX_HOME_EFF="$CODEX_HOME_EFF" CONFIG_SHA="$CONFIG_SHA" \
+  SKILL_OID="$SKILL_OID" PROMPT_SHA="$PROMPT_SHA" WORKDIR="$WORKDIR" OUT="$OUT" CODEX_VER="$CODEX_VER" BIN_JSON="$BIN_JSON" RUN_CODEX_HOME="$RUN_CODEX_HOME" AUTH_SRC="$AUTH_SRC" \
   ATTEMPTS_JSON="$ATTEMPTS_JSON" STARTED="$STARTED" ENDED="$("$DATE" -Is)" SELFTEST="$SELFTEST" GATE_JSON="$GATE_JSON" \
   "${NODE:-node}" -e '
     const e = process.env;
@@ -79,13 +87,20 @@ skriv_kvittering() {
       model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX, sandbox_policy: { network_access: false, exclude_slash_tmp: true, exclude_tmpdir_env_var: true }, service_tier: "default", codex_version: e.CODEX_VER,
       regel_commit: e.REGEL_COMMIT, lock_mode: e.LOCK_MODE, lock_blob: e.LOCK_BLOB, skill_path: e.SKILL_PATH,
       skill_oid: e.SKILL_OID, prompt_sha256: e.PROMPT_SHA, gate_input: JSON.parse(e.GATE_JSON || "null"),
-      selftest: e.SELFTEST === "1", workdir: e.WORKDIR, out: e.OUT, codex_home: e.CODEX_HOME_EFF, config_sha256: e.CONFIG_SHA,
+      selftest: e.SELFTEST === "1", workdir: e.WORKDIR, out: e.OUT, codex_home: e.RUN_CODEX_HOME, codex_home_mode: "privat-uden-config", auth_source: e.AUTH_SRC, env_mode: "allowlist(HOME,PATH,LANG,CODEX_HOME,CODEX_MANAGED_PACKAGE_ROOT,CODEX_MANAGED_BY_NPM)",
       binaries: JSON.parse(e.BIN_JSON || "{}"), attempts: JSON.parse(e.ATTEMPTS_JSON || "[]"),
       started: e.STARTED, ended: e.ENDED };
     if (e.REASON) r.reason = e.REASON;
     process.stdout.write(JSON.stringify(r, null, 1) + "\n");' > "$RECEIPT.tmp" && mv -f -- "$RECEIPT.tmp" "$RECEIPT"
 }
-cleanup() { [ -n "$RUNDIR" ] && rm -rf -- "$RUNDIR"; }
+auth_tilbage() {   # F-3c: CLI'en kørte mod en KOPI af auth.json i privat CODEX_HOME; et token-refresh skrives tilbage til kilden
+  [ -n "$RUN_CODEX_HOME" ] && [ -f "$RUN_CODEX_HOME/auth.json" ] && [ -n "$AUTH_SRC" ] || return 0
+  [ "$(sha_of "$RUN_CODEX_HOME/auth.json")" != "$AUTH_SHA0" ] || return 0
+  cp -- "$RUN_CODEX_HOME/auth.json" "$AUTH_SRC.tmp.$$" && chmod 600 "$AUTH_SRC.tmp.$$" && mv -f -- "$AUTH_SRC.tmp.$$" "$AUTH_SRC" \
+    && { [ "$HAS_LOCK" -eq 1 ] && echo "auth.json opdateret fra kørslen (token-refresh) → $AUTH_SRC" >> "$PROV" || true; } \
+    || echo "ADVARSEL: auth.json kunne ikke skrives tilbage til $AUTH_SRC" >&2
+}
+cleanup() { auth_tilbage; [ -n "$RUNDIR" ] && rm -rf -- "$RUNDIR"; }
 trap cleanup EXIT
 blok() {
   echo "BLOKER: $*" >&2
@@ -127,6 +142,7 @@ if [ -n "${STORK_V5_REPO:-}" ]; then
 fi
 REGEL_COMMIT=$(g -C "$REPO" rev-parse --verify 'HEAD^{commit}' 2>/dev/null) || blok "kan ikke læse HEAD i $REPO"
 
+
 # --- codex + node fra RENSET kalder-PATH, kun kendte prefixer; codex pinnet mod binaries.lock (F-3) ---
 resolve_bin() { local p; p=$(PATH="$CALLER_PATH" command -v -- "$1" 2>/dev/null) || return 1; "$REALPATH" -e -- "$p"; }
 NODE=$(resolve_bin node) || blok "node ikke fundet"
@@ -136,30 +152,39 @@ if [ "$SELFTEST" -ne 1 ]; then
   kendt_prefix "$CODEX" || blok "codex-binær uden for pinnet prefix: $CODEX (PATH-injektion? F-3)"
   kendt_prefix "$NODE" || blok "node-binær uden for pinnet prefix: $NODE"
 fi
-# --- Codex-hjem + lokal config (F-3c): CODEX_HOME pinnes til $HOME/.codex (override kun under selftest); config må ikke
-# omdirigere udbyder/profil (model_provider(s)/base_url/profiles) — »rollen bestemmer kaldet« gælder også serveren bag modellen.
-CODEX_HOME_EFF="$HOME/.codex"
-if [ -n "${STORK_V5_CODEX_HOME:-}" ]; then
-  [ "$SELFTEST" -eq 1 ] || blok "STORK_V5_CODEX_HOME er sat uden STORK_V5_SELFTEST=1 — override omgår config-værnet (F-3c)"
-  CODEX_HOME_EFF=$("$REALPATH" -e -- "$STORK_V5_CODEX_HOME") || blok "STORK_V5_CODEX_HOME kan ikke resolves"
+
+# --- F-3d: node pinnes FØR første node-start. Låsen læses som TEKST (git + grep fra system-PATH); node's sha SKAL stå i den.
+# Node parser bagefter låsen selv — men kun en node hvis bytes låsen kender. (Selvtest uden FORCE_BINCHECK: lempelse, kvittering selftest=true.)
+BINLOCK=""
+if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
+  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
+  NODE_SHA=$(sha_of "$NODE")
+  printf '%s' "$BINLOCK" | grep -qF -- "\"$NODE_SHA\"" || blok "node ($NODE, sha ${NODE_SHA:0:12}) står ikke i binaries.lock.json @ $REGEL_COMMIT — node startes ikke (F-3d)"
 fi
-CONFIG_SHA="ingen"
-if [ -e "$CODEX_HOME_EFF/config.toml" ]; then
-  [ -f "$CODEX_HOME_EFF/config.toml" ] && [ ! -L "$CODEX_HOME_EFF/config.toml" ] || blok "config.toml er ikke en almindelig fil (F-3c)"
-  if grep -qE '^[[:space:]]*(model_provider|model_providers|base_url|chatgpt_base_url|profile|openai_base_url)[[:space:]]*=|^[[:space:]]*\[(model_providers|profiles)([].]|$)' "$CODEX_HOME_EFF/config.toml"; then
-    blok "lokal $CODEX_HOME_EFF/config.toml omdirigerer udbyder/profil (model_provider(s)/base_url/profiles) — kaldet skal afledes af rolle/lås, ikke lokal config (F-3c)"
-  fi
-  CONFIG_SHA=$(sha_of "$CODEX_HOME_EFF/config.toml")
+NODE_PINNED=1
+# --- F-3c: PRIVAT Codex-hjem. CLI'en læser ALDRIG brugerens ~/.codex/config.toml (den kunne omdirigere udbyder/profil/sandbox
+# via gyldig TOML som intet regex fanger). Wrapperen giver CLI'en en wrapper-ejet CODEX_HOME i den private kørselsmappe med
+# KUN en kopi af auth.json (login) og INGEN config.toml — alle indstillinger kommer fra kaldet (-m, -c …). Token-refresh
+# skrives tilbage til kilden ved afslutning (auth_tilbage). Miljøet til CLI'en er en ALLOWLIST (env -i): ingen proxy-/CA-/
+# base-url-variabler kan nå den.
+AUTH_SRC="$HOME/.codex/auth.json"
+if [ -n "${STORK_V5_AUTH_SRC:-}" ]; then
+  [ "$SELFTEST" -eq 1 ] || blok "STORK_V5_AUTH_SRC er sat uden STORK_V5_SELFTEST=1 — override omgår login-kilden (F-3c)"
+  case "$STORK_V5_AUTH_SRC" in /*) AUTH_SRC="$STORK_V5_AUTH_SRC" ;; *) blok "STORK_V5_AUTH_SRC skal være en absolut sti" ;; esac
 fi
+[ -f "$AUTH_SRC" ] && [ ! -L "$AUTH_SRC" ] || blok "auth.json findes ikke eller er symlink: $AUTH_SRC — log ind (codex login) før kørsel (F-3c)"
+RUN_CODEX_HOME="$RUNDIR/codex-home"
+mkdir -m 700 -- "$RUN_CODEX_HOME" || blok "kan ikke oprette privat CODEX_HOME"
+cp -- "$AUTH_SRC" "$RUN_CODEX_HOME/auth.json" && chmod 600 -- "$RUN_CODEX_HOME/auth.json" || blok "kan ikke kopiere auth.json til privat CODEX_HOME"
+AUTH_SHA0=$(sha_of "$RUN_CODEX_HOME/auth.json")
 # codex-shim'en er `#!/usr/bin/env node` → den SKAL kunne finde node; vi giver PRÆCIS den verificerede node-mappe + system-PATH
 CODEX_PATH="$(dirname -- "$NODE"):$SYSPATH"
 CODEX_PKG_ROOT=$("$REALPATH" -e -- "$(dirname -- "$CODEX")/..") || blok "codex-pakkerod kan ikke resolves (F-3b)"
-# F-3b (runde 10): RÆKKEFØLGE = lås → shim-sha → native-sha → FØRST DEREFTER første start (--version) → exec. Intet
-# u-pinnet program startes. Og eksekveringen BINDES til den hashede fil: vi kører den native binær direkte (shim'en
-# vælger sin native via require.resolve/package-exports og kan pege et andet sted hen end det vi hashede).
+# F-3b (runde 10/10b): RÆKKEFØLGE = lås → node-sha (ovenfor, før node) → shim-sha → native-sha → FØRST DEREFTER første start
+# (--version) → exec. Intet u-pinnet program startes. Eksekveringen BINDES til den hashede fil: vi kører den native binær
+# direkte (shim'en vælger sin native via require.resolve/package-exports og kan pege et andet sted hen end det vi hashede).
 CODEX_NATIVE=""; CODEX_EXEC=""
-if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
-  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
+if [ -n "$BINLOCK" ]; then
   PIN=$(printf '%s' "$BINLOCK" | "$NODE" -e '
     const l = JSON.parse(require("fs").readFileSync(0, "utf8"));
     const hex64 = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
@@ -167,10 +192,12 @@ if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; t
     if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);
     const n = l.codex_native;
     if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !n.path_from_pkg_root.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(n.path_from_pkg_root)) process.exit(4);
-    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));
-  ') || blok "binaries.lock.json er ugyldig eller mangler codex_native{sha256,path_from_pkg_root}/codex.version (F-3b: låsen skal pinne shim + native binær + version)"
+    if (!l.node || !hex64(l.node.sha256)) process.exit(5);
+    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root, l.node.sha256].join("\n"));
+  ') || blok "binaries.lock.json er ugyldig eller mangler codex.version / codex_native{sha256,path_from_pkg_root} / node.sha256 (F-3b/F-3d)"
   PIN_SHA=$(printf '%s\n' "$PIN" | sed -n 1p); PIN_VER=$(printf '%s\n' "$PIN" | sed -n 2p)
-  PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p)
+  PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p); PIN_NODE_SHA=$(printf '%s\n' "$PIN" | sed -n 5p)
+  [ "$PIN_NODE_SHA" = "$NODE_SHA" ] || blok "node ($NODE) matcher ikke binaries.lock.json node.sha256 (${PIN_NODE_SHA:0:12}) (F-3d)"
   [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"
   CODEX_NATIVE=$("$REALPATH" -e -- "$CODEX_PKG_ROOT$PIN_NATIVE_REL" 2>/dev/null) || blok "native codex-binær findes ikke: $CODEX_PKG_ROOT$PIN_NATIVE_REL (F-3b)"
   [ -f "$CODEX_NATIVE" ] && [ -x "$CODEX_NATIVE" ] || blok "native codex-binær er ikke en eksekverbar almindelig fil: $CODEX_NATIVE (F-3b)"
@@ -180,8 +207,11 @@ if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; t
 else
   CODEX_EXEC="$CODEX"   # selvtest uden FORCE_BINCHECK: den falske shim spiller selv native (kvitteringen er mærket selftest=true)
 fi
+# ALLOWLIST-miljø til CLI'en (env -i): HOME (nvm/cache), PATH (verificeret node-mappe + system), LANG, privat CODEX_HOME,
+# og de to variabler shim'en selv sætter. Alt andet (OPENAI_BASE_URL, *_PROXY, SSL_CERT_FILE, CODEX_CA_CERTIFICATE,
+# NODE_EXTRA_CA_CERTS, NODE_OPTIONS …) når ALDRIG CLI'en.
+codex_env() { "$ENVB" -i HOME="$HOME" PATH="$CODEX_PATH" LANG="${LANG:-C.UTF-8}" CODEX_HOME="$RUN_CODEX_HOME" CODEX_MANAGED_PACKAGE_ROOT="$CODEX_PKG_ROOT" CODEX_MANAGED_BY_NPM=1 "$@"; }
 # første start af codex sker HER — efter alle byte-kontroller: præcis én linje, rc 0, lig låsens version
-codex_env() { "$ENVB" -u OPENAI_BASE_URL CODEX_HOME="$CODEX_HOME_EFF" CODEX_MANAGED_PACKAGE_ROOT="$CODEX_PKG_ROOT" CODEX_MANAGED_BY_NPM=1 PATH="$CODEX_PATH" "$@"; }
 CODEX_VER=$(codex_env "$CODEX_EXEC" --version 2>/dev/null); vrc=$?   # scriptet kører set -u (ikke -e): substitution fejler ikke hårdt
 [ "$vrc" -eq 0 ] || blok "codex --version fejlede (rc=$vrc) for $CODEX_EXEC (F-3b)"
 case "$CODEX_VER" in *$'\n'*|*$'\r'*) blok "codex --version gav flere linjer/CR — forventede præcis én linje (F-3b)";; '') blok "codex --version gav intet output (F-3b)";; esac
@@ -236,7 +266,7 @@ PROMPT="$ROLE_TEXT"$'\n\n---\n\n# Opgave (fra driveren — rolleteksten ovenfor 
 [ "${#PROMPT}" -le 1000000 ] || blok "prompt for stor (${#PROMPT} tegn > 1.000.000) — argument-grænse"
 PROMPT_SHA=$(printf '%s' "$PROMPT" | "$SHASUM" | cut -d' ' -f1)
 
-echo "start=$STARTED run_id=$RUN_ID rolle=$ROLLE aktivitet=$AKT model=$MODEL effort=$EFFORT sandbox=$SANDBOX selftest=$SELFTEST codex=$CODEX_VER codex_bin=$CODEX codex_exec=$CODEX_EXEC codex_home=$CODEX_HOME_EFF config_sha256=$CONFIG_SHA regel_commit=$REGEL_COMMIT lock=$LOCK_MODE lock_blob=$LOCK_BLOB skill=$SKILL_PATH@${SKILL_OID:0:12} prompt_sha256=$PROMPT_SHA gate_input=$GATE_JSON workdir=$WORKDIR" >> "$PROV"
+echo "start=$STARTED run_id=$RUN_ID rolle=$ROLLE aktivitet=$AKT model=$MODEL effort=$EFFORT sandbox=$SANDBOX selftest=$SELFTEST codex=$CODEX_VER codex_bin=$CODEX codex_exec=$CODEX_EXEC codex_home=$RUN_CODEX_HOME(privat,uden config) auth_source=$AUTH_SRC env=allowlist regel_commit=$REGEL_COMMIT lock=$LOCK_MODE lock_blob=$LOCK_BLOB skill=$SKILL_PATH@${SKILL_OID:0:12} prompt_sha256=$PROMPT_SHA gate_input=$GATE_JSON workdir=$WORKDIR" >> "$PROV"
 
 run_once() {
   local attempt="$1" a_out s0 t0 t1 rc pid osha obytes ok started ended
