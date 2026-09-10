@@ -1,0 +1,11 @@
+--- scripts/v5/codex-run.selftest.mjs	2026-09-10 18:08:18.281714252 +0200
++++ scripts/v5/codex-run.selftest.mutant-e.mjs	2026-09-10 18:12:53.141627079 +0200
+@@ -127,7 +127,7 @@
+   if (auth) e.STORK_V5_AUTH_SRC = auth; else delete e.STORK_V5_AUTH_SRC;
+   if (lock) e.STORK_V5_LOCK = lock; else delete e.STORK_V5_LOCK;
+   rmSync(TRACE_LOG, { force: true });
+-  const r = spawnSync("python3", [TRACER, TRACE_LOG, "--", "bash", WRAPPER, ...fullArgs], { encoding: "utf8", env: e, cwd: EXECDIR });
++  const r = spawnSync("bash", [WRAPPER, ...fullArgs], { encoding: "utf8", env: e, cwd: EXECDIR });   // MUTANT e: ingen tracer → tom exec-log
+   const execs = parseTrace();
+   if (tag && process.env.SELFTEST_TRACE_DIR) { try { copyFileSync(TRACE_LOG, join(process.env.SELFTEST_TRACE_DIR, `${tag}.trace.log`)); } catch {} }   // bevis-arkiv pr. nøgle-case
+   // v4: en BLOKER FØR låsen rører ingen fælles fil (F-7) og står kun på stderr — prov = fil + stderr

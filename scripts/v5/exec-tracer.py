@@ -13,7 +13,9 @@ EV_FORK, EV_VFORK, EV_CLONE, EV_EXEC = 1, 2, 3, 4
 OPTS = O_TRACEFORK | O_TRACEVFORK | O_TRACECLONE | O_TRACEEXEC | O_EXITKILL
 log_path = sys.argv[1]; assert sys.argv[2] == "--"; cmd = sys.argv[3:]
 log = open(log_path, "a", buffering=1)
+logged_any = False
 def logexec(pid):
+    global logged_any; logged_any = True
     try: exe = os.readlink(f"/proc/{pid}/exe")
     except OSError: exe = "?"
     try: argv = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")[:-1]
@@ -21,7 +23,8 @@ def logexec(pid):
     log.write("EXEC %d %s %s\n" % (pid, exe, " ".join(a.decode("utf-8", "replace").replace("\n", "\\n") for a in argv[:8])))
 root = os.fork()
 if root == 0:
-    libc.ptrace(PTRACE_TRACEME, 0, None, None)
+    if libc.ptrace(PTRACE_TRACEME, 0, None, None) != 0:   # fx EPERM i en sandbox: INGEN tavs tom log — afbryd højlydt
+        os.write(2, b"exec-tracer: PTRACE_TRACEME fejlede (errno %d) - ingen sporing mulig, afbryder\n" % ctypes.get_errno()); os._exit(125)
     os.execvp(cmd[0], cmd)   # stopper m. SIGTRAP ved exec
 # forælder
 root_status = None; tracees = {root}; opts_set = set()
@@ -48,6 +51,7 @@ while tracees:
     deliver = 0 if sig in (signal.SIGSTOP, signal.SIGTRAP) else sig
     libc.ptrace(PTRACE_CONT, pid, None, ctypes.c_void_p(deliver))
 log.close()
+if not logged_any: sys.stderr.write("exec-tracer: ingen exec-events observeret - sporing virkede ikke\n"); sys.exit(125)
 if root_status is None: sys.exit(1)
 if os.WIFSIGNALED(root_status): os.kill(os.getpid(), os.WTERMSIG(root_status))
 sys.exit(os.WEXITSTATUS(root_status))

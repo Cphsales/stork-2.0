@@ -1,0 +1,10 @@
+--- /tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/f3h-bevis/codex-run.sh.original	2026-09-10 18:09:25.697623364 +0200
++++ scripts/v5/codex-run.sh	2026-09-10 18:12:27.685619346 +0200
+@@ -153,6 +153,7 @@
+   kendt_prefix "$NODE" || blok "node-binær uden for pinnet prefix: $NODE"
+ fi
+ 
++"$NODE" -e "" 2>/dev/null || true   # MUTANT d: en node-start FØR node.pin-autorisationen
+ # --- F-3d (runde 10c): node autoriseres FØR første node-start gennem ÉN allerede betroet mekanisme: pin-filen
+ # scripts/v5/node.pin @ regel_commit (git + grep fra system-PATH). Streng grammatik: indholdet efter bash' $(…)-normalisering
+ # (afsluttende LF'er/NUL fjernes — præcis det, Codex runde 10d målte) er præcis én linje `sha256=<64 lowercase hex>`; alt andet BLOKER. Ingen tekst-medlemskab i låsen (runde 10c: en fremmed nodes sha i et uvedkommende felt

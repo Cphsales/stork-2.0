@@ -1,0 +1,19 @@
+--- /tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/f3h-bevis/codex-run.sh.original	2026-09-10 18:09:25.697623364 +0200
++++ scripts/v5/codex-run.sh	2026-09-10 18:11:30.333646001 +0200
+@@ -212,7 +212,6 @@
+   [ -f "$CODEX_NATIVE" ] && [ -x "$CODEX_NATIVE" ] || blok "native codex-binær er ikke en eksekverbar almindelig fil: $CODEX_NATIVE (F-3b)"
+   if [ "$SELFTEST" -ne 1 ]; then kendt_prefix "$CODEX_NATIVE" || blok "native codex-binær uden for pinnet prefix: $CODEX_NATIVE (F-3b)"; fi
+   # F-3g: native SKAL være en ELF-binær — en shim/script (også en kopi under vendor-stien) ville starte et ANDET program uden hash-binding
+-  printf '\177ELF' | "$CMP" -s -n 4 - "$CODEX_NATIVE" || blok "native codex-binær er ikke en ELF-binær: $CODEX_NATIVE (F-3g: en shim/script kan ikke være native)"
+   [ "$(sha_of "$CODEX_NATIVE")" = "$PIN_NATIVE_SHA" ] || blok "native codex-binær ($CODEX_NATIVE) matcher ikke binaries.lock.json (${PIN_NATIVE_SHA:0:12}) — binæren er ændret/udskiftet uden bevidst lås-opdatering (F-3b)"
+   CODEX_EXEC="$CODEX_NATIVE"
+ else
+@@ -227,7 +226,7 @@
+ CODEX_VER=$(codex_env "$CODEX_EXEC" --version 2>/dev/null); vrc=$?   # scriptet kører set -u (ikke -e): substitution fejler ikke hårdt
+ [ "$vrc" -eq 0 ] || blok "codex --version fejlede (rc=$vrc) for $CODEX_EXEC (F-3b)"
+ case "$CODEX_VER" in *$'\n'*|*$'\r'*) blok "codex --version gav flere linjer/CR — forventede præcis én linje (F-3b)";; '') blok "codex --version gav intet output (F-3b)";; esac
+-if [ -n "$CODEX_NATIVE" ]; then [ "$CODEX_VER" = "$PIN_VER" ] || blok "codex --version »$CODEX_VER« ≠ låsens »$PIN_VER« — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3b)"; fi
++if [ -n "$CODEX_NATIVE" ]; then printf '\177ELF' | "$CMP" -s -n 4 - "$CODEX_NATIVE" || blok "native codex-binær er ikke en ELF-binær: $CODEX_NATIVE (F-3g: en shim/script kan ikke være native)"; [ "$CODEX_VER" = "$PIN_VER" ] || blok "codex --version »$CODEX_VER« ≠ låsens »$PIN_VER« — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3b)"; fi
+ BIN_JSON=$(printf '{"codex":{"path":"%s","sha256":"%s"},"codex_exec":{"path":"%s","sha256":"%s"},"node":{"path":"%s","sha256":"%s"},"git":{"path":"%s","sha256":"%s"},"timeout":{"path":"%s","sha256":"%s"},"flock":{"path":"%s","sha256":"%s"}' \
+   "$CODEX" "$(sha_of "$CODEX")" "$CODEX_EXEC" "$(sha_of "$CODEX_EXEC")" "$NODE" "$(sha_of "$NODE")" "$GIT" "$(sha_of "$GIT")" "$TIMEOUT" "$(sha_of "$TIMEOUT")" "$FLOCK" "$(sha_of "$FLOCK")")
+ if [ -n "$CODEX_NATIVE" ]; then BIN_JSON="$BIN_JSON,$(printf '"codex_native":{"path":"%s","sha256":"%s"}' "$CODEX_NATIVE" "$(sha_of "$CODEX_NATIVE")")"; fi

@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/f3h-bevis/codex-run.sh.original	2026-09-10 18:09:25.697623364 +0200
++++ scripts/v5/codex-run.sh	2026-09-10 18:09:26.341623406 +0200
+@@ -289,7 +289,7 @@
+   # (lokal config havde network_access=true → produktions-kørsler havde netværk trods »Web forbudt«). Netværk fra,
+   # /tmp og $TMPDIR ikke skrivbare — kun workdir. Læse-adgang uden for workdir kan sandboxen ikke begrænse (residual).
+   codex_env "$TIMEOUT" --signal=KILL "${TIMEOUT_S}s" \
+-    "$CODEX_EXEC" exec --skip-git-repo-check --sandbox "$SANDBOX" \
++    "$CODEX" exec --skip-git-repo-check --sandbox "$SANDBOX" \
+       -c sandbox_workspace_write.network_access=false -c sandbox_workspace_write.exclude_slash_tmp=true -c sandbox_workspace_write.exclude_tmpdir_env_var=true \
+       -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
+       --cd "$WORKDIR" -o "$a_out" "$PROMPT" < /dev/null >> "$OUT.log" 2>> "$ERRLOG" &
