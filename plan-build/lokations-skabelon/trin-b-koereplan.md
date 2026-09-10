@@ -174,5 +174,14 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   B-5 ny stand på nedlagt · D-6 samme-dags-afvisning; elleve orienteringer). Svar → ledger M-42.. → lægges i v3's
   varianter. A2-14 (kilde-identitet): p8-kilde.json + p8-kilde-scope.sql (skema fra fabrik-armen) leveres af
   driveren m. v3; adgangsspørgsmålet (PROD read-only vs. kopi) forelægges senere m. navngiven kilde. SHA = denne commit.
+- 2026-09-10 19:57-20:1x: **planner v3 FÆRDIG** (211 ture, 61 min, is_error false): plan v3 (871 linjer; blob
+  `c5f451f8` efter driverens udfyldning af kildekontrakt-blob) · fold-ind-rapport-r3 (blob `1b0240c1`: 77 fund — 34
+  rettet · 6 mandat · 8 kræver Mathias (S-1 + S-2-klyngen) · 27 båret · 2 driver · **0 åbne**; 21 kill-list-poster
+  gen-disponeret; NF-3..6; HALT ingen) · forventnings-manifest.json (gammelt skema — 125 validator-fejl → **v3.1**).
+  Driver-leverancer m. v3: `p8-kildekontrakt.md` (blob `ff0a09c2`, planens FA-5-reference udfyldt) + `p8-kilde.json` +
+  `p8-kilde-scope.sql` (sha256 f3347b82…, deterministisk) · `b4-delta-scope-r3.md` · fund-log 77 rækker fra rapport §1.
+  Afvig noteret: v3 kender ikke devilens klassifikation (S-1 spørgsmål vs. orientering · B-5/D-6 default vs. spørgsmål ·
+  D-9/D-10 nye) — afstemmes efter Mathias' svar. Næste: A' ∥ B' på v3-teksten · v3.1 manifest m. validator · C. SHA =
+  denne commit.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer> · Mathias-liste r2 (S-2 · B-5 · D-6): sendt 10/9 19:3x @ 598f98fd — svar <afventer>.
 - B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ deb8b2c · B4-A: plan-angreb-r2 0b2a36ca · B4-B: plan-audit-fresh-eyes-r2 417d96b6 (fuld; trunkeret 292d029c @ 2949f69) · B4-C: plan-slutlaesning-r2 9f13a7cb · v3-runde: <afventer> · B4 rest-dom: ekstra runde · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

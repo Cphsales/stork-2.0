@@ -220,3 +220,32 @@ klassifikation rettet, aldrig substans (planens stilling gengives uændret).
 
 Afsendelse: blob `598f98fd` (commit 55c1c05) sendt til mathias-df (Mathias' vindue) 2026-09-10 ~19:32 m. anmodning om
 verbatim fremlæggelse og verbatim relæ af svar til ledgeren (M-42..). Enhver ændring af teksten efter devil 3 → ny devil.
+
+## B4 ekstra runde — planner-code fold-ind runde 2 → plan v3 + fold-ind-rapport-r3 + forventnings-manifest (Claude-aktør via `claude -p`, produktion) — arkiveret 2026-09-10 ~20:15 af driver-10b (session de4474)
+
+Kald, model/effort (claude-fable-5-1 · xhigh fra `actors.lock[planner-code]`), PIN3 `3d4c7da`, prompt-sha, input-blobs
+og forløb står i `fold-ind-r3.provenance.txt`. Workdir uden for `~/.claude` (B3-lærdom) → alle tre leverancer skrevet i
+workdir'en. Result-JSON = kvittering (selv-erklæret): 211 ture · 61 min · 36,49 USD · `is_error: false` · ingen web ·
+slutbesked i ÉN besked (R2-5-tjek OK). **Driverens udfyldninger FØR commit (deklareret, mekanisk):** plan v3's
+`<udfyldes af driveren>` (2 steder, FA-5 kildekontrakt-blob → `ff0a09c2`) · manifestets `bindings.plan.oid` (→ plan
+v3-blob `c5f451f8`). Manifestet er i det GAMLE skema (validator v2: 124 fejl — `grund` mangler, aliases som strenge) og
+rettes i v3.1. Alle kopier byte-identiske (`cmp`) FØR udfyldning; sha256 nedenfor er efter udfyldning hvor angivet.
+
+| fil | kilde | sha256 (rå fra planneren) | blob (committet) | indhold |
+| --- | --- | --- | --- | --- |
+| `../plan.md` (v3) | workdir `plan.md` (220 763 B, 871 linjer) | `fc004f112f58b459a27ce54060f45b755df8cbdc6b307f6463c89a4341b4add8` (rå) | `c5f451f8` (efter udfyldning af kildekontrakt-blob) | plan v3, status UDKAST: §0 FA-1..FA-5 · §1 matrix (60 obligations, ID-regler) · §2 register · §3 bids · §4 V1-V13/S-1..S-32 · §10 KRÆVER MATHIAS S-1/S-2 m. varianter + Mathias-liste (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 · D-1..D-10) · §11 ændringslog v2→v3 |
+| `../fold-ind-rapport-r3.md` | workdir (47 333 B, 192 linjer) | `50e3dd7a1615a2325f999b03850ae71bb391de3efb7f0e5789eccda02820ada5` | `1b0240c1` | 77 fund m. tilstand + `plan.md:<linje>` + ID (34 rettet · 6 mandat · 8 kræver Mathias · 27 båret · 2 driver · 0 åbne) · 21 kill-list-poster gen-disponeret · NF-3..6 · HALT ingen · Mathias-liste · bindinger |
+| `../forventnings-manifest.json` | workdir (65 043 B, 198 linjer) | `a951365adb79192b5fa6feb39f3d68823df8f2d90c735b0723e65aecddc37d66` (rå) | se commit (efter `bindings.plan.oid`) | 60 obligations · 115 negatives · 10 guards · 11 aliases — GAMMELT skema → v3.1 |
+| `fold-ind-r3.prompt.txt` | job-tmp `b3v3/prompt-v3.txt` | `17b3372c365c2014e3e94be16aaef84630d6b4002b445e10185c8028ae28b346` | — | rolletekst @ eb190c08 + runde-1-instruks (<PIN>=PIN3) + runde-2-instruks m. blobs + værktøjs-/leveranceregler (34 004 B) |
+| `fold-ind-r3.claude-result.json` | `…/b3v3/out/OUT-v3.json` | `55887e01b609a7526ea6d7f67e1da3c469e71b3e26441d4b2a9bf7dabd88ff52` | — | CLI result-JSON (session e9a45791 · usage · 211 ture) |
+| `fold-ind-r3.slutbesked.md` | result-tekst | `86bafa8183f0eb2c2b2891e73df9583ac7315a92f3e1dfdb118a9fe9948fd122` | — | plannerens slutbesked (sha256 pr. leverance · optællinger · driver-opgaver · bindinger) |
+| `fold-ind-r3.settings.json` | job-tmp `settings-planner-v3.json` | `3d3de0a755452bedfc1bac05e25a014364c44346c435b7c6c54bf910c70dcbb0` | — | permissions (allow Read/Grep/Glob/Write/Edit + læse-Bash + node -e; deny web/rm/mv/commit/push/npm/pnpm/supabase/psql) |
+| `fold-ind-r3.workdir-blobs.txt` | job-tmp | `ce712444c2f8e6edaacda846a15865f3fd6a42f80a0a23425c8b699045beca92` | — | hash-object af 11 input-filer i workdir'en før spawn |
+| `fold-ind-r3.provenance.txt` | skrevet af driveren | (denne commit) | — | fuld driver-provenance |
+
+Driver-leverancer i samme commit (A2-14 · fabrik-armens skema): `../p8-kildekontrakt.md` (blob `ff0a09c2`, planens
+FA-5-reference) · `../p8-kilde.json` (bindinger: krav · p8_spec · kildekontrakt · plan) · `../p8-kilde-scope.sql` (blob
+`44df7b73`, sha256 `f3347b82df20c528637e11473871072e61d4d8c00ac9678fee8627165c46fd9b`, deterministisk) ·
+`../b4-delta-scope-r3.md` (mekanisk delta v2→v3: 28 hunks · fund→v3-afsnit · berørte K/ac). Ikke arkiveret (deklareret):
+session-transkript `~/.claude/projects/-tmp-claude-1000--home-mathias-stork-implplan-870c5b0e-c4d1-4463-a6cd-ff1caa59667d-b3v3-wd/e9a45791-5dbc-436a-b6fd-184886c8674e.jsonl`
+(639 linjer; 62 Bash · 43 Read · 103 Edit · 2 Write) sha256 `f075e175d6be45369dc3a0cc70b293876a9328dc9483f3418eaca0ce773a4a0e`.

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "pakke": "lokations-skabelon",
+  "system": {
+    "art": "supabase-postgres",
+    "projekt_ref": "imtxvrymaqbgcvsarlib",
+    "host_ref": "imtxvrymaqbgcvsarlib.supabase.co",
+    "database": "postgres"
+  },
+  "adgang": {
+    "rolle": "<read-only rolle — navngives af fabrik-armen/C4; CI-runneren honorerer; C4 håndhæver at rollen ingen write-grants har før fetch>",
+    "skriv": false,
+    "mathias_beslutning": "afventer — forelægges særskilt m. navngiven kilde, populationer og ønsket læseadgang (devil 10/9 F4); default = read-only mod dette projekt"
+  },
+  "maaltarget": {
+    "beskrivelse": "isoleret CI-projekt/DB-identitet — aldrig runnerens project-ref-default (P-8 T:238)",
+    "identitet": "<udfyldes af fabrik-armen/C4 før Fase 5's fetch>"
+  },
+  "scope": {
+    "skemaer": ["core_identity", "public", "core_compliance"],
+    "objekter": [
+      "core_identity.clients",
+      "public.org_nodes",
+      "public.org_node_versions",
+      "public.client_node_placements",
+      "public.employees",
+      "public.employee_node_placements",
+      "referentiel lukning: roles · role_permissions/legacy-grants · permission area/page/tab/action · employee_active_config · core_compliance.data_field_definitions (inkl. inaktive) · pending-/undo-/anonymiseringsmetadata"
+    ],
+    "udtraeksregel": "ALLE rækker, ingen rækkefilter (P-8 §1.2); pakkens egne objekter er IKKE kilde (skabes af produktet under slutprøven)",
+    "definition_fil": "plan-build/lokations-skabelon/p8-kilde-scope.sql"
+  },
+  "projektion": {
+    "beskrivelse": "deklarerede kolonner pr. tabel + navngivne udeladelser med før-build-begrundelse (auth-hemmeligheder · password-hashes · tokens · sessions · logo-binary; persondata-felter kun som til stede/tom) — p8-kilde-scope.sql del 1; mekanisk kolonnekontrol del 2",
+    "definition_fil": "plan-build/lokations-skabelon/p8-kilde-scope.sql"
+  },
+  "scope_definition_sha256": "f3347b82df20c528637e11473871072e61d4d8c00ac9678fee8627165c46fd9b",
+  "efter_build": ["snapshot_tidspunkt", "konkrete_raekker", "raw_source_digest", "anonymized_snapshot_digest", "run_id", "k_run"],
+  "syntetiske_fixtures_held_out": false,
+  "bindinger": {
+    "krav": { "path": "docs/sandhed/krav/lokations-skabelon-krav.md", "oid": "9402164d87a35fb939661058bea77c1a052493d0" },
+    "p8_spec": { "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md", "oid": "4af07ef4164882ca54643e79df3554c0bf22b0e4" },
+    "kildekontrakt": { "path": "plan-build/lokations-skabelon/p8-kildekontrakt.md", "oid": "ff0a09c24675afe9f3ce4da0284224bd83140a97" },
+    "plan": { "path": "plan-build/lokations-skabelon/plan.md", "oid": "c5f451f8a901c3fea23576de6aee1be0f2f51f5a" }
+  }
+}
