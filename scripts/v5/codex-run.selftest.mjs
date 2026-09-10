@@ -292,6 +292,19 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
       const n2 = run(undefined, F);
       eq("den valgte nodes sha står i et UVEDKOMMENDE låsefelt, node.pin uændret → stadig BLOKER, nul node-starter (F-3d feltbinding: låsen er ikke en kilde)", n2.r.status === 1 && /matcher ikke node\.pin/.test(n2.prov) && n2.nodeStarts === 0, true);
     }
+    {
+      // (d) commit-pin = ægte node, ARBEJDSTRÆETS pin = den falske (ikke committet), valgt node = den falske → stadig BLOKER (pin læses fra regel_commit)
+      writeFileSync(pinPath, `sha256=${FAKE_NODE_SHA}\n`);
+      const nd = run(undefined, F);
+      eq("arbejdstræets node.pin = den valgte node, men committet pin ≠ → BLOKER, nul node-starter (F-3d: pin læses fra regel_commit, ikke arbejdstræet)", nd.r.status === 1 && /matcher ikke node\.pin/.test(nd.prov) && nd.nodeStarts === 0, true);
+      execFileSync("git", ["-C", CLONE, "checkout", "--", "scripts/v5/node.pin"]);
+      // (f) låsen får et node.sha256-felt = den falske node, committet pin = ægte → stadig BLOKER (låsen er INGEN alternativ kilde)
+      const bl = JSON.parse(readFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), "utf8")); bl.node = { sha256: FAKE_NODE_SHA };
+      writeFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), JSON.stringify(bl, null, 1) + "\n");
+      execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", "node.sha256 i låsen = den falske node"]);
+      const nf = run(undefined, F);
+      eq("låsens node.sha256 = den valgte node, committet pin ≠ → stadig BLOKER, nul node-starter (F-3d: »pin ELLER lås« dør)", nf.r.status === 1 && /matcher ikke node\.pin/.test(nf.prov) && nf.nodeStarts === 0, true);
+    }
     execFileSync("git", ["-C", CLONE, "rm", "-q", "scripts/v5/node.pin"]); execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qm", "uden node.pin"]);
     const n3 = run(undefined, F);
     eq("node.pin mangler → BLOKER, nul node-starter (F-3d rækkefølge)", n3.r.status === 1 && /node\.pin findes ikke/.test(n3.prov) && n3.nodeStarts === 0, true);
@@ -304,6 +317,15 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
     // F-17: binaries.lock-pinnen NÅS (FORCE_BINCHECK) — klonens lås matcher ikke den falske codex → BLOKER; matcher → kører
     const w = run(undefined, F);
     eq("binaries.lock-pin ≠ faktisk codex-entry → BLOKER (F-3 nået, ikke kun læst) — INGEN codex-start, heller ikke --version", w.r.status === 1 && /binaries\.lock/.test(w.prov) && w.starts.length === 0, true);
+    const lockOrig = readFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), "utf8");
+    for (const [navn, txt] of [["tom blob", ""], ["kun LF'er", "\n\n"], ["kun whitespace", " \t\n"]]) {
+      writeFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), txt);
+      execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", "lås " + navn]);
+      const we0 = run(undefined, F);
+      eq(`binaries.lock.json ${navn} i produktion → BLOKER, INGEN codex-start (F-3f: selvtest-grenen styres af SELFTEST, ikke af låsens indhold)`, we0.r.status === 1 && /er tom/.test(we0.prov) && we0.starts.length === 0 && we0.receipt?.status === "blokeret", true);
+    }
+    writeFileSync(join(CLONE, "scripts/v5/binaries.lock.json"), lockOrig);
+    execFileSync("git", ["-C", CLONE, "-c", "user.name=t", "-c", "user.email=t@l", "commit", "-qam", "lås gendannet"]);
     const fakeSha = sha256(readFileSync(join(BIN, "codex")));
     const blPath = join(CLONE, "scripts/v5/binaries.lock.json");
     const bl0 = JSON.parse(readFileSync(blPath, "utf8"));

@@ -154,11 +154,14 @@ if [ "$SELFTEST" -ne 1 ]; then
 fi
 
 # --- F-3d (runde 10c): node autoriseres FØR første node-start gennem ÉN allerede betroet mekanisme: pin-filen
-# scripts/v5/node.pin @ regel_commit (git + grep/wc fra system-PATH). Streng grammatik: HELE filen er præcis én linje
-# `sha256=<64 lowercase hex>`. Ingen tekst-medlemskab i låsen (runde 10c: en fremmed nodes sha i et uvedkommende felt
+# scripts/v5/node.pin @ regel_commit (git + grep fra system-PATH). Streng grammatik: indholdet efter bash' $(…)-normalisering
+# (afsluttende LF'er/NUL fjernes — præcis det, Codex runde 10d målte) er præcis én linje `sha256=<64 lowercase hex>`; alt andet BLOKER. Ingen tekst-medlemskab i låsen (runde 10c: en fremmed nodes sha i et uvedkommende felt
 # gav start før den præcise sammenligning). Selvtest uden FORCE_BINCHECK: lempelse, kvittering selftest=true.
+# F-3f (runde 10d): om binær-kontrollen KØRES afgøres af den eksplicitte selvtest-tilstand — ALDRIG af låsens indhold
+# (en tom lås-blob gav ellers selvtest-grenen i produktion). BINCHECK=1 = produktion eller FORCE_BINCHECK.
+BINCHECK=0; if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then BINCHECK=1; fi
 BINLOCK=""
-if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
+if [ "$BINCHECK" -eq 1 ]; then
   NODE_PIN_TXT=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/node.pin" 2>/dev/null) || blok "node.pin findes ikke @ $REGEL_COMMIT — node startes ikke (F-3d)"
   [ "${#NODE_PIN_TXT}" -eq 71 ] && [ "$(printf '%s' "$NODE_PIN_TXT" | grep -cE '^sha256=[0-9a-f]{64}$')" = "1" ] \
     || blok "node.pin har ikke grammatikken 'sha256=<64 hex>' som eneste linje — node startes ikke (F-3d)"
@@ -166,6 +169,7 @@ if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; t
   NODE_SHA=$(sha_of "$NODE")
   [ "$NODE_SHA" = "$NODE_PIN_SHA" ] || blok "node ($NODE, sha ${NODE_SHA:0:12}) matcher ikke node.pin (${NODE_PIN_SHA:0:12}) @ $REGEL_COMMIT — node startes ikke (F-3d)"
   BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
+  [ -n "$(printf '%s' "$BINLOCK" | tr -d '[:space:]')" ] || blok "binaries.lock.json er tom @ $REGEL_COMMIT — ingen pins, intet codex-kald (F-3f)"
 fi
 NODE_PINNED=1
 # --- F-3c: PRIVAT Codex-hjem. CLI'en læser ALDRIG brugerens ~/.codex/config.toml (den kunne omdirigere udbyder/profil/sandbox
@@ -190,7 +194,7 @@ CODEX_PKG_ROOT=$("$REALPATH" -e -- "$(dirname -- "$CODEX")/..") || blok "codex-p
 # (--version) → exec. Intet u-pinnet program startes. Eksekveringen BINDES til den hashede fil: vi kører den native binær
 # direkte (shim'en vælger sin native via require.resolve/package-exports og kan pege et andet sted hen end det vi hashede).
 CODEX_NATIVE=""; CODEX_EXEC=""
-if [ -n "$BINLOCK" ]; then
+if [ "$BINCHECK" -eq 1 ]; then
   PIN=$(printf '%s' "$BINLOCK" | "$NODE" -e '
     const l = JSON.parse(require("fs").readFileSync(0, "utf8"));
     const hex64 = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
@@ -209,7 +213,8 @@ if [ -n "$BINLOCK" ]; then
   [ "$(sha_of "$CODEX_NATIVE")" = "$PIN_NATIVE_SHA" ] || blok "native codex-binær ($CODEX_NATIVE) matcher ikke binaries.lock.json (${PIN_NATIVE_SHA:0:12}) — binæren er ændret/udskiftet uden bevidst lås-opdatering (F-3b)"
   CODEX_EXEC="$CODEX_NATIVE"
 else
-  CODEX_EXEC="$CODEX"   # selvtest uden FORCE_BINCHECK: den falske shim spiller selv native (kvitteringen er mærket selftest=true)
+  [ "$SELFTEST" -eq 1 ] || blok "intern fejl: binær-kontrol sprunget over uden selvtest (F-3f)"   # kan ikke nås; dobbelt-sikring
+  CODEX_EXEC="$CODEX"   # KUN selvtest uden FORCE_BINCHECK: den falske shim spiller selv native (kvitteringen er mærket selftest=true)
 fi
 # ALLOWLIST-miljø til CLI'en (env -i): HOME (nvm/cache), PATH (verificeret node-mappe + system), LANG, privat CODEX_HOME,
 # og de to variabler shim'en selv sætter. Alt andet (OPENAI_BASE_URL, *_PROXY, SSL_CERT_FILE, CODEX_CA_CERTIFICATE,
