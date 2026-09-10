@@ -45,6 +45,7 @@ const FILES = {
   [`plan-build/${PAKKE}/p8-slutproeve-spec.md`]: "# p8\n",
   [`plan-build/${PAKKE}/ordbog.md`]: "# ordbog\n",
   [`plan-build/${PAKKE}/kill-list-udkast.md`]: "# kill-list-udkast (codex-angreb, blindt)\n",
+  [`plan-build/${PAKKE}/forventnings-manifest.json`]: JSON.stringify({ schema_version: 1, pakke: PAKKE }) + "\n",
   "supabase/migrations/0001.sql":
     "alter table salg enable row level security;\n" +
     'create policy "salg_egen" on salg for select using (org_id = auth_org());\n',
@@ -115,13 +116,13 @@ console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
 {
   // M-41 B5: planen dømmes sammen med P-8, ordbog og Codex' blinde kill-list-udkast
   const snap = buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE });
-  const vil = { p8: `plan-build/${PAKKE}/p8-slutproeve-spec.md`, ordbog: `plan-build/${PAKKE}/ordbog.md`, killlist: `plan-build/${PAKKE}/kill-list-udkast.md` };
+  const vil = { p8: `plan-build/${PAKKE}/p8-slutproeve-spec.md`, ordbog: `plan-build/${PAKKE}/ordbog.md`, killlist: `plan-build/${PAKKE}/kill-list-udkast.md`, manifest: `plan-build/${PAKKE}/forventnings-manifest.json` };
   for (const [k, sti] of Object.entries(vil))
     snap.bindings[k]?.path === sti && typeof snap.bindings[k]?.oid === "string"
       ? ok(`plan-binding ${k} → ${sti} (M-41 B5)`)
       : bad(`plan-binding ${k}`, JSON.stringify(snap.bindings[k]));
-  Object.keys(snap.bindings).sort().join(",") === "killlist,krav,ordbog,p8,recon2"
-    ? ok("plan-snapshot bærer PRÆCIS registryets 5 bindinger")
+  Object.keys(snap.bindings).sort().join(",") === "killlist,krav,manifest,ordbog,p8,recon2"
+    ? ok("plan-snapshot bærer PRÆCIS registryets 6 bindinger (inkl. manifest, M-41 C1)")
     : bad("plan-bindinger sæt", Object.keys(snap.bindings).join(","));
 }
 {

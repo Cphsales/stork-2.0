@@ -15,13 +15,19 @@
 //       id: "K-n/ac-m" | "K-n/S", k_id: "K-n", kind: "ac"|"struktur",
 //       proof_forms: ["UT"|"FS"|"MH"|"SA", …],                       // formen hentes HERFRA, aldrig fra buildets udfald
 //       scope: "nu" | "overdragelse", overdragelse_ref?,             // overdragelse = listet men IKKE forventet bevist nu
-//       effekt_bid?, kildeankre: [..], aliases?: ["K-x/ac-y"],       // alias = genbrug af en anden forpligtelse (skrives ud)
+//       overdraget_former?: ["SA"],                                  // DEL-overdragelse: disse former forventes ikke nu (ref kræves)
+//       assertions?: [{ id, form }],                                 // NAVNGIVNE obligatoriske delbeviser (checkpoints · vidner · race) — C1-r1 F-2
+//       effekt_bid?, kildeankre: [..],
+//       aliases?: [{ id: "K-x/ac-y", former: ["UT","MH"] }],          // EKSPLICIT ekspansion: ejeren forventes bevist i disse former (UT ⇒ egne negativer)
 //       negatives: [{ id: "K-n/ac-m/neg-k", beskrivelse,
-//                     reject_contract: { kanal:"sqlstate", sqlstate, afvisningssted, fase, aktoer, observationskanal, offentlig_signatur }
+//                     reject_contract: { kanal:"sqlstate", sqlstate, grund, afvisningssted, fase, aktoer, observationskanal, offentlig_signatur }
 //                                    | { kanal:"exit", exit_code, klasse, afvisningssted, fase, aktoer },
 //                     sole_guard_ref? }]                              // værnet der ALENE bærer negativet (D10)
 //     }]
 //   }
+//   reject_contract (sqlstate): `grund` = det PRÆCISE fejl-token koden raiser (MESSAGE — lighed, ikke substring) · `afvisningssted` =
+//   routinen der raiser (PL/pgSQL-CONTEXT-identitet) eller "-" for afvisninger uden routine (ACL/constraint) · `aktoer` = den DB-rolle
+//   forsøget SKAL køre som. Alle tre håndhæves af motoren mod observationen (C1-r1 F-4).
 // Fail-closed overalt: egne data-felter, tætte arrays, kendte klasser, ingen fri fejlliste.
 
 import { readFileSync } from "node:fs";
@@ -36,6 +42,7 @@ const ID_AC = /^K-[1-9][0-9]*\/ac-[1-9][0-9]*$/;
 const ID_S = /^K-[1-9][0-9]*\/S$/;
 const ID_NEG = /^K-[1-9][0-9]*\/(ac-[1-9][0-9]*|S)\/neg-[1-9][0-9]*$/;
 const ID_GUARD = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
+const ID_ASSERT = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const PAKKE_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const OID_RE = /^[0-9a-f]{40}$/;
 
@@ -117,25 +124,59 @@ export function validateManifest(m) {
     if (!isStr(kId) || !ID_K.test(kId)) fail(`${label}: k_id mangler/ugyldig`);
     else if (isStr(id) && !id.startsWith(kId + "/")) fail(`${label}: k_id '${kId}' er ikke id'ets præfiks`);
     const forms = own(o, "proof_forms");
-    if (!isDense(forms, (f) => PROOF_FORMS.includes(f)) || forms.length === 0) fail(`${label}: proof_forms skal være et ikke-tomt, tæt array af UT|FS|MH|SA`);
+    const formsOkEarly = (f) => isDense(f, (x) => PROOF_FORMS.includes(x)) && f.length > 0;
+    if (!formsOkEarly(forms)) fail(`${label}: proof_forms skal være et ikke-tomt, tæt array af UT|FS|MH|SA`);
     else if (new Set(forms).size !== forms.length) fail(`${label}: dublet bevisform`);
     const scope = own(o, "scope");
     if (!SCOPES.includes(scope)) fail(`${label}: scope skal være nu|overdragelse`);
     else if (scope === "overdragelse" && !isStr(own(o, "overdragelse_ref"))) fail(`${label}: overdragelse kræver overdragelse_ref (hvortil)`);
+    if (hasOwn(o, "overdraget_former")) {
+      const of = own(o, "overdraget_former");
+      if (!isDense(of, (f) => PROOF_FORMS.includes(f)) || of.length === 0) fail(`${label}: overdraget_former skal være et ikke-tomt, tæt array af former`);
+      else {
+        if (scope !== "nu") fail(`${label}: overdraget_former kun på nu-scope (hel overdragelse = scope overdragelse)`);
+        if (formsOkEarly(forms) && !of.every((f) => forms.includes(f))) fail(`${label}: overdraget_former ⊄ proof_forms`);
+        if (formsOkEarly(forms) && of.length >= forms.length) fail(`${label}: alle former overdraget — brug scope overdragelse`);
+        if (!isStr(own(o, "overdragelse_ref"))) fail(`${label}: deloverdragelse kræver overdragelse_ref`);
+      }
+    }
+    if (hasOwn(o, "assertions")) {
+      const as = own(o, "assertions");
+      if (!isDense(as, isPlain)) fail(`${label}: assertions skal være et tæt array af {id, form}`);
+      else {
+        const seen = new Set();
+        for (const a of as) {
+          const aid = own(a, "id"); const af = own(a, "form");
+          if (!isStr(aid) || !ID_ASSERT.test(aid)) fail(`${label}: assertion-id ugyldig: ${String(aid)}`);
+          else if (seen.has(aid)) fail(`${label}: dublet assertion-id ${aid}`); else seen.add(aid);
+          if (af === "UT") fail(`${label}: UT's navngivne delbeviser er negativerne — ikke assertions`);
+          else if (!PROOF_FORMS.includes(af) || (formsOkEarly(forms) && !forms.includes(af))) fail(`${label}: assertion '${String(aid)}' har form '${String(af)}' uden for proof_forms`);
+        }
+      }
+    }
     if (hasOwn(o, "effekt_bid") && !isStr(own(o, "effekt_bid"))) fail(`${label}: effekt_bid skal være en streng`);
     const anker = own(o, "kildeankre");
     if (!isDense(anker, isStr) || anker.length === 0) fail(`${label}: kildeankre skal være et ikke-tomt, tæt array af strenge (K:linje · P:linje · T:…)`);
     if (hasOwn(o, "aliases")) {
       const al = own(o, "aliases");
-      if (!isDense(al, isStr)) fail(`${label}: aliases skal være et tæt array af strenge`);
+      if (!isDense(al, isPlain)) fail(`${label}: aliases skal være et tæt array af {id, former}`);
+      else for (const a of al) {
+        if (!isStr(own(a, "id"))) fail(`${label}: alias uden id`);
+        const fm = own(a, "former");
+        if (!isDense(fm, (f) => PROOF_FORMS.includes(f)) || fm.length === 0) fail(`${label}: alias '${String(own(a, "id"))}' skal angive former (eksplicit ekspansion)`);
+        else if (fm.includes("UT") && !(isDense(own(o, "negatives"), isPlain) && own(o, "negatives").length > 0)) fail(`${label}: alias m. UT kræver at ${label} selv deklarerer sit negativ`);
+      }
     }
     // negatives
     const negs = own(o, "negatives");
     const formsOk = isDense(forms, (f) => PROOF_FORMS.includes(f));
+    // effektive former = proof_forms ∪ alias-former (eksplicit ekspansion) — UT via alias kræver egne negativer
+    const aliasForms = hasOwn(o, "aliases") && isDense(own(o, "aliases"), isPlain) ? own(o, "aliases").flatMap((a) => (isDense(own(a, "former"), isStr) ? own(a, "former") : [])) : [];
+    const effUT = formsOk && (forms.includes("UT") || aliasForms.includes("UT"));
     if (!isDense(negs, isPlain)) fail(`${label}: negatives skal være et tæt array (evt. tomt)`);
     else {
-      if (formsOk && forms.includes("UT") && negs.length === 0) fail(`${label}: UT kræver ≥1 negativ (et afvisnings-ac uden negativ kan ikke bevises)`);
-      if (formsOk && !forms.includes("UT") && negs.length > 0) fail(`${label}: negativer kræver UT blandt proof_forms`);
+      if (effUT && negs.length === 0) fail(`${label}: UT kræver ≥1 negativ (et afvisnings-ac uden negativ kan ikke bevises)`);
+      if (formsOk && !effUT && negs.length > 0) fail(`${label}: negativer kræver UT blandt proof_forms (eller via alias-ekspansion)`);
       for (const n of negs) {
         const nid = own(n, "id");
         const nl = isStr(nid) ? nid : `${label}/<neg uden id>`;
@@ -151,7 +192,7 @@ export function validateManifest(m) {
           for (const k of ["afvisningssted", "fase", "aktoer"]) if (!isStr(own(rc, k))) fail(`${nl}: reject_contract.${k} mangler`);
           if (kanal === "sqlstate") {
             if (!REJECT_SQLSTATES.includes(own(rc, "sqlstate"))) fail(`${nl}: sqlstate '${String(own(rc, "sqlstate"))}' er ikke en anerkendt klasse (${REJECT_SQLSTATES.join("/")})`);
-            for (const k of ["observationskanal", "offentlig_signatur"]) if (!isStr(own(rc, k))) fail(`${nl}: reject_contract.${k} mangler`);
+            for (const k of ["grund", "observationskanal", "offentlig_signatur"]) if (!isStr(own(rc, k))) fail(`${nl}: reject_contract.${k} mangler (grund = det præcise fejl-token koden raiser)`);
           } else if (kanal === "exit") {
             const ec = own(rc, "exit_code");
             if (!Number.isInteger(ec) || ec <= 0 || ec > 255) fail(`${nl}: exit_code skal være 1..255`);
@@ -170,8 +211,10 @@ export function validateManifest(m) {
   for (const [id, o] of byId) {
     if (!hasOwn(o, "aliases")) continue;
     const al = own(o, "aliases");
-    if (!isDense(al, isStr)) continue;
-    for (const a of al) {
+    if (!isDense(al, isPlain)) continue;
+    for (const ax of al) {
+      const a = own(ax, "id"); const fm = own(ax, "former");
+      if (!isStr(a)) continue;
       if (a === id) fail(`${id}: alias til sig selv`);
       else if (!byId.has(a)) fail(`${id}: alias '${a}' findes ikke`);
       else {
@@ -179,6 +222,8 @@ export function validateManifest(m) {
         const tal = own(t, "aliases");
         if (Array.isArray(tal) && tal.length > 0) fail(`${id}: alias '${a}' er selv et alias (kæder skrives ud)`);
         if (own(o, "scope") === "nu" && own(t, "scope") !== "nu") fail(`${id}: alias '${a}' er overdraget men ${id} er i nu-scope`);
+        const tf = own(t, "proof_forms");
+        if (isDense(fm, isStr) && isDense(tf, isStr) && !fm.every((f) => tf.includes(f))) fail(`${id}: alias '${a}' angiver former uden for målets proof_forms`);
       }
     }
   }
@@ -186,7 +231,7 @@ export function validateManifest(m) {
 }
 
 // expectedSet(m) → den forventede mængde (kun scope=nu) — verifierens sandhed
-//   { obligations: Map(id → {k_id, kind, forms:Set, negatives:[nid], aliases:[id]}),
+//   { obligations: Map(id → {k_id, kind, forms:Set (inkl. alias-former, minus overdraget_former), negatives:[nid], assertions:[{id,form}], aliases:[id], effekt_bid}),
 //     negatives: Map(nid → {obligation_id, reject_contract, sole_guard_ref|null}),
 //     ks: Set(k_id), soleGuards: Map(guard_id → [nid]), overdraget: Set(id), guards: Set(guard_id) }
 export function expectedSet(m) {
@@ -194,16 +239,25 @@ export function expectedSet(m) {
   if (!v.ok) throw new Error("ugyldigt manifest: " + v.reasons.join("; "));
   const obligations = new Map(), negatives = new Map(), ks = new Set(), soleGuards = new Map(), overdraget = new Set();
   const guards = new Set(Array.isArray(m.guards) ? m.guards.map((g) => g.id) : []);
+  const overdragetFormer = new Map();
   for (const o of m.obligations) {
     if (o.scope !== "nu") { overdraget.add(o.id); continue; }
     ks.add(o.k_id);
-    obligations.set(o.id, { k_id: o.k_id, kind: o.kind, forms: new Set(o.proof_forms), negatives: o.negatives.map((n) => n.id), aliases: Array.isArray(o.aliases) ? [...o.aliases] : [] });
+    const forms = new Set(o.proof_forms);
+    for (const a of Array.isArray(o.aliases) ? o.aliases : []) for (const f of a.former) forms.add(f);      // eksplicit ekspansion
+    const of = Array.isArray(o.overdraget_former) ? o.overdraget_former : [];
+    for (const f of of) forms.delete(f);
+    if (of.length) overdragetFormer.set(o.id, [...of]);
+    const utForventet = forms.has("UT");
+    const assertions = (Array.isArray(o.assertions) ? o.assertions : []).filter((a) => forms.has(a.form)).map((a) => ({ id: a.id, form: a.form }));
+    obligations.set(o.id, { k_id: o.k_id, kind: o.kind, forms, negatives: utForventet ? o.negatives.map((n) => n.id) : [], assertions, aliases: Array.isArray(o.aliases) ? o.aliases.map((a) => a.id) : [], effekt_bid: hasOwn(o, "effekt_bid") ? o.effekt_bid : null });
+    if (!utForventet) continue;   // UT overdraget → negativerne forventes ikke nu (listet, ikke forventet)
     for (const n of o.negatives) {
       negatives.set(n.id, { obligation_id: o.id, reject_contract: n.reject_contract, sole_guard_ref: hasOwn(n, "sole_guard_ref") ? n.sole_guard_ref : null });
       if (hasOwn(n, "sole_guard_ref")) { if (!soleGuards.has(n.sole_guard_ref)) soleGuards.set(n.sole_guard_ref, []); soleGuards.get(n.sole_guard_ref).push(n.id); }
     }
   }
-  return { obligations, negatives, ks, soleGuards, overdraget, guards };
+  return { obligations, negatives, ks, soleGuards, overdraget, overdragetFormer, guards };
 }
 
 // CLI: node forventnings-manifest.mjs validate <fil>   |   stats <fil>

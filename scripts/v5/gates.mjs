@@ -81,7 +81,9 @@ export const GATE_REGISTRY = deepFreeze([
     // M-41 B5 (validering V-2): planen dømmes sammen med ALT det den hviler på —
     // P-8-slutprøve-spec, pakke-ordbog og Codex' blinde kill-list-udkast er
     // gate-input, ikke løse bilag; mangler ét af dem @ pinned commit → fail-closed.
-    bindings: ["krav", "recon2", "p8", "ordbog", "killlist"],
+    // M-41 C1 (Codex C1-r1 F-1): forventnings-manifestet dømmes SAMMEN med planen — build-gaten
+    // binder det samme blob (predecessorBindings), så bevisproducenten aldrig kan vælge et andet manifest.
+    bindings: ["krav", "recon2", "p8", "ordbog", "killlist", "manifest"],
     proofKind: null,
     expectedActors: ["code-reviewer", "codex", "claude-ai"],
     approver: APPROVER,
@@ -103,8 +105,11 @@ export const GATE_REGISTRY = deepFreeze([
     id: "build",
     predecessor: "plan",
     predecessorBinding: "plan",
+    // C1-r1 F-1: manifestet er gate-input (layout-sti, pinned commit) og SKAL være det plan-gaten dømte:
+    // predecessor.bindings_oids.manifest === bindings.manifest.oid (indholds-bundet kæde for manifestet).
+    predecessorBindings: ["manifest"],
     artifact: "build-proof",
-    bindings: ["plan"],
+    bindings: ["plan", "manifest"],
     proofKind: "build-proof",
     expectedActors: [],
     approver: null,
@@ -422,6 +427,16 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
         fail(
           "predecessor artifact_oid matcher ikke bindingen (indholds-bundet kæde — {open:true} uden indhold åbner intet)",
         );
+      // C1-r1 F-1: udvalgte bindinger SKAL være identiske med forgængerens (samme blob dømt af forgænger-gaten)
+      const pb = Array.isArray(gate.predecessorBindings) ? gate.predecessorBindings : [];
+      if (pb.length) {
+        const preB = hasOwn(pre, "bindings_oids") && isPlainObj(pre.bindings_oids) ? pre.bindings_oids : null;
+        if (!preB) fail(`predecessor.bindings_oids mangler (kæden skal bære ${pb.join(",")})`);
+        else for (const k of pb) {
+          const mine = bindings && hasOwn(bindings, k) ? bindings[k]?.oid : undefined;
+          if (!hasOwn(preB, k) || !isOid(preB[k]) || preB[k] !== mine) fail(`predecessor-binding '${k}' matcher ikke forgængerens (manifestet skal være det plan-gaten dømte)`);
+        }
+      }
     }
   } else if (hasOwn(snapshot, "predecessor") && snapshot.predecessor != null) {
     fail("uventet predecessor på rod-gate (fail-closed)");

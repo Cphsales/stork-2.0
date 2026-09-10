@@ -28,6 +28,8 @@ export const DEFAULT_LAYOUT = Object.freeze({
   p8: "plan-build/<pakke>/p8-slutproeve-spec.md",
   ordbog: "plan-build/<pakke>/ordbog.md",
   killlist: "plan-build/<pakke>/kill-list-udkast.md",
+  // M-41 C1: forventnings-manifestet (kanonisk K/ac/S/neg-mængde) — plan-gate-binding + build-gate-binding (samme blob)
+  manifest: "plan-build/<pakke>/forventnings-manifest.json",
   krav: "docs/sandhed/krav/<pakke>-krav.md",
   plan: "plan-build/<pakke>/plan.md",
   build: "plan-build/<pakke>/build-proof.json",

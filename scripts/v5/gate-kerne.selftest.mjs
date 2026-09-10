@@ -49,6 +49,8 @@ const FILES = {
   "plan-build/pakke-x/p8-slutproeve-spec.md": "# p8 — slutprøve-spec\n\n- held-out: fuld population, bijektion\n",
   "plan-build/pakke-x/ordbog.md": "# ordbog\n\n| stand | placement |\n",
   "plan-build/pakke-x/kill-list-udkast.md": "# kill-list-udkast (codex-angreb, blindt)\n\n- K-1: WITH CHECK → true\n",
+  // M-41 C1: forventnings-manifestet (plan-gate-binding + build-gate-binding, samme blob)
+  "plan-build/pakke-x/forventnings-manifest.json": JSON.stringify({ schema_version: 1, pakke: "pakke-x", obligations: [{ id: "K-1/ac-1" }] }) + "\n",
   "plan-build/pakke-x/build-proof.json": JSON.stringify({ bijektion: true, k_results: ["K-1", "K-2"] }) + "\n",
 };
 for (const [p, c] of Object.entries(FILES)) {
@@ -121,13 +123,13 @@ function greenKrav() {
 
 function greenBuild() {
   const artifact = ref("plan-build/pakke-x/build-proof.json");
-  const bindings = { plan: ref("plan-build/pakke-x/plan.md") };
+  const bindings = { plan: ref("plan-build/pakke-x/plan.md"), manifest: ref("plan-build/pakke-x/forventnings-manifest.json") };
   const proof = {
     ok: true,
     gate_id: "build",
     proof_kind: "build-proof",
     artifact_oid: artifact.oid,
-    bindings_oids: { plan: bindings.plan.oid },
+    bindings_oids: { plan: bindings.plan.oid, manifest: bindings.manifest.oid },
     killed_mutants: 2, // payload — re-verificeres FRISK af verifyProof, aldrig trusted
   };
   const snapshot = {
@@ -137,7 +139,8 @@ function greenBuild() {
     proof_result: proof,
     verdicts: [],
     approval: null,
-    predecessor: { gate_id: "plan", conclusion: "success", artifact_oid: bindings.plan.oid },
+    // C1-r1 F-1: kæden bærer manifestet — plan-gatens bindings_oids.manifest SKAL være build-gatens manifest-blob
+    predecessor: { gate_id: "plan", conclusion: "success", artifact_oid: bindings.plan.oid, bindings_oids: { manifest: bindings.manifest.oid } },
   };
   // Frisk re-verifikation: verifyProof RE-REGNER payloadet (her: mutant-tal),
   // i stedet for at tro på det committede ok:true. Fuld proofs.mjs = byg-pkt 3.
@@ -158,6 +161,7 @@ function greenPlan() {
     p8: ref("plan-build/pakke-x/p8-slutproeve-spec.md"),
     ordbog: ref("plan-build/pakke-x/ordbog.md"),
     killlist: ref("plan-build/pakke-x/kill-list-udkast.md"),
+    manifest: ref("plan-build/pakke-x/forventnings-manifest.json"),
   };
   const bOids = Object.fromEntries(Object.entries(bindings).map(([k, r]) => [k, r.oid]));
   const ev = [mkEvidence("plan-build/pakke-x/plan.md", 3, 3)];
@@ -213,6 +217,7 @@ function greenRecon() {
 }
 
 // ---------- runner ----------
+// (C1-r1 F-1-cases tilføjes efter runner-definitionen — se nederst i predecessor-sektionen)
 
 function expectOpen(name, { snapshot, deps }, gateId) {
   const r = evaluateGate(gateId, snapshot, deps);
@@ -607,6 +612,28 @@ plantClosed(
     c.snapshot.predecessor = { gate_id: "slut", conclusion: "success", artifact_oid: ref("recon/recon.md").oid };
   },
   "rod-gate",
+);
+// C1-r1 F-1: manifestet er kæde-bundet — build-gaten kræver predecessor.bindings_oids.manifest == egen manifest-binding
+plantClosed(
+  "build-gate: predecessor UDEN bindings_oids → lukket (manifestet kan ikke vælges af beviset)",
+  "build",
+  greenBuild,
+  (c) => { delete c.snapshot.predecessor.bindings_oids; },
+  "predecessor.bindings_oids mangler",
+);
+plantClosed(
+  "build-gate: predecessor.bindings_oids.manifest ≠ egen manifest-binding → lukket (andet manifest end plan-gaten dømte)",
+  "build",
+  greenBuild,
+  (c) => { c.snapshot.predecessor.bindings_oids = { manifest: ref("plan-build/pakke-x/plan.md").oid }; },
+  "matcher ikke forgængerens",
+);
+plantClosed(
+  "build-gate: manifest-binding fjernet → lukket (binding mangler)",
+  "build",
+  greenBuild,
+  (c) => { delete c.snapshot.bindings.manifest; delete c.snapshot.proof_result.bindings_oids.manifest; delete c.snapshot.predecessor.bindings_oids.manifest; },
+  "binding 'manifest' mangler",
 );
 plantClosed(
   "manglende binding",
