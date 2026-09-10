@@ -5,10 +5,14 @@ B1 (Codex' blinde `kill-list-udkast.md` er committet) og B2 (forventningslisten 
 mærket `<udfyldes>` sættes af driveren ved kørslen; den endelige prompt arkiveres i `provenance/`
 efter kørslen (A1-reglen). Rolle: **planner-code** (`scripts/v5/roller/planner-code.md` — den
 P-6-konsistente version efter Trin A; kaldet afledes af rolle + lås, ikke af denne fil). Aktivitet:
-**produktion** (skriver plan-build-filer). Workdir: worktree @ pinned commit; regel-commit og alle
-input-OID'er bindes i provenance (fabrik-frys, GRUNDPLAN-v2 princip 8).
+**produktion** (skriver plan-build-filer). Workdir: arkiv @ pinned commit UDEN `.git` (se
+kørselsrecept nederst); regel-commit og alle input-OID'er bindes i provenance (fabrik-frys,
+GRUNDPLAN-v2 princip 8).
 
-## Bindinger (verificér ALLE med `git rev-parse` FØR du skriver — afvigelse = HALT)
+## Bindinger (verificér ALLE med `git hash-object <fil>` FØR du skriver — afvigelse = HALT)
+
+Workdir'en er et arkiv uden `.git`, så `git rev-parse` virker ikke — `git hash-object <fil>` giver
+samme blob-OID og virker uden repo. Pinned commit: `<PIN>`.
 
 - **KRAV (immutabelt, gate-åbent):** `docs/sandhed/krav/lokations-skabelon-krav.md` @ blob
   `9402164d`. Planen må aldrig modsige det. Et krav-problem retter du IKKE i kravet — det bliver et
@@ -88,4 +92,35 @@ kill-listen og forventningslisten ind. Bindende krav til arbejdet:
 
 Web FORBUDT · antag aldrig (mangler en kilde, skriv »MANGLER KILDE« — opfind ikke) · læs ALDRIG
 andre aktørers workdirs · ingen ændring i krav, recon, P-8, ordbog, ledger eller fund-log (driverens
-filer) · ingen kode i produktzonen (plan-fasen bygger intet).
+filer) · ingen kode i produktzonen (plan-fasen bygger intet). Din afsluttende besked: kort — de to
+filnavne + sha256 af hver + optælling pr. tilstand + HALT-flag (eller »ingen HALT«) + dine bindinger.
+
+## Kørselsrecept (driveren) — planner-code via `claude -p` (UDKAST, driver-10b 2026-09-10)
+
+Der findes ingen Claude-wrapper (kun `codex-run.sh`); Claude-aktører kører »som før — selv-erklæret,
+deklareret residual« (køreplan). Recepten gør kørslen så reproducerbar og arkiveret som muligt
+(lærdom: fresh-eyes r1 blev kørt interaktivt — prompten er tabt):
+
+- **Preflight:** B1 committet + pushet (kill-list-blob kendt) · B2 låst (forventningsliste-blob
+  kendt) · suite grøn @ PIN (kørt selv) · rent arbejdstræ · `claude --version` noteres
+  (Claude-transport; »altid nyeste« = `claude update`-status) · model/effort fra
+  `actors.lock[planner-code]` = claude-fable-5-1 · xhigh (aldrig fra denne fil) · rolletekst-blob @
+  PIN hasher til `lock.skill_oid` (driveren verificerer selv — ingen wrapper gør det).
+- **Workdir:** `git archive` @ PIN → `$JOB/tmp/b3/wd` (ingen `.git`). IKKE blind — planneren SKAL
+  se plan v1, alle fund, kill-listen og forventningslisten.
+- **Prompt-fil** (uden for workdir): rolletekst (`planner-code.md` @ PIN, byte-identisk) + `\n---\n`
+  + denne instruks m. `<PIN>` og alle `<udfyldes>` udfyldt. sha256 noteres i provenance.
+- **Kald** (detached fra workdir; skrive-zone = workdir via `acceptEdits` — skriv uden for cwd
+  afvises mekanisk i `-p`-mode; Bash kun til læsning + hash):
+  `cd "$WD" && setsid nohup timeout --signal=KILL 5400s claude -p --model claude-fable-5-1 --effort xhigh --permission-mode acceptEdits --allowedTools "Read,Grep,Glob,Write,Edit,Bash(git hash-object:*),Bash(sed -n:*),Bash(grep:*),Bash(wc:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*)" --output-format json "$(cat "$PROMPT")" > "$OUT.json" 2> "$OUT.stderr.log" < /dev/null &`
+  — `$OUT.json` (result · session_id · model · usage · varighed · num_turns) er provenance-kernen.
+- **Efter kørsel:** `plan.md` + `fold-ind-rapport-r2.md` kopieres byte-identisk (cmp + sha256) fra
+  workdir til `plan-build/lokations-skabelon/`; `provenance/fold-ind-r2.{prompt.txt,claude-result.json,provenance.txt}`
+  (provenance.txt: claude-version · model · effort · PIN · alle input-blobs · start/slut · sha256 af
+  de to leverancer · afvig). **Fund-log** opdateres af DRIVEREN ud fra rapporten (46 rækker →
+  tilstand + rettelses-OID = plan v2-blob + bevis-reference) — planneren rører den ikke. Nye
+  ordbogs-entries committes af driveren FØR gaten. HALT-flag i rapporten → stop: ingen »klar«-commit
+  af v2; »kræver Mathias«-poster går i B7's ene samlede liste via devil.
+- **Kendte residualer:** ingen mekanisk sandbox for læsning/netværk i Claude Code (`Web FORBUDT`
+  er prompt-regel); effort/model er CLI-flag, ikke lås-afledt af en wrapper; kvitteringen er
+  selv-erklæret (ingen `receipt.json`-kontrakt for Claude-aktører — deklareret i køreplanen).
