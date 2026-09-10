@@ -139,5 +139,16 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   ingen HALT; alle bindinger matcher) + `provenance/kill-list-udkast.*` + README (afvig: netværk TIL i
   produktions-sandboxen, A5). Committet + pushet FØR B3 (commit-orden = blindheds-bevis). SHA = denne
   commit. Næste: B3 planner-code via `claude -p` efter fold-ind-instruksens kørselsrecept.
+- 2026-09-10 10:44-11:36 (arkiveret 16:5x): **B3 planner-code kørt** via `claude -p` @ PIN d7972a1
+  (claude-fable-5-1/xhigh fra lås; prompt sha 862ac195). **To deklarerede afvig:** (A) workdir under
+  `~/.claude/` → al skrivning nægtet (»sensitive file«) → planneren skrev til `/tmp/b3-planner/`
+  (recept rettet: workdir uden for `~/.claude`); (B) afbrudt af »org's monthly spend limit« 11:36:20,
+  ét sekund efter rapporten (sidste handling) — ingen slutbesked/slutkontrol (`is_error: true`, 100
+  ture, 31,8 USD). Leverancer byte-identisk: **plan v2 blob `2069aa16`** (795 linjer; HALT: ingen;
+  B-1..B-3 bekræftelser; BV-1..BV-5; ID-regler brugt) · **fold-ind-rapport-r2 blob `39936c64`**
+  (46/46 »RETTET M. BEVIS« · 0 kræver Mathias · NF-1/NF-2 »inden for mandat« · ordbog: ingen nye
+  entries). Fund-log: 46 rækker → rettet m. bevis (rettelses-OID 2069aa16) + NF-1/NF-2 + driver-obs
+  D-1 (formålsblok-påstand) som »modtaget«. Fuldstændighed dømmes i B4. Driver-fejl: B3-monitoren
+  matchede sig selv (pgrep -f) → ~5 t forsinkelse; drift-log. SHA = denne commit.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: kill-list-blob 13b78392 @ denne commit · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: <SHA> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ denne commit · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

@@ -111,3 +111,29 @@ fabrik-armen i wrapper-runde 10 (eksplicit `network_access=false` + tmp-eksklude
 Ikke arkiveret (deklareret): fuld stderr-strøm `out/OUT-killlist.md.stderr.log` (1 440 155 B, `*.log` er
 gitignored) — sha256 `7ec0b1760ddfb1d7670dfd57ccc28fcb08b5972403c38f8d1bc1d01f3cada07c`; ligger i job-tmp
 så længe jobbet lever.
+
+## B3 — planner-code fold-ind → plan v2 (Claude-aktør via `claude -p`, produktion) — arkiveret 2026-09-10 ~16:55 af driver-10b (session de4474)
+
+Ingen wrapper for Claude-aktører (deklareret residual): kald, model/effort (fra `actors.lock[planner-code]`
+= claude-fable-5-1 · xhigh), PIN `d7972a1`, prompt-sha, input-blobs, forløb og afvig står i
+`fold-ind-r2.provenance.txt`; CLI'ens result-JSON er kvitteringen (selv-erklæret). **To deklarerede
+afvig:** (A) workdir'en lå under `~/.claude/jobs/…` → Claude Code nægtede al skrivning dér (»sensitive
+file«) → planneren skrev til `/tmp/b3-planner/` (recept rettet); (B) sessionen blev afbrudt af »org's
+monthly spend limit« 11:36:20 — ét sekund efter rapporten blev skrevet (sidste handling); slutbesked
+og egen slutkontrol nåede planneren ikke (`is_error: true`, 100 ture, 48 min, 31,8 USD).
+Fuldstændigheden dømmes af B4. Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde | sha256 | blob | indhold |
+| --- | --- | --- | --- | --- |
+| `../plan.md` (v2) | `/tmp/b3-planner/plan.md` (mtime 11:32:58; 158 265 B, 795 linjer) | `abd3f5866f84479b8b45309dc121bafafe7259433676a9a0e3ef948b294c3aca` | `2069aa16` | plan v2, status UDKAST: §0 bindinger · §1 krav-ID-matrix m. ID-regler (53 `K-n/ac-m` · 7 `K-n/S`) · §2 funktions-/tabel-register · §3 bids · §4 afgørelser V1-V13/S-1..S-32 · §5 ordbogs-arv · §6-§9 · §10 HALT (ingen) + bekræftelser B-1..B-3 + BV-1..BV-5 · §11 ændringslog pr. fund |
+| `../fold-ind-rapport-r2.md` | `/tmp/b3-planner/fold-ind-rapport-r2.md` (mtime 11:36:19; 27 174 B, 107 linjer) | `f3d4fa4f34e93374260c693798c96cb44d1a8d608882a3dca0a159f0b31430cc` | `39936c64` | 46/46 fund RETTET M. BEVIS · 0 inden for mandat · 0 kræver Mathias · 0 åbne · NF-1/NF-2 (K-genlæsning, inden for mandat + B-1/B-3) · HALT: ingen · kill-list-disposition I/R/S pr. K · arv-noter |
+| `fold-ind-r2.prompt.txt` | job-tmp `b3/prompt-b3.txt` | `862ac19504e8ecb990d6498722035e85de3db4703615bc7fa05c82bd5134d814` | — | rolletekst `planner-code.md` @ eb190c08 (byte-identisk) + separator + fold-ind-instruks m. PIN (20 449 B) |
+| `fold-ind-r2.claude-result.json` | job-tmp `b3/out/OUT-b3.json` | `eddcac32f66429542c7cf2953193c42b0f9dfc58a2e0d66b2c8d6ae193232f36` | — | CLI result-JSON: session_id 548845d6 · model · usage · num_turns 100 · is_error true (spend limit) |
+| `fold-ind-r2.settings.json` | job-tmp `b3/settings-b3.json` | `491be0c6c45901074abba755652d6a0858aafdcf502469d877b4f52ba6421335` | — | permissions allow (Read/Grep/Glob/Write/Edit + læse-Bash) / deny (web · curl · wget · rm · commit · push) |
+| `fold-ind-r2.workdir-blobs.txt` | job-tmp `b3/provenance/workdir-blobs.txt` | `cc5a603b28d71e9f73754c25302c22ce0bd5f45812bb74c38632d8020b2bed30` | — | hash-object af 11 input-filer i workdir'en før spawn |
+| `fold-ind-r2.provenance.txt` | skrevet af driveren | (denne commit) | — | fuld driver-provenance inkl. afvig A/B, transkript-sha, driver-observation D-1 (formålsblok-påstand) |
+
+Ikke arkiveret (deklareret): session-transkriptet
+`~/.claude/projects/-home-mathias--claude-jobs-870c5b0e-tmp-b3-wd/548845d6-e87a-4777-a278-96da49ed43f8.jsonl`
+(2,9 MB; 74 Read · 15 Bash · 7 Write · 6 Edit) — sha256
+`901ce0907ebb6f4244b6d8836a4c07baf0d70cfb8afbe5a71021f4adc94c1268`; ligger i Claude Codes projektmappe.
