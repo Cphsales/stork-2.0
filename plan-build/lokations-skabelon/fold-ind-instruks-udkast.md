@@ -28,9 +28,14 @@ samme blob-OID og virker uden repo. Pinned commit: `<PIN>`.
   afsnittet »Pr.-K-afledning til revideret kill-list«) · `plan-audit-fresh-eyes-r1.md`, afsnit
   »## Plan-audit (blob 423d9b20)« (FUND-1..5 + noter) · `p4-plan-kildetjek.md` (F01-F16 · U01-U10;
   §3-§10 er kontekst, kun §1/§2 er fund).
-- **Codex' BLINDE kill-list:** `kill-list-udkast.md` @ `<udfyldes>` — skrevet fra låst krav +
-  recon-2 UDEN at have set plan v1 (commit-orden er beviset). Den er **kill-list-autoritet**; plan
-  v1's kill-list-UDKAST pr. K er dit sammenligningsgrundlag, ikke autoritet.
+- **Codex' BLINDE kill-list:** `kill-list-udkast.md` @ `13b783927f4fed107caa0e849e65499fd3291b61` —
+  skrevet 2026-09-10 fra låst krav + recon-2 + frø + P-8 + ledger + før-plan-ordbog UDEN at have set
+  plan v1 (blind workdir; commit-orden er beviset — committet før denne kørsel). Den er
+  **kill-list-autoritet**; plan v1's kill-list-UDKAST pr. K er dit sammenligningsgrundlag, ikke
+  autoritet. Læs dens »Læseregel og bindende måleform« først: `Tn.m` = foreslået targeted mutant
+  (82), `Sn.m` = schema-/leverancekontrol (5, ikke domæne-kill), SL = »VÆRN SKAL LEVERES« (20 —
+  plan-krav: planen SKAL opfinde værnet), to-sessions = kun T2.6 + T6.2. Dens »MANGLER KILDE« (32)
+  markerer hvor recon-2 ikke bærer et forbillede — dér vælger du og skriver »valgt her: …«.
 - **Forventningsliste (B2, LÅST 2026-09-10):** `forventningsliste-udkast.md` @
   `2200b76e29b52f7084c0bfe003c0a2e8121c2346` (filnavnet beholdt; status-blokken siger LÅST). v2's matrix
   skal kunne læses 1:1 mod den (ac · bevisform UT/FS/MH/SA · effekt-bid · chain-step · canary). Brug
@@ -86,6 +91,19 @@ kill-listen og forventningslisten ind. Bindende krav til arbejdet:
    kravets.
 8. **P-8 er input, ikke dom:** beskæringen (E20) er plan-gatens dom; du markerer hvad du har skåret
    og hvorfor, så gate-aktørerne kan dømme snittet.
+9. **Stabile ID'er — ingen egne ID'er eller aliasser (fabrik-armen 10/9 ~10:40, C1-manifestet
+   afledes af v2's matrix):** hvert K/ac/struktur/negativ i plan v2 bærer PRÆCIS ét ID efter
+   forventningslistens §5 pkt. 6 (`K-n/ac-m` · `K-n/S` · `K-n/ac-m/neg-k`); sammensatte nøgler
+   splittes (K-9 »1+2« → `K-9/ac-1` + `K-9/ac-2`, begge MH+UT); alias-tilfælde (K-6 ac 5 = K-3 ac 6)
+   løses i plan-teksten som ÉN kanonisk ac + henvisning fra den anden — aldrig to definitioner. Du
+   opfinder ingen ID'er ud over reglerne og ingen nye aliasser.
+10. **»MANGLER KILDE«-posterne i Codex' adapter-krav-liste** (`provenance/b2-adapter-tjek.leverance.md`,
+    tabel 2 — fx præcis kode for offentlig omskrivning af historisk dato (K-1), race-tabers fase→kode
+    (K-6 ac 2), almindelig upserts statusforsøg (K-4), nedgradering/delete-recreate (K-7),
+    konfigurationsafvisninger (K-9)) er DINE at låse i v2 til konkret kode/sted/tilstand (SQLSTATE ·
+    afvisningssted · førbetingelse) — de må ikke ende som fri fejlliste eller »anden fejlkode tæller«.
+    Kan en post ikke låses fra krav/recon/P-8, er det et HALT-flag eller et »kræver Mathias«, ikke en
+    tavs udeladelse.
 
 ## Output (skriv KUN disse to filer)
 

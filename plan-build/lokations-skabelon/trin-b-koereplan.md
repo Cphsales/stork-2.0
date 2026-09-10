@@ -134,5 +134,10 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   (C1-input), IKKE PASS (sekvens afgjort m. mathias-9b: PASS = ny dom mod integreret adapter i Trin C).
   Frit pas: manifest m. stabile ID'er mangler (C1-kontrakt, §5 pkt. 6). **Forventningsliste LÅST —
   blob `2200b76e`** (ændringer mod dømt 090a5ed9: status-blok · K-6 ac 5 +UT · §5). SHA = denne commit.
+- 2026-09-10 10:37-10:45: **B1 FÆRDIG** (success, attempt 1, 1372 s): `kill-list-udkast.md` blob
+  `13b78392` (92 795 B; 82 targeted kandidater · 5 schema-kontroller · 2 to-sessions · 20 skal-leveres;
+  ingen HALT; alle bindinger matcher) + `provenance/kill-list-udkast.*` + README (afvig: netværk TIL i
+  produktions-sandboxen, A5). Committet + pushet FØR B3 (commit-orden = blindheds-bevis). SHA = denne
+  commit. Næste: B3 planner-code via `claude -p` efter fold-ind-instruksens kørselsrecept.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: <SHA> · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: <SHA> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: kill-list-blob 13b78392 @ denne commit · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: <SHA> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

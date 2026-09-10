@@ -1,0 +1,50 @@
+Du er codex-ANGREB i Stork-fabrikkens Fase 3. Din rolletekst står ovenfor (injiceret af
+wrapperen @ skill_oid) — følg den, især »Kill-listen: afledningsmetode + obligatorisk gulv« og
+»Timing + snit mod planner«. Pakke: lokations-skabelon. Workdir = kodebasen @ pinned commit fe24947c505450f48338eb398c65891ff6f60ea7,
+uden .git — verificér blobs med `git hash-object <fil>`.
+
+OPGAVE: skriv dit EGET kill-list-UDKAST pr. K — BLINDT. Du har IKKE planen (den er bevidst fjernet
+fra workdir'en); du skriver fra kravet og recon-2 alene, så listen bliver den uafhængige vinkel
+plan-gaten skal dømme planens dybde mod. Forsøg ikke at rekonstruere eller gætte planen.
+
+Bindinger (verificér med git hash-object — afvigelse = STOP, skriv HALT i output):
+- KRAV (låst, immutabelt): docs/sandhed/krav/lokations-skabelon-krav.md @ 9402164d87a35fb939661058bea77c1a052493d0
+- recon-2: plan-build/lokations-skabelon/recon2.md @ 2bdbb122158b6f8c72fc942b8de28e679742b4aa
+  (begge aktørers testveje; R2-K1..R2-K9; R2-TEST) — recon-2's tjekliste er fælles kontrolgrundlag, IKKE katalog: dit pas er dit eget.
+- mutationsfrø: recon/recon-2-bilag.md @ 6e569779353ea1d0a2bf747ce6eda6509de1aea0 (frø, ikke krav-føde; kravet har forrang)
+- P-8 slutprøve-spec: plan-build/lokations-skabelon/p8-slutproeve-spec.md @ 4af07ef4164882ca54643e79df3554c0bf22b0e4
+  (§3.1 canary-regler · §3.3 targeted mutationer pr. K · §4.3 samtidighed — skrevet uden planen, lovligt input)
+- ledger: plan-build/lokations-skabelon/mathias-ord.md @ 14722b4c17fba1011709525ef4a06a7cabe2cfa8 (M-1..M-41 — M-ord binder; kravet citerer dem)
+- ordbog: plan-build/lokations-skabelon/ordbog.md @ 714f9b80028ad34656d94ccd2bfadb4ceb2e70b6 (Mathias' ord ↔ systemord, før-plan-version)
+- implplan: docs/workflow-faerdiggoerelse/workflow-implementeringsplan.md (2.C config-mutant-kill · D10 mutant-regel · D12 forudsætnings-bids · Fase 3 pkt. 3/3a2note E20)
+
+METODE PR. K (K-1..K-9, rolletekstens tre trin):
+1. Læs K's acceptkriterier inkl. negativer og struktur-»umuligt«-listen.
+2. Udpeg hvert VÆRN der ALENE bærer et afvisnings-acceptkriterie (policy · predikat · rolle-check ·
+   guard · operator · constraint · grant/revoke · dato-led · trigger). Fordi planen ikke er kendt,
+   navngiver du værnet som VÆRN-KLASSE + det recon-2-forbillede det vil blive bygget efter
+   (path:linjer @ blob fra recon-2's evidensregister) — ikke som opfundne RPC-navne. Brug P-8's
+   forretningshandlings-navne hvor et navn er nødvendigt.
+3. Definér for hvert sådant værn ÉN MENINGSFULD mutant der bryder det (D10: én pr. afvisnings-ac hvis
+   værn alene bærer negativet — ALDRIG pr. konfig-knap; et redundant værn gøres ikke isoleret
+   nødvendigt; et DB-bagstop der ikke er nåbart fra den offentlige flade er separat schema-bevis,
+   ikke et domæne-kill). Angiv EFFEKT-STIEN der dræber den: indgang (offentlig flade) · rolle
+   (non-bypass; lovligt søsterkald først) · observation (hård slut-effekt/opslag pr. dato, aldrig
+   helper-return) · forventet afvisning (SQLSTATE/domænefejl) — så en »findes«-test ikke kan
+   overleve. Markér de to E20-races (K-2 sidste stand · K-6 dublet-kobling) som to-sessions-krav;
+   ingen andre samtidigheds-mutanter.
+4. Gulv: ≥1 targeted mutant pr. opsætnings-/konfig-/logik-K. Mangler et K et bærende værn i
+   recon-2's flade (dvs. planen SKAL opfinde det), skriv det eksplicit som »VÆRN SKAL LEVERES« —
+   det er et plan-krav, ikke et hul i din liste.
+5. Krav-troskab: intet i listen må kræve noget kravet ikke siger; kravets scope-ærligheder
+   (booking/trin 24 · lag F) respekteres — mutanter dér er overdragelser, ikke kills.
+
+OUTPUT: kill-list-udkast.md i workdir-roden. Form: én tabel pr. K:
+| ac | værn (klasse + forbillede path:linjer @ blob) | mutant (én, meningsfuld) | effekt-sti (indgang · rolle · observation · afvisning) | D10-begrundelse (hvorfor værnet alene bærer negativet) |
++ pr. K: gulv-tjek (≥1 targeted) · »VÆRN SKAL LEVERES«-poster · overdragelser. Slut med:
+optælling (mutanter pr. K · to-sessions-krav · skal-leveres) og din binding (alle blobs ovenfor).
+Ingen påstande om udførte kørsler — dette er angrebs-spec, ikke runtime-PASS. Web forbudt. Læs
+ikke uden for workdir'en. Opfind ikke fund; skriv »MANGLER KILDE« hvor recon-2 ikke bærer et
+forbillede.
+Din afsluttende besked (slutbeskeden — ikke filen) skal være kort: filnavn + sha256 af
+kill-list-udkast.md + optællingen + bindingerne — intet andet.

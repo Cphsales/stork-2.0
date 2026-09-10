@@ -1,0 +1,14 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+[1mworkdir:[0m /home/mathias/.claude/jobs/870c5b0e/tmp/b1/blind
+[1mmodel:[0m gpt-6-astra
+[1mprovider:[0m openai
+[1mapproval:[0m never
+[1msandbox:[0m workspace-write [workdir, /tmp, $TMPDIR] (network access enabled)
+[1mreasoning effort:[0m xhigh
+[1mreasoning summaries:[0m none
+[1msession id:[0m 01a08a62-51b2-7500-b6fe-6cf4d1ae8d75
+--------
+[36muser[0m
+# Rolle: codex-angreb (aktør: Codex · producerer: verdikt + angrebs-spec)

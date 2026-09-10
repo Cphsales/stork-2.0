@@ -80,3 +80,34 @@ fabrik-armens C1), IKKE som PASS. Alle kopier byte-identiske (`cmp`).
 Ikke arkiveret (deklareret): fuld stderr-strøm `out/OUT-b2-adapter.md.stderr.log` (`*.log` er gitignored)
 — sha256 `2ea3457c072aeb298abceb30924663e5c748b8ca1b9956a5abc83cec179d5352`; ligger i job-tmp så længe
 jobbet lever.
+
+## B1 — Codex' BLINDE kill-list-udkast (produktion) — arkiveret 2026-09-10 ~10:40 af driver-10b (session de4474)
+
+Kørsel via `codex-run.sh codex-angreb produktion` @ PIN `fe24947` (regel_commit), run_id
+`20260910T101453-1257166-23934`, gpt-6-astra · xhigh · sandbox workspace-write, codex-cli 0.154.0,
+`gate_input: null` (produktion — ingen VERDIKT-DRAFT-kontrakt), attempt 1 rc=0, 1372 s. **Blind
+workdir** = arkiv @ PIN uden `.git` minus `plan-build/lokations-skabelon/` (alt), minus
+`docs/workflow-faerdiggoerelse/{analyser-2026-09-08,p2-haerdning-2026-09-09}/`; kun krav · recon2 ·
+P-8 · ledger @ PIN · ordbog @ 04e5cfb (før-plan) · bilag lagt tilbage ved blob — se
+`kill-list-udkast.blind-workdir-verifikation.txt`. Blindhedens bevis = commit-orden: denne fil er
+committet FØR planneren (B3) ser den. Leverancen `kill-list-udkast.md` ligger i mappen over denne
+(gate-bundet navn, `DEFAULT_LAYOUT.killlist`; blob `13b78392`). Alle kopier byte-identiske (`cmp`).
+
+**Deklareret afvig (A5):** Codex' banner viser `sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+(network access enabled)` — produktions-sandboxen havde netværk slået TIL (arv fra
+`~/.codex/config.toml`); prompt-reglen »Web forbudt« var eneste værn i denne kørsel. Rettes af
+fabrik-armen i wrapper-runde 10 (eksplicit `network_access=false` + tmp-ekskludering på alle kald).
+
+| fil | kilde (job-tmp `870c5b0e/tmp/b1/`) | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../kill-list-udkast.md` | `blind/kill-list-udkast.md` (92 795 B, 256 linjer) | `07b4e90f72e6676680e7aeaad8d5b45126043656813a3bb43f007959e9693f30` | leverancen: læseregel · K-1..K-9 tabeller (Tn.m targeted kandidater · Sn.m schema-kontroller · SL skal-leveres · overdragelser) · frit helhedspas · optælling (82 · 5 · 20 · 2 to-sessions) · binding |
+| `kill-list-udkast.prompt.txt` | `prompt-b1.txt` (opgave-delen; rolleteksten @ skill_oid f6e64979 injiceres af wrapperen; samlet prompt_sha256 i kvitteringen = 9d07e701…) | `0d1156dd0ce77fde01c28062a343bf9401445ae2f5d1288ffc1a1a2fd22013c5` | prompten m. PIN + ledger-blob udfyldt (4536 B) |
+| `kill-list-udkast.provenance.txt` | `out/OUT-killlist.md.provenance` | `3eb48874d2801f06d38c9bb863022ca4b32c5c3ea85ad985a6e9f61b2d4b169b` | wrapper-provenance (start · attempt 1 rc=0 · 1372 s) |
+| `kill-list-udkast.codex-final.md` | `out/OUT-killlist.md` (`-o`, 770 B) | `3ea76df2b431f9f3c50008ae3a4d18227908277cc5346dfee7daebecb51d475e` | Codex' slutbesked: filnavn + sha256 + optælling + bindinger |
+| `kill-list-udkast.receipt.json` | `out/OUT-killlist.md.receipt.json` | `3a188205f8955227f9eb30637bb3f664ee94b0cdd9e8fbfdeae54e2a26c6ceb7` | transport-kvittering v2 (status success · binaries · attempts) |
+| `kill-list-udkast.codex-banner.txt` | første 14 linjer af `out/OUT-killlist.md.stderr.log` | `045973580559331a3a3b7b18e186efc9e7aba6378fc0a3fd068bb580e4e2904f` | banner = bevis for faktisk kørt politik (workspace-write m. netværk TIL · xhigh · session-id) |
+| `kill-list-udkast.blind-workdir-verifikation.txt` | driverens verifikations-output før spawn | `ea568ef80122f6abdd4f285a841161a67d5c9f8390978e3a29136c73a162776a` | 6 blobs · bindende grep tomt · ledger-kontrol · informativt grep (6 forventede) · eneste ny fil efter kørsel |
+
+Ikke arkiveret (deklareret): fuld stderr-strøm `out/OUT-killlist.md.stderr.log` (1 440 155 B, `*.log` er
+gitignored) — sha256 `7ec0b1760ddfb1d7670dfd57ccc28fcb08b5972403c38f8d1bc1d01f3cada07c`; ligger i job-tmp
+så længe jobbet lever.
