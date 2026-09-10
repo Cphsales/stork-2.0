@@ -1,377 +1,286 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier (plan 2.C, build-proof).
+// build-proof.mjs — v5's build-gate proof-verifier, v2 (plan 2.C · M-41 Trin C1/C2 · Codex' adapter-krav B2).
 //
-// Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER
-// denne mod rå input hvert run; en committet `ok:true` trustes aldrig.
-//
-// ANSVARSDELING (plan 2.C, ærlig): dybden DESIGNES + DØMMES ved plan-gaten;
-// build UDFØRER + BEKRÆFTER mekanisk (eksekveret + dræbt), ingen ny dom.
-// Denne verifier er BEKRÆFTELSES-leddet:
+// Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run; en
+// committet `ok:true` trustes aldrig. Denne verifier er BEKRÆFTELSES-leddet: dybden designes + dømmes ved plan-gaten
+// (forventningsliste → manifest), build UDFØRER (build-harness.mjs) og verifieren bekræfter at det producerede
+// bevis dækker PRÆCIS den forventede mængde — hverken mere (rogue) eller mindre (udeladelse).
 //
 //   U-FORFALSKELIG KERNE (re-verificeret mod rå git her):
-//     - claim_graph source-ankre re-bundet ved OID (verifyEvidence, verdikt.mjs)
-//       — OBLIGATORISK ikke-tom: den git-forankrede kerne kan ikke droppes.
-//     - strukturelle gulve der MINDSKER falsk-grøn-rummet: bijektion (K↔bid↔test,
-//       intet rogue), effect-harness-FORM (public-entrypoint-KIND · ikke-bypass
-//       rolle · hård slut-effekt, ALDRIG helper-return), config-mutant-kill-gulv
-//       (≥1 dræbt targeted mutant pr. K), async-review-PASS pr. bid bundet til
-//       base_oid, prover grøn (skipped/0-tests = rød).
+//     - FORVENTNINGEN kommer fra manifestet (forventnings-manifest.mjs) path-bundet @ gated commit — ALDRIG fra
+//       proof.ks (B2's frit pas: bevisproducenten må ikke kunne indsnævre sin egen K-mængde). Manifestets egne
+//       bindinger (forventningsliste · krav · plan) path-bindes også, og plan-bindingen skal være gatens plan.
+//     - hver forpligtelse i nu-scope: ≥1 case pr. bevisform med status opfyldt; hvert negativ: ≥1 opfyldt UT-case
+//       bundet til netop det negativ (reject-kontrakten hentes fra manifestet — D11: negativet er observeret i
+//       SAMME kørsel (run_id), ikke et flag)
+//     - D10: hvert negativ med eneste-værn (sole_guard_ref) har ≥1 DRÆBT mutant på det værn, formbestemt
+//       (break_form == målets form) + restored + cleanAfter; og hvert K har ≥1 dræbt targeted mutant (gulvet)
+//     - D12: bids skelner forudsætning/effekt; depends_on eksisterer og er acyklisk; hver forudsætning bæres af
+//       ≥1 effekt-bid; effekt-bids' covers = præcis den forventede mængde; hver case hører til et effekt-bid der
+//       dækker dens forpligtelse; angrebs-spec path-bundet + base_oid ancestor pr. bid
+//     - claim_graph source-ankre re-bundet ved OID (verifyEvidence) — obligatorisk ikke-tom
+//     - async-review PASS pr. bid bundet til base_oid · prover grøn (skipped/0-tests = rød) · engine.store = real
 //
-//   ENFORCEMENT-RESIDUAL (ærligt navngivet — håndhæves ved KØRSEL, ikke her):
-//     (1) den FAKTISKE effect-harness/mutant-EKSEKVERING mod en real backing
-//         store / ikke-bypass DB-rolle produceres af harness/mutation-
-//         frameworket (næste stykke) + køres af CI's build-job. Denne rene
-//         funktion re-verificerer git-ankrene + kræver eksekverings-flagene sat.
-//     (2) at en test's entrypoint FAKTISK er en public indgang (ikke en intern
-//         helper klædt som "api") kan ikke afgøres i en ren funktion — her
-//         kræves kun en public-KIND-klassifikation; realiteten er harness-lag.
-//     (3) hvilke K der (proportionalt) undtages mutant-gulvet er en PLAN-gate-
-//         beslutning; indtil planen wires er default fail-closed = ALLE K kræver
-//         en dræbt mutant (en selv-erklæret "non-config"-opt-out ville være en
-//         falsk-grøn — Codex-fund #1).
-//
-// Effect-harness + mutant-kill MINDSKER falsk-grøn mekanisk; de TVINGER ikke
-// fuld dybde — resten er plan-gatens dom (DEL VII). Ingen overclaim.
+//   ENFORCEMENT-RESIDUAL (ærligt): at kørslen FAKTISK skete mod en real backing store som ikke-bypass rolle
+//   produceres af harness-engine i CI's build-job (runner-adapteren); denne rene funktion re-verificerer
+//   git-ankre + konsistens + komplethed. Proportional undtagelse fra mutant-gulvet er plan-gatens dom (manifest).
 
 import { isOid } from "./gates.mjs";
 import { verifyEvidence } from "./verdikt.mjs";
+import { validateManifest, expectedSet, PROOF_FORMS } from "./forventnings-manifest.mjs";
+import { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS, STATUS } from "./build-harness.mjs";
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-// læs KUN et eget DATA-felt: hverken arvet (Object.prototype-pollution) ELLER en
-// accessor (en getter kunne returnere true under checket / en anden værdi bagefter).
-// own(o,k) → data-værdien hvis eget non-accessor felt, ellers undefined.
 const own = (o, k) => {
   if (o === null || typeof o !== "object") return undefined;
   const d = Object.getOwnPropertyDescriptor(o, k);
   return d && typeof d.get !== "function" && typeof d.set !== "function" ? d.value : undefined;
 };
 const ownTrue = (o, k) => own(o, k) === true;
-const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
-// plain object KUN: en ikke-standard prototype kan maskere manglende felter som
-// arvede → afvis (fail-closed). JSON-parset proof er altid plain.
-const isPlainObject = (v) => {
+const isStr = (v) => typeof v === "string" && v.length > 0;
+const isPlain = (v) => {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   const p = Object.getPrototypeOf(v);
   return p === Object.prototype || p === null;
 };
-// tæt, RENT array: ingen huller + standard Array.prototype + ingen egne symbol-/
-// accessor-/ikke-index-nøgler — så en custom prototype eller egen every/Symbol.
-// iterator-override ikke kan forfalske checket (og efterfølgende for...of er sikker).
-// Index-loop, ikke a.every (Codex-fund; jf. actors-lock.checkPureDenseArrayOf).
-const isDenseArrayOf = (a, pred) => {
+const isDense = (a, pred) => {
   if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype) return false;
   const len = a.length;
   for (const k of Reflect.ownKeys(a)) {
     if (typeof k === "symbol") return false;
     if (k === "length") continue;
     const idx = Number(k);
-    // KANONISK index-nøgle: String(idx) === k afviser "", "01", "1e0", "-0" osv.
-    // (som Number(k) ellers ville mappe ind i range som en falsk ekstra "index").
     if (!Number.isInteger(idx) || idx < 0 || idx >= len || String(idx) !== k) return false;
     const d = Object.getOwnPropertyDescriptor(a, k);
     if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false;
   }
-  for (let i = 0; i < len; i++) {
-    if (!hasOwn(a, i)) return false;
-    if (!pred(a[i])) return false;
-  }
+  for (let i = 0; i < len; i++) if (!hasOwn(a, i) || !pred(a[i])) return false;
   return true;
 };
 const isPosInt = (v) => Number.isInteger(v) && v >= 0;
-// git-objekt-type mod rå git (fail-closed): "blob"/"commit"/… eller null hvis
-// OID'en ikke findes. Så en syntaktisk gyldig men IKKE-committet 40-hex OID
-// (fake anker) fanges — isOid alene beviser ikke eksistens.
-const gitObjectType = (git, oid) => {
-  try {
-    return String(git("cat-file", "-t", oid)).trim();
-  } catch {
-    return null;
-  }
-};
-// er `anc` en ancestor af `desc` (inkl. lig)? merge-base --is-ancestor: exit 0 =
-// ja, ≠0 (inkl. "ikke ancestor") → git() kaster → false (fail-closed). Fanger en
-// unreachable/divergent base-commit der bare tilfældigvis er et gyldigt commit-objekt.
-const isAncestor = (git, anc, desc) => {
-  try {
-    git("merge-base", "--is-ancestor", anc, desc);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-// hårde slut-effekter (plan 2.C): state/event/DB-row. Helper-return EKSPLICIT
-// forbudt — den klassiske falsk-grøn (test på intern return, reel policy aldrig kørt).
-const HARD_EFFECTS = Object.freeze(["state", "event", "db-row"]);
-// public-entrypoint-KINDS (plan 2.C: API/RPC/UI-flow). En fri streng ville lade
-// en intern helper passere som "public" (Codex-fund #3) → kræv en kendt kind.
-const PUBLIC_ENTRYPOINT_KINDS = Object.freeze(["api", "rpc", "ui-flow"]);
+const gitObjectType = (git, oid) => { try { return String(git("cat-file", "-t", oid)).trim(); } catch { return null; } };
+const isAncestor = (git, anc, desc) => { try { git("merge-base", "--is-ancestor", anc, desc); return true; } catch { return false; } };
+export { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS };
 
 // verifyBuildProof(proof, snapshot, {git}) → {ok, reasons}
 //
-// proof (= snapshot.proof_result payload) forventet form:
-//   {
-//     proof_kind: "build-proof",
-//     ks: [{ k_id }],                                   // krav-acceptkriteriets K-sæt
-//     bids: [{
-//       bid_id, angrebs_spec_oid, base_oid,
-//       tests:   [{ k_id, entrypoint:{kind:"api"|"rpc"|"ui-flow", ref},
-//                   store:"real", non_bypass_role:true, hard_effect, negative_path_exercised:true }],
-//       mutants: [{ k_id, knob, killed:true }],
-//     }],
-//     claim_graph: [{ k_id, executed:true, mutant_killed:true, source_anchor:{...evidence} }],  // ikke-tom
+// proof (= snapshot.proof_result payload):
+//   { proof_kind: "build-proof", run_id,
+//     manifest_ref: { path, oid },                       // forventnings-manifest.json @ gated commit — KILDEN
+//     engine: { run_id, store: "real", summary },
+//     cases:   [ runCase-resultater m. case_id · obligation_id · negative_id · proof_form · bid_id · hard_effect ·
+//                entrypoint{kind,ref} · actor_role · status · assertions[{id,ok}] · run_id ],
+//     mutants: [ killCaseMutant-resultater m. mutant_id · guard_ref · target_case_id · killed · break_form ·
+//                restored · cleanAfter · run_id ],
+//     bids:    [{ bid_id, kind: "forudsaetning"|"effekt", depends_on:[bid_id], covers:[obligation_id],
+//                 angrebs_spec_oid, angrebs_spec_path, base_oid }],
+//     claim_graph: [{ k_id, executed:true, mutant_killed:true, source_anchor:{…evidence} }],   // ikke-tom
 //     async_reviews: [{ bid_id, conclusion:"PASS", base_oid }],
-//     prover_result: { ok:true, tests_run:>0, skipped:0 },
-//   }
+//     prover_result: { ok:true, tests_run:>0, skipped:0 } }
 export function verifyBuildProof(proof, snapshot, { git } = {}) {
   const reasons = [];
   const fail = (r) => reasons.push(r);
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"] };
-  if (!isPlainObject(proof)) return { ok: false, reasons: ["build-proof er ikke et objekt"] };
-  if (!isPlainObject(snapshot)) return { ok: false, reasons: ["snapshot mangler/ugyldig (fail-closed)"] };
-  // LAGDELING (Codex r5 #3, bevidst): envelope-bindingerne (ok/gate_id/proof_kind/
-  // artifact_oid/bindings_oids) håndhæves af evaluateGate FØR verifyProof kaldes —
-  // samme design som verifyReconCoverageProof. Denne funktion verificerer PAYLOAD
-  // (bevis-indholdet). I produktion nås den kun via evaluateGate; et direkte kald
-  // uden om gaten er ikke gate-stien. (Duplikér ikke envelope her → ingen divergens.)
+  if (!isPlain(proof)) return { ok: false, reasons: ["build-proof er ikke et objekt"] };
+  if (!isPlain(snapshot)) return { ok: false, reasons: ["snapshot mangler/ugyldig (fail-closed)"] };
+  // LAGDELING: envelope (ok/gate_id/proof_kind/artifact_oid/bindings_oids) håndhæves af evaluateGate FØR denne kaldes.
 
-  // EGNE snapshot-felter (stol ikke på kalderen — defense-in-depth mod
-  // Object.prototype-pollution, også når verifyBuildProof kaldes direkte).
-  // commit_sha SKAL være en pinned OID (mutable ref som HEAD forbudt) OG findes
-  // som commit i git — hele bindingen hviler på en pinned commit.
   const commitSha = own(snapshot, "commit_sha");
   if (!isOid(commitSha)) fail("snapshot.commit_sha mangler/ikke en pinned OID (mutable ref som HEAD forbudt)");
   else if (gitObjectType(git, commitSha) !== "commit") fail("snapshot.commit_sha findes ikke som commit i git (fake/mutable)");
-
-  // PATH-BIND en ref: blobben skal ligge på den CITEREDE sti i den gatede commit
-  // (git rev-parse <commit>:<path> === oid) — ikke bare være en vilkårlig
-  // eksisterende blob et andet sted (defense-in-depth; i produktion resolver
-  // gate-eval.buildSnapshot refs fra rå git, men evaluateGate SELV er git-løs).
   const pathBind = (ref, label) => {
-    if (!isPlainObject(ref)) return void fail(`${label} mangler/ugyldig (fail-closed)`);
-    const path = own(ref, "path");
-    const oid = own(ref, "oid");
-    if (!isNonEmptyString(path) || !isOid(oid)) return void fail(`${label}: path/oid mangler/ugyldig`);
-    if (!isOid(commitSha)) return; // commit_sha allerede rapporteret
-    let atPath = null;
-    try {
-      atPath = git("rev-parse", `${commitSha}:${path}`);
-    } catch {
-      atPath = null;
-    }
-    if (atPath === null) fail(`${label}: sti '${path}' findes ikke i den gatede commit`);
-    else if (atPath !== oid) fail(`${label}: oid matcher ikke stien i commit (citeret ${oid}, reel ${atPath}) — stale/orphan`);
-    else if (gitObjectType(git, oid) !== "blob") fail(`${label}: oid er ikke en blob (fil forventet)`);
+    if (!isPlain(ref)) { fail(`${label} mangler/ugyldig (fail-closed)`); return false; }
+    const path = own(ref, "path"); const oid = own(ref, "oid");
+    if (!isStr(path) || !isOid(oid)) { fail(`${label}: path/oid mangler/ugyldig`); return false; }
+    if (!isOid(commitSha)) return false;
+    let atPath = null; try { atPath = git("rev-parse", `${commitSha}:${path}`); } catch { atPath = null; }
+    if (atPath === null) { fail(`${label}: sti '${path}' findes ikke i den gatede commit`); return false; }
+    if (String(atPath).trim() !== oid) { fail(`${label}: oid matcher ikke stien i commit (citeret ${oid}, reel ${String(atPath).trim()}) — stale/orphan`); return false; }
+    if (gitObjectType(git, oid) !== "blob") { fail(`${label}: oid er ikke en blob (fil forventet)`); return false; }
+    return true;
   };
   pathBind(own(snapshot, "artifact"), "snapshot.artifact");
   const sBindings = own(snapshot, "bindings");
-  const planRef = isPlainObject(sBindings) ? own(sBindings, "plan") : null;
+  const planRef = isPlain(sBindings) ? own(sBindings, "plan") : null;
   if (!planRef) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)");
   else pathBind(planRef, "plan-binding");
 
-  // ---------- 1) K-sæt (krav-acceptkriteriet, deklareret) ----------
-  const kIds = new Set();
-  const ksArr = own(proof, "ks");
-  if (!isDenseArrayOf(ksArr, (k) => isPlainObject(k)) || ksArr.length === 0)
-    fail("ks skal være et ikke-tomt, tæt array af objekter (K-sættet mangler → intet at bevise)");
+  // ---------- 0) run_id + engine ----------
+  const runId = own(proof, "run_id");
+  if (!isStr(runId)) fail("run_id mangler (alle delbeviser skal stamme fra én kørsel)");
+  const engine = own(proof, "engine");
+  if (!isPlain(engine)) fail("engine mangler (kørsels-metadata fra build-harness)");
   else {
-    for (const k of ksArr) {
-      const kId = own(k, "k_id");
-      if (!isNonEmptyString(kId)) {
-        fail("K uden gyldigt k_id");
-        continue;
-      }
-      if (kIds.has(kId)) fail(`dublet K: ${kId}`);
-      kIds.add(kId);
-    }
+    if (own(engine, "run_id") !== runId) fail("engine.run_id ≠ proof.run_id");
+    if (own(engine, "store") !== "real") fail('engine.store ikke "real" (fixture/mock ≠ real backing store)');
   }
+  if (hasOwn(proof, "ks")) fail("proof.ks er ikke en kilde — forventningen udledes af manifestet (fjern feltet)");
 
-  // ---------- 2) bids + effect-harness-form + mutant-kill ----------
-  const testedKs = new Set(); // K'er med ≥1 gyldig effect-harness-test
-  const killedKs = new Set(); // K'er med ≥1 dræbt targeted mutant
-  const bidIds = new Set();
-  const bidsArr = own(proof, "bids");
-  if (!isDenseArrayOf(bidsArr, (b) => isPlainObject(b)) || bidsArr.length === 0)
-    fail("bids skal være et ikke-tomt, tæt array af objekter");
-  else {
-    for (const b of bidsArr) {
-      const bid = own(b, "bid_id");
-      if (!isNonEmptyString(bid)) {
-        fail("bid uden gyldigt bid_id");
-        continue;
-      }
-      if (bidIds.has(bid)) fail(`dublet bid_id: ${bid}`);
-      bidIds.add(bid);
-      // pr.-bid OID-bindinger: angrebs-spec (kill-listen) + base (async-review-anker).
-      // angrebs-spec PATH-bindes til den gatede commit (reachable + på sin sti) —
-      // ikke bare en vilkårlig/dangling blob i object-DB'en (Codex r5 #1).
-      // RESIDUAL (ærlig, r3 #1): at blobben er DEN plan-gate-låste angrebs-spec for
-      // netop dette bid (ikke bare en committet fil på en sti) kræver en PLAN-
-      // deklareret forventet OID + angrebs-spec-schema (plan-wiring). Provenance-
-      // binding, ikke build-DYBDEN (den håndhæves af mutant-kill + harness + claim_graph).
-      const asOid = own(b, "angrebs_spec_oid");
-      const asPath = own(b, "angrebs_spec_path");
-      if (!isOid(asOid)) fail(`${bid}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
-      else if (!isNonEmptyString(asPath)) fail(`${bid}: angrebs_spec_path mangler (kan ikke path-binde kill-listen)`);
-      else pathBind({ path: asPath, oid: asOid }, `${bid} angrebs-spec`);
-      // base_oid: eksisterende commit OG en ancestor af den gatede commit (en
-      // unreachable/divergent base må ikke tælle — Codex r5 #2).
-      const baseOid = own(b, "base_oid");
-      if (!isOid(baseOid)) fail(`${bid}: base_oid mangler/ugyldig`);
-      else if (gitObjectType(git, baseOid) !== "commit") fail(`${bid}: base_oid er ikke en eksisterende commit (fake/ikke-committet OID)`);
-      else if (isOid(commitSha) && !isAncestor(git, baseOid, commitSha)) fail(`${bid}: base_oid er ikke en ancestor af den gatede commit (unreachable/divergent base)`);
-
-      // tests: effect-harness-FORM (public-kind entrypoint; ikke-bypass; hård effekt)
-      const tests = own(b, "tests");
-      if (!isDenseArrayOf(tests, (t) => isPlainObject(t)) || tests.length === 0)
-        fail(`${bid}: tests skal være et ikke-tomt, tæt array (et bid uden test beviser intet)`);
+  // ---------- 1) FORVENTNINGEN: manifest path-bundet @ gated commit ----------
+  let forventning = null;
+  const mref = own(proof, "manifest_ref");
+  if (pathBind(mref, "manifest_ref")) {
+    let manifest = null;
+    try { manifest = JSON.parse(String(git("show", `${commitSha}:${own(mref, "path")}`))); } catch (e) { fail(`manifest kan ikke læses/parses fra git: ${e?.message ?? e}`); }
+    if (manifest !== null) {
+      const v = validateManifest(manifest);
+      if (!v.ok) fail(`manifest ugyldigt: ${v.reasons.join("; ")}`);
       else {
-        for (const t of tests) {
-          const kId = own(t, "k_id");
-          if (!isNonEmptyString(kId)) {
-            fail(`${bid}: test uden gyldigt k_id`);
-            continue;
-          }
-          if (!kIds.has(kId)) {
-            fail(`${bid}: test refererer ukendt K '${kId}' (rogue — ikke i krav-sættet)`);
-            continue;
-          }
-          let shapeOk = true;
-          const ep = own(t, "entrypoint");
-          if (!isPlainObject(ep) || !PUBLIC_ENTRYPOINT_KINDS.includes(own(ep, "kind")) || !isNonEmptyString(own(ep, "ref"))) {
-            fail(`${bid}/${kId}: entrypoint skal være {kind: api|rpc|ui-flow, ref} (public indgang — ikke en fri streng/helper)`);
-            shapeOk = false;
-          }
-          if (own(t, "store") !== "real") {
-            fail(`${bid}/${kId}: store ikke "real" (fixture/mock ≠ real backing store)`);
-            shapeOk = false;
-          }
-          if (!ownTrue(t, "non_bypass_role")) {
-            fail(`${bid}/${kId}: non_bypass_role ikke eksplicit true (bypass-rolle omgår RLS → værdiløs)`);
-            shapeOk = false;
-          }
-          if (!HARD_EFFECTS.includes(own(t, "hard_effect"))) {
-            fail(
-              `${bid}/${kId}: hard_effect '${String(own(t, "hard_effect"))}' ugyldig — skal være state/event/db-row, ALDRIG helper-return`,
-            );
-            shapeOk = false;
-          }
-          if (!ownTrue(t, "negative_path_exercised")) {
-            fail(`${bid}/${kId}: negative_path_exercised ikke eksplicit true (afvisnings-stien ikke udøvet)`);
-            shapeOk = false;
-          }
-          if (shapeOk) testedKs.add(kId);
-        }
-      }
-
-      // mutants: config-mutant-kill. En OVERLEVENDE mutant = rød (findes-test).
-      if (hasOwn(b, "mutants")) {
-        const mutants = own(b, "mutants");
-        if (!isDenseArrayOf(mutants, (m) => isPlainObject(m))) fail(`${bid}: mutants er ikke et tæt array af objekter`);
-        else {
-          for (const m of mutants) {
-            const kId = own(m, "k_id");
-            const knob = own(m, "knob");
-            if (!isNonEmptyString(kId) || !isNonEmptyString(knob)) {
-              fail(`${bid}: mutant uden gyldigt k_id/knob`);
-              continue;
-            }
-            if (!kIds.has(kId)) {
-              fail(`${bid}: mutant refererer ukendt K '${kId}'`);
-              continue;
-            }
-            // dræbt ER IKKE nok: harness-engine kræver killed && restored &&
-            // cleanAfter (Codex r2 #2) — en kill uden gendannelse eller på beskidt/
-            // ukendt state tæller ikke. Alle tre eksplicit true.
-            if (!ownTrue(m, "killed") || !ownTrue(m, "restored") || !ownTrue(m, "cleanAfter")) {
-              fail(`${bid}/${kId}: mutant '${knob}' ikke dræbt+restored+ren (killed/restored/cleanAfter skal alle være eksplicit true)`);
-              continue;
-            }
-            killedKs.add(kId);
-          }
-        }
+        // manifestets egne bindinger: alle tre path-bundet @ gated commit; plan-bindingen SKAL være gatens plan
+        const mb = manifest.bindings;
+        for (const k of ["forventningsliste", "krav", "plan"]) pathBind(mb[k], `manifest.bindings.${k}`);
+        if (planRef && isOid(own(planRef, "oid")) && mb.plan.oid !== own(planRef, "oid")) fail("manifest.bindings.plan ≠ gatens plan-binding (manifestet er afledt af en anden plan)");
+        forventning = expectedSet(manifest);
       }
     }
   }
+  if (!forventning) return { ok: false, reasons };   // uden forventning kan intet dækkes — stop her (fail-closed)
+  const manifestGuards = forventning.guards;
 
-  // ---------- 3) bijektion: hvert K dækket af ≥1 gyldig test ----------
-  for (const kId of kIds) if (!testedKs.has(kId)) fail(`K '${kId}' har ingen gyldig effect-harness-test (bijektion brudt)`);
+  // ---------- 2) bids (D12) ----------
+  const bids = own(proof, "bids");
+  const bidById = new Map();
+  if (!isDense(bids, isPlain) || bids.length === 0) fail("bids skal være et ikke-tomt, tæt array af objekter");
+  else {
+    for (const b of bids) {
+      const id = own(b, "bid_id");
+      if (!isStr(id)) { fail("bid uden gyldigt bid_id"); continue; }
+      if (bidById.has(id)) { fail(`dublet bid_id: ${id}`); continue; }
+      const kind = own(b, "kind");
+      if (kind !== "forudsaetning" && kind !== "effekt") fail(`${id}: kind skal være forudsaetning|effekt (D12)`);
+      const dep = own(b, "depends_on"); if (!isDense(dep, isStr)) fail(`${id}: depends_on skal være et tæt array af bid_ids (evt. tomt)`);
+      const cov = own(b, "covers"); if (!isDense(cov, isStr)) fail(`${id}: covers skal være et tæt array af forpligtelses-ids (evt. tomt)`);
+      if (kind === "forudsaetning" && isDense(cov, isStr) && cov.length > 0) fail(`${id}: et forudsætnings-bid dækker ingen forpligtelser direkte (effekten bevises i det effekt-bid der afhænger af det)`);
+      if (kind === "effekt" && isDense(cov, isStr) && cov.length === 0) fail(`${id}: et effekt-bid skal dække ≥1 forpligtelse`);
+      // angrebs-spec path-bundet + base_oid ancestor (uændret fra v1)
+      const asOid = own(b, "angrebs_spec_oid"); const asPath = own(b, "angrebs_spec_path");
+      if (!isOid(asOid)) fail(`${id}: angrebs_spec_oid mangler/ugyldig (kill-list ikke bundet)`);
+      else if (!isStr(asPath)) fail(`${id}: angrebs_spec_path mangler (kan ikke path-binde kill-listen)`);
+      else pathBind({ path: asPath, oid: asOid }, `${id} angrebs-spec`);
+      const baseOid = own(b, "base_oid");
+      if (!isOid(baseOid)) fail(`${id}: base_oid mangler/ugyldig`);
+      else if (gitObjectType(git, baseOid) !== "commit") fail(`${id}: base_oid er ikke en eksisterende commit (fake/ikke-committet OID)`);
+      else if (isOid(commitSha) && !isAncestor(git, baseOid, commitSha)) fail(`${id}: base_oid er ikke en ancestor af den gatede commit (unreachable/divergent base)`);
+      bidById.set(id, { kind, depends_on: isDense(dep, isStr) ? dep : [], covers: isDense(cov, isStr) ? cov : [], base_oid: baseOid });
+    }
+    // afhængigheder: eksisterer, ikke selv, acykliske; hver forudsætning bæres af ≥1 effekt-bid
+    const dependedOn = new Set();
+    for (const [id, b] of bidById) for (const d of b.depends_on) { if (d === id) fail(`${id}: afhænger af sig selv`); else if (!bidById.has(d)) fail(`${id}: depends_on '${d}' findes ikke`); else dependedOn.add(d); }
+    const color = new Map(); const dfs = (id, stack) => { if (color.get(id) === 2) return; if (color.get(id) === 1) { fail(`cyklisk afhængighed: ${[...stack, id].join(" → ")}`); return; } color.set(id, 1); for (const d of bidById.get(id)?.depends_on ?? []) if (bidById.has(d)) dfs(d, [...stack, id]); color.set(id, 2); };
+    for (const id of bidById.keys()) dfs(id, []);
+    for (const [id, b] of bidById) if (b.kind === "forudsaetning" && !dependedOn.has(id)) fail(`${id}: forudsætnings-bid som intet effekt-bid afhænger af — kan ikke afsluttes som effektbevist`);
+    // covers: præcis den forventede mængde (unioner over effekt-bids)
+    const covered = new Map();
+    for (const [id, b] of bidById) if (b.kind === "effekt") for (const o of b.covers) { if (!forventning.obligations.has(o)) fail(`${id}: covers '${o}' er ikke en forventet forpligtelse (rogue/overdraget/ukendt)`); else covered.set(o, id); }
+    for (const o of forventning.obligations.keys()) if (!covered.has(o)) fail(`forpligtelse '${o}' dækkes af intet effekt-bid (udeladelse)`);
+  }
 
-  // ---------- 4) mutant-kill-gulv: hvert K har ≥1 dræbt targeted mutant ----------
-  // (fail-closed for ALLE K — en selv-erklæret non-config-opt-out ville være en
-  // falsk-grøn, Codex-fund #1; proportional undtagelse hører til plan-gaten.)
-  for (const kId of kIds) if (!killedKs.has(kId)) fail(`K '${kId}' mangler ≥1 dræbt targeted mutant (mutant-kill-gulv brudt)`);
+  // ---------- 3) cases: form fra manifestet, status opfyldt, negativ bundet, samme run ----------
+  const cases = own(proof, "cases");
+  const caseById = new Map();
+  const coverage = new Map(); // obligation → Set(forms opfyldt)
+  const negCovered = new Set();
+  if (!isDense(cases, isPlain) || cases.length === 0) fail("cases skal være et ikke-tomt, tæt array af objekter");
+  else {
+    for (const c of cases) {
+      const cid = own(c, "case_id");
+      if (!isStr(cid)) { fail("case uden gyldigt case_id"); continue; }
+      if (caseById.has(cid)) { fail(`dublet case_id: ${cid}`); continue; }
+      const oid = own(c, "obligation_id"); const form = own(c, "proof_form"); const status = own(c, "status");
+      const ob = forventning.obligations.get(oid);
+      let okShape = true;
+      if (!ob) { fail(`${cid}: obligation '${String(oid)}' er ikke forventet (rogue/overdraget/ukendt)`); okShape = false; }
+      else if (!PROOF_FORMS.includes(form) || !ob.forms.has(form)) { fail(`${cid}: bevisform '${String(form)}' er ikke en af manifestets former for ${oid}`); okShape = false; }
+      if (own(c, "run_id") !== runId) { fail(`${cid}: run_id ≠ kørslens run_id (delbevis fra en anden kørsel)`); okShape = false; }
+      if (status !== STATUS.OPFYLDT) { fail(`${cid}: status '${String(status)}' ≠ opfyldt`); okShape = false; }
+      const A = own(c, "assertions");
+      if (!isDense(A, isPlain) || A.length === 0 || !A.every((a) => ownTrue(a, "ok") && isStr(own(a, "id")))) { fail(`${cid}: assertions skal være ikke-tomme og alle ok:true`); okShape = false; }
+      const ep = own(c, "entrypoint");
+      if (!isPlain(ep) || !PUBLIC_ENTRYPOINT_KINDS.includes(own(ep, "kind")) || !isStr(own(ep, "ref"))) { fail(`${cid}: entrypoint skal være {kind: api|rpc|ui-flow, ref}`); okShape = false; }
+      if (!isStr(own(c, "actor_role"))) { fail(`${cid}: actor_role mangler (ikke-bypass rolle)`); okShape = false; }
+      if (!HARD_EFFECTS.includes(own(c, "hard_effect"))) { fail(`${cid}: hard_effect skal være state|event|db-row`); okShape = false; }
+      const bid = own(c, "bid_id"); const bb = isStr(bid) ? bidById.get(bid) : null;
+      if (!bb) { fail(`${cid}: bid_id '${String(bid)}' findes ikke`); okShape = false; }
+      else if (bb.kind !== "effekt") { fail(`${cid}: bid '${bid}' er et forudsætnings-bid — cases hører til effekt-bids`); okShape = false; }
+      else if (ob && !bb.covers.includes(oid)) { fail(`${cid}: bid '${bid}' dækker ikke ${oid}`); okShape = false; }
+      if (form === "UT" && ob) {
+        const nid = own(c, "negative_id"); const neg = forventning.negatives.get(nid);
+        if (!neg || neg.obligation_id !== oid) { fail(`${cid}: UT-case uden gyldigt negative_id under ${oid}`); okShape = false; }
+        else if (okShape) negCovered.add(nid);
+      }
+      caseById.set(cid, { obligation_id: oid, form, k_id: ob?.k_id ?? null, ok: okShape, negative_id: own(c, "negative_id") ?? null });
+      if (okShape) { if (!coverage.has(oid)) coverage.set(oid, new Set()); coverage.get(oid).add(form); }
+    }
+    for (const [oid, ob] of forventning.obligations) {
+      const got = coverage.get(oid) ?? new Set();
+      for (const f of ob.forms) if (!got.has(f)) fail(`forpligtelse '${oid}': ingen opfyldt ${f}-case (udeladelse)`);
+    }
+    for (const nid of forventning.negatives.keys()) if (!negCovered.has(nid)) fail(`negativ '${nid}': ingen opfyldt UT-case bundet til det (D11: negativet er ikke observeret i kørslen)`);
+  }
 
-  // ---------- 5) claim_graph: OBLIGATORISK ikke-tom, source-ankre re-verificeret mod rå git ----------
-  // u-forfalskelig kerne — må ikke droppes (Codex-fund #2). Hvert anker citeres
-  // OID-bundet (verifyEvidence) og skal være eksekveret + mutant-dræbt.
-  // RESIDUAL (ærlig, Codex-confirm #3): gulvet her er ≥1 git-forankret claim. Hvilke
-  // K der PROPORTIONALT skal have en claim (plan 2.C: høj-risiko + sikkerheds-/
-  // penge-/rettigheds-K) er en PLAN-gate-beslutning — den pure verifier har ingen
-  // risiko-metadata og kan ikke re-derivere den uden planen. Per-K-dækning
-  // håndhæves når plan-classification wires (ikke ensidigt overskrevet her).
+  // ---------- 4) mutants (D10): formbestemt kill · eneste-værn · K-gulv ----------
+  const mutants = hasOwn(proof, "mutants") ? own(proof, "mutants") : [];
+  const killedByGuard = new Map(); const killedKs = new Set();
+  if (!isDense(mutants, isPlain)) fail("mutants skal være et tæt array af objekter");
+  else {
+    const mids = new Set();
+    for (const m of mutants) {
+      const mid = own(m, "mutant_id");
+      if (!isStr(mid)) { fail("mutant uden gyldigt mutant_id"); continue; }
+      if (mids.has(mid)) { fail(`dublet mutant_id: ${mid}`); continue; } mids.add(mid);
+      const g = own(m, "guard_ref"); const tc = own(m, "target_case_id"); const target = isStr(tc) ? caseById.get(tc) : null;
+      if (!isStr(g) || !manifestGuards.has(g)) { fail(`${mid}: guard_ref '${String(g)}' er ikke et deklareret værn i manifestet`); continue; }
+      if (!target || !target.ok) { fail(`${mid}: target_case_id '${String(tc)}' findes ikke / er ikke en gyldig opfyldt case`); continue; }
+      if (own(m, "run_id") !== runId) { fail(`${mid}: run_id ≠ kørslens run_id`); continue; }
+      if (!ownTrue(m, "killed") || !ownTrue(m, "restored") || !ownTrue(m, "cleanAfter")) { fail(`${mid}: ikke dræbt+restored+ren (alle tre eksplicit true)`); continue; }
+      if (own(m, "break_form") !== target.form) { fail(`${mid}: break_form '${String(own(m, "break_form"))}' ≠ målets bevisform ${target.form} (kill skal være formbestemt)`); continue; }
+      if (!killedByGuard.has(g)) killedByGuard.set(g, []); killedByGuard.get(g).push({ mid, negative_id: target.negative_id, obligation_id: target.obligation_id });
+      if (target.k_id) killedKs.add(target.k_id);
+    }
+    for (const [g, nids] of forventning.soleGuards) {
+      const kills = killedByGuard.get(g) ?? [];
+      for (const nid of nids) if (!kills.some((k) => k.negative_id === nid)) fail(`D10: negativ '${nid}' bæres alene af værnet '${g}' men ingen dræbt mutant på det værn rammer netop det negativ`);
+    }
+    for (const k of forventning.ks) if (!killedKs.has(k)) fail(`K '${k}' mangler ≥1 dræbt targeted mutant (mutant-kill-gulv brudt)`);
+  }
+
+  // ---------- 5) claim_graph: obligatorisk ikke-tom, ankre re-verificeret mod rå git ----------
   const cg = own(proof, "claim_graph");
-  if (!isDenseArrayOf(cg, (c) => isPlainObject(c)) || cg.length === 0)
-    fail("claim_graph skal være et ikke-tomt, tæt array (den git-forankrede kerne må ikke droppes)");
-  else {
-    for (let i = 0; i < cg.length; i++) {
-      const c = cg[i];
-      const kId = own(c, "k_id");
-      if (!isNonEmptyString(kId) || !kIds.has(kId)) fail(`claim_graph[${i}]: ukendt/manglende K`);
-      if (!ownTrue(c, "executed")) fail(`claim_graph[${i}] (${String(kId)}): executed ikke eksplicit true`);
-      if (!ownTrue(c, "mutant_killed")) fail(`claim_graph[${i}] (${String(kId)}): mutant_killed ikke eksplicit true`);
-      const anchor = own(c, "source_anchor");
-      if (!isPlainObject(anchor)) {
-        fail(`claim_graph[${i}] (${String(kId)}): source_anchor mangler/er ikke et plain object`);
-        continue;
-      }
-      const ev = verifyEvidence(anchor, snapshot, { git });
-      if (!ev.ok) fail(`claim_graph[${i}] (${String(kId)}): source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`);
-    }
+  if (!isDense(cg, isPlain) || cg.length === 0) fail("claim_graph skal være et ikke-tomt, tæt array (den git-forankrede kerne må ikke droppes)");
+  else for (let i = 0; i < cg.length; i++) {
+    const c = cg[i]; const kId = own(c, "k_id");
+    if (!isStr(kId) || !forventning.ks.has(kId)) fail(`claim_graph[${i}]: ukendt/manglende K`);
+    if (!ownTrue(c, "executed")) fail(`claim_graph[${i}] (${String(kId)}): executed ikke eksplicit true`);
+    if (!ownTrue(c, "mutant_killed")) fail(`claim_graph[${i}] (${String(kId)}): mutant_killed ikke eksplicit true`);
+    const anchor = own(c, "source_anchor");
+    if (!isPlain(anchor)) { fail(`claim_graph[${i}] (${String(kId)}): source_anchor mangler/er ikke et plain object`); continue; }
+    const ev = verifyEvidence(anchor, snapshot, { git });
+    if (!ev.ok) fail(`claim_graph[${i}] (${String(kId)}): source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`);
   }
 
-  // ---------- 6) async-reviews: PASS pr. bid, bundet til base_oid ----------
-  const reviewedBids = new Map(); // bid_id → base_oid for PASS-reviews
-  const reviewsArr = own(proof, "async_reviews");
-  if (!isDenseArrayOf(reviewsArr, (r) => isPlainObject(r)))
-    fail("async_reviews skal være et tæt array af objekter (manglende = anti-tavshed rød)");
-  else {
-    for (const r of reviewsArr) {
-      const rbid = own(r, "bid_id");
-      if (!isNonEmptyString(rbid) || !bidIds.has(rbid)) {
-        fail(`async_review for ukendt bid '${String(rbid)}'`);
-        continue;
-      }
-      if (own(r, "conclusion") !== "PASS") {
-        fail(`async_review for ${rbid} ikke PASS (${String(own(r, "conclusion"))}) — build-gaten åbner ikke med et ikke-PASS review`);
-        continue;
-      }
-      if (!isOid(own(r, "base_oid"))) {
-        fail(`async_review for ${rbid}: base_oid mangler/ugyldig`);
-        continue;
-      }
-      reviewedBids.set(rbid, r.base_oid);
-    }
+  // ---------- 6) async-reviews: PASS pr. bid bundet til base_oid ----------
+  const reviewed = new Map();
+  const reviews = own(proof, "async_reviews");
+  if (!isDense(reviews, isPlain)) fail("async_reviews skal være et tæt array af objekter (manglende = anti-tavshed rød)");
+  else for (const r of reviews) {
+    const rbid = own(r, "bid_id");
+    if (!isStr(rbid) || !bidById.has(rbid)) { fail(`async_review for ukendt bid '${String(rbid)}'`); continue; }
+    if (own(r, "conclusion") !== "PASS") { fail(`async_review for ${rbid} ikke PASS (${String(own(r, "conclusion"))})`); continue; }
+    if (!isOid(own(r, "base_oid"))) { fail(`async_review for ${rbid}: base_oid mangler/ugyldig`); continue; }
+    reviewed.set(rbid, own(r, "base_oid"));
   }
-  // hvert bid SKAL have et PASS-review bundet til nøjagtig dets egen base_oid
-  for (const b of Array.isArray(bidsArr) ? bidsArr : []) {
-    if (!isPlainObject(b) || !isNonEmptyString(own(b, "bid_id"))) continue;
-    const bBase = own(b, "base_oid");
-    if (!reviewedBids.has(b.bid_id)) fail(`bid '${b.bid_id}' mangler et PASS async-review (anti-tavshed)`);
-    else if (isOid(bBase) && reviewedBids.get(b.bid_id) !== bBase)
-      fail(`bid '${b.bid_id}': async-review base_oid matcher ikke bid'ets base_oid (stale review)`);
+  for (const [id, b] of bidById) {
+    if (!reviewed.has(id)) fail(`bid '${id}' mangler et PASS async-review (anti-tavshed)`);
+    else if (isOid(b.base_oid) && reviewed.get(id) !== b.base_oid) fail(`bid '${id}': async-review base_oid matcher ikke bid'ets base_oid (stale review)`);
   }
 
-  // ---------- 7) prover grøn (reel kør; skipped/0-tests = rød) ----------
+  // ---------- 7) prover grøn ----------
   const pr = own(proof, "prover_result");
-  if (!isPlainObject(pr)) fail("prover_result mangler/er ikke et objekt");
+  if (!isPlain(pr)) fail("prover_result mangler/er ikke et objekt");
   else {
     if (!ownTrue(pr, "ok")) fail("prover_result.ok ikke eksplicit true (prover ikke grøn)");
-    const tr = own(pr, "tests_run");
-    if (!isPosInt(tr) || tr === 0) fail("prover_result.tests_run = 0 eller ugyldig (0-tests = rød)");
-    const sk = own(pr, "skipped");
-    if (!isPosInt(sk) || sk !== 0) fail("prover_result.skipped ≠ 0 (skippede tests = rød)");
+    const tr = own(pr, "tests_run"); if (!isPosInt(tr) || tr === 0) fail("prover_result.tests_run = 0 eller ugyldig (0-tests = rød)");
+    const sk = own(pr, "skipped"); if (!isPosInt(sk) || sk !== 0) fail("prover_result.skipped ≠ 0 (skippede tests = rød)");
   }
-
   return { ok: reasons.length === 0, reasons };
 }

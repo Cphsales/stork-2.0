@@ -1,139 +1,218 @@
 #!/usr/bin/env node
-// build-harness.integration.mjs — RIGTIG-Postgres-bevis for frameworket (plan 2.C).
+// build-harness.integration.mjs — RIGTIG-Postgres-bevis for case-engine v2 (plan 2.C · C1 »integration mod container grøn«).
 //
-// IKKE en del af v5:selftest (CI er container-fri). Kør manuelt mod en ISOLERET
-// éngangs-container (ALDRIG repoets PROD-db):
-//   docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 \
-//     public.ecr.aws/supabase/postgres:17.6.1.121
+// IKKE en del af v5:selftest (CI er container-fri). Kør manuelt mod en ISOLERET éngangs-container (ALDRIG repoets PROD-db):
+//   docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121
 //   node scripts/v5/build-harness.integration.mjs
 //
-// Beviser mod virkelighed at frameworket (build-harness.mjs) fanger det PoC'en viste:
-//   baseline afviser cross-org · WITH CHECK-true-mutant → tilladt = harness flipper
-//   = mutant DRÆBT · en "findes"-signal (pg_policies) flipper IKKE = falsk-grøn.
+// Beviser mod virkelighed at engine v2 udtrykker de fire bevisformer som SÆRSKILTE udfald og dræber formbestemt:
+//   UT  22023 (domæne-afvisning i offentlig fn) · 42501 (direkte DML uden grant) · P0001 (trigger: mindst én aktiv stand)
+//   FS  dateret pris-opslag (nu + historisk checkpoint) · K-8-typen: komplet rows=[] ≠ manglende svar
+//   MH  legitim non-admin kan oprette via offentlig fn OG audit-vidnet findes
+//   SA  to psql-sessions deaktiverer hver sin af de to sidste aktive stande; barrieren er række-låsen på lokationen
+//       (observeret i pg_stat_activity som wait_event_type=Lock); præcis én afvises med P0001; invarianten holder
+//   Mutanter (én pr. værn): blank-check fjernet → UT-kill · grant fjernet → MH-kill (handling udebliver) · audit-insert
+//   fjernet → MH-kill (vidne) · dato ignoreret → FS-kill (checkpoint) · trigger-check fjernet → UT-kill · lås fjernet →
+//   SA-kill (invariant brudt) · »findes«-mutant (kommentar) → OVERLEVER.
 
-import { execFileSync } from "node:child_process";
-import { runEffectHarness, killMutant, runBuildProofEngine } from "./build-harness.mjs";
+import { execFileSync, spawn } from "node:child_process";
+import { runBuildProofEngine, runCase, STATUS } from "./build-harness.mjs";
+import { expectedSet } from "./forventnings-manifest.mjs";
 
 const CONTAINER = process.env.V5_PG_CONTAINER || "v5-buildproof-pg";
-let failed = 0;
-const ok = (n) => console.log(`  ✓ ${n}`);
-const bad = (n, d) => {
-  console.error(`  ✗ ${n} — ${d}`);
-  failed++;
-};
+let failed = 0, passed = 0;
+const ok = (n) => { passed++; console.log(`  ✓ ${n}`); };
+const bad = (n, d) => { failed++; console.error(`  ✗ ${n} — ${d}`); };
 const eq = (n, got, want) => (got === want ? ok(n) : bad(n, `fik ${JSON.stringify(got)}, forventede ${JSON.stringify(want)}`));
 
-// --- container-tjek — FAIL-CLOSED (M-40 B3, Codex O-9): manglende DB må ALDRIG
-// give exit 0 som default; en vellykket kommando uden database er IKKE et
-// DB-bevis. Kun eksplicit `--skip-db` (lokal udvikling) exiter 0, og da med en
-// utvetydig SKIPPED-melding der aldrig kan læses som et ført bevis. ---
-function containerUp() {
-  try {
-    execFileSync("docker", ["exec", CONTAINER, "pg_isready", "-U", "postgres"], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
+function containerUp() { try { execFileSync("docker", ["exec", CONTAINER, "pg_isready", "-U", "postgres"], { stdio: "ignore" }); return true; } catch { return false; } }
 if (!containerUp()) {
-  if (process.argv.includes("--skip-db")) {
-    console.log(`⚠ SKIPPED (ikke et bevis): container '${CONTAINER}' kører ikke — integrations-beviset blev IKKE ført (0 prøver kørt; --skip-db er kun til lokal udvikling).`);
-    process.exit(0);
-  }
-  console.error(`✗ container '${CONTAINER}' kører ikke — integrations-bevis kan ikke føres (fail-closed: manglende DB ≠ grønt bevis).`);
-  console.error("  Start: docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121");
-  console.error("  Lokal udvikling uden DB: tilføj --skip-db (exit 0 med eksplicit SKIPPED-melding — ikke et bevis).");
-  process.exit(1);
+  if (process.argv.includes("--skip-db")) { console.log(`⚠ SKIPPED (ikke et bevis): container '${CONTAINER}' kører ikke — 0 prøver kørt.`); process.exit(0); }
+  console.error(`✗ container '${CONTAINER}' kører ikke — integrations-bevis kan ikke føres (fail-closed).`); process.exit(1);
 }
 
-// --- rigtig sql-runner: SET ROLE + SET settings + sætningen i ÉN psql-session ---
+// ---------- rigtig runner: ÉN psql-session pr. kald (set role + settings + sætning); observe-queries pakkes i json_agg ----------
+const PSQL = ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-q", "-tA"];
 function dockerPsql(sqlText, opts = {}) {
-  // VERBOSITY verbose → fejl-linjen bærer SQLSTATE ("ERROR:  42501: ...") så vi kan
-  // returnere en STRUKTURERET kode (ikke bare en fri streng frameworket ikke må stole på).
+  const isQuery = /^\s*(select|with|table)\b/i.test(sqlText);
   const prelude = ["\\set VERBOSITY verbose"];
   if (opts.role) prelude.push(`set role ${opts.role};`);
   if (opts.settings) for (const [k, v] of Object.entries(opts.settings)) prelude.push(`set ${k} = '${String(v)}';`);
-  const full = `${prelude.join("\n")}\n${sqlText}`;
+  const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
   try {
-    execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-q"], {
-      input: full,
-      stdio: ["pipe", "ignore", "pipe"],
-    });
+    const out = execFileSync("docker", PSQL, { input: `${prelude.join("\n")}\n${body}\n`, stdio: ["pipe", "pipe", "pipe"] }).toString();
+    if (isQuery) { const rows = JSON.parse(out.trim() || "[]"); return { ok: true, error: null, code: null, rows: Array.isArray(rows) ? rows : [] }; }
     return { ok: true, error: null, code: null };
   } catch (e) {
-    const stderr = String(e.stderr || e.message);
-    const m = stderr.match(/ERROR:\s+([0-9A-Z]{5}):/);
-    return { ok: false, error: stderr.slice(0, 160), code: m ? m[1] : null };
+    const stderr = String(e.stderr || e.message); const m = stderr.match(/ERROR:\s+([0-9A-Z]{5}):/);
+    return { ok: false, error: stderr.slice(0, 200), code: m ? m[1] : null };
   }
 }
-const query1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-tAc", sqlText]).toString().trim();
+const q1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-tAc", sqlText]).toString().trim();
 
-// --- idempotent syntetisk RLS-fixture (cross-org isolation, ikke-bypass rolle) ---
-console.log(`build-harness INTEGRATION mod '${CONTAINER}':`);
-const setup = dockerPsql(`
-  drop table if exists salg cascade;
-  create table salg (id serial primary key, org_id int not null, beloeb numeric not null);
-  alter table salg enable row level security;
-  alter table salg force row level security;
-  do $$ begin if not exists (select from pg_roles where rolname='app_role') then create role app_role; end if; end $$;
-  grant app_role to postgres;
-  grant select, insert on salg to app_role;
-  grant usage on sequence salg_id_seq to app_role;
-  drop policy if exists salg_org_isolation on salg;
-  create policy salg_org_isolation on salg for all
-    using (org_id = current_setting('app.current_org')::int)
-    with check (org_id = current_setting('app.current_org')::int);
-`);
-eq("fixture opsat", setup.ok, true);
-
-// harness: samme-org INSERT SKAL lykkes; cross-org INSERT SKAL afvises (RLS-effekt)
-const harness = {
-  asRole: "app_role",
-  settings: { "app.current_org": "1" },
-  positive: { sql: "insert into salg (org_id, beloeb) values (1, 100);" },
-  negative: { sql: "insert into salg (org_id, beloeb) values (2, 100);", expectCode: "42501" },
-};
-// mutant: svæk WITH CHECK til true (bryder cross-org-isolationen)
-const mutant = {
-  knob: "with_check",
-  apply: `drop policy salg_org_isolation on salg;
-          create policy salg_org_isolation on salg for all
-            using (org_id = current_setting('app.current_org')::int) with check (true);`,
-  restore: `drop policy salg_org_isolation on salg;
-            create policy salg_org_isolation on salg for all
-              using (org_id = current_setting('app.current_org')::int)
-              with check (org_id = current_setting('app.current_org')::int);`,
-};
-
-console.log("\neffect-harness mod rigtig RLS:");
-const baseline = runEffectHarness(harness, dockerPsql);
-eq("baseline green (samme-org OK, cross-org AFVIST)", baseline.green, true);
-eq("  positiv lykkedes", baseline.positiveOk, true);
-eq("  negativ afvist af RLS-grund", baseline.negRejectedRight, true);
-
-console.log("\nmutation-kill mod rigtig RLS:");
-const km = killMutant(mutant, harness, dockerPsql);
-eq("WITH CHECK-true-mutant → DRÆBT (harnessen flippede)", km.killed, true);
-eq("  policy gendannet efter", km.restored, true);
-
-console.log("\nkontrast: 'findes'-signalet flipper IKKE (= falsk-grøn):");
-const before = query1("select count(*) from pg_policies where tablename='salg';");
-dockerPsql(mutant.apply, {});
-const during = query1("select count(*) from pg_policies where tablename='salg';");
-dockerPsql(mutant.restore, {});
-eq("pg_policies-count uændret under mutanten (findes-test beviser intet)", before === during && before === "1", true);
-
-console.log("\nfuld engine (build-proof-observationer):");
-const eng = runBuildProofEngine({ kTests: [{ k_id: "K-1", harness, mutants: [mutant] }] }, dockerPsql);
-eq("engine: allGreen", eng.allGreen, true);
-eq("engine: allKilled", eng.allKilled, true);
-
-// oprydning
-dockerPsql("drop table if exists salg cascade;", {});
-
-console.log("");
-if (failed > 0) {
-  console.error(`build-harness INTEGRATION: ${failed} FEJLEDE`);
-  process.exit(1);
+// ---------- rigtig race-runner: to interaktive psql-sessions, markør-synkroniseret; barriere = række-lås ----------
+function session(name) {
+  const p = spawn("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=0", "-q", "-tA"], { stdio: ["pipe", "pipe", "pipe"] });
+  let out = "", err = "", n = 0;
+  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
+  const run = (sql, timeoutMs = 15000) => new Promise((resolve, reject) => {
+    const mark = `MARK_${name}_${++n}`; const errStart = err.length;
+    p.stdin.write(`${sql}\n\\echo ${mark}\n`);
+    const t0 = Date.now();
+    const poll = () => {
+      if (out.includes(mark)) { const seg = err.slice(errStart); const m = seg.match(/ERROR:\s+([0-9A-Z]{5}):/); return resolve({ ok: !m && !/ERROR:/.test(seg), code: m ? m[1] : null, err: seg }); }
+      if (Date.now() - t0 > timeoutMs) return reject(new Error(`${name}: timeout på '${sql.slice(0, 40)}'`));
+      setTimeout(poll, 15);
+    };
+    poll();
+  });
+  // start uden at vente: returnerer promise der løser når sætningen er FÆRDIG (kan blokere på lås)
+  const startAsync = (sql, timeoutMs = 20000) => run(sql, timeoutMs);
+  const close = () => { try { p.stdin.end(); } catch {} p.kill(); };
+  return { run, startAsync, close };
 }
-console.log("build-harness INTEGRATION: alle cases passed (mekanismen bevist mod rigtig Postgres)");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitLockOn(appName, timeoutMs = 8000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    const w = q1(`select coalesce(max(wait_event_type),'') from pg_stat_activity where application_name='${appName}' and state='active';`);
+    if (w === "Lock") return true; await sleep(25);
+  }
+  return false;
+}
+// race(scenario): A starter og holder (BEGIN + a.sql uden commit) · B starter (blokerer på række-låsen) · barriere observeres ·
+// A committer · B færdiggør · begge afslutter · invarianten læses. actor = {role, settings}
+async function race(s) {
+  const A = session("A"), B = session("B");
+  try {
+    const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};` : ""}`;
+    await A.run(pre("v5race_A")); await B.run(pre("v5race_B"));
+    if (s.setup?.sql) { const r = dockerPsql(s.setup.sql, {}); if (!r.ok) return { protocolOk: false, error: `setup: ${r.error}` }; }
+    const ra1 = await A.run("begin;"); const rb1 = await B.run("begin;");
+    if (!ra1.ok || !rb1.ok) return { protocolOk: false, error: "begin fejlede" };
+    const ra = await A.run(s.a.sql);                       // A holder låsen (ingen commit endnu)
+    const bPromise = B.startAsync(s.b.sql);                // B blokerer hvis barrieren (række-lås) findes
+    const blockedObserved = await waitLockOn("v5race_B");  // barriere observeret i pg_stat_activity?
+    await A.run("commit;");
+    const rb = await bPromise;
+    await B.run(rb.ok ? "commit;" : "rollback;");
+    const inv = dockerPsql(s.invariant.observe.sql, {});
+    return { protocolOk: true, a: { ok: ra.ok, code: ra.code }, b: { ok: rb.ok, code: rb.code }, blockedObserved, invariantRows: inv.rows ?? null };
+  } catch (e) { return { protocolOk: false, error: e.message }; } finally { A.close(); B.close(); }
+}
+const runner = { sql: dockerPsql, race };
+
+// ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
+console.log(`build-harness INTEGRATION v2 mod '${CONTAINER}':`);
+const FIX = `
+drop schema if exists f cascade; create schema f;
+do $$ begin if not exists (select from pg_roles where rolname='app_role') then create role app_role; end if; end $$;
+grant app_role to postgres; grant usage on schema f to app_role;
+create table f.lokation(id int primary key, navn text not null, aktiv boolean not null default true);
+create table f.stand(id int primary key, lokation_id int not null references f.lokation, aktiv boolean not null default true);
+create table f.audit(id serial primary key, handling text not null, lokation_id int);
+create table f.prishist(lokation_id int not null, fra date not null, pris numeric not null);
+insert into f.lokation values (1,'Torvet',true); insert into f.stand values (1,1,true),(2,1,true),(3,1,false);
+insert into f.prishist values (1,'2026-01-01',80),(1,'2026-06-01',100);
+grant select on f.lokation, f.stand, f.audit to app_role;   -- læse-vidner/tilstand; INGEN skriv/insert-grants (direkte DML → 42501)
+create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$
+begin
+  if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;   -- g.navn
+  insert into f.lokation(id, navn) values (p_id, p_navn);
+  insert into f.audit(handling, lokation_id) values ('opret', p_id);                                                       -- g.audit
+  return p_id;
+end $$;
+create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$
+  select pris from f.prishist where lokation_id = p_lok and fra <= p_dato order by fra desc limit 1 $$;                    -- g.pris
+create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$
+declare v_lok int;
+begin
+  select lokation_id into v_lok from f.stand where id = p_stand;
+  perform 1 from f.lokation where id = v_lok for update;                                                                   -- g.min-laas (barrieren)
+  update f.stand set aktiv = false where id = p_stand;
+  if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then
+    raise exception using errcode = 'P0001', message = 'min_en_stand';                                                     -- g.min-check
+  end if;
+end $$;
+revoke all on all functions in schema f from public;   -- LÆRDOM: Postgres giver EXECUTE til PUBLIC som default — en revoke fra én rolle fjerner intet uden dette
+grant execute on function f.lokation_opret(int,text), f.pris_paa(int,date), f.stand_deaktiver(int) to app_role;
+`;
+const setup = dockerPsql(FIX); eq("fixture opsat", setup.ok, true); if (!setup.ok) { console.error(setup.error); process.exit(1); }
+const reset = () => dockerPsql(`delete from f.audit; delete from f.lokation where id <> 1; update f.stand set aktiv = (id in (1,2)) where lokation_id = 1;`, {});
+
+// ---------- manifest (forventningen) + cases ----------
+const OID = (c) => c.repeat(40);
+const rc = (sqlstate, sted, fase = "wrapper", aktoer = "app_role") => ({ kanal: "sqlstate", sqlstate, afvisningssted: sted, fase, aktoer, observationskanal: "sqlstate", offentlig_signatur: "f.*" });
+const manifest = {
+  schema_version: 1, pakke: "fixture", bindings: { forventningsliste: { path: "f.md", oid: OID("a") }, krav: { path: "k.md", oid: OID("b") }, plan: { path: "p.md", oid: OID("c") } },
+  guards: [{ id: "g.navn", beskrivelse: "blank-check i lokation_opret" }, { id: "g.grant", beskrivelse: "execute-grant til app_role" }, { id: "g.audit", beskrivelse: "audit-insert i lokation_opret" }, { id: "g.pris", beskrivelse: "dato-filter i pris_paa" }, { id: "g.min-check", beskrivelse: "min-én-stand-check" }, { id: "g.min-laas", beskrivelse: "række-lås på lokation (SA-barriere)" }, { id: "g.dml", beskrivelse: "ingen insert-grant på f.lokation" }],
+  obligations: [
+    { id: "K-1/ac-1", k_id: "K-1", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:1"], negatives: [{ id: "K-1/ac-1/neg-1", beskrivelse: "blankt navn → 22023", reject_contract: rc("22023", "f.lokation_opret: navn_blank"), sole_guard_ref: "g.navn" }, { id: "K-1/ac-1/neg-2", beskrivelse: "direkte insert som app_role → 42501", reject_contract: rc("42501", "grants: f.lokation", "direkte DML"), sole_guard_ref: "g.dml" }] },
+    { id: "K-1/ac-3", k_id: "K-1", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:3"], negatives: [] },
+    { id: "K-2/ac-6", k_id: "K-2", kind: "ac", proof_forms: ["UT", "SA"], scope: "nu", kildeankre: ["K:6"], negatives: [{ id: "K-2/ac-6/neg-1", beskrivelse: "sidste aktive stand → P0001", reject_contract: rc("P0001", "f.stand_deaktiver: min_en_stand", "apply"), sole_guard_ref: "g.min-check" }] },
+    { id: "K-8/ac-4", k_id: "K-8", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:156"], negatives: [] },
+  ],
+};
+const ctx = { forventning: expectedSet(manifest) };
+const EP = (ref) => ({ kind: "rpc", ref }); const ACT = { role: "app_role" }; const B = "bid-2"; const HE = "db-row";
+const cases = [
+  { case_id: "c-navn-ut", obligation_id: "K-1/ac-1", negative_id: "K-1/ac-1/neg-1", proof_form: "UT", bid_id: B, hard_effect: HE, entrypoint: EP("f.lokation_opret"), actor: ACT,
+    positive: { sql: "select f.lokation_opret(2, 'Havnen');" }, negative: { sql: "select f.lokation_opret(3, '   ');" }, state: { sql: "select id from f.lokation where id = 3;" } },
+  { case_id: "c-dml-ut", obligation_id: "K-1/ac-1", negative_id: "K-1/ac-1/neg-2", proof_form: "UT", bid_id: B, hard_effect: HE, entrypoint: EP("f.lokation_opret"), actor: ACT,
+    positive: { sql: "select f.lokation_opret(4, 'Broen');" }, negative: { sql: "insert into f.lokation(id, navn) values (5, 'Direkte');" }, state: { sql: "select id from f.lokation where id = 5;" } },
+  { case_id: "c-opret-mh", obligation_id: "K-1/ac-1", proof_form: "MH", bid_id: B, hard_effect: HE, entrypoint: EP("f.lokation_opret"), actor: ACT,
+    action: { sql: "select f.lokation_opret(6, 'Parken');" }, witnesses: [{ observe: { sql: "select handling from f.audit where lokation_id = 6;" }, expect: { kind: "rows", value: [{ handling: "opret" }] } }] },
+  { case_id: "c-pris-fs", obligation_id: "K-1/ac-3", proof_form: "FS", bid_id: B, hard_effect: "state", entrypoint: EP("f.pris_paa"), actor: ACT,
+    observe: { sql: "select f.pris_paa(1, date '2026-09-10') as pris;" }, expect: { kind: "scalar", value: 100 }, checkpoints: [{ observe: { sql: "select f.pris_paa(1, date '2026-03-01') as pris;" }, expect: { kind: "scalar", value: 80 } }] },
+  { case_id: "c-tom-fs", obligation_id: "K-8/ac-4", proof_form: "FS", bid_id: B, hard_effect: "state", entrypoint: EP("f.audit"), actor: ACT,
+    observe: { sql: "select id from f.audit where lokation_id = 999;" }, expect: { kind: "empty" } },
+  { case_id: "c-min-ut", obligation_id: "K-2/ac-6", negative_id: "K-2/ac-6/neg-1", proof_form: "UT", bid_id: B, hard_effect: HE, entrypoint: EP("f.stand_deaktiver"), actor: ACT,
+    positive: { sql: "select f.stand_deaktiver(1);" }, negative: { sql: "select f.stand_deaktiver(2);" }, state: { sql: "select id from f.stand where lokation_id = 1 and aktiv order by id;" } },
+  { case_id: "c-race-sa", obligation_id: "K-2/ac-6", proof_form: "SA", bid_id: B, hard_effect: HE, entrypoint: EP("f.stand_deaktiver"), actor: ACT,
+    race: { race_id: "r-sidste-to-stande", setup: { sql: "update f.stand set aktiv = (id in (1,2)) where lokation_id = 1;" }, a: { sql: "select f.stand_deaktiver(1);" }, b: { sql: "select f.stand_deaktiver(2);" }, barrier: "row-lock:f.lokation", reject_negative_id: "K-2/ac-6/neg-1",
+      invariant: { observe: { sql: "select count(*)::int as aktive from f.stand where lokation_id = 1 and aktiv;" }, expect: { kind: "scalar", value: 1 } } } },
+];
+// mutanter (apply/restore som ejer)
+const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
+const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
+const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
+const mutants = [
+  { mutant_id: "m-navn", guard_ref: "g.navn", apply: FN_OPRET(false, true), restore: FN_OPRET(true, true), target_case_id: "c-navn-ut", controls: ["c-pris-fs"] },
+  { mutant_id: "m-grant", guard_ref: "g.grant", apply: "revoke execute on function f.lokation_opret(int,text) from app_role;", restore: "grant execute on function f.lokation_opret(int,text) to app_role;", target_case_id: "c-opret-mh", controls: ["c-pris-fs"] },
+  { mutant_id: "m-audit", guard_ref: "g.audit", apply: FN_OPRET(true, false), restore: FN_OPRET(true, true), target_case_id: "c-opret-mh", controls: ["c-pris-fs"] },
+  { mutant_id: "m-pris", guard_ref: "g.pris", apply: FN_PRIS(false), restore: FN_PRIS(true), target_case_id: "c-pris-fs", controls: ["c-navn-ut"] },
+  { mutant_id: "m-min-check", guard_ref: "g.min-check", apply: FN_DEAKT(true, false), restore: FN_DEAKT(true, true), target_case_id: "c-min-ut", controls: ["c-pris-fs"] },
+  { mutant_id: "m-min-laas", guard_ref: "g.min-laas", apply: FN_DEAKT(false, true), restore: FN_DEAKT(true, true), target_case_id: "c-race-sa", controls: ["c-pris-fs"] },
+  { mutant_id: "m-dml", guard_ref: "g.dml", apply: "grant insert on f.lokation to app_role;", restore: "revoke insert on f.lokation from app_role;", target_case_id: "c-dml-ut", controls: ["c-pris-fs"] },
+];
+
+// ---------- kør: baseline pr. case ----------
+console.log("\ncases mod rigtig Postgres (baseline):");
+// idempotens-wrapper: positive opret-kald bruger faste id'er → slet før kald; stand-fixturen nulstilles før hvert deaktiver(1)
+// (rester fra en mutant-kørsel — fx en blank lokation der blev tilladt — ryddes ved hvert opret-kald, så tilstands-målingen
+//  omkring det forbudte forsøg aldrig ser gamle rester; stand-fixturen nulstilles før hvert deaktiver(1))
+const idem = { sql: (t, o) => { if (/select f\.lokation_opret\(/.test(t)) dockerPsql("delete from f.audit where lokation_id <> 1; delete from f.lokation where id <> 1;", {}); if (/stand_deaktiver\(1\)/.test(t)) dockerPsql("update f.stand set aktiv = (id in (1,2)) where lokation_id = 1;", {}); return dockerPsql(t, o); }, race };
+for (const c of cases) {
+  reset(); const r = await runCase(c, ctx, idem);
+  eq(`${c.case_id} [${c.proof_form}] → opfyldt`, r.status, STATUS.OPFYLDT);
+  if (r.status !== STATUS.OPFYLDT) console.error("      ", JSON.stringify(r.assertions), JSON.stringify(r.observations).slice(0, 300));
+}
+{ reset(); const r = await runCase(cases[6], ctx, idem); eq("SA: barrieren (række-lås) blev OBSERVERET i pg_stat_activity — ikke sekventiel", r.observations.blockedObserved, true); eq("SA: præcis én afvisning og den er P0001", r.observations.b?.code === "P0001" && r.observations.a?.ok === true, true); }
+{ reset(); const r = await runCase({ ...cases[4], observe: { sql: "select 1 as x where false;" } }, ctx, idem); eq("K-8-typen: komplet rows=[] er opfyldt (ikke manglende svar)", r.status, STATUS.OPFYLDT); }
+{ reset(); const r = await runCase({ ...cases[0], negative: { sql: "select f.lokation_opret(3, 'Gyldigt navn');" } }, ctx, idem); eq("UT: forbudt handling TILLADT (ingen afvisning) → brudt m. neg_allowed", r.status === STATUS.BRUDT && r.observations.neg_allowed === true, true); }
+
+// ---------- mutanter: formbestemt kill mod virkeligheden ----------
+console.log("\nmutanter (én pr. værn) — formbestemt kill:");
+// engine-kørsel: hver case/mutant nulstiller fixturen via en runner-wrapper der resetter før hvert positivt kald? Enklere: reset før hele kørslen og brug unikke id'er pr. kald via sekvens.
+reset();
+const eng = await runBuildProofEngine({ manifest, run_id: "int-1", cases, mutants }, idem);
+eq("engine: alle cases opfyldt", eng.summary?.opfyldt, cases.length);
+for (const m of eng.mutants) { const good = m.killed && m.restored && m.cleanAfter; eq(`${m.mutant_id} (${m.guard_ref}) → dræbt som ${m.break_form ?? "—"} · restored · ren`, good, true); if (!good) console.error("      ", JSON.stringify({ killed: m.killed, restored: m.restored, cleanAfter: m.cleanAfter, detail: m.detail }).slice(0, 600)); }
+eq("engine: allOk (alle former opfyldt + alle 7 mutanter dræbt formbestemt)", eng.allOk, true);
+eq("break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT", eng.mutants.map((m) => m.break_form).join(","), "UT,MH,MH,FS,UT,SA,UT");
+{ const r = await runBuildProofEngine({ manifest, run_id: "int-2", cases: [cases[3]], mutants: [{ mutant_id: "m-findes", guard_ref: "g.pris", apply: "comment on function f.pris_paa(int,date) is 'mut';", restore: "comment on function f.pris_paa(int,date) is null;", target_case_id: "c-pris-fs" }] }, idem); eq("kontrast: »findes«-mutant (kun kommentar) OVERLEVER → allOk=false", r.allOk === false && r.mutants[0].killed === false, true); }
+
+dockerPsql("drop schema if exists f cascade;", {});
+console.log("");
+if (failed > 0) { console.error(`build-harness INTEGRATION v2: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
+console.log(`build-harness INTEGRATION v2: alle ${passed} cases passed (fire bevisformer + formbestemte kills bevist mod rigtig Postgres)`);
