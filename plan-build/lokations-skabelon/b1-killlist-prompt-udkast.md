@@ -1,6 +1,7 @@
 # B1 — Codex' BLINDE kill-list-udkast: prompt + blind-workdir-recept (UDKAST)
 
-**Status: UDKAST** (driver-10b 2026-09-09, uden aktør). Kørslen starter FØRST når mathias-9b har
+**Status: UDKAST** (driver-10b 2026-09-09, uden aktør · revideret 2026-09-10 af ny driver-session
+de4474: recepten TØRKØRT @ 5eb3736 uden aktør, se nederst). Kørslen starter FØRST når mathias-9b har
 meldt »Trin A færdig« og den nye `codex-run.sh` er committet (rolle → model/effort/sandbox afledes af
 `actors.lock`; BLOKER hvis rolletekst@HEAD ≠ lock). Den endelige prompt (med OID'er udfyldt)
 arkiveres byte-identisk i `provenance/` efter kørslen (A1-reglen). Rolleteksten der gælder, er den
@@ -19,9 +20,10 @@ og bevist ved commit-orden: `kill-list-udkast.md` committes FØR planneren får 
 ## Blind workdir — recept (driveren udfører; alt logges i provenance)
 
 ```bash
-PIN=<pinned commit — HEAD på branchen ved kørsel, fx 5dac500 eller nyere efter Trin A>
-W=/home/mathias/.claude/jobs/d2883eb4/tmp/b1-blind        # ingen .git — plan.md kan ikke genskabes
-mkdir -p "$W" && git archive "$PIN" | tar -x -C "$W"
+PIN=<pinned commit — HEAD på branchen ved kørsel = »Trin A færdig«-SHA'en eller nyere>
+W=/home/mathias/.claude/jobs/870c5b0e/tmp/b1-blind        # driverens job-tmp; ingen .git — plan.md kan ikke genskabes
+rm -rf "$W" "$W.tar" && mkdir -p "$W"
+git archive --format=tar -o "$W.tar" "$PIN" && tar -xf "$W.tar" -C "$W" && rm -f "$W.tar"   # to trin (worktree-guard tillader ikke pipe fra git)
 rm -rf "$W/plan-build/lokations-skabelon"                  # ALT plan-afledt væk i ét hug
 mkdir -p "$W/plan-build/lokations-skabelon"
 # kun de fire lovlige plan-build-input lægges tilbage — ved blob, ikke ved arbejdstræ:
@@ -33,8 +35,9 @@ git show 04e5cfb:plan-build/lokations-skabelon/ordbog.md             > "$W/plan-
 git hash-object "$W"/docs/sandhed/krav/lokations-skabelon-krav.md \
                 "$W"/plan-build/lokations-skabelon/{recon2,p8-slutproeve-spec,mathias-ord,ordbog}.md \
                 "$W"/recon/recon-2-bilag.md
-# forventet: 9402164d · 2bdbb122 · 4af07ef4 · <ledger-blob @ PIN> · 714f9b80 · 6e569779
-grep -rl "423d9b20\|lokation_status_skift\|lokation_opret" "$W" --include=*.md | grep -v recon2.md   # skal være TOM
+# forventet: 9402164d · 2bdbb122 · 4af07ef4 · <ledger-blob @ PIN — @ 5eb3736 = 14722b4c; genberegn: git rev-parse "$PIN":plan-build/lokations-skabelon/mathias-ord.md> · 714f9b80 · 6e569779
+grep -rl "423d9b20\|lokation_status_skift\|lokation_opret" "$W" --include=*.md | grep -vE 'recon2\.md|mathias-ord\.md'   # skal være TOM
+grep -n "423d9b20\|lokation_status_skift\|lokation_opret" "$W/plan-build/lokations-skabelon/mathias-ord.md"   # forventet: KUN M-41-rækken (OID-reference, intet plan-indhold) — output gemmes i provenance
 ```
 
 **Hvad Codex ser:** hele kodebasen @ PIN (migrationer, scripts, fitness, roller) · krav (låst) ·
@@ -43,9 +46,16 @@ recon2 + recon-2-bilag (mutationsfrø) · P-8 · ledger M-1..M-41 · ordbog @ f�
 plan-angreb-r1 · plan-audit-fresh-eyes-r1 · p4-plan-kildetjek · drift-log · ordbogens plan-sektion
 · alle øvrige plan-build-filer (buildability, verdikter, krav-udkast — irrelevante for B1 og
 fjernet for enkelhed). NB: recon2.md nævner kandidat-navne (fx `lokation_opret`) som recon-forslag
-— det er recon-føde, ikke plan-indhold, og er tilladt.
+— det er recon-føde, ikke plan-indhold, og er tilladt. NB2 (tørkørsel 10/9): ledgerens M-41-række
+nævner plan-blob-OID'et `423d9b20` i sætningen »er IKKE `plan ok` til plan v1 (blob 423d9b20)« — en
+reference til at planen findes, ikke plan-indhold; ledgeren er lovligt input (M-ord binder), derfor
+ekskluderes `mathias-ord.md` fra grep-tjekket, og kontrol-grep'et ovenfor dokumenterer at træfferen
+er netop den række og ingen anden.
 
-**Kald (ny wrapper efter Trin A):**
+**Kald (wrapper v4 efter Trin A — signatur `<rolle> <dom|produktion> <workdir> <timeout≥1 s> <out uden
+for workdir> <promptfil>`; @ 5eb3736 har `codex-run.sh` STADIG v2-signaturen `<workdir> <model> <effort>
+<timeout> <out> <promptfil>`, så kaldet nedenfor er mekanisk umuligt før Trin A-pushet — verificér
+signaturen i filens hoved efter pull):**
 `scripts/v5/codex-run.sh codex-angreb produktion "$W" 2400 <out-dir>/OUT-killlist.md <promptfil>`
 — sandbox = workspace-write (den skriver én fil i workdir-roden) · model/effort fra lock · PID-fil
 `$OUT.pid` · provenance `$OUT.provenance` (gives til `verdikt-byg.mjs` som 5. arg hvis kørslen
@@ -58,7 +68,11 @@ skrives af Codex i workdir-roden og hentes derfra byte-identisk. (3) B1 er PRODU
 IKKE have `STORK_V5_GATE_INPUT` sat (kontrakt-ændring 1) — `unset` før kaldet. Skriver wrapperen en
 `$OUT.receipt.json`, arkiveres den også (`provenance/kill-list-udkast.receipt.json`). (4)
 `scripts/v5/binaries.lock.json` skal matche den installerede codex-CLI; opdaterer preflight CLI'en,
-skal låsen committes FØR kaldet (fabrik-armens fil — meld, kør ikke selv).
+skal låsen committes FØR kaldet (fabrik-armens fil — meld, kør ikke selv; filen findes IKKE @ 5eb3736,
+den kommer med Trin A). (5) **VERDIKT-DRAFT-kontrakten (kontrakt-ændring 2) gælder KUN gate-domme
+(B6).** B1 er produktion: leverancen skal IKKE slutte med en `VERDIKT-DRAFT:`-linje, `verdikt-byg.mjs`
+kaldes ikke, og prompten beder ikke om den. Den arkiverede kill-list-leverance bruges aldrig senere
+som gate-leverance.
 
 **Efter kørsel (driveren):** `cmp` + sha256 af `$W/kill-list-udkast.md` → kopi byte-identisk til
 `plan-build/lokations-skabelon/kill-list-udkast.md` (gate-bundet navn, `DEFAULT_LAYOUT.killlist`)
@@ -121,14 +135,40 @@ forbillede.
 
 ## Tjekliste før kørsel (driveren)
 
-- [ ] mathias-9b: »Trin A færdig« + SHA modtaget; branch pullet; suite grøn lokalt.
+- [ ] mathias-9b: »Trin A færdig« + SHA modtaget; branch pullet; suite grøn lokalt (kørt selv).
+- [ ] Wrapper-signatur @ HEAD er v4 (`<rolle> <dom|produktion> <workdir> <timeout> <out> <promptfil>`) —
+      læs hovedet af `codex-run.sh`; @ 5eb3736 var den stadig v2.
+- [ ] `.prettierignore` @ HEAD dækker `plan-build/` — ellers ødelægger lint-staged byte-identiteten
+      ved commit af leverancen (husky kører mekanisk i driverens worktree fra 10/9).
+- [ ] Rolleteksten `codex-angreb.md` @ HEAD genlæst (P-6-konsistent efter Trin A); prompten rettet
+      hvis afsnittene »Kill-listen …« / »Timing + snit …« har ændret snit.
 - [ ] `actors.lock[codex-angreb]` = rolletekst@HEAD (wrapperen blokerer ellers).
 - [ ] `binaries.lock.json` matcher installeret codex-CLI (ellers: meld til fabrik-armen, vent på lås-commit).
 - [ ] `STORK_V5_GATE_INPUT` er IKKE sat (produktion).
 - [ ] Preflight: nyeste Codex-CLI · pinned model tilgængelig (`preflight.mjs`).
-- [ ] Blind workdir bygget efter recepten; grep-tjekket TOM; blobs matcher.
+- [ ] Blind workdir bygget efter recepten @ den endelige PIN (tørkørt @ 5eb3736 10/9 — gentages);
+      grep-tjekket TOM efter eksklusion af recon2/mathias-ord; kontrol-grep i ledgeren viser KUN
+      M-41-rækken; alle 6 blobs matcher (ledger-blob genberegnet @ PIN).
 - [ ] Prompt: `<PIN>` og `<LEDGER-BLOB>` udfyldt; KUN opgaven (rolletekst injiceres af wrapperen);
       gemt som fil uden for workdir; sha256 noteret. `$OUT` ligger uden for workdir.
 - [ ] Kørsel via ny wrapper (produktion, workspace-write, timeout 2400 s); PID-fil noteret — dræb
       aldrig med brede mønstre.
 - [ ] Efter kørsel: byte-identisk arkivering + provenance + commit + push FØR B3-planneren startes.
+
+## Tørkørsel 2026-09-10 @ 5eb3736 (driver-10b session de4474 · uden aktør · job-tmp `b1-blind-dryrun`)
+
+Formål: bevise at recepten er mekanisk sund FØR den endelige PIN kendes. Resultat:
+
+- Arkiv @ 5eb3736 udpakket uden `.git` (552 filer; `git archive -o` + `tar -xf`, fordi
+  worktree-guarden afviser pipe fra git). `plan-build/lokations-skabelon/` fjernet i ét hug; de fire
+  lovlige input lagt tilbage ved blob.
+- `git hash-object` i workdir'en (uden repo): krav `9402164d` · recon2 `2bdbb122` · P-8 `4af07ef4` ·
+  ledger `14722b4c` (@ 5eb3736) · ordbog `714f9b80` (før-plan, fra 04e5cfb) · bilag `6e569779` —
+  alle seks som forventet.
+- Grep-tjek (`423d9b20|lokation_status_skift|lokation_opret`, minus recon2): ÉN træffer =
+  `mathias-ord.md` linje 95 (M-41: »… er IKKE `plan ok` til plan v1 (blob 423d9b20) …«). Vurdering:
+  OID-reference, ikke plan-indhold; ledgeren er lovligt input → recepten præciseret (eksklusion +
+  kontrol-grep). Ingen andre filer i workdir'en nævner plan-blobben.
+- Udestående til den endelige PIN: wrapper v4 (ikke @ 5eb3736) · `binaries.lock.json` (ikke @
+  5eb3736) · `.prettierignore` for `plan-build/` (ikke @ 5eb3736) · ledger-blob genberegnes ·
+  rolletekst genlæses. Alle fire er Trin A-leverancer — bekræfter aktør-stoppet.
