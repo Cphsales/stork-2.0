@@ -51,6 +51,7 @@ const FILES = {
   "plan-build/pakke-x/kill-list-udkast.md": "# kill-list-udkast (codex-angreb, blindt)\n\n- K-1: WITH CHECK → true\n",
   // M-41 C1: forventnings-manifestet (plan-gate-binding + build-gate-binding, samme blob)
   "plan-build/pakke-x/forventnings-manifest.json": JSON.stringify({ schema_version: 1, pakke: "pakke-x", obligations: [{ id: "K-1/ac-1" }] }) + "\n",
+  "plan-build/pakke-x/angrebs-spec.json": JSON.stringify({ schema_version: 1, pakke: "pakke-x", cases: [], mutants: [] }) + "\n",
   "plan-build/pakke-x/build-proof.json": JSON.stringify({ bijektion: true, k_results: ["K-1", "K-2"] }) + "\n",
 };
 for (const [p, c] of Object.entries(FILES)) {
@@ -123,13 +124,13 @@ function greenKrav() {
 
 function greenBuild() {
   const artifact = ref("plan-build/pakke-x/build-proof.json");
-  const bindings = { plan: ref("plan-build/pakke-x/plan.md"), manifest: ref("plan-build/pakke-x/forventnings-manifest.json") };
+  const bindings = { plan: ref("plan-build/pakke-x/plan.md"), manifest: ref("plan-build/pakke-x/forventnings-manifest.json"), angrebsspec: ref("plan-build/pakke-x/angrebs-spec.json") };
   const proof = {
     ok: true,
     gate_id: "build",
     proof_kind: "build-proof",
     artifact_oid: artifact.oid,
-    bindings_oids: { plan: bindings.plan.oid, manifest: bindings.manifest.oid },
+    bindings_oids: { plan: bindings.plan.oid, manifest: bindings.manifest.oid, angrebsspec: bindings.angrebsspec.oid },
     killed_mutants: 2, // payload — re-verificeres FRISK af verifyProof, aldrig trusted
   };
   const snapshot = {
@@ -634,6 +635,13 @@ plantClosed(
   greenBuild,
   (c) => { delete c.snapshot.bindings.manifest; delete c.snapshot.proof_result.bindings_oids.manifest; delete c.snapshot.predecessor.bindings_oids.manifest; },
   "binding 'manifest' mangler",
+);
+plantClosed(
+  "build-gate: angrebsspec-binding fjernet → lukket (måle-spec er gate-input, ikke bevisets valg)",
+  "build",
+  greenBuild,
+  (c) => { delete c.snapshot.bindings.angrebsspec; delete c.snapshot.proof_result.bindings_oids.angrebsspec; },
+  "binding 'angrebsspec' mangler",
 );
 plantClosed(
   "manglende binding",

@@ -107,14 +107,21 @@ export function judgeObservations(form, obs) {
   if (!isPlain(obs)) return protokol("observationer mangler");
   const k = own(obs, "kontrakt");
   if (form === "UT") {
-    if (isPlain(own(obs, "exit"))) {
-      const ex = own(obs, "exit"); if (!isPlain(k) || !Number.isInteger(own(k, "exit_code")) || !isStr(own(k, "klasse"))) return protokol("exit-kontrakt mangler");
-      if (!Number.isInteger(own(ex, "exit_code"))) return protokol("exit_code ikke observeret");
-      push("exit-klasse", own(ex, "exit_code") === k.exit_code && own(ex, "klasse_observeret") === k.klasse, `exit ${own(ex, "exit_code")} klasse=${String(own(ex, "klasse_observeret"))} (kontrakt ${k.exit_code} ${k.klasse})`);
+    if (!isPlain(k)) return protokol("reject-kontrakt mangler i observationerne");
+    const kanal = own(k, "kanal");
+    if (kanal === "exit") {   // F-11: kontraktens KANAL bestemmer varianten — SQL-felter i en exit-case (eller omvendt) er protokol-fejl
+      for (const f of ["positive", "negative", "state_before", "state_after"]) if (hasOwn(obs, f)) return protokol(`exit-kanal m. SQL-observation '${f}' — blandet variant afvises`);
+      const ex = own(obs, "exit"); if (!Number.isInteger(own(k, "exit_code")) || !isStr(own(k, "klasse"))) return protokol("exit-kontrakt mangler exit_code/klasse");
+      if (!isPlain(ex) || !Number.isInteger(own(ex, "exit_code"))) return protokol("exit_code ikke observeret");
+      const code = own(ex, "exit_code");
+      if (code !== 0 && code !== k.exit_code) return protokol(`kontrol-processen fungerer ikke (exit ${code} ∉ {0, ${k.exit_code}}) — uvedkommende, ikke et udfald`);   // F-15
+      push("exit-klasse", code === k.exit_code && own(ex, "klasse_observeret") === k.klasse, `exit ${code} klasse=${String(own(ex, "klasse_observeret"))} (kontrakt ${k.exit_code} ${k.klasse})`);
       return done();
     }
+    if (kanal !== "sqlstate") return protokol(`ukendt kontrakt-kanal '${String(kanal)}'`);
+    if (hasOwn(obs, "exit")) return protokol("sqlstate-kanal m. exit-observation — blandet variant afvises");
     const p = own(obs, "positive"), n = own(obs, "negative"), b = own(obs, "state_before"), e = own(obs, "state_after");
-    if (!isPlain(k) || !isStr(own(k, "sqlstate")) || !isStr(own(k, "grund")) || !isStr(own(k, "afvisningssted")) || !isStr(own(k, "aktoer"))) return protokol("reject-kontrakt (sqlstate/grund/afvisningssted/aktoer) mangler i observationerne");
+    if (!isStr(own(k, "sqlstate")) || !isStr(own(k, "grund")) || !isStr(own(k, "afvisningssted")) || !isStr(own(k, "aktoer")) || !isStr(own(k, "fase"))) return protokol("reject-kontrakt (sqlstate/grund/afvisningssted/aktoer/fase) mangler i observationerne");
     if (!isPlain(p) || !isPlain(n) || !isDense(b, isPlain) || !isDense(e, isPlain)) return protokol("UT-observationer ufuldstændige (positive/negative/state_before/state_after)");
     if (klasse(p) === "uvedkommende") return protokol(`positivt kald fejlede uvedkommende (${p.code})`);
     if (klasse(n) === "uvedkommende") return protokol(`negativt kald fejlede uvedkommende (${n.code}) — ikke en afvisning, ikke et bevis`);
@@ -123,6 +130,7 @@ export function judgeObservations(form, obs) {
     const grundOk = det.message === k.grund; const stedOk = k.afvisningssted === "-" ? true : det.routine === k.afvisningssted;
     push("negativ-afvist-bundet", n.ok === false && n.code === k.sqlstate && grundOk && stedOk, n.ok ? "FORBUDT HANDLING TILLADT" : `afvist m. ${n.code}/${String(det.message)}@${String(det.routine)} (kontrakt ${k.sqlstate}/${k.grund}@${k.afvisningssted})`);
     push("aktoer-bundet", own(obs, "aktoer") === k.aktoer, `forsøget kørte som ${String(own(obs, "aktoer"))} (kontrakt ${k.aktoer})`);
+    push("fase-bundet", own(obs, "fase") === k.fase, `forsøget skete i fasen '${String(own(obs, "fase"))}' (kontrakt ${k.fase})`);   // F-14
     const bc = safeCanon(b), ec = safeCanon(e); if (bc === null || ec === null) return protokol("tilstands-observation indeholder ugyldige værdier");
     push("tilstand-uaendret", bc === ec, bc === ec ? "state før == efter" : "tilstand ændret af det afviste forsøg");
     return done();
@@ -147,11 +155,16 @@ export function judgeObservations(form, obs) {
   }
   if (form === "SA") {
     const a = own(obs, "a"), b = own(obs, "b"), bar = own(obs, "barrier");
-    if (!isPlain(k) || !isStr(own(k, "sqlstate")) || !isStr(own(k, "grund"))) return protokol("SA: reject-kontrakt mangler");
+    if (!isPlain(k) || !isStr(own(k, "sqlstate")) || !isStr(own(k, "grund")) || !isStr(own(k, "aktoer"))) return protokol("SA: reject-kontrakt (sqlstate/grund/aktoer) mangler");
     if (!isPlain(a) || !isPlain(b) || !isPlain(bar) || typeof own(a, "ok") !== "boolean" || typeof own(b, "ok") !== "boolean") return protokol("SA-observationer ufuldstændige (a/b/barrier)");
     if (klasse(a) === "uvedkommende" || klasse(b) === "uvedkommende") return protokol(`et forløb fejlede uvedkommende (${a.code}/${b.code}) — ikke et race-udfald`);
     const pa = own(a, "pid"), pb = own(b, "pid");
-    push("to-sessions", Number.isInteger(pa) && Number.isInteger(pb) && pa !== pb, `pid A=${String(pa)} B=${String(pb)}`);
+    // F-15: manglende sessions-/afslutnings-/overlapbevis er PROTOKOL-fejl — ikke et udfald der kan blive brudt/kill
+    if (!Number.isInteger(pa) || !Number.isInteger(pb)) return protokol("SA: backend-pids ikke observeret (ingen sessionsbevis)");
+    if (!["commit", "rollback"].includes(own(a, "commit")) || !["commit", "rollback"].includes(own(b, "commit"))) return protokol("SA: afslutning (commit/rollback) ikke observeret pr. session");
+    if (typeof own(bar, "observed") !== "boolean") return protokol("SA: barriere-observation mangler");
+    push("aktoer-bundet", own(obs, "aktoer") === k.aktoer, `forløbene kørte som ${String(own(obs, "aktoer"))} (kontrakt ${k.aktoer})`);   // F-14
+    push("to-sessions", pa !== pb, `pid A=${pa} B=${pb}`);
     push("barriere-observeret", own(bar, "observed") === true && own(bar, "blocked_pid") === pb && own(bar, "blocking_pid") === pa, own(bar, "observed") === true ? `B (${String(own(bar, "blocked_pid"))}) blokeret af A (${String(own(bar, "blocking_pid"))})` : "ingen barriere observeret — sekventiel kørsel er ikke SA");
     const rej = [a, b].filter((x) => x.ok === false); const bundet = rej.every((x) => x.code === k.sqlstate && (isPlain(x.detail) ? x.detail.message : null) === k.grund && (k.afvisningssted === "-" || (isPlain(x.detail) ? x.detail.routine : null) === k.afvisningssted));
     push("praecis-en-afvisning-bundet", rej.length === 1 && bundet, `afvisninger=${rej.length} (${rej.map((x) => x.code).join(",")}) kontrakt ${k.sqlstate}/${k.grund}`);
@@ -172,7 +185,7 @@ export function brudtPaaFormensMaade(r) {
     case "UT": return a("negativ-afvist-bundet") === false && (own(own(r, "observations"), "negative")?.ok === true || own(own(r, "observations"), "exit") !== undefined) || a("tilstand-uaendret") === false || a("exit-klasse") === false;
     case "FS": return a("vaerdi-matcher-orakel") === false || r.assertions.some((x) => x.id.startsWith("checkpoint:") && x.ok === false);
     case "MH": return a("handling-mulig-for-legitim-aktoer") === false || r.assertions.some((x) => x.id.startsWith("vidne:") && x.ok === false);
-    case "SA": return a("invariant-efter-commit") === false || a("praecis-en-afvisning-bundet") === false;
+    case "SA": return a("invariant-efter-commit") === false;   // F-15: kun racets faktiske brud er formens brud
     default: return false;
   }
 }
@@ -184,6 +197,7 @@ export async function runCase(c, ctx, runner) {
     proof_form: own(c, "proof_form") ?? null, bid_id: own(c, "bid_id") ?? null, hard_effect: own(c, "hard_effect") ?? null,
     entrypoint: isPlain(own(c, "entrypoint")) ? { kind: own(own(c, "entrypoint"), "kind") ?? null, ref: own(own(c, "entrypoint"), "ref") ?? null } : null,
     actor_role: isPlain(own(c, "actor")) ? own(own(c, "actor"), "role") ?? null : null,
+    run_id: isPlain(ctx) ? own(ctx, "run_id") ?? null : null,   // ALLE delresultater (også indlejrede i mutanter) bærer kørslens id (C1-r2 F-12)
   });
   const protokol = (why) => ({ ...base(), status: STATUS.PROTOKOL, assertions: [{ id: "protokol", ok: false, detail: why }], observations: {} });
   if (!isPlain(c)) return protokol("case er ikke et plain object");
@@ -217,12 +231,12 @@ export async function runCase(c, ctx, runner) {
       const code = own(r, "exit_code"); const out = typeof own(r, "stdout") === "string" ? own(r, "stdout") : "";
       if (!Number.isInteger(code)) return protokol("runner.exec returnerede ikke exit_code");
       const m = out.split(/\r?\n/).map((l) => l.match(/^klasse=([A-Za-z0-9._:-]+)$/)).find(Boolean);   // struktureret diagnose-linje, ikke fri tekst
-      obs.kontrakt = { exit_code: rc.exit_code, klasse: rc.klasse }; obs.exit = { exit_code: code, klasse_observeret: m ? m[1] : null };
+      obs.kontrakt = { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse }; obs.exit = { exit_code: code, klasse_observeret: m ? m[1] : null };
       return finish();
     }
     const pos = own(c, "positive"); const negS = own(c, "negative"); const st = own(c, "state");
     if (!isPlain(pos) || !isPlain(negS) || !isPlain(st)) return protokol("UT kræver positive{sql} (lovligt søsterkald), negative{sql} og state{sql}");
-    obs.kontrakt = { sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;
+    obs.kontrakt = { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;
     const p = await safeSql(runner, own(pos, "sql"), opts); if (!p.protocolOk) return protokol(`positiv: ${p.error}`);
     const b = await safeSql(runner, own(st, "sql"), opts); if (!b.protocolOk || !b.ok || b.rows === null) return protokol(`state-observation før: ${b.error ?? b.code ?? "ingen rows"}`);
     const n = await safeSql(runner, own(negS, "sql"), opts); if (!n.protocolOk) return protokol(`negativ: ${n.error}`);
@@ -260,7 +274,7 @@ export async function runCase(c, ctx, runner) {
     if (!isPlain(r) || own(r, "protocolOk") !== true) return protokol(`race-runner protokol-fejl: ${String(own(r, "error") ?? "ukendt")}`);
     const sess = (x) => (isPlain(x) ? { pid: own(x, "pid") ?? null, ok: own(x, "ok"), code: own(x, "code") ?? null, detail: isPlain(own(x, "detail")) ? { message: own(own(x, "detail"), "message") ?? null, routine: own(own(x, "detail"), "routine") ?? null } : null, commit: own(x, "commit") ?? null } : null);
     const bar = own(r, "barrier");
-    obs.race_id = race.race_id; obs.kontrakt = { sqlstate: neg.reject_contract.sqlstate, grund: neg.reject_contract.grund, afvisningssted: neg.reject_contract.afvisningssted };
+    obs.race_id = race.race_id; obs.kontrakt = { kanal: "sqlstate", sqlstate: neg.reject_contract.sqlstate, grund: neg.reject_contract.grund, afvisningssted: neg.reject_contract.afvisningssted, aktoer: neg.reject_contract.aktoer }; obs.aktoer = opts.role;
     obs.a = sess(own(r, "a")); obs.b = sess(own(r, "b")); obs.barrier = isPlain(bar) ? { observed: own(bar, "observed") === true, blocked_pid: own(bar, "blocked_pid") ?? null, blocking_pid: own(bar, "blocking_pid") ?? null } : {};
     obs.invariantRows = own(r, "invariantRows") ?? null; obs.invariant_expect = own(own(race, "invariant"), "expect");
     return finish();
@@ -278,10 +292,13 @@ export function judgeKill(m) {
   const controlsOk = isDense(cu, isPlain) && cu.length >= 1 && cu.every((r) => st(r) === STATUS.OPFYLDT);
   const tid = own(m, "target_assertion_id");
   const targetBroken = isPlain(under) && isDense(own(under, "assertions"), isPlain) && under.assertions.some((a) => a.id === tid && a.ok === false);
-  const killed = baselineOk && controlsOk && st(under) === STATUS.BRUDT && targetBroken && brudtPaaFormensMaade(under);
-  const restored = isPlain(rest) && own(rest, "ok") === true;
+  const fb = safeCanon(own(m, "footprint_baseline")), fu = safeCanon(own(m, "footprint_under")), fr = safeCanon(own(m, "footprint_restored"));
+  const fpOk = fb !== null && fu !== null && fr !== null && isDense(own(m, "footprint_baseline"), isPlain);
+  const mutationAttesteret = fpOk && fb !== fu;             // uden aftryk er intet muteret (findes-mutant/no-op)
+  const killed = baselineOk && controlsOk && st(under) === STATUS.BRUDT && targetBroken && brudtPaaFormensMaade(under) && mutationAttesteret;
+  const restored = isPlain(rest) && own(rest, "ok") === true && fpOk && fr === fb;   // restore bevist ved aftryk == baseline, FØR clean-setup
   const cleanAfter = restored && isPlain(clean) && st(own(clean, "target")) === STATUS.OPFYLDT && isDense(own(clean, "controls"), isPlain) && clean.controls.length >= 1 && clean.controls.every((r) => st(r) === STATUS.OPFYLDT);
-  return { killed, restored, cleanAfter, break_form: killed ? own(under, "proof_form") : null, why: killed ? `dræbt: ${tid}` : `ikke dræbt: baseline=${baselineOk} kontroller=${controlsOk} mål=${st(under)} target_assertion_brudt=${targetBroken}` };
+  return { killed, restored, cleanAfter, break_form: killed ? own(under, "proof_form") : null, why: killed ? `dræbt: ${tid}` : `ikke dræbt: baseline=${baselineOk} kontroller=${controlsOk} mål=${st(under)} target_assertion_brudt=${targetBroken} mutation_attesteret=${mutationAttesteret}` };
 }
 export async function killCaseMutant(mutant, cases, ctx, runner) {
   const mid = own(mutant, "mutant_id") ?? null;
@@ -295,9 +312,13 @@ export async function killCaseMutant(mutant, cases, ctx, runner) {
   const ctrlIds = own(mutant, "controls");
   if (!isDense(ctrlIds, isStr) || ctrlIds.length === 0 || ctrlIds.some((id) => !byId.has(id) || id === own(mutant, "target_case_id"))) return out({ detail: "controls skal være ≥1 eksisterende case_ids ≠ target (de nødvendige kontrolforløb)" });
   const controls = ctrlIds.map((id) => byId.get(id));
+  const fpSpec = own(mutant, "footprint");
+  if (!isPlain(fpSpec) || !isPlain(own(fpSpec, "observe")) || !isStr(own(own(fpSpec, "observe"), "sql"))) return out({ detail: "footprint.observe{sql} kræves (ejer-observation af det muterede objekt — attesterer mutation og restore)" });
+  const fp = async () => { const r = await safeSql(runner, own(own(fpSpec, "observe"), "sql"), {}); return r.protocolOk && r.ok && r.rows !== null ? r.rows : null; };
   const runAll = async (list) => { const r = []; for (const cc of list) r.push(await runCase(cc, ctx, runner)); return r; };
   const baseline = await runCase(target, ctx, runner); const controls_baseline = await runAll(controls);
-  const res = { baseline, controls_baseline };
+  const footprint_baseline = await fp();
+  const res = { baseline, controls_baseline, footprint_baseline };
   if (baseline.status !== STATUS.OPFYLDT || !controls_baseline.every((r) => r.status === STATUS.OPFYLDT)) return out({ ...res, detail: "baseline (mål + kontroller) ikke opfyldt — intet at dræbe mod" });
   const applied = await safeSql(runner, own(mutant, "apply"), {});
   if (!applied.protocolOk || !applied.ok) {
@@ -305,10 +326,12 @@ export async function killCaseMutant(mutant, cases, ctx, runner) {
     const j = judgeKill({ ...res, restore: { ok: rr.ok === true }, clean });
     return out({ ...res, restore: { ok: rr.ok === true }, clean, restored: j.restored, cleanAfter: j.cleanAfter, detail: `mutant-apply fejlede: ${applied.error ?? applied.code}` });
   }
+  const footprint_under = await fp();                       // mutationen SKAL efterlade et aftryk (attesteret mutation, F-13)
   const under = await runCase(target, ctx, runner); const controls_under = await runAll(controls);
   const rr = await safeSql(runner, own(mutant, "restore"), {});
+  const footprint_restored = await fp();                    // aftrykket SKAL være tilbage FØR nogen clean-kørsels setup (F-16)
   const clean = { target: await runCase(target, ctx, runner), controls: await runAll(controls) };
-  const full = { ...res, under, controls_under, restore: { ok: rr.ok === true }, clean, target_assertion_id: own(mutant, "target_assertion_id") };
+  const full = { ...res, footprint_under, footprint_restored, under, controls_under, restore: { ok: rr.ok === true }, clean, target_assertion_id: own(mutant, "target_assertion_id") };
   const j = judgeKill(full);
   return out({ ...full, killed: j.killed, break_form: j.break_form, restored: j.restored, cleanAfter: j.cleanAfter, detail: j.why });
 }
@@ -317,15 +340,17 @@ export async function killCaseMutant(mutant, cases, ctx, runner) {
 export async function runBuildProofEngine(spec, runner) {
   const dead = (error) => ({ run_id: null, cases: [], mutants: [], summary: null, allOk: false, error });
   if (!isPlain(spec)) return dead("malformet spec");
-  const manifest = own(spec, "manifest"); const cases = own(spec, "cases"); const mutants = hasOwn(spec, "mutants") ? own(spec, "mutants") : [];
+  const manifest = own(spec, "manifest");
+  const src = isPlain(own(spec, "angrebsSpec")) ? own(spec, "angrebsSpec") : spec;   // måle-spec'en (angrebs-spec.json) leverer cases + mutants
+  const cases = own(src, "cases"); const mutants = hasOwn(src, "mutants") ? own(src, "mutants") : [];
   const runId = own(spec, "run_id");
   if (!isStr(runId)) return dead("run_id kræves (binder alle delbeviser til én kørsel)");
   let forventning; try { forventning = expectedSet(manifest); } catch (e) { return dead(`manifest: ${e.message}`); }
   if (!isDense(cases, isPlain) || cases.length === 0) return dead("cases skal være et ikke-tomt, tæt array");
   if (!isDense(mutants, isPlain)) return dead("mutants skal være et tæt array");
   const ids = new Set(); for (const c of cases) { const id = own(c, "case_id"); if (!isStr(id) || ids.has(id)) return dead(`case_id mangler/dublet: ${String(id)}`); ids.add(id); }
-  const ctx = { forventning };
-  const caseRes = []; for (const c of cases) caseRes.push({ ...(await runCase(c, ctx, runner)), run_id: runId });
+  const ctx = { forventning, run_id: runId };
+  const caseRes = []; for (const c of cases) caseRes.push(await runCase(c, ctx, runner));
   const mutRes = []; for (const m of mutants) mutRes.push({ ...(await killCaseMutant(m, cases, ctx, runner)), run_id: runId });
   const summary = summarize(caseRes, mutRes);
   return { run_id: runId, cases: caseRes, mutants: mutRes, summary, allOk: summary.brudt === 0 && summary.protokol_fejl === 0 && summary.draebt === summary.mutanter };

@@ -57,15 +57,16 @@ const q1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql",
 
 // ---------- rigtig race-runner: to interaktive psql-sessions, markør-synkroniseret; barriere = række-lås ----------
 function session(name) {
-  const p = spawn("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=0", "-q", "-tA"], { stdio: ["pipe", "pipe", "pipe"] });
-  let out = "", err = "", n = 0;
-  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
+  // C1-r2 F-17: ÉN ordnet strøm (stderr → stdout via 2>&1 i containeren), så ERROR-linjer altid står FØR markøren for samme sætning
+  const p = spawn("docker", ["exec", "-i", CONTAINER, "sh", "-c", "exec psql -U postgres -v ON_ERROR_STOP=0 -q -tA 2>&1"], { stdio: ["pipe", "pipe", "pipe"] });
+  let out = "", n = 0;
+  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));
   const run = (sql, timeoutMs = 15000) => new Promise((resolve, reject) => {
-    const mark = `MARK_${name}_${++n}`; const errStart = err.length; const outStart = out.length;
+    const mark = `MARK_${name}_${++n}`; const outStart = out.length;
     p.stdin.write(`${sql}\n\\echo ${mark}\n`);
     const t0 = Date.now();
     const poll = () => {
-      if (out.includes(mark, outStart)) { const seg = err.slice(errStart); const pe = parseErr(seg); const ok = !/ERROR:/.test(seg); return resolve({ ok, code: ok ? null : pe.code, detail: ok ? null : pe.detail, out: out.slice(outStart, out.indexOf(mark, outStart)).trim(), err: seg }); }
+      if (out.includes(mark, outStart)) { const seg = out.slice(outStart, out.indexOf(mark, outStart)); const pe = parseErr(seg); const ok = !/ERROR:/.test(seg); return resolve({ ok, code: ok ? null : pe.code, detail: ok ? null : pe.detail, out: seg.split("\n").filter((l) => !/^(ERROR|CONTEXT|LOCATION|DETAIL|HINT):/.test(l)).join("\n").trim(), err: seg }); }
       if (Date.now() - t0 > timeoutMs) return reject(new Error(`${name}: timeout på '${sql.slice(0, 40)}'`));
       setTimeout(poll, 15);
     };
@@ -92,7 +93,10 @@ async function race(s) {
   const A = session("A"), B = session("B");
   try {
     const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};` : ""}`;
-    await A.run(pre("v5race_A")); await B.run(pre("v5race_B"));
+    const pa0 = await A.run(pre("v5race_A")); const pb0 = await B.run(pre("v5race_B"));
+    if (!pa0.ok || !pb0.ok) return { protocolOk: false, error: `rolle-/sessionsopsætning fejlede (A ok=${pa0.ok}, B ok=${pb0.ok})` };   // F-17
+    const ra0 = await A.run("select current_user;"); const rb0 = await B.run("select current_user;");
+    if (s.actor?.role && (ra0.out !== s.actor.role || rb0.out !== s.actor.role)) return { protocolOk: false, error: `faktisk rolle ≠ ønsket (${ra0.out}/${rb0.out} vs ${s.actor.role})` };
     if (s.setup?.sql) { const r = dockerPsql(s.setup.sql, {}); if (!r.ok) return { protocolOk: false, error: `setup: ${r.error}` }; }
     const pa = Number((await A.run("select pg_backend_pid();")).out); const pb = Number((await B.run("select pg_backend_pid();")).out);
     if (!Number.isInteger(pa) || !Number.isInteger(pb)) return { protocolOk: false, error: "kunne ikke læse backend-pids" };
@@ -115,6 +119,9 @@ const runner = { sql: dockerPsql, race };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
 console.log(`build-harness INTEGRATION v2 mod '${CONTAINER}':`);
+const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
+const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
+const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
 const FIX = `
 drop schema if exists f cascade; create schema f;
 do $$ begin if not exists (select from pg_roles where rolname='app_role') then create role app_role; end if; end $$;
@@ -126,25 +133,9 @@ create table f.prishist(lokation_id int not null, fra date not null, pris numeri
 insert into f.lokation values (1,'Torvet',true); insert into f.stand values (1,1,true),(2,1,true),(3,1,false);
 insert into f.prishist values (1,'2026-01-01',80),(1,'2026-06-01',100);
 grant select on f.lokation, f.stand, f.audit to app_role;   -- læse-vidner/tilstand; INGEN skriv/insert-grants (direkte DML → 42501)
-create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$
-begin
-  if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;   -- g.navn
-  insert into f.lokation(id, navn) values (p_id, p_navn);
-  insert into f.audit(handling, lokation_id) values ('opret', p_id);                                                       -- g.audit
-  return p_id;
-end $$;
-create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$
-  select pris from f.prishist where lokation_id = p_lok and fra <= p_dato order by fra desc limit 1 $$;                    -- g.pris
-create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$
-declare v_lok int;
-begin
-  select lokation_id into v_lok from f.stand where id = p_stand;
-  perform 1 from f.lokation where id = v_lok for update;                                                                   -- g.min-laas (barrieren)
-  update f.stand set aktiv = false where id = p_stand;
-  if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then
-    raise exception using errcode = 'P0001', message = 'min_en_stand';                                                     -- g.min-check
-  end if;
-end $$;
+${FN_OPRET(true, true)}
+${FN_PRIS(true)}
+${FN_DEAKT(true, true)}
 revoke all on all functions in schema f from public;   -- LÆRDOM: Postgres giver EXECUTE til PUBLIC som default — en revoke fra én rolle fjerner intet uden dette
 grant execute on function f.lokation_opret(int,text), f.pris_paa(int,date), f.stand_deaktiver(int) to app_role;
 `;
@@ -184,17 +175,17 @@ const cases = [
       invariant: { observe: { sql: "select count(*)::int as aktive from f.stand where lokation_id = 1 and aktiv;" }, expect: { kind: "scalar", value: 1 } } } },
 ];
 // mutanter (apply/restore som ejer)
-const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
-const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
-const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
+const FP_FN = (fn) => ({ observe: { sql: `select prosrc from pg_proc where proname = '${fn}' and pronamespace = 'f'::regnamespace;` } });
+const FP_GRANT = (fn) => ({ observe: { sql: `select has_function_privilege('app_role', '${fn}', 'execute') as x;` } });
+const FP_TABLE_GRANT = { observe: { sql: "select has_table_privilege('app_role', 'f.lokation', 'insert') as x;" } };
 const mutants = [
-  { mutant_id: "m-navn", guard_ref: "g.navn", apply: FN_OPRET(false, true), restore: FN_OPRET(true, true), target_case_id: "c-navn-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"] },
-  { mutant_id: "m-grant", guard_ref: "g.grant", apply: "revoke execute on function f.lokation_opret(int,text) from app_role;", restore: "grant execute on function f.lokation_opret(int,text) to app_role;", target_case_id: "c-opret-mh", target_assertion_id: "handling-mulig-for-legitim-aktoer", controls: ["c-pris-fs"] },
-  { mutant_id: "m-audit", guard_ref: "g.audit", apply: FN_OPRET(true, false), restore: FN_OPRET(true, true), target_case_id: "c-opret-mh", target_assertion_id: "vidne:audit-opret", controls: ["c-pris-fs"] },
-  { mutant_id: "m-pris", guard_ref: "g.pris", apply: FN_PRIS(false), restore: FN_PRIS(true), target_case_id: "c-pris-fs", target_assertion_id: "checkpoint:hist-marts", controls: ["c-navn-ut"] },
-  { mutant_id: "m-min-check", guard_ref: "g.min-check", apply: FN_DEAKT(true, false), restore: FN_DEAKT(true, true), target_case_id: "c-min-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"] },
-  { mutant_id: "m-min-laas", guard_ref: "g.min-laas", apply: FN_DEAKT(false, true), restore: FN_DEAKT(true, true), target_case_id: "c-race-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-pris-fs"] },
-  { mutant_id: "m-dml", guard_ref: "g.dml", apply: "grant insert on f.lokation to app_role;", restore: "revoke insert on f.lokation from app_role;", target_case_id: "c-dml-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"] },
+  { mutant_id: "m-navn", guard_ref: "g.navn", apply: FN_OPRET(false, true), restore: FN_OPRET(true, true), target_case_id: "c-navn-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: FP_FN("lokation_opret") },
+  { mutant_id: "m-grant", guard_ref: "g.grant", apply: "revoke execute on function f.lokation_opret(int,text) from app_role;", restore: "grant execute on function f.lokation_opret(int,text) to app_role;", target_case_id: "c-opret-mh", target_assertion_id: "handling-mulig-for-legitim-aktoer", controls: ["c-pris-fs"], footprint: FP_GRANT("f.lokation_opret(int,text)") },
+  { mutant_id: "m-audit", guard_ref: "g.audit", apply: FN_OPRET(true, false), restore: FN_OPRET(true, true), target_case_id: "c-opret-mh", target_assertion_id: "vidne:audit-opret", controls: ["c-pris-fs"], footprint: FP_FN("lokation_opret") },
+  { mutant_id: "m-pris", guard_ref: "g.pris", apply: FN_PRIS(false), restore: FN_PRIS(true), target_case_id: "c-pris-fs", target_assertion_id: "checkpoint:hist-marts", controls: ["c-navn-ut"], footprint: FP_FN("pris_paa") },
+  { mutant_id: "m-min-check", guard_ref: "g.min-check", apply: FN_DEAKT(true, false), restore: FN_DEAKT(true, true), target_case_id: "c-min-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: FP_FN("stand_deaktiver") },
+  { mutant_id: "m-min-laas", guard_ref: "g.min-laas", apply: FN_DEAKT(false, true), restore: FN_DEAKT(true, true), target_case_id: "c-race-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-pris-fs"], footprint: FP_FN("stand_deaktiver") },
+  { mutant_id: "m-dml", guard_ref: "g.dml", apply: "grant insert on f.lokation to app_role;", restore: "revoke insert on f.lokation from app_role;", target_case_id: "c-dml-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: FP_TABLE_GRANT },
 ];
 
 // ---------- kør: baseline pr. case ----------
@@ -215,14 +206,15 @@ for (const c of cases) {
 console.log("\nmutanter (én pr. værn) — formbestemt kill:");
 // engine-kørsel: hver case/mutant nulstiller fixturen via en runner-wrapper der resetter før hvert positivt kald? Enklere: reset før hele kørslen og brug unikke id'er pr. kald via sekvens.
 reset();
-const eng = await runBuildProofEngine({ manifest, run_id: "int-1", cases, mutants }, idem);
+const eng = await runBuildProofEngine({ manifest, run_id: "int-1", angrebsSpec: { cases, mutants } }, idem);
 eq("engine: alle cases opfyldt", eng.summary?.opfyldt, cases.length);
 for (const m of eng.mutants) { const good = m.killed && m.restored && m.cleanAfter; eq(`${m.mutant_id} (${m.guard_ref}) → dræbt som ${m.break_form ?? "—"} · restored · ren`, good, true); if (!good) console.error("      ", JSON.stringify({ killed: m.killed, restored: m.restored, cleanAfter: m.cleanAfter, detail: m.detail }).slice(0, 600)); }
 eq("engine: allOk (alle former opfyldt + alle 7 mutanter dræbt formbestemt)", eng.allOk, true);
 eq("break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT", eng.mutants.map((m) => m.break_form).join(","), "UT,MH,MH,FS,UT,SA,UT");
 { const sa = eng.cases.find((c) => c.case_id === "c-race-sa"); eq("SA-observationer bærer to forskellige backend-pids, blokeret/blokerende pid og afslutnings-udfald (F-8)", Number.isInteger(sa.observations.a.pid) && Number.isInteger(sa.observations.b.pid) && sa.observations.a.pid !== sa.observations.b.pid && sa.observations.barrier.blocked_pid === sa.observations.b.pid && sa.observations.barrier.blocking_pid === sa.observations.a.pid && sa.observations.a.commit === "commit" && sa.observations.b.commit === "rollback", true); }
 { const ut = eng.cases.find((c) => c.case_id === "c-navn-ut"); eq("UT-observationer bærer struktureret afvisning: kode + præcist message-token + routine (F-4)", ut.observations.negative.code === "22023" && ut.observations.negative.detail.message === "navn_blank" && ut.observations.negative.detail.routine === "f.lokation_opret", true); }
-{ const r = await runBuildProofEngine({ manifest, run_id: "int-2", cases: [cases[3], cases[0]], mutants: [{ mutant_id: "m-findes", guard_ref: "g.pris", apply: "comment on function f.pris_paa(int,date) is 'mut';", restore: "comment on function f.pris_paa(int,date) is null;", target_case_id: "c-pris-fs", target_assertion_id: "vaerdi-matcher-orakel", controls: ["c-navn-ut"] }] }, idem); eq("kontrast: »findes«-mutant (kun kommentar) OVERLEVER → allOk=false", r.allOk === false && r.mutants[0].killed === false, true); }
+{ const r = await runBuildProofEngine({ manifest, run_id: "int-2", angrebsSpec: { cases: [cases[3], cases[0]], mutants: [{ mutant_id: "m-findes", guard_ref: "g.pris", apply: "comment on function f.pris_paa(int,date) is 'mut';", restore: "comment on function f.pris_paa(int,date) is null;", target_case_id: "c-pris-fs", target_assertion_id: "vaerdi-matcher-orakel", controls: ["c-navn-ut"], footprint: FP_FN("pris_paa") }] } }, idem); eq("kontrast: »findes«-mutant (kun kommentar) OVERLEVER → allOk=false (footprint uændret = ingen mutation attesteret)", r.allOk === false && r.mutants[0].killed === false && /mutation_attesteret=false/.test(r.mutants[0].detail), true); }
+{ const mn = eng.mutants.find((m) => m.mutant_id === "m-navn"); eq("footprint attesterer mutation og restore: baseline ≠ under, restored == baseline (F-13/F-16)", JSON.stringify(mn.footprint_baseline) !== JSON.stringify(mn.footprint_under) && JSON.stringify(mn.footprint_restored) === JSON.stringify(mn.footprint_baseline), true); }
 
 dockerPsql("drop schema if exists f cascade;", {});
 console.log("");

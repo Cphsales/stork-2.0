@@ -46,6 +46,7 @@ const FILES = {
   [`plan-build/${PAKKE}/ordbog.md`]: "# ordbog\n",
   [`plan-build/${PAKKE}/kill-list-udkast.md`]: "# kill-list-udkast (codex-angreb, blindt)\n",
   [`plan-build/${PAKKE}/forventnings-manifest.json`]: JSON.stringify({ schema_version: 1, pakke: PAKKE }) + "\n",
+  [`plan-build/${PAKKE}/angrebs-spec.json`]: JSON.stringify({ schema_version: 1, pakke: PAKKE }) + "\n",
   "supabase/migrations/0001.sql":
     "alter table salg enable row level security;\n" +
     'create policy "salg_egen" on salg for select using (org_id = auth_org());\n',
@@ -124,6 +125,13 @@ console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
   Object.keys(snap.bindings).sort().join(",") === "killlist,krav,manifest,ordbog,p8,recon2"
     ? ok("plan-snapshot bærer PRÆCIS registryets 6 bindinger (inkl. manifest, M-41 C1)")
     : bad("plan-bindinger sæt", Object.keys(snap.bindings).join(","));
+}
+{
+  // M-41 C1/C2: build-gaten binder plan + manifest + angrebs-spec (måle-spec) fra layoutet
+  const snap = buildSnapshot("build", { git, commitSha: COMMIT, pakke: PAKKE });
+  Object.keys(snap.bindings).sort().join(",") === "angrebsspec,manifest,plan" && snap.bindings.angrebsspec?.path === `plan-build/${PAKKE}/angrebs-spec.json`
+    ? ok("build-snapshot bærer PRÆCIS plan + manifest + angrebsspec (M-41 C1)")
+    : bad("build-bindinger", JSON.stringify(Object.keys(snap.bindings)));
 }
 {
   // P2-gates F-2: layout-alias (killlist → recon2-stien) må kaste, aldrig resolve fem nøgler til fire filer

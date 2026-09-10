@@ -109,7 +109,10 @@ export const GATE_REGISTRY = deepFreeze([
     // predecessor.bindings_oids.manifest === bindings.manifest.oid (indholds-bundet kæde for manifestet).
     predecessorBindings: ["manifest"],
     artifact: "build-proof",
-    bindings: ["plan", "manifest"],
+    // C1-r2 F-13/F-18: den maskinlæsbare angrebs-/måle-spec (cases · orakler · kontroller · mutanter · bid-graf) er gate-input
+    // (layout-sti, pinned commit) — bevisproducenten leverer kun observationer mod den. Provenance (Codex-skrevet FØR byg via
+    // attack-spec-state-machine, hooks.mjs) er hooks'/CI's ansvar (R-PREDECESSOR-WIRING).
+    bindings: ["plan", "manifest", "angrebsspec"],
     proofKind: "build-proof",
     expectedActors: [],
     approver: null,

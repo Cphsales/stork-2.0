@@ -48,6 +48,8 @@ function mkRunner(over = {}) {
         case "ACT_MH_SYNTAX": return R(false, "42601", "syntax error", null);
         case "AUDIT": return R(true, null, null, null, st.audit ? [{ id: 1 }] : []);
         case "SETUP": return R(true);
+        case "FP": return R(true, null, null, null, [{ navn: st.guardNavn, pris: st.pris, grant: st.grant, audit: st.audit, trg: st.trg, laas: st.laas }]);
+        case "FP_KONSTANT": return R(true, null, null, null, [{ x: 1 }]);
         case "SETUP_FAIL": return R(false, "42601", "x", null);
         case "MUT_NAVN_OFF": st.guardNavn = false; return R(true);
         case "MUT_NAVN_ON": st.guardNavn = true; return R(true);
@@ -115,6 +117,10 @@ eq("afvist m. rigtig kode+grund men ANDET STED → brudt (F-4)", await st(withCa
 eq("afvist m. anden anerkendt klasse (42501 ≠ 22023) → brudt", await st(withCase(C.ut, (x) => (x.negative.sql = "NEG_WRONG_CLASS"))), STATUS.BRUDT);
 eq("afvist m. UVEDKOMMENDE kode (42601 syntax) → protokol-fejl, ikke brudt (F-6)", await st(withCase(C.ut, (x) => (x.negative.sql = "NEG_SYNTAX"))), STATUS.PROTOKOL);
 eq("forsøget kørte som anden aktør end kontraktens → brudt (F-4)", await st(withCase(C.ut, (x) => (x.actor = { role: "anden_rolle" }))), STATUS.BRUDT);
+eq("forsøget skete i anden fase end kontraktens (apply ≠ wrapper) → brudt (F-14)", await st(withCase(C.ut, (x) => (x.fase = "apply"))), STATUS.BRUDT);
+eq("kontrakt bærer kanal (sqlstate) i observationerne", (await run(C.ut)).observations.kontrakt.kanal, "sqlstate");
+eq("judgeObservations: sqlstate-kontrakt m. exit-observation (blandet) → protokol (F-11)", judgeObservations("UT", { ...(await run(C.ut)).observations, exit: { exit_code: 1, klasse_observeret: "x" } }).status, STATUS.PROTOKOL);
+eq("judgeObservations: exit-kontrakt m. SQL-felter (blandet) → protokol (F-11)", judgeObservations("UT", { kontrakt: { kanal: "exit", exit_code: 1, klasse: "k" }, exit: { exit_code: 1, klasse_observeret: "k" }, positive: { ok: true } }).status, STATUS.PROTOKOL);
 eq("søsterkald afvist → brudt", await st(C.ut, mkRunner({ sql: (t) => (t === "POS" ? R(false, "42501", "denied", null) : undefined) })), STATUS.BRUDT);
 eq("afvist men tilstand ændret → brudt", await st(C.ut, mkRunner({ sql: (t, o, s) => { if (t === "NEG") { s.stateRows = [{ n: 2 }]; return R(false, "22023", "navn_blank", "f.lokation_opret"); } } })), STATUS.BRUDT);
 eq("state-kald AFVIST (ok:false, rows:[]) → protokol-fejl (F-5)", await st(withCase(C.ut, (x) => (x.state.sql = "OBS_DENIED"))), STATUS.PROTOKOL);
@@ -128,6 +134,7 @@ eq("exit-kanal: exit 1 + struktureret klasse-linje → opfyldt", await st(C.ci),
 eq("exit-kanal: exit 1 men ANDEN klasse (ENOENT) → brudt (F-4)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klasse=ENOENT\n" }) })), STATUS.BRUDT);
 eq("exit-kanal: klasse kun som fri tekst (ingen klasse=-linje) → brudt", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klassifikation mangler\n" }) })), STATUS.BRUDT);
 eq("exit-kanal: exit 0 → brudt", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "klasse=klassifikation\n" }) })), STATUS.BRUDT);
+eq("exit-kanal: exit 127 (processen fungerer ikke) → protokol-fejl, ikke brudt (F-15)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 127, stdout: "" }) })), STATUS.PROTOKOL);
 
 console.log("\nFS — forkert slutværdi:");
 eq("baseline → opfyldt (m. navngivet checkpoint)", await st(C.fs), STATUS.OPFYLDT);
@@ -153,6 +160,10 @@ eq("baseline → opfyldt", await st(C.sa), STATUS.OPFYLDT);
 eq("ingen barriere observeret → brudt", await st(C.sa, mkRunner({ state: { laas: false } })), STATUS.BRUDT);
 eq("trigger fjernet: begge lykkes + invariant brudt → brudt", await st(C.sa, mkRunner({ state: { trg: false } })), STATUS.BRUDT);
 eq("samme pid for A og B → brudt (to-sessions, F-8)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 7, ok: true, commit: "commit" }, b: { pid: 7, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" }, barrier: { observed: true, blocked_pid: 7, blocking_pid: 7 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("pids mangler → protokol-fejl, ikke brudt (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { ok: true, commit: "commit" }, b: { ok: true, commit: "commit" }, barrier: { observed: false }, invariantRows: [{ aktive: 0 }] }) })), STATUS.PROTOKOL);
+eq("commit-udfald mangler → protokol-fejl (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" } }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
+eq("SA kørt som anden aktør end kontraktens → brudt (F-14)", await st(withCase(C.sa, (x) => (x.actor = { role: "postgres" }))), STATUS.BRUDT);
+eq("SA-observationer bærer aktoer", (await run(C.sa)).observations.aktoer, "app_role");
 eq("barriere peger på forkerte pids → brudt", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true, commit: "commit" }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" }, barrier: { observed: true, blocked_pid: 1, blocking_pid: 2 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
 eq("afvist forløb ikke rullet tilbage → brudt (afslutning)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true, commit: "commit" }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "commit" }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
 eq("begge fejler UVEDKOMMENDE (42601) → protokol, ikke brudt (F-6)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: false, code: "42601", commit: "rollback" }, b: { pid: 2, ok: false, code: "42601", commit: "rollback" }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
@@ -162,11 +173,11 @@ eq("race-runner protokol-fejl → protokol", await st(C.sa, mkRunner({ race: () 
 console.log("\nkillCaseMutant — målrettet, formbestemt kill m. nødvendige kontroller:");
 const cases = [C.ut, C.fs, C.mh, C.sa];
 const M = {
-  ut: { mutant_id: "m-navn", guard_ref: "g.navn", apply: "MUT_NAVN_OFF", restore: "MUT_NAVN_ON", target_case_id: "c-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-fs"] },
-  fs: { mutant_id: "m-pris", guard_ref: "g.pris", apply: "MUT_PRIS_90", restore: "MUT_PRIS_100", target_case_id: "c-fs", target_assertion_id: "vaerdi-matcher-orakel", controls: ["c-ut"] },
-  mhGrant: { mutant_id: "m-grant", guard_ref: "g.grant", apply: "MUT_GRANT_OFF", restore: "MUT_GRANT_ON", target_case_id: "c-mh", target_assertion_id: "handling-mulig-for-legitim-aktoer", controls: ["c-ut"] },
-  mhAudit: { mutant_id: "m-audit", guard_ref: "g.audit", apply: "MUT_AUDIT_OFF", restore: "MUT_AUDIT_ON", target_case_id: "c-mh", target_assertion_id: "vidne:audit-row", controls: ["c-fs"] },
-  sa: { mutant_id: "m-trg", guard_ref: "g.min", apply: "MUT_TRG_OFF", restore: "MUT_TRG_ON", target_case_id: "c-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-ut", "c-fs"] },
+  ut: { mutant_id: "m-navn", guard_ref: "g.navn", apply: "MUT_NAVN_OFF", restore: "MUT_NAVN_ON", target_case_id: "c-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-fs"], footprint: { observe: { sql: "FP" } } },
+  fs: { mutant_id: "m-pris", guard_ref: "g.pris", apply: "MUT_PRIS_90", restore: "MUT_PRIS_100", target_case_id: "c-fs", target_assertion_id: "vaerdi-matcher-orakel", controls: ["c-ut"], footprint: { observe: { sql: "FP" } } },
+  mhGrant: { mutant_id: "m-grant", guard_ref: "g.grant", apply: "MUT_GRANT_OFF", restore: "MUT_GRANT_ON", target_case_id: "c-mh", target_assertion_id: "handling-mulig-for-legitim-aktoer", controls: ["c-ut"], footprint: { observe: { sql: "FP" } } },
+  mhAudit: { mutant_id: "m-audit", guard_ref: "g.audit", apply: "MUT_AUDIT_OFF", restore: "MUT_AUDIT_ON", target_case_id: "c-mh", target_assertion_id: "vidne:audit-row", controls: ["c-fs"], footprint: { observe: { sql: "FP" } } },
+  sa: { mutant_id: "m-trg", guard_ref: "g.min", apply: "MUT_TRG_OFF", restore: "MUT_TRG_ON", target_case_id: "c-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-ut", "c-fs"], footprint: { observe: { sql: "FP" } } },
 };
 const kill = (m, r = mkRunner()) => killCaseMutant(m, cases, ctx, r);
 { const r = await kill(M.ut); eq("UT-mutant → dræbt (UT), restored, ren; resultatet bærer baseline/under/kontroller/clean rå", r.killed && r.break_form === "UT" && r.restored && r.cleanAfter && r.under?.status === STATUS.BRUDT && Array.isArray(r.controls_under) && r.clean?.target?.status === STATUS.OPFYLDT, true);
@@ -177,6 +188,10 @@ const kill = (m, r = mkRunner()) => killCaseMutant(m, cases, ctx, r);
 { const r = await kill(M.sa); eq("SA-mutant (trigger fjernet → invariant brudt) → dræbt (SA)", r.killed && r.break_form === "SA", true); }
 { const r = await kill({ ...M.ut, target_assertion_id: "tilstand-uaendret" }); eq("mutanten bryder en ANDEN assertion end den målrettede → ikke dræbt (målrettet kill)", r.killed, false); }
 { const r = await kill({ ...M.ut, apply: "MUT_NOOP", restore: "MUT_NOOP" }); eq("»findes«-mutant → overlever", r.killed, false); }
+{ const r = await kill({ ...M.ut, footprint: { observe: { sql: "FP_KONSTANT" } } }); eq("mutation uden aftryk i footprint → ikke attesteret → ikke dræbt (F-13)", r.killed === false && /mutation_attesteret=false/.test(r.detail), true); }
+{ const r = await kill({ ...M.ut, footprint: undefined }); eq("mutant uden footprint → malformet", /footprint/.test(r.detail), true); }
+{ const r = await kill({ ...M.ut, restore: "MUT_NOOP" }); eq("restore der ikke gendanner aftrykket → restored=false (bevist ved footprint, ikke ved rc)", r.killed === true && r.restored === false, true); }
+{ const r = await kill(M.ut); eq("resultatet bærer footprint_baseline/under/restored rå", Array.isArray(r.footprint_baseline) && Array.isArray(r.footprint_under) && Array.isArray(r.footprint_restored), true); }
 { const r = await kill({ ...M.ut, apply: "MUT_FAIL" }); eq("mutant-apply fejler → ikke dræbt", r.killed === false && /apply fejlede/.test(r.detail), true); }
 { const r = await kill({ ...M.ut, restore: "RESTORE_FAIL" }); eq("restore fejler → restored=false, cleanAfter=false", r.killed === true && r.restored === false && r.cleanAfter === false, true); }
 { const r = await kill({ ...M.ut, apply: "MUT_NAVN_OFF_OG_PRIS", restore: "MUT_NAVN_ON" }, mkRunner()); eq("mutanten ødelægger også en kontrol (pris) → ikke dræbt (uvedkommende regression)", r.killed === false && /kontroller=false/.test(r.detail), true); }

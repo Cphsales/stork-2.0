@@ -1,0 +1,33 @@
+build-harness INTEGRATION v2 mod 'v5-buildproof-pg':
+  ✓ fixture opsat
+
+cases mod rigtig Postgres (baseline):
+  ✓ c-navn-ut [UT] → opfyldt
+  ✓ c-dml-ut [UT] → opfyldt
+  ✓ c-opret-mh [MH] → opfyldt
+  ✓ c-pris-fs [FS] → opfyldt
+  ✓ c-tom-fs [FS] → opfyldt
+  ✓ c-min-ut [UT] → opfyldt
+  ✓ c-race-sa [SA] → opfyldt
+  ✓ SA: barrieren (række-lås) blev OBSERVERET via pg_blocking_pids — B's pid blokeret af A's pid, ikke sekventiel
+  ✓ SA: præcis én afvisning og den er P0001
+  ✓ K-8-typen: komplet rows=[] er opfyldt (ikke manglende svar)
+  ✓ UT: forbudt handling TILLADT (ingen afvisning) → brudt, observationen viser negative.ok=true
+
+mutanter (én pr. værn) — formbestemt kill:
+  ✓ engine: alle cases opfyldt
+  ✓ m-navn (g.navn) → dræbt som UT · restored · ren
+  ✓ m-grant (g.grant) → dræbt som MH · restored · ren
+  ✓ m-audit (g.audit) → dræbt som MH · restored · ren
+  ✓ m-pris (g.pris) → dræbt som FS · restored · ren
+  ✓ m-min-check (g.min-check) → dræbt som UT · restored · ren
+  ✓ m-min-laas (g.min-laas) → dræbt som SA · restored · ren
+  ✓ m-dml (g.dml) → dræbt som UT · restored · ren
+  ✓ engine: allOk (alle former opfyldt + alle 7 mutanter dræbt formbestemt)
+  ✓ break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT
+  ✓ SA-observationer bærer to forskellige backend-pids, blokeret/blokerende pid og afslutnings-udfald (F-8)
+  ✓ UT-observationer bærer struktureret afvisning: kode + præcist message-token + routine (F-4)
+  ✓ kontrast: »findes«-mutant (kun kommentar) OVERLEVER → allOk=false (footprint uændret = ingen mutation attesteret)
+  ✓ footprint attesterer mutation og restore: baseline ≠ under, restored == baseline (F-13/F-16)
+
+build-harness INTEGRATION v2: alle 26 cases passed (fire bevisformer + formbestemte kills bevist mod rigtig Postgres)
