@@ -1,0 +1,30 @@
+Du er codex-ANGREB i rollen som SPØRGSMÅLS-DEVIL (implplan 2.F: driverens uafhængige pass FØR hver Mathias-vendt besked; du er blind for forfatteren). Din rolletekst står ovenfor. Pakke: lokations-skabelon. Workdir = kodebasen @ pinned commit f3bbebf9cfdcd2d24a2606cf6d50354fb61b6de8, uden .git — verificér blobs med `git hash-object <fil>`. Read-only. Web forbudt. Dette er IKKE et gate-verdikt: skriv aldrig strengen VERDIKT-DRAFT: nogen steder.
+
+GENSTAND (dømmes PRÆCIS som den står — hver linje er Mathias-vendt tekst):
+- plan-build/lokations-skabelon/spoergsmaal-plan-r2.md @ 76f2fe9148cac86b7cc0fa2a0d5f92f8cfdc0d42 — én samlet liste til Mathias efter plan-runde 2: to spørgsmål (S-1 · S-2), fire regler »står medmindre stop« (B-1 · B-2 · B-4 · B-5), otte standardvalg (D-1..D-8), og hvad der ikke spørges om.
+
+KILDER (troskabs-aksen holder teksten mod disse — ikke mod din egen mening):
+- plan v2: plan-build/lokations-skabelon/plan.md @ 2069aa16e36d4b693ddad5f6166ec928ee72fa45 (§4 afgørelser V1/V8/V10/V12/S-2/S-4/S-8/S-16/S-17/S-18/S-24/S-25 · §10 bekræftelses-linjer B-1..B-3 · AK-DATO-FOER-START) — planens FAKTISKE stilling pr. punkt
+- fresh-eyes-audit r2 (fuld): plan-build/lokations-skabelon/plan-audit-fresh-eyes-r2.md @ 417d96b6244c1c1e613d4f9c3394995ed3793a04 (afsnit »Samlet Mathias-liste« er tekstens kilde; FUND2-1..6)
+- code-reviewer slutlæsning: plan-build/lokations-skabelon/plan-slutlaesning-r2.md @ 9f13a7cb726c76615605136a4641876ba7472892 (A2-1 = S-2 er HALT-klasse; FUND2-dom)
+- krav (låst): docs/sandhed/krav/lokations-skabelon-krav.md @ 9402164d87a35fb939661058bea77c1a052493d0 (K:57 · K:65 · K:71 · K:84 · K:122 · K:134 · K:142-145 · K:181 »flyttet til plan-fasen«-listen)
+- ledger: plan-build/lokations-skabelon/mathias-ord.md @ 14722b4c17fba1011709525ef4a06a7cabe2cfa8 (M-13 · M-17 · M-19 · M-23 · M-24 · M-30.2 · M-33 · M-36 — Mathias' ord VERBATIM)
+- ordbog: plan-build/lokations-skabelon/ordbog.md @ bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef (Mathias' ord ↔ systemord — teksten må KUN bruge hans ord)
+- rolletekst claude-ai (form-kravene til Mathias-flade): scripts/v5/roller/claude-ai.md (afsnit »Sådan præsenterer + med-forfatter du« og »Driverens kvalitetslag«)
+
+AKSER (dømm HVERT punkt S-1 · S-2 · B-1 · B-2 · B-4 · B-5 · D-1..D-8 + indledning + »ikke spørges om« på alle fem):
+1. BORD-TEST: er det en FORRETNINGS-beslutning (Mathias' bord) og ikke teknik/model-fork (plan-fasens bord)? Et teknisk valg forklædt som forretning = FUND.
+2. FORM: én beslutning pr. punkt · konkret scenarie m. navne · ét-ords-svar (for S/B-2) · ingen systemord (ordbogen er dommer) · ingen »kan bygges« der lyder som »virker« · ingen tabte forbehold.
+3. AFLED-TJEK (M-33 værn 1+2): kan svaret afledes i ÉT skridt af et eksisterende M-ord eller K-linje? Da er det en BEKRÆFTELSE (må ikke stå som spørgsmål) — og omvendt: står noget som bekræftelse/default, der IKKE kan afledes i ét skridt, er det et skjult spørgsmål = FUND. Kontrollér særligt: S-1 (K:181 default vs. M-23), S-2 (K:143/K:145), B-2 (relabel: plan-valg — er »ja/nej« den rigtige form?), B-4 (M-17/M-36), B-5 (analogi M-30.2 — bærer en analogi en »står medmindre stop«?), D-4 (K:181 direkte-vs-godkendelse — default eller spørgsmål?).
+4. TROSKAB (P-3): matcher hvert punkt planens FAKTISKE stilling i plan v2 (§4/§10) og kravets ord? Tabte negativer, forbehold, udskydelser eller en formulering der overdriver/underdriver planen = FUND. Er »anbefalingen« i S-2 mærket som anbefaling og ikke som fakta?
+5. KOMPLETHED: mangler et åbent punkt fra auditten/slutlæsningen (FUND2-1..6, NF-1/NF-2, A2-1) på listen, eller står noget der ikke er åbent? Er »Det der ikke spørges om« sandt?
+
+OUTPUT (din afsluttende besked, markdown):
+1) Øverst: »DEVIL-DOM: REN« (ingen fund) eller »DEVIL-DOM: n fund«.
+2) Tabel pr. punkt: | punkt | bord | form | afled | troskab | fund (kort) + FORSLAG til rettet ordlyd (form, aldrig substans) |.
+3) Komplethed: mangler/overflødigt.
+4) Binding (alle blobs ovenfor).
+5) ALLERSIDSTE ikke-tomme linje, præcis én gang i hele beskeden: `DEVIL-JSON: {"konklusion":"PASS"|"FAIL","fremlaeggelse_blob":"76f2fe9148cac86b7cc0fa2a0d5f92f8cfdc0d42","fund":n}` — skriv aldrig strengen DEVIL-JSON: andre steder.
+Ingen påstande om udførte kørsler. Opfind intet — »MANGLER KILDE« hvor kilden ikke bærer.
+
+KØRSEL 2 (kontekst fra driveren): genstanden er nu den OMSKREVNE tekst @ 76f2fe9148cac86b7cc0fa2a0d5f92f8cfdc0d42 — tre ja/nej-spørgsmål (S-2 undtagelse · B-5 · D-6), ti orienteringer (S-1 · B-1 · B-2 · B-4 · D-1..D-5 · D-7 · D-8) og »Senere«. Kørsel 1 (blob 4cef5bee) gav 11 fund F1-F11 — se plan-build/lokations-skabelon/provenance/spoergsmaal-plan-r2.devil-1.leverance.md; teksten er omskrevet efter dine ordlydsforslag (S-3 taget ud). Døm den NYE tekst frisk på alle fem akser, og tilføj én tabel »F1-F11 lukket?« (én linje pr. F: lukket/ikke lukket + hvorfor). Bemærk at den nye tekst IKKE længere har afsnittet »Det der ikke spørges om« men »Senere«.

@@ -40,8 +40,8 @@ fordi butikken i mellemtiden er nedlagt); den bliver synlig som ikke-gennemført
 **B-2 — Fravalg gennem nedlæggelse.** Planens valg: Tryg er fortsat fravalgt i Bilka Hundige efter nedlæggelse og
 genåbning, indtil fravalget ophæves.
 
-**B-4 — Fravalg kræver kobling.** Alka skal kobles på Coop og holdes ude af Bilka Hundige. Dit ord: »lokationer kan
-godt fravælge klienter som gruppen har«. Planen kræver en registreret kobling, der dækker fravalgets dato, før
+**B-4 — Fravalg kræver kobling.** Alka skal kobles på Coop og holdes ude af Bilka Hundige. Dit ord: »En lokation kan
+fravælge en klient gruppen har, og ophæve fravalget igen.« Planen kræver en registreret kobling, der dækker fravalgets dato, før
 fravalget kan laves. Kobles Alka på »fra i dag«, kan Alka få ret i butikken, før fravalget træder i kraft. At ønske
 begge ændringer fremdateret er ikke alene en garanti for udelukkelse fra første dag — fravalget skal være trådt i
 kraft senest samme dag som koblingen.
