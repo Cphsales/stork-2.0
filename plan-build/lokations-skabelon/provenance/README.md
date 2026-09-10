@@ -137,3 +137,40 @@ Ikke arkiveret (deklareret): session-transkriptet
 `~/.claude/projects/-home-mathias--claude-jobs-870c5b0e-tmp-b3-wd/548845d6-e87a-4777-a278-96da49ed43f8.jsonl`
 (2,9 MB; 74 Read · 15 Bash · 7 Write · 6 Edit) — sha256
 `901ce0907ebb6f4244b6d8836a4c07baf0d70cfb8afbe5a71021f4adc94c1268`; ligger i Claude Codes projektmappe.
+
+## B4-B — fresh-eyes antag-aldrig-audit af plan v2 (frisk claude-ai-instans via `claude -p`, read-only, IKKE gate-verdikt) — arkiveret 2026-09-10 ~17:20 af driver-10b (session de4474)
+
+Kald, model/effort (claude-fable-5-1 · xhigh fra `actors.lock[claude-ai]`), PIN `deb8b2c`, prompt-sha, blobs og afvig står i
+`plan-audit-fresh-eyes-r2.provenance.txt`. Workdir uden for `~/.claude` (B3-lærdom). Result-JSON = kvittering
+(selv-erklæret): 20 ture · 18,6 min · 9,62 USD · `is_error: false` · ingen web. **Deklareret afvig C:** aktøren fik
+afvist `git hash-object` (trods allow-regel) og hash-verificerede derfor ingen blobs selv — filerne er læst ved sti i
+workdir'en @ PIN; blob-bindingen bæres af driverens arkiv @ PIN. Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan-audit-fresh-eyes-r2.md` | result-tekst fra `OUT-audit-r2.json` (15 881 B, 104 linjer) | `19767b2d817140a3e2cdb6b9470fee602ae2ddc7e66caf668ae6b171763b244f` | FUND2-1..6 (2 medium · 4 mindre) · synlighedsmangler D-2..D-8 · noter · runde-1-status (FUND-2..5 lukket, FUND-1 → FUND2-3) · samlet Mathias-liste (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 · D-1..D-8; B-3 udgår) · binding |
+| `plan-audit-fresh-eyes-r2.prompt.txt` | job-tmp `b4/prompt-b.txt` | `28ddc90ea945c308b0bffb7c4aecfe2a409d28ccadc090f3c69e3ddec14960a8` | claude-ai.md @ 94628494 (byte-identisk) + separator + Prompt B m. blobs |
+| `plan-audit-fresh-eyes-r2.claude-result.json` | `…/b4/out-b/OUT-audit-r2.json` | `f987b06e89083ebc407627e24f803a80ebd08608877f0f88a4c9853150aad0a9` | CLI result-JSON (session bbe80902 · usage · varighed) |
+| `plan-audit-fresh-eyes-r2.settings.json` | job-tmp `settings-readonly.json` | `fe9004121e183340cf7b74b52c4e810e27b104cce172c45fbc704a1ed8cb0e18` | read-only permissions (allow Read/Grep/Glob + læse-Bash; deny Write/Edit/web/rm/cp/mv/commit/push) |
+| `plan-audit-fresh-eyes-r2.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance inkl. afvig C |
+
+## B4-A — codex-angreb delta-verifikation + frit helheds-pas på plan v2 (dom, read-only, IKKE gate-verdikt) — arkiveret 2026-09-10 ~17:45 af driver-10b (session de4474)
+
+Kørsel via `codex-run.sh codex-angreb dom` @ PIN `deb8b2c` (regel_commit; origin-wrapperen før runde 10h), run_id
+`20260910T165853-1375437-17275`, gpt-6-astra · xhigh · sandbox read-only (banner), codex-cli 0.154.0, `gate_input:
+null`, `STORK_V5_GATE_INPUT` ikke sat, attempt 1 rc=0, 2338 s. Workdir = fuldt arkiv @ PIN uden `.git` (plan v1 IKKE i
+workdir — delta via `b4-delta-scope.md` 043edc86 + plan-angreb-r1). Konklusion: **»Rest-status: 15 åbne«** — 113
+rækker båret · 40 ikke båret (20 af de 46 fund + 20 kill-list-poster); 15 selvstændige restfund A2-1..A2-15 (6
+BLOKER · 9 RET) m. angrebs-spec; frit helheds-pas: 6 spørgsmål besvaret (E20-snittet holder; bijektion,
+ID-regler, D12/bid-orden, kildepopulation IKKE). Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde (job-tmp `870c5b0e/tmp/b4/`) | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan-angreb-r2.md` | `out-a/OUT-angreb-r2.md` (`-o`, 36 051 B, 404 linjer) | `d22acb7b8caa9906465491b1b2fa0c32f71c28fb9816a3837994806a9c9a5a09` | §1 delta 46 fund · §2 delta samtlige kill-list-poster · §3 A2-1..15 m. angrebs-spec · §4 frit helheds-pas · §5 binding (14 input-blobs + 10 kodebelæg hash-kontrolleret) |
+| `plan-angreb-r2.prompt.txt` | `prompt-a.txt` (opgave-delen; rolletekst @ skill_oid f6e64979 injiceres; samlet prompt_sha256 i kvitteringen = 5afc8249…) | `7b4796c426244e36c0a0f7dcac0e395971f57e3149e51d8a74fcf9576310fe1c` | Prompt A m. PIN + blobs udfyldt (4048 B) |
+| `plan-angreb-r2.provenance.txt` | `out-a/OUT-angreb-r2.md.provenance` | `9b17adacb17cb4be53d1565617ae3bf6575ac31d4d4a5728ba97a23677f54245` | wrapper-provenance (start · attempt 1 rc=0 · 2338 s) |
+| `plan-angreb-r2.receipt.json` | `out-a/OUT-angreb-r2.md.receipt.json` | `e909ba7ce272fec66459f81a6de8f71be82c0063e67ea011053a1b272400eb39` | transport-kvittering v2 (status success · binaries · attempts · gate_input null) |
+| `plan-angreb-r2.codex-banner.txt` | første 14 linjer af `out-a/OUT-angreb-r2.md.stderr.log` | `af7949a2d0c4905be1d2d396cecbb2f2a45b1fd4d6ae112e2ab41b63082cb406` | banner = bevis for faktisk politik (read-only · xhigh) |
+
+Ikke arkiveret (deklareret): fuld stderr-strøm `out-a/OUT-angreb-r2.md.stderr.log` (`*.log` gitignored) — sha256
+`160f5029da90bc59dcfe40d8b16b6bc14a860d095a6399ca594e8ad475901142`; i job-tmp så længe jobbet lever.

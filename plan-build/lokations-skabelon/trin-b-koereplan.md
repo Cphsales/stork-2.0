@@ -150,5 +150,15 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   entries). Fund-log: 46 rækker → rettet m. bevis (rettelses-OID 2069aa16) + NF-1/NF-2 + driver-obs
   D-1 (formålsblok-påstand) som »modtaget«. Fuldstændighed dømmes i B4. Driver-fejl: B3-monitoren
   matchede sig selv (pgrep -f) → ~5 t forsinkelse; drift-log. SHA = denne commit.
+- 2026-09-10 16:58-17:38: **B4 A ∥ B kørt på plan v2 @ deb8b2c.** **B (fresh-eyes, claude-ai, read-only,
+  17:17):** 6 fund FUND2-1..6 (2 medium · 4 mindre) — to ægte Mathias-spørgsmål (S-1 gruppens feltliste ·
+  S-2 persondata→direct), to bekræftelser (B-4 · B-5), én relabel (B-2), én synlig default (D-1); runde-1
+  FUND-2..5 lukket, FUND-1 → FUND2-3; samlet Mathias-liste til devil klar; afvig C (aktørens Bash
+  afvist, ingen egen blob-hash). **A (codex-angreb delta + frit pas, 17:38):** »Rest-status: 15 åbne« —
+  19 af 46 fund IKKE båret (genåbnet i fund-log), 21 kill-list-dispositioner ikke virksomme, A2-1..15
+  (6 BLOKER · 9 RET); E20-snit holder, bijektion/ID-regler/bid-orden/kildepopulation ikke. **Dom om
+  runde: rest ≠ ∅ → ÉN dokumenteret ekstra runde** (GRUNDPLAN B4): batch = A2-1..15 + FUND2-1..6 + D-1
+  (+ C's R2-n) → planner v3 → A'/B' delta på v3 → C slutlæser. **C køres nu på v2** så batchen er komplet
+  (princip 5). Fabrik-push cb55344 (runde 10h, hærdet wrapper) ff-pullet før C. SHA = denne commit.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ denne commit · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ deb8b2c · B4-A: plan-angreb-r2 0b2a36ca · B4-B: plan-audit-fresh-eyes-r2 292d029c · B4-C: <afventer> · v3-runde: <afventer> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

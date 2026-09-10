@@ -1,0 +1,47 @@
+Du er codex-ANGREB i Stork-fabrikkens Fase 3, runde 2 (M-41 beslutning 1: ét samlet rettelses-batch +
+delta på berørte krav/negativer/afhængigheder + ét frit helheds-pas). Din rolletekst står ovenfor.
+Pakke: lokations-skabelon. Workdir = kodebasen @ pinned commit deb8b2cfe4ff22894feccef54950c4dec9ab0536, uden .git — verificér blobs med
+`git hash-object <fil>`. Dette er IKKE et gate-verdikt: skriv aldrig strengen VERDIKT-DRAFT: nogen
+steder. Web forbudt. Læs ikke uden for workdir'en.
+
+INPUT (verificér — afvigelse = STOP, skriv HALT):
+- plan v2: plan-build/lokations-skabelon/plan.md @ 2069aa16e36d4b693ddad5f6166ec928ee72fa45
+- plan v1: din runde-1-genstand — IKKE i workdir; brug b4-delta-scope.md (driverens mekaniske diff v1→v2
+  + fund→afsnit→berørte K) som delta-kort. Dine egne runde-1-fund: plan-angreb-r1.md @ c5b467db (A-1..A-15).
+- fold-ind-rapport-r2.md @ 39936c64f96d9dc6ac97af87d7ddd8b1e20f99bb — KUN som kort over hvad planneren SIGER er ændret; ALDRIG som
+  lukningsliste. Du dømmer helteksten mod den oprindelige K-forpligtelse (rolletekst »Beskriv ≠ luk«).
+- fund-log.md @ 849b03f57b589f5de190d7043a06860072270712 (46 fund m. tilstand) · plan-audit-fresh-eyes-r1.md @ cb10e231 (FUND-1..5) ·
+  p4-plan-kildetjek.md @ c50fe1f2 (F01-F16 · U01-U10)
+- din egen BLINDE kill-list: kill-list-udkast.md @ 13b78392 (autoritet; plan v2 skal folde den ind med
+  D10-filter — dokumenteret pr. mutant)
+- forventningsliste (LÅST) @ 2200b76e · krav @ 9402164d · recon2 @ 2bdbb122 · bilag @ 6e569779 · P-8 @
+  4af07ef4 · ledger @ 14722b4c17fba1011709525ef4a06a7cabe2cfa8 · ordbog @ bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef · implplan (D10/D12/D13 · Fase 3 pkt. 3/3a3/4)
+
+OPGAVE, to pas — begge obligatoriske:
+PAS 1 — DELTA: for HVERT af de 46 fund (A-1..A-15 · FUND-1..5 · F01-F16 · U01-U10) og for hver post i din
+kill-list (Tn.m · Sn.m · SL): (a) er tilstanden i fold-ind-rapporten BÅRET af plan v2's tekst? »Rettet m.
+bevis« kræver at v2 nu bærer den negativ/observation/mutant der lukker hullet (cite v2 path:linjer +
+bevisform fra forventningslisten); »inden for mandat« kræver at den citerede kilde (K:linje · M-ord ·
+recon @ OID · P-8-afsnit) faktisk bærer planen; »kræver Mathias« kræver et præcist forretningsspørgsmål
+m. udfald. En tilstand der ikke bæres = ÅBENT fund (nyt id A2-n). (b) Berørte K/ac/negativer/
+afhængigheder (b4-delta-scope.md pkt. 3): er de stadig konsistente efter rettelsen — ingen ac blevet
+svagere (»designet UD« uden offentlig negativ · positiv kontrol tabt · SA nedgraderet · D12-relation
+brudt · bid-orden brudt)? (c) Kill-listen: pr. K — er hver Tn.m enten indfoldet (én meningsfuld mutant
+gennem effekt-stien, D10) eller eksplicit skåret m. citeret begrundelse? SL-poster: leverer v2 værnet?
+»MANGLER KILDE«: har v2 låst præcis kode/tilstand (SQLSTATE · afvisningssted · førbetingelse)?
+PAS 2 — FRIT HELHEDS-PAS (katalog-opslag er ikke nok — princip 4): læs v2 som helhed og spørg om to
+lokalt rigtige dele tilsammen bryder et K, en negativ eller P-8's kæde C0-C10 / canaries N1-N9; om
+bid-opdelingen er afhængigheds-ordnet og prover-bevisbar; om matrixen er en bijektion (ingen K uden
+bid+test, intet rogue-bid); om ID-reglerne (K-n/ac-m · K-n/S · K-n/ac-m/neg-k) er fulgt uden aliasser;
+om E20-snittet holder (kun T2.6/T6.2 som SA). Skriv det som selvstændige fund (A2-n), ikke som
+kommentarer.
+
+OUTPUT (din afsluttende besked, markdown): 
+1) »Rest-status: TOM« eller »Rest-status: n åbne« øverst.
+2) Tabel pr. fund-id (46 + kill-list-poster): | id | rapportens tilstand | BÅRET ja/nej | v2 path:linjer |
+hvis nej: hvorfor + hvad der mangler |.
+3) Nye fund A2-1..A2-n: alvor (BLOKER/RET) · akse · kort · berører (K/ac) · citat (v2 path:linjer) ·
+hvad der lukker det (bevisform). Ingen fund = »INGEN NYE FUND« med begrundelse for hver af pas 2's
+spørgsmål.
+4) Binding (alle blobs). Ingen påstande om udførte kørsler. Opfind intet — »MANGLER KILDE« hvor kilden
+ikke bærer.
