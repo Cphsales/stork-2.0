@@ -52,9 +52,9 @@ CODEX_VER=""; BIN_JSON="{}"; GATE_JSON="null"
 # --- systemværktøjer fra FAST system-PATH (F-3) ---
 SYSPATH="/usr/bin:/bin:/usr/local/bin"
 sysbin() { local p; p=$(PATH="$SYSPATH" command -v -- "$1" 2>/dev/null) || return 1; PATH="$SYSPATH" realpath -e -- "$p"; }
-for b in git timeout sha256sum realpath flock mktemp stat date env; do
+for b in git timeout sha256sum realpath flock mktemp stat date env cmp; do
   v=$(sysbin "$b") || { echo "BLOKER: systemværktøj '$b' ikke fundet i $SYSPATH" >&2; exit 1; }
-  case "$b" in git) GIT=$v;; timeout) TIMEOUT=$v;; sha256sum) SHASUM=$v;; realpath) REALPATH=$v;; flock) FLOCK=$v;; mktemp) MKTEMP=$v;; stat) STAT=$v;; date) DATE=$v;; env) ENVB=$v;; esac
+  case "$b" in git) GIT=$v;; timeout) TIMEOUT=$v;; sha256sum) SHASUM=$v;; realpath) REALPATH=$v;; flock) FLOCK=$v;; mktemp) MKTEMP=$v;; stat) STAT=$v;; date) DATE=$v;; env) ENVB=$v;; cmp) CMP=$v;; esac
 done
 g() { "$GIT" --no-replace-objects "$@"; }   # F-13: refs/replace må aldrig ændre hvad en OID betyder
 # T-F3 (runde 3): codex/node findes i kalderens RENSEDE PATH (nvm); ALT andet (cat, cut, mv, rm, ls, dirname,
@@ -201,15 +201,18 @@ if [ "$BINCHECK" -eq 1 ]; then
     const str = (s) => typeof s === "string" && s.length > 0 && !/[\r\n]/.test(s);
     if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);
     const n = l.codex_native;
-    if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !n.path_from_pkg_root.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(n.path_from_pkg_root)) process.exit(4);
+    // F-3g (runde 10e): native SKAL ligge i platform-pakkens vendor-mappe og hedde codex; shim-filen bin/codex.js eller andre filer kan aldrig blive native
+    if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !/^\/node_modules\/@openai\/codex-[a-z0-9-]+\/vendor\/[A-Za-z0-9_.-]+\/bin\/codex$/.test(n.path_from_pkg_root)) process.exit(4);
     process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));
-  ') || blok "binaries.lock.json er ugyldig eller mangler codex.version / codex_native{sha256,path_from_pkg_root} (F-3b)"
+  ') || blok "binaries.lock.json er ugyldig eller mangler codex.version / codex_native{sha256,path_from_pkg_root} (path_from_pkg_root skal være /node_modules/@openai/codex-<platform>/vendor/<triple>/bin/codex) (F-3b/F-3g)"
   PIN_SHA=$(printf '%s\n' "$PIN" | sed -n 1p); PIN_VER=$(printf '%s\n' "$PIN" | sed -n 2p)
   PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p)
   [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"
   CODEX_NATIVE=$("$REALPATH" -e -- "$CODEX_PKG_ROOT$PIN_NATIVE_REL" 2>/dev/null) || blok "native codex-binær findes ikke: $CODEX_PKG_ROOT$PIN_NATIVE_REL (F-3b)"
   [ -f "$CODEX_NATIVE" ] && [ -x "$CODEX_NATIVE" ] || blok "native codex-binær er ikke en eksekverbar almindelig fil: $CODEX_NATIVE (F-3b)"
   if [ "$SELFTEST" -ne 1 ]; then kendt_prefix "$CODEX_NATIVE" || blok "native codex-binær uden for pinnet prefix: $CODEX_NATIVE (F-3b)"; fi
+  # F-3g: native SKAL være en ELF-binær — en shim/script (også en kopi under vendor-stien) ville starte et ANDET program uden hash-binding
+  printf '\177ELF' | "$CMP" -s -n 4 - "$CODEX_NATIVE" || blok "native codex-binær er ikke en ELF-binær: $CODEX_NATIVE (F-3g: en shim/script kan ikke være native)"
   [ "$(sha_of "$CODEX_NATIVE")" = "$PIN_NATIVE_SHA" ] || blok "native codex-binær ($CODEX_NATIVE) matcher ikke binaries.lock.json (${PIN_NATIVE_SHA:0:12}) — binæren er ændret/udskiftet uden bevidst lås-opdatering (F-3b)"
   CODEX_EXEC="$CODEX_NATIVE"
 else
