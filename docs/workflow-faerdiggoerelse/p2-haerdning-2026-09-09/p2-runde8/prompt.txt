@@ -1,0 +1,12 @@
+Du er Codex i P2-rollen (codex-angreb) — RUNDE 8 = DELTA-VERIFIKATION efter din runde-7-dom (RUNDE7-FUND.md: FAIL(2) — G-F1 (mandat) og rest-F-16 (backtick i backtick-fence-info er ingen åbner; målehul: CR/U+2028-cases havde afsluttende fence)). Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for de 9 moduler.
+
+## Input
+`DIFF-runde7-til-runde8.diff` (kvittering.mjs + begge selvtests) · alle filer under scripts/v5/ · historiske artefakter.
+
+## Hvad runde 8 gør
+Parseren: en backtick-fence hvis info-streng indeholder en backtick er IKKE en åbner (linjen ignoreres som fence; CommonMark) — tilde-fences må have backticks i info. Selvtests: repro'en ("```json verdikt-draft `x" + "```" + PASS-blok) → rød i parser og hjælper · tilde-info m. backticks citerer korrekt · CR-, U+2028- og U+2029-åbnere UDEN afsluttende ydre fence → rød (uafsluttet) — dræber split-kun-\n- og .*-mutanterne med ændret slut-effekt (hjælper-status 1 → mutant 0). G-F1: uændret — HALT afventer Mathias' udtrykkelige ord.
+
+## Angrib
+1. rest-F-16: LUKKET / DELVIST / IKKE m. fil:linje. Din runde-7-tabel dækkede NEL/FF/tab-indrykning/tilde-info/lukker-indrykning — gennemgå resten af CommonMark §4.5 (fenced code blocks) systematisk: er der en regel parseren bryder i den RETNING der gør citeret indhold aktivt? (Strengere = ok.) Særligt: info-streng-regel for tilde-fences (tilder tilladt), lukker med info (ingen lukker), fence inde i blockquote/list (parseren ser ikke containere — kan en ">" eller "- " før ``` gøre en linje til aktiv åbner i CommonMark, som parseren IKKE ser som åbner (strengere) — eller omvendt?), og laziness/indrykning i containere.
+2. Bekræft ved PASS at G-F1 er det ENESTE udestående, og giv blob-OID pr. fil som PASS-entries. Ved FAIL: kun fund der åbner en falsk-grøn (citeret → aktivt).
+3. Mutant-tabel: (a) fjern backtick-info-værnet · (b) split kun på \n · (c) åbner m. `.*` — fanges de nu m. ÆNDRET slut-effekt?

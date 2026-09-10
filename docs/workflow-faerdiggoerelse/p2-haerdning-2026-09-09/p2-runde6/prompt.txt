@@ -1,0 +1,12 @@
+Du er Codex i P2-rollen (codex-angreb) — RUNDE 6 = DELTA-VERIFIKATION efter din runde-5-dom (RUNDE5-FUND.md: FAIL(3) — G-F1 (mandat), rest-F-16 (NBSP/VT som falsk fence-lukker), rest-F-18 (tree-OID som regel_commit; 64-hex)). Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for de 9 moduler.
+
+## Input
+`DIFF-runde5-til-runde6.diff` (kvittering.mjs · verdikt-byg.mjs · begge selvtests) · alle filer under scripts/v5/ · historiske artefakter.
+
+## Hvad runde 6 gør
+rest-F-16: fence-LUKKEREN accepterer kun `[ \t]*` efter fence-tegnene (CommonMark) — NBSP/VT lukker ikke; selvtests: NBSP-lukker → rød, VT-lukker → rød, mellemrum/tab-lukker → lukker; verdikt-byg e2e NBSP → rød. rest-F-18: `regel_commit` skal være PRÆCIS 40 hex (validateTransportReceipt) OG `git cat-file -t` === "commit" i både verifyTransport og verdikt-byg (tree-OID m. samme lås-blob → rød); selvtests: tree-OID → rød begge veje · ældre commit m. identisk lås-blob → grøn · 64-hex → rød. G-F1: uændret — HALT afventer Mathias' udtrykkelige ord (DEL VIII pkt. 36).
+
+## Angrib
+1. rest-F-16 / rest-F-18: LUKKET / DELVIST / IKKE m. fil:linje. Prøv flere whitespace-varianter (form feed, zero-width space, Unicode line separator U+2028 i split — splittes linjer på \r?\n kun? kan U+2028 skjule en linje?) · tag-OID (annoteret tag der peger på commit: cat-file -t = "tag") · commit-OID fra et ANDET repo (kan ikke findes → rød?).
+2. Bekræft ved PASS at G-F1 er det ENESTE udestående og giv blob-OID pr. fil. Ved FAIL: kun fund der åbner en falsk-grøn (vejnings-reglen).
+3. Mutant-tabel: (a) lukker tilbage til `\s*` · (b) drop cat-file -t-check · (c) isOid i stedet for 40-hex — fanges de?

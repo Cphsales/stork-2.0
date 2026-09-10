@@ -1,0 +1,18 @@
+Du er Codex i P2-rollen (codex-angreb): uafhængigt red-team af Stork-fabrikkens GATE-KERNE efter en ændring. Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for gates.mjs og gate-eval.mjs.
+
+## Ændringen (AENDRINGER.diff, commit d8dd180 mod bd5c51a)
+Plan-gaten (gates.mjs GATE_REGISTRY id "plan"): bindings udvidet fra [krav, recon2] til [krav, recon2, p8, ordbog, killlist] og orderedApproval: false → true. gate-eval.mjs DEFAULT_LAYOUT: p8 → plan-build/<pakke>/p8-slutproeve-spec.md · ordbog → plan-build/<pakke>/ordbog.md · killlist → plan-build/<pakke>/kill-list-udkast.md. Selvtests: gate-kerne.selftest.mjs fik greenPlan() + 8 plantede falsk-grønne; gate-eval.selftest.mjs fik 6 plan-binding-cases. Begrundelse: PLAN-fase3-udsnit.md (M-41 B5: planen dømmes sammen med P-8, ordbog og Codex' BLINDE kill-list-udkast; »Mathias sidst« skal være bevist som hændelseskæde — M-38 kom 15:06 før r4b-verdikterne 15:10, orderedApproval var false på plan).
+
+## Angrib (fail-open er hovedfjenden)
+1. evaluateGate("plan", …): kan gaten åbne med en manglende/null binding (killlist mangler @ commit → buildSnapshot giver null — hvad gør kernen præcis)? Kan et verdikt der IKKE binder alle 5 OIDs slippe igennem (bindings_oids delmængde/ekstra/omdøbt nøgle)? Kan approval.scope_digest/prerequisite_digests forfalskes eller genbruges fra krav-gaten (scope_digest("plan",…) vs ("krav",…))? Er orderedApproval-logikken korrekt for 3 aktører (sortering, dubletter, samme digest to gange, verdikt fra ukendt aktør)? Predecessor-check (krav skal være success) — kan den omgås?
+2. buildSnapshot/DEFAULT_LAYOUT: <pakke>-substitution + PAKKE_RE — traversal/injektion via pakke-navn? Hvad hvis to layout-nøgler resolver til samme fil? Er nye nøgler dækket af snapshot→registry-konsistens (ukendt nøgle i layout, manglende nøgle)?
+3. Konsekvens for ANDRE gater: ændrer udvidelsen krav-/build-/slut-gatens adfærd (fælles kode-stier, binding-count-antagelser, predecessorBinding)? krav-gate-run/recon-gate-run bruger buildSnapshot — påvirkes de?
+4. Selvtestene (kan-den-fejle): plant tankemæssigt mutanter — (a) fjern "killlist" fra registry-bindings · (b) orderedApproval tilbage til false · (c) DEFAULT_LAYOUT.killlist peger på recon2-stien · (d) kernen accepterer bindings som delmængde · (e) prerequisite_digests sammenlignes som sæt uden længde-check — hvilke fanges af hvilke cases? Er greenPlan-fixturen realistisk (3 aktører, 5 OIDs, evidence fra artefaktet)?
+5. Design: er "killlist" som HÅRD binding proportional (vejnings-reglen) — hvad sker med pakker hvor Codex' kill-list-udkast legitimt er tomt? Bør bindingen være "findes + ikke-tom"?
+
+## Leverance (markdown)
+- Dom: PASS / FAIL(n).
+- Fund F-1…: fil:linje · klasse (fail-open · omgåelse · forfalskning · test-kan-ikke-fejle · design) · repro · konsekvens · konkret rettelse (kode) · alvor (BLOKER/RET/NOTE).
+- Mutant-tabel (a-e): | mutant | fanget af case? |.
+- Kort: hvad der er rigtigt (linje).
+Vejnings-reglen: kun fund der ændrer en dom eller åbner en falsk-grøn.

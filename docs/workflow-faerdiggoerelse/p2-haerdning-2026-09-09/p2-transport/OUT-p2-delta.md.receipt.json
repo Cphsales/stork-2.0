@@ -1,0 +1,55 @@
+{
+ "schema_version": 1,
+ "status": "success",
+ "run_id": "20260909T134516-982881-5568",
+ "rolle": "codex-angreb",
+ "aktivitet": "dom",
+ "model": "gpt-6-astra",
+ "effort": "xhigh",
+ "sandbox": "read-only",
+ "service_tier": "default",
+ "codex_version": "codex-cli 0.153.0",
+ "regel_commit": "536067d6284c86ad0692c5f778bf93d99cc24dac",
+ "lock_mode": "committed",
+ "lock_blob": "023e51765e49687db514d3e26c95cdf6adca2194",
+ "skill_path": "scripts/v5/roller/codex-angreb.md",
+ "skill_oid": "f6e64979941b55b57d6000306ccf9404dd2a15d1",
+ "prompt_sha256": "13eee05e15cd0ca84721185d790a5b51ed4f5d95143ee44098006224ccc6749a",
+ "workdir": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-transport/wd2",
+ "out": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-transport/OUT-p2-delta.md",
+ "binaries": {
+  "codex": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/lib/node_modules/@openai/codex/bin/codex.js",
+   "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+  },
+  "git": {
+   "path": "/usr/bin/git",
+   "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668"
+  },
+  "node": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/bin/node",
+   "sha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c"
+  },
+  "timeout": {
+   "path": "/usr/bin/timeout",
+   "sha256": "12690a043dfd555a6c14ccc1564f5649c18f1762c0d6ff66729948130898ec52"
+  }
+ },
+ "attempts": [
+  {
+   "attempt": 1,
+   "rc": 0,
+   "model": "gpt-6-astra",
+   "effort": "xhigh",
+   "sandbox": "read-only",
+   "output_sha256": "8dfe0a1d0e53e667947d769316e61e8bb972d2ca56160693f85c55b5d4576be6",
+   "output_bytes": 9713,
+   "varighed_mono_s": 648,
+   "varighed_vaeg_s": 648,
+   "started": "2026-09-09T13:45:16+02:00",
+   "ended": "2026-09-09T13:56:04+02:00"
+  }
+ ],
+ "started": "2026-09-09T13:45:16+02:00",
+ "ended": "2026-09-09T13:56:04+02:00"
+}

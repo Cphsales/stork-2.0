@@ -1,0 +1,14 @@
+Du er Codex i P2-rollen (codex-angreb) — RUNDE 5 = DELTA-VERIFIKATION efter din runde-4-dom (RUNDE4-FUND.md: FAIL(3) — G-F1 (mandat), rest-F-16 (~~~-fences + indrykkede ydre fences), F-18 (regel_commit flytbar ref)). Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for de 9 moduler (blob-OID pr. fil ved PASS).
+
+## Input
+`DIFF-runde4-til-runde5.diff` (kvittering.mjs · verdikt-byg.mjs · begge selvtests) · alle filer under scripts/v5/ · historiske artefakter.
+
+## Hvad runde 5 gør
+rest-F-16: fence-parseren anerkender nu CommonMark-fences generelt som ydre/citerende: åbner = 0-3 mellemrums indrykning + ≥3 backticks ELLER ≥3 tilder; lukker = 0-3 mellemrum + ≥ åbnerens antal af SAMME tegn; kun en UINDRYKKET, PRÆCIS tre-backtick-fence med info "json verdikt-draft" er en aktiv draft. Selvtests: ~~~-citat, indrykket ````-citat (2 mellemrum), indrykket ~~~~ (3 mellemrum), indrykket aktiv-åbner afvises, tilde-åbner m. draft-info afvises, ``` inde i ~~~ lukker ikke. F-18: receipt.regel_commit SKAL være fast 40-hex commit-OID (validateTransportReceipt + verdikt-byg), og låseblobben læses via den sammenlignede blob-OID (`git show <lockR>`), aldrig et nyt ref-opslag; selvtests: regel_commit "HEAD" → rød begge veje. G-F1: uændret — HALT afventer Mathias' udtrykkelige ord (DEL VIII pkt. 36); bekræft alene at det er det ENESTE udestående.
+
+## Angrib
+1. rest-F-16 og F-18: LUKKET / DELVIST / IKKE m. fil:linje. Prøv: fence m. info efter tilder · lukker m. flere tegn end åbner · `~~~` inde i ``` (skal ikke lukke) · blok efter en uafsluttet ydre fence (hele resten er citeret → ingen aktiv → rød) · CRLF-linjeskift · en aktiv blok EFTER en korrekt lukket citeret blok (skal accepteres) · leverance der starter direkte med den aktive blok.
+2. F-18: kan regel_commit være en fast OID for en commit hvis låseblob == E's, men hvor ROLLEN i den lås peger på en anden skill_oid end den kørte? (skill_oid sammenlignes m. låsens — ok?) · abbreviated OID (7 hex) afvises? · OID for et TREE/BLOB i stedet for commit?
+3. Ét kort frit pas over hele leverance→verdikt→gate-kæden: er der stadig en vej fra en FAIL-leverance til en åben plan-gate uden Codex-kald eller uden Mathias' fremlæggelses-ok?
+4. Mutant-tabel: (a) parser ignorerer tilder · (b) parser ignorerer indrykning · (c) regel_commit accepterer "HEAD" · (d) lås læses via `${regel_commit}:sti` igen — fanges de?
+5. Dom: PASS / FAIL(n). Ved PASS: tabel m. blob-OID pr. fil.

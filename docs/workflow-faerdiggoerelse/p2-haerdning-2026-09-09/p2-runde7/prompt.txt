@@ -1,0 +1,12 @@
+Du er Codex i P2-rollen (codex-angreb) — RUNDE 7 = DELTA-VERIFIKATION efter din runde-6-dom (RUNDE6-FUND.md: FAIL(2) — G-F1 (mandat) og rest-F-16 (skjulte ydre åbnere via U+2028/U+2029 i info-strengen og lone CR som linjeskift; målehul: `\s*`-mutanten overlevede fordi cases havde afsluttende `~~~`)). Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for de 9 moduler.
+
+## Input
+`DIFF-runde6-til-runde7.diff` (kvittering.mjs + begge selvtests) · alle filer under scripts/v5/ · historiske artefakter.
+
+## Hvad runde 7 gør
+Parseren splitter linjer på `\r\n|\r|\n` (CommonMark) og åbner-regex bruger `[\s\S]*` for info-strengen, så U+2028/U+2029 ikke skjuler en åbner. Selvtests: U+2028- og U+2029-åbner → rød · lone CR før åbner → rød · lone-CR-dokument m. indrykket ````-citat → rød · NBSP/VT-falsk-lukker UDEN afsluttende fence → rød (dræber `\s*`-mutanten) · ægte lukker → aktiv blok efter (kontrol); verdikt-byg e2e for NBSP-uden-slut, U+2028 og CR. G-F1: uændret — HALT afventer Mathias' udtrykkelige ord.
+
+## Angrib
+1. rest-F-16: LUKKET / DELVIST / IKKE m. fil:linje. Prøv resten af CommonMark's fence-regler: NEL (U+0085), form feed som "linjeskift" (er det?), tab-indrykning før fence (CommonMark: tab = 4 kolonner → ikke en fence-åbner på top-niveau → hvad gør parseren og hvad gør CommonMark?), backtick-fence hvis info-streng indeholder backticks (CommonMark: så er det IKKE en fence-åbner!) — er det en vej: "```json verdikt-draft `x" … og info-streng med tilde for ~~~-fences er tilladt. Og: en aktiv blok hvor lukkeren er indrykket 0-3 mellemrum (tilladt) vs 4+ (ikke lukker). Dokumentér hvad der er CommonMark-korrekt vs. konservativt-strengere (strengere = ok, hvis det kun kan gøre en aktiv blok INAKTIV, aldrig omvendt).
+2. Bekræft ved PASS at G-F1 er det ENESTE udestående, og giv blob-OID pr. fil (PASS-entries). Ved FAIL: kun fund der åbner en falsk-grøn.
+3. Mutant-tabel: (a) split kun på \n · (b) åbner m. `.*` · (c) lukker `\s*` — fanges de nu?

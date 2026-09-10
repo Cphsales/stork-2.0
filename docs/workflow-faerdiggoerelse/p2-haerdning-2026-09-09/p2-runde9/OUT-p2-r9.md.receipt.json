@@ -1,0 +1,61 @@
+{
+ "schema_version": 2,
+ "status": "success",
+ "run_id": "20260910T094013-1159511-3098",
+ "rolle": "codex-angreb",
+ "aktivitet": "dom",
+ "model": "gpt-6-astra",
+ "effort": "xhigh",
+ "sandbox": "read-only",
+ "service_tier": "default",
+ "codex_version": "codex-cli 0.153.0",
+ "regel_commit": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
+ "lock_mode": "committed",
+ "lock_blob": "023e51765e49687db514d3e26c95cdf6adca2194",
+ "skill_path": "scripts/v5/roller/codex-angreb.md",
+ "skill_oid": "f6e64979941b55b57d6000306ccf9404dd2a15d1",
+ "prompt_sha256": "bf24dcf3a7357eeafec63d96662af924ae89276b4d66c89201c4ee48b776b428",
+ "gate_input": null,
+ "selftest": false,
+ "workdir": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-runde9/wd",
+ "out": "/tmp/claude-1000/-home-mathias/18ea96e9-e010-4b41-a8fa-69cc7eadeb3e/scratchpad/p2-runde9/OUT-p2-r9.md",
+ "binaries": {
+  "codex": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/lib/node_modules/@openai/codex/bin/codex.js",
+   "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+  },
+  "node": {
+   "path": "/home/mathias/.nvm/versions/node/v24.15.0/bin/node",
+   "sha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c"
+  },
+  "git": {
+   "path": "/usr/bin/git",
+   "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668"
+  },
+  "timeout": {
+   "path": "/usr/bin/timeout",
+   "sha256": "12690a043dfd555a6c14ccc1564f5649c18f1762c0d6ff66729948130898ec52"
+  },
+  "flock": {
+   "path": "/usr/bin/flock",
+   "sha256": "e619344dc3eec4023498465679262f9ca27d1e8cef9cfc4c1ae72b428577b806"
+  }
+ },
+ "attempts": [
+  {
+   "attempt": 1,
+   "rc": 0,
+   "model": "gpt-6-astra",
+   "effort": "xhigh",
+   "sandbox": "read-only",
+   "output_sha256": "48c83e1886f43ccbfe7b6abc4822fe0ee4fd3734211b6da34869e0e011e4c7b9",
+   "output_bytes": 5804,
+   "varighed_mono_s": 450,
+   "varighed_vaeg_s": 450,
+   "started": "2026-09-10T09:40:13+02:00",
+   "ended": "2026-09-10T09:47:43+02:00"
+  }
+ ],
+ "started": "2026-09-10T09:40:13+02:00",
+ "ended": "2026-09-10T09:47:43+02:00"
+}

@@ -1,0 +1,23 @@
+Du er Codex i P2-rollen (codex-angreb) — RUNDE 2 = DELTA-VERIFIKATION af transporten efter fold-ind. Skriv på dansk. Kun læse-adgang; skriv intet. Din dom bliver hærdet-register-entry for codex-run.sh, verdikt-byg.mjs, krav-gate-run.mjs.
+
+## Input (workdir)
+- `P2-RUNDE1-FUND.md` — dine egne fund fra runde 1 (F-1..F-9, 6 BLOKER + 3 RET) med foreslåede rettelser.
+- `AENDRINGER-v2-til-v3.diff` — hele diffen fra den angrebne version (v2) til v3 for codex-run.sh, verdikt-byg.mjs, pre-commit-zone.mjs, codex-run.selftest.mjs.
+- `scripts/v5/*` — v3-filerne + uændret kontekst (hooks, verdikt, gates, gate-eval, git, actors.lock, krav-gate-run + selftest — krav-gate-run er uændret siden runde 1 og fik ingen fund).
+
+## Hvad v3 gør (så du kan dømme om det lukker fundene)
+F-1/F-2: `$OUT.receipt.json` = struktureret kvittering (status · run_id · rolle/model/effort/sandbox · regel_commit · lock_mode · lock_blob · skill_oid · prompt_sha256 · binaries{realpath,sha256} · attempts[{attempt, rc, output_sha256, output_bytes, model/effort/sandbox pr. forsøg}]) overskrives pr. kørsel; verdikt-byg læser KUN den (én gang), kræver status=success, lock_mode=committed, 1-2 sekventielle forsøg m. identisk model/effort/sandbox, sidste rc=0 og bytes>0, og BEREGNER sha256 af den leverede fil == attempts.last.output_sha256 == draft.raw_output_sha256; Codex-aktør uden kvittering → RØD; Claude-aktører uden kvittering mærkes SELV-ERKLÆRET. Signeret kvittering fra betroet runner = DEKLARERET RESIDUAL (CI actor-runner, plan 2.F/P-1). F-3: PATH renses (kun absolutte), codex/git/node/timeout → realpath + sha256 i kvittering; codex SKAL ligge under $HOME/.nvm/versions/node/*/… eller /usr/… medmindre STORK_V5_SELFTEST=1. F-4: realpath på egen sti, unset GIT_DIR m.fl., lås læses fra `git show <HEAD-commit>:scripts/v5/actors.lock.json` (samme bytes parses), arbejdstræ-lås skal == pinned; STORK_V5_REPO/LOCK kun under selftest (LOCK → lock_mode=OVERRIDE → verdikt-byg afviser). F-5: prompt = rolletekst@skill_oid (git show) + opgave, `cat --`, størrelse ≤1M, sha256 i kvittering. F-6: markører (.done/.started/.out/.pid/.receipt) ryddes FØRST. F-7: pr. forsøg privat `$OUT.attemptN.out`, publicering m. mv kun ved rc=0 ∧ -f ∧ ! -L ∧ -s, flock på $OUT.lock, OUT må ikke ligge i workdir, timeout ≥1. F-8: hook bruger `--no-renames --name-status -z`, slettet lås tæller ikke. F-9: selvtest gemmer argv pr. kald, kontrollerer retry-effort på begge kald, observerer PID mens processen lever, kræver mono ≥1 s ved hang, udøver committed-lås-grenen via temp-klon (STORK_V5_REPO), symlink-til-wrapper, GIT_DIR, stale .done, PATH-injektion uden selftest, og verdikt-byg-bindingen ende-til-ende (59 cases).
+
+## Opgave (delta-reglen: rettelser OG det de berører + ét frit pas)
+1. Pr. fund F-1..F-9: LUKKET / DELVIST / IKKE — citér fil:linje i v3. Ikke "ordet står der": lukker koden faktisk vejen?
+2. Berørte naboer: ændrer v3 noget for krav-gate-run (læser den kvitteringen? nej — bør den?), for hooks.mjs/verdikt.mjs-kontrakten (RUN_KEYS), for driverens eksisterende kald-mønster?
+3. Nye fund skabt af rettelserne (fx: kan kvitteringen selv forfalskes lokalt — er det dækket af residual-deklarationen eller et nyt hul? mv-publicering og flock — races? prefix-listen for codex — for bred/for smal? `git show <blob>` af rolletekst — kan skill_oid pege på en anden blob end rolleteksten og stadig passere frys-checket?).
+4. Mutant-tabel genkørt på v3 + selvtest: (a) fjern -s/-f/! -L-kravet · (b) brug argument som effort · (c) drop frys-check · (d) retry m. lavere effort · (e) behold .done ved fejl · (f) fjern committed-lås-vs-pinned-check · (g) hardkod model/effort · (h) fjern OUT-uden-for-workdir · (i) fjern Codex-kræver-kvittering i verdikt-byg · (j) fjern sha256-binding i verdikt-byg — fanges de?
+5. Dom: PASS / FAIL(n). Er residual-deklarationen (usigneret kvittering indtil CI-runner) ærlig og tilstrækkelig for LOKAL drift, når fabrik-frys + pinnede binærer står?
+
+## Leverance (markdown, kort)
+- Dom på én linje.
+- Tabel | fund | lukket? | fil:linje | bemærkning |.
+- Nye fund F-10… (fil:linje · klasse · repro · konsekvens · rettelse · alvor).
+- Mutant-tabel (a-j).
+- Kort: hvad der er rigtigt.
