@@ -18,9 +18,13 @@ dræbt/restored/ren. Ingen orakel-observation af slutværdi (FS), ingen sideeffe
 ingen to-sessions-barriere (SA); domæne-afvisninger (22023 · P0001 · P0002) er ikke anerkendte
 reject-klasser. Forventningslisten kræver netop disse. Forventet udfald af dommen: »kan IKKE udtrykke
 de fire udfald i dag« + præcis krav-liste → kontrakt-input til fabrik-armens C1 (sandheds-motoren).
-Sekvensen B2-lås ↔ C1 afklares med mathias-9b (spørgsmål sendt 10:1x) — prompten nedenfor er skrevet
-så den holder i begge udfald (dømmer mod den adapter der findes @ PIN, og formulerer manglerne som
-kontrakt).
+Sekvens B2-lås ↔ C1 AFGJORT med mathias-9b (10/9 ~10:10): matrixen låses nu; Codex' dom stilles pr.
+bevisform OG pr. K (kan adapteren @ HEAD udtrykke det i dag — ja/nej — og hvilken præcis, testbar
+adapter-forpligtelse mangler: observation · reject-klasse · barriere); leverance + kvittering arkiveres
+i `provenance/` og bogføres som »adapter-krav-liste modtaget« — IKKE PASS. C1 (fabrik-armen, parallelt
+med B3-B7) bygger adapterkontrakten mod krav-listen + matrixen; »adapter-tjek PASS« = ny Codex-dom mod
+den integrerede adapter = Trin C-kriterie før første bid. Plan-låsen (B6/B7) afhænger IKKE af
+adapter-PASS (plan-gatens bindinger er krav/recon2/p8/ordbog/killlist).
 
 ## Kørselsrecept (driveren)
 
@@ -81,12 +85,21 @@ METODE:
    build-proof (Fase 4 pkt. 3: K/ac/negativ-sættet kommer fra den LÅSTE forventningsliste) — hvis
    noget; ellers skriv »INTET FUND«.
 
-OUTPUT (din afsluttende besked, markdown): 
-KONKLUSION: én af »KAN UDTRYKKE ALLE FIRE« / »KAN IKKE — krav-liste følger« / »HALT«.
-Derefter én tabel: | bevisform | kan i dag (path:linjer) | krævet af listen (ac) | gab som kontrakt |
-skelne-regel | — fire rækker. Så D10/D12-kontrakten (pkt. 3), frit pas (pkt. 4), og din binding
-(alle blobs ovenfor). Ingen påstande om udførte kørsler; web forbudt; læs ikke uden for workdir'en;
-opfind intet — skriv »MANGLER KILDE« hvor en kilde ikke bærer.
+5. Pr. K (K-1..K-9, forventningslisten §1): hvilke bevisformer K's ac-rækker kræver; pr. bevisform
+   ja/nej om adapteren @ PIN kan udtrykke den i dag for netop de rækker; og den præcise, TESTBARE
+   adapter-forpligtelse der mangler (observation · reject-klasse(r) m. SQLSTATE · barriere) — med
+   ac-nummer. K-8 ac 4 (»nul rækker« = FS) og K-2 ac 6 / K-6 dublet-kobling (SA) skal stå eksplicit.
+
+OUTPUT (din afsluttende besked, markdown):
+KONKLUSION: én af »KAN UDTRYKKE ALLE FIRE« / »KAN IKKE — adapter-krav-liste følger« / »HALT«.
+Tabel 1 (pr. bevisform, fire rækker): | bevisform | kan i dag (path:linjer) | krævet af listen (ac) |
+gab som kontrakt | skelne-regel |.
+Tabel 2 (pr. K, ni rækker): | K | bevisformer krævet (ac) | kan i dag pr. bevisform (ja/nej) |
+manglende adapter-forpligtelse (observation · reject-klasse · barriere) — testbar |.
+Så D10/D12-kontrakten (pkt. 3), frit pas (pkt. 4), og din binding (alle blobs ovenfor). Ingen
+påstande om udførte kørsler; web forbudt; læs ikke uden for workdir'en; opfind intet — skriv
+»MANGLER KILDE« hvor en kilde ikke bærer. Din besked bogføres af driveren som »adapter-krav-liste
+modtaget« (kontrakt-input til sandheds-motoren), ikke som PASS.
 ```
 
 ## Tjekliste før kørsel (driveren)
