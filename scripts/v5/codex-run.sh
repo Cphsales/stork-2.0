@@ -76,7 +76,7 @@ skriv_kvittering() {
   "${NODE:-node}" -e '
     const e = process.env;
     const r = { schema_version: 2, status: e.STATUS, run_id: e.RUN_ID, rolle: e.ROLLE, aktivitet: e.AKT,
-      model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX, service_tier: "default", codex_version: e.CODEX_VER,
+      model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX, sandbox_policy: { network_access: false, exclude_slash_tmp: true, exclude_tmpdir_env_var: true }, service_tier: "default", codex_version: e.CODEX_VER,
       regel_commit: e.REGEL_COMMIT, lock_mode: e.LOCK_MODE, lock_blob: e.LOCK_BLOB, skill_path: e.SKILL_PATH,
       skill_oid: e.SKILL_OID, prompt_sha256: e.PROMPT_SHA, gate_input: JSON.parse(e.GATE_JSON || "null"),
       selftest: e.SELFTEST === "1", workdir: e.WORKDIR, out: e.OUT,
@@ -222,8 +222,12 @@ run_once() {
   a_out="$RUNDIR/attempt$attempt.out"
   : > "$OUT.attempt$attempt.started"
   started=$("$DATE" -Is); s0=$SECONDS; t0=$("$DATE" +%s)
+  # A5 (driver-fund 2026-09-10): sandbox-POLITIKKEN sættes eksplicit pr. kald og arves ALDRIG fra ~/.codex/config
+  # (lokal config havde network_access=true → produktions-kørsler havde netværk trods »Web forbudt«). Netværk fra,
+  # /tmp og $TMPDIR ikke skrivbare — kun workdir. Læse-adgang uden for workdir kan sandboxen ikke begrænse (residual).
   PATH="$CODEX_PATH" "$TIMEOUT" --signal=KILL "${TIMEOUT_S}s" \
     "$CODEX" exec --skip-git-repo-check --sandbox "$SANDBOX" \
+      -c sandbox_workspace_write.network_access=false -c sandbox_workspace_write.exclude_slash_tmp=true -c sandbox_workspace_write.exclude_tmpdir_env_var=true \
       -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
       --cd "$WORKDIR" -o "$a_out" "$PROMPT" < /dev/null >> "$OUT.log" 2>> "$ERRLOG" &
   pid=$!

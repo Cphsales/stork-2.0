@@ -73,6 +73,9 @@ function run(args, { mode = "ok", lock = lockPath, env = {}, selftest = "1" } = 
   return { r, out, prov, provFil, receipt, calls: calls(), done: existsSync(out + ".attempt1.done"), done2: existsSync(out + ".attempt2.done"), pid: existsSync(out + ".pid") };
 }
 
+// A5: sandbox-politikken skal stå eksplicit i HVERT kald (uafhængigt af ~/.codex/config)
+const POLITIK = ["sandbox_workspace_write.network_access=false", "sandbox_workspace_write.exclude_slash_tmp=true", "sandbox_workspace_write.exclude_tmpdir_env_var=true"];
+const harPolitik = (argv) => POLITIK.every((k) => { const i = argv.indexOf(k); return i > 0 && argv[i - 1] === "-c"; });
 console.log("codex-run.sh v3 — kontrakt (mock-codex):");
 {
   const x = run();
@@ -84,6 +87,7 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
   eq("rolle → model fra låsen", argOf(x.calls[0], "-m"), "gpt-6-astra");
   eq("rolle → effort fra låsen", x.calls[0].includes("model_reasoning_effort=xhigh"), true);
   eq("dom → sandbox read-only", argOf(x.calls[0], "--sandbox"), "read-only");
+  eq("sandbox-politik eksplicit pr. kald (A5): netværk fra · /tmp · $TMPDIR ikke skrivbare — uafhængigt af ~/.codex/config", harPolitik(x.calls[0]), true);
   const prompt = x.calls[0].slice(x.calls[0].indexOf("-o") + 2).join("\n").replace(/\n$/, ""); // printf tilføjer én hale-newline
   eq("prompten STARTER med rolleteksten (F-5: rollen sendes faktisk)", prompt.startsWith("# Rolle: codex-angreb"), true);
   eq("prompten SLUTTER med opgaven", prompt.trim().endsWith("sig OK"), true);
@@ -100,6 +104,7 @@ console.log("codex-run.sh v3 — kontrakt (mock-codex):");
 {
   const x = run(["recon-codex", "produktion", WORKDIR, "5", join(OUTDIR, "p.md"), promptFil]);
   eq("produktion → sandbox workspace-write · exit 0", argOf(x.calls[0], "--sandbox") === "workspace-write" && x.r.status === 0, true);
+  eq("produktion → sandbox-politik (A5) også her: network_access=false · exclude_slash_tmp · exclude_tmpdir_env_var", harPolitik(x.calls[0]), true);
 }
 {
   const x = run(undefined, { mode: "tom" });
