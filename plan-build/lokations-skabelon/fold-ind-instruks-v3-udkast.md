@@ -13,9 +13,10 @@ Bash-kald). Skriv KUN `plan-build/lokations-skabelon/plan.md` (v3) og `fold-ind-
 - fold-ind-rapport-r2 (din forgængers påstande — 19 af 46 »RETTET M. BEVIS« var IKKE båret): `fold-ind-rapport-r2.md` @ `39936c64f96d9dc6ac97af87d7ddd8b1e20f99bb`
 - **Batch-kilder (alle skal foldes ind):**
   - `plan-angreb-r2.md` @ `0b2a36ca14e05a14459694b125fde3f84dc34ca5` — §1 (19 fund »Nej« m. begrundelse) · §2 (21 kill-list-poster »Nej«) · §3 **A2-1..A2-15** m. angrebs-spec · §4 frit pas
-  - `plan-audit-fresh-eyes-r2.md` @ `292d029cfb8eb0e5d65ee9ffdde04892ca117bf7` — **FUND2-1..FUND2-6** · synlighedsmangler D-2..D-8 · noter · runde-1-status · **samlet Mathias-liste** (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 · D-1..D-8; B-3 udgår)
-  - `plan-slutlaesning-r2.md` @ `<SLUTLAESNING-BLOB>` — code-reviewerens rest-dom + egne fund **R2-n** (fyldes ind når C er landet)
-  - `fund-log.md` @ `<FUNDLOG-BLOB>` — 70 fund: 27 båret · 19 genåbnet (→ A2-n) · 24 modtaget (NF-1/NF-2 · D-1 · FUND2-1..6 · A2-1..15)
+  - `plan-audit-fresh-eyes-r2.md` @ `<AUDIT-R2-BLOB>` (FULD version — den først arkiverede 292d029c var hoved-trunkeret, R2-5; C dømte den trunkerede) — **FUND2-1..FUND2-6** · synlighedsmangler D-2..D-8 · noter · runde-1-status · **samlet Mathias-liste** (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 · D-1..D-8; B-3 udgår)
+  - `plan-slutlaesning-r2.md` @ `<SLUTLAESNING-BLOB>` — code-reviewerens rest-dom (REST ≠ ∅), **batch-tabel fund → v2-afsnit**, dom pr. A2 (A2-2 båret · A2-10/A2-15 delvist · A2-1 HALT-klasse · A2-14 driver · resten ægte) og egne fund **R2-1..R2-7** (R2-5/R2-6 er driver-opgaver: lukket/deklareret af driveren — se nedenfor)
+  - `fund-log.md` @ `<FUNDLOG-BLOB>` — 77 fund: 27 båret · 19 genåbnet (→ A2-n) · 31 modtaget (NF-1/NF-2 · D-1 · FUND2-1..6 · A2-1..15 · R2-1..7)
+  - **Driver-lukninger før v3 (læs, gentag ikke):** R2-5 lukket (fuld audit rekonstrueret byte-eksakt fra transkriptets to assistant-beskeder; CLI'ens result-felt bar kun den sidste) · R2-6: implplan @ `<PIN3>` er `<IMPLPLAN-BLOB>` — v3 re-pinner implplan til DENNE blob (fabrik-push cb55344 ændrede 2.F) og verificerer D13-læsningen (plan:720) mod den · A2-14 (FA-5 kilde-identitet) er driverens/fabrik-armens: v3 skriver kontrakt-KRAVET (systemidentitet · scope · projektion hash-bundet før plan-lås, P-8 §1) og refererer `<udfyldes af driveren>` for selve hashen — opfind ikke en identitet.
   - driver-observation **D-1** (fund-log Kilde 5): påstanden »Formålsblokken er byte-identisk med kravets Formål« er uprøvet — ret formuleringen til det der faktisk gælder (første afsnit identisk; kravets sektion har yderligere afsnit), eller gør den sand.
 - uændrede låste input: krav `9402164d` · kill-list `13b78392` · forventningsliste (LÅST) `2200b76e` · recon2 `2bdbb122` · bilag `6e569779` · P-8 `4af07ef4` · ledger `<LEDGER-BLOB>` · ordbog `<ORDBOG-BLOB>` · implplan (D10/D12/D13 · Fase 3 pkt. 3/3a3/4) · adapter-krav-liste `provenance/b2-adapter-tjek.leverance.md` @ `460a9b26` (C1-input; tabel 2's »MANGLER KILDE« skal være låst i v3)
 
@@ -52,6 +53,21 @@ Bash-kald). Skriv KUN `plan-build/lokations-skabelon/plan.md` (v3) og `fold-ind-
     mutation« rettes ved kilden, ikke ved omformulering.
 18. **P-8-kædens kildebinding (A2-14):** kildeidentitet og måltarget bindes NU (hvad der låses før build, hvad der
     fetches efter — P-8 §1), syntetiske bid-fixtures erklæres eksplicit ikke-held-out.
+19. **C's egne fund R2-1..R2-4 og R2-7 er planner-rettelser** (én tilstand hver, pkt. 11-gyldigt bevis): R2-1
+    `anonymization_strategy_activate` bindes som step i K-7/ac-2's positive kæde/Bid 5.2 (strategier seedes
+    `approved`, apply kræver `active`) · R2-2 request-audit må ikke overskrive brugerens årsag (W13-W16 vs.
+    `pending_change_request`-label) — bind FS-asserten til den faktiske audit-række · R2-3 klok-styring (FA-3) skal
+    dække ALLE FS-historiske forløb (K-1/ac-3 pris D1<D2 · K-4 D5/D6/D8 · K-5 »senere opslag«), ikke kun Bid 4 · R2-4
+    audit-læsning som R+ kræver eksplicit audit-grant i fixturen (deklareret) eller kontrollæsning på SQL-kanalen ·
+    R2-7 AK-DATO-DRIFT sammenligner som `date`, ikke tekst.
+20. **A2-1 (= FUND2-3 = NF-2) er HALT-klasse i C's dom:** »persondata = direct« kan kun lukkes af Mathias' ord (S-2)
+    eller en indirect-vej fundamentet ikke har. v3 skriver S-2 som KRÆVER MATHIAS med begge udfald (pkt. 13):
+    udfald »registrering ok« = v2's stilling m. K-7/ac-4-vejen som leveret for direct; udfald »altid
+    anonymisérbar« = indirect-vej skal leveres → enten bygbar i pakken (beskriv) eller HALT-flag (fundament) — v3
+    tager ikke stilling. A2-11 (årsagsforpligtelse): deklarér K:161-læsningen som mandat m. FS-assert på labels
+    ELLER udvid årsagskravet til approve/undo — begrund med kilden; kan ingen kilde bære → HALT-flag.
+21. **Batch-tabellen i `plan-slutlaesning-r2.md` (fund → v2-afsnit) er dit arbejdskort:** hver række dér skal
+    genfindes i fold-ind-rapport-r3 m. tilstand + `plan.md:<linje>` + ID.
 
 ## Output
 
@@ -61,5 +77,35 @@ Bash-kald). Skriv KUN `plan-build/lokations-skabelon/plan.md` (v3) og `fold-ind-
   tilstand · `plan.md:<linje>` + ID · bevis/mandat/spørgsmål-med-udfald · optælling pr. tilstand · nye fund fra
   K-genlæsning · HALT-flag · kill-list-disposition (21 gen-disponerede) · den samlede Mathias-liste · bindinger.
   Kravet: ÅBNE = 0 (»kræver Mathias« er ikke åbent — det er en tilstand m. spørgsmål+udfald).
-- Slutbesked: to filnavne + sha256 + optælling + HALT (eller »ingen HALT«) + bindinger. Web forbudt · antag aldrig ·
-  rør ikke driverens filer.
+- **`forventnings-manifest.json`** (tredje leverance, C1-kontrakt — afledt 1:1 af v3's matrix uden tolkning; skema
+  nedenfor). `bindings.plan.oid` skrives som `"<udfyldes af driveren>"` (du kender ikke din egen slut-blob); driveren
+  udfylder den m. hash-object af den endelige `plan.md` FØR commit og validerer med
+  `node scripts/v5/forventnings-manifest.mjs validate plan-build/lokations-skabelon/forventnings-manifest.json`
+  (fabrik-armens validator; pushes med C1 — indtil da håndhæver du reglerne selv).
+- Slutbesked: tre filnavne + sha256 + optælling (obligations · negatives · guards · aliases) + HALT (eller »ingen
+  HALT«) + bindinger. Web forbudt · antag aldrig · rør ikke driverens filer.
+
+## Bilag — manifest-skema (fabrik-armen/C1, 2026-09-10 18:4x; fail-closed, egne felter, tætte arrays)
+
+```text
+{ "schema_version": 1, "pakke": "lokations-skabelon",
+  "bindings": { "forventningsliste": {path, oid}, "krav": {path, oid}, "plan": {path, oid} },   // path + 40-hex oid; verifieren path-binder @ gated commit
+  "guards": [ { "id": "g.<navn>", "beskrivelse": "…", "locus"?: "fil:linje" } ],              // værn som D10-mutanter refererer (guard_ref)
+  "obligations": [ {
+     "id": "K-n/ac-m" | "K-n/S",  "k_id": "K-n",  "kind": "ac" | "struktur",
+     "proof_forms": ["UT"|"FS"|"MH"|"SA", …],            // formen hentes HERFRA — aldrig fra buildets udfald
+     "scope": "nu" | "overdragelse", "overdragelse_ref"?: "trin 24 …",   // overdraget = listet, ikke forventet bevist nu
+     "effekt_bid"?: "2.2", "kildeankre": ["K:22","P:27","T:N1"],
+     "aliases"?: ["K-3/ac-6"],                             // genbrug skrives ud: mål skal findes, må ikke selv være alias, nu→nu
+     "negatives": [ { "id": "K-n/ac-m/neg-k", "beskrivelse": "…",
+        "reject_contract": { "kanal":"sqlstate", "sqlstate": "22023"|"P0001"|"P0002"|"42501", "afvisningssted": "fn/trigger/policy", "fase": "wrapper|apply|request|direkte DML|…", "aktoer": "rettighedshaver|app-superadmin|uautoriseret|…", "observationskanal": "sqlstate", "offentlig_signatur": "lokation_opret(text,text)" }
+                        | { "kanal":"exit", "exit_code": 1, "klasse": "klassifikation-mangler", "afvisningssted", "fase", "aktoer" },   // kun K-7/S-typen (CI-klasse uden SQLSTATE)
+        "sole_guard_ref"?: "g.<navn>" } ] } ] }
+```
+
+Regler validatoren håndhæver (v3's matrix SKAL levere dem): ét ID pr. enkelt ac (K-9 »1+2« → `K-9/ac-1` +
+`K-9/ac-2` hver m. egne former) · `K-n/S` for strukturforbud · UT ⇒ ≥1 negativ, negativ ⇒ UT blandt formerne ·
+sqlstate KUN 22023/P0001/P0002/42501 (ingen 23505/fri liste — bagstoppere nævnes i beskrivelse, ikke som klasse) ·
+`reject_contract` fuldt udfyldt pr. negativ (afvisningssted + fase + aktør + offentlig signatur = `reject_contract_ref`)
+· `sole_guard_ref` kun mod deklareret guard · overdragelse kræver `overdragelse_ref` · alias-kæder skrives ud ·
+kildeankre ikke tomme. Manifestet er den forventede mængde for build-proof (verifieren læser aldrig `proof.ks`).

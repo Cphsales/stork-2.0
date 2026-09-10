@@ -160,5 +160,12 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   runde: rest ≠ ∅ → ÉN dokumenteret ekstra runde** (GRUNDPLAN B4): batch = A2-1..15 + FUND2-1..6 + D-1
   (+ C's R2-n) → planner v3 → A'/B' delta på v3 → C slutlæser. **C køres nu på v2** så batchen er komplet
   (princip 5). Fabrik-push cb55344 (runde 10h, hærdet wrapper) ff-pullet før C. SHA = denne commit.
+- 2026-09-10 18:30-19:0x: **B4-C (code-reviewer frisk slutlæser) kørt @ 2949f69** (88 ture, 16,8 min): **REST ≠ ∅
+  → én ekstra runde.** A2-1 HALT-klasse (kræver Mathias, S-2) · A2-14 ejer driver (FA-5 kilde-identitet) · A2-2
+  båret · A2-10/15 delvist · resten ægte; FUND2-1..6 ægte; egne fund R2-1..7 (R2-5 audit trunkeret → lukket af
+  driveren, fuld audit blob 417d96b6 · R2-6 implplan-pin forældet → v3 re-pinner til 0fdd5b1e). Batch-tabel fund →
+  v2-afsnit. v3-instruks (`fold-ind-instruks-v3-udkast.md`, pkt. 11-21 + C1's manifest-skema) klar. SHA = denne
+  commit. Næste: planner v3 → A'/B' delta → C slutlæser; Mathias-listen (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 ·
+  D-1..D-8) gennem spørgsmåls-devilen parallelt.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ deb8b2c · B4-A: plan-angreb-r2 0b2a36ca · B4-B: plan-audit-fresh-eyes-r2 292d029c · B4-C: <afventer> · v3-runde: <afventer> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ deb8b2c · B4-A: plan-angreb-r2 0b2a36ca · B4-B: plan-audit-fresh-eyes-r2 417d96b6 (fuld; trunkeret 292d029c @ 2949f69) · B4-C: plan-slutlaesning-r2 9f13a7cb · v3-runde: <afventer> · B4 rest-dom: ekstra runde · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

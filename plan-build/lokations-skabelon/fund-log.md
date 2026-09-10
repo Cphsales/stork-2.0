@@ -133,7 +133,7 @@ Plannerens egen klassifikation (»inden for mandat« + bekræftelses-linje) er p
 
 ## Efter B4-B (fresh-eyes antag-aldrig-audit r2 af plan v2 `2069aa16`) — modtaget 2026-09-10 17:2x
 
-### Kilde 6: fresh-eyes r2 — `plan-audit-fresh-eyes-r2.md` (frisk claude-ai-instans, read-only @ deb8b2c; provenance/plan-audit-fresh-eyes-r2.\*)
+### Kilde 6: fresh-eyes r2 — `plan-audit-fresh-eyes-r2.md` (frisk claude-ai-instans, read-only @ deb8b2c; først arkiveret hoved-trunkeret som 292d029c, fuld version 417d96b6 — R2-5; provenance/plan-audit-fresh-eyes-r2.\*)
 
 Auditten dømmer også runde 1: FUND-2..FUND-5 LUKKET i v2; FUND-1 »adresseret men forkert klassificeret« → FUND2-3. Rapportens »kræver Mathias = 0« holder ikke: to ægte spørgsmål (S-1 · S-2), to bekræftelser (B-4 · B-5), én relabel (B-2), én synlig default (D-1). Dømmes samlet af code-reviewer-slutlæseren (B4-C).
 
@@ -171,3 +171,19 @@ Auditten dømmer også runde 1: FUND-2..FUND-5 LUKKET i v2; FUND-1 »adresseret 
 | A2-15 | RET | leverancegate / delta og frit pas | S7.1/SL7.1 er reduceret til parserens billede af SQL | K-7/ac-1 · S7.1 | modtaget | — | — |
 
 Frit helhedspas (kildens §4): E20-snittet holder (kun T2.6/T6.2 SA); bijektion har alle 53 ac-ID'er men obligation→effekt-bid→bevisform er ikke entydig (A2-9/10); ID-regler ikke fulgt uden aliasser (A2-10); kildepopulation ikke låst (A2-14).
+
+## Efter B4-C (code-reviewer frisk slutlæser af plan v2 @ 2949f69) — modtaget 2026-09-10 18:47
+
+### Kilde 8: code-reviewer slutlæsning r2 — `plan-slutlaesning-r2.md` (read-only @ 2949f69; provenance/plan-slutlaesning-r2.\*)
+
+REST-DOM: REST ≠ ∅ → én ekstra runde (batch → v3). C's dom over A2: A2-2 båret · A2-10 delvist (K-9/ac-1 MH+UT ægte, alias-delen båret) · A2-15 delvist/lav · A2-1 HALT-klasse (kræver Mathias — samme sag som FUND2-3/NF-2 · S-2) · A2-14 ejer driver · øvrige ægte. FUND2-1..6 ægte. NF-1 dækkes af B-1 (teknisk rest = A2-8) · NF-2 = A2-1 · D-1 ægte (tekst).
+
+| fund-id | alvor | kort (driverens resumé — kilden er autoritet) | berører | status | rettelses-OID | bevis |
+| --- | --- | --- | --- | --- | --- | --- |
+| R2-1 | RET | Anonymiserings-strategier seedes `approved`, men `anonymize_generic_apply` kræver `active`; planen binder ikke `anonymization_strategy_activate` som step (kaldes »UI-drift«) — K-7/ac-2's positive kæde er ubundet | K-7/ac-2 · K-7/ac-4 (c) · Bid 5.2 · plan:550 | modtaget | — | — |
+| R2-2 | RET | Wrapperne W13-W16 sætter brugerens årsag, men `pending_change_request` overskriver `stork.change_reason` med labelen før INSERT — request-audit bærer aldrig brugerens årsag; FS-asserten kan ikke gå grøn | K-8/ac-2 · K-6/ac-10 · §2.6 | modtaget | — | — |
+| R2-3 | RET | S-18 stempler alle logs med `clock_timestamp()`; D1<D2-forløb (pris), D5/D6/D8 (status) og »senere opslag« kræver klok-styring; FA-3 dækker kun Bid 4 og nævner ikke K-1/ac-3 | alle FS-historisk-rækker · FA-3 · K-1/ac-3 | modtaget | — | — |
+| R2-4 | RET | `audit_log_read` er gatet på `has_permission('audit','log')`; planen binder audit-læsningen som R+ m. kun pakke-tab-grant → 42501 i stedet for audit-rækken | K-4/ac-2 | modtaget | — | — |
+| R2-5 | proces (driver) | `plan-audit-fresh-eyes-r2.md` @ 292d029c er hoved-trunkeret (linje 1 »ag F, migration).«); trunkeringen skete før arkivering (result-feltet starter identisk); provenance-resuméet »Rest-status: 6 fund« findes ikke i filen | B4-B-arkivering · C dømte den trunkerede fil | rettet m. bevis (driver) | 417d96b6 (fuld audit) | fuld audit rekonstrueret byte-eksakt fra transkriptets to assistant-beskeder (søm verificeret); README + provenance opdateret; den trunkerede 292d029c består i historikken |
+| R2-6 | binding (driver) | implplan i workdir @ 2949f69 har blob 0fdd5b1e (fabrik-push cb55344 ændrede 2.F), mens plan.md:20, kill-list:254 og plan-angreb-r2:387 pinner 8fab089d; D13-læsning i plan:720 uverificeret mod ledgeren | plan v2 hoved · kill-list · angreb-r2 | modtaget | — | — |
+| R2-7 | mindre | AK-DATO-DRIFT sammenligner `payload->>'gaeldende_fra' <> effective_from::text` som tekst (DateStyle-afhængig) — sammenlign som date | plan:324 | modtaget | — | — |

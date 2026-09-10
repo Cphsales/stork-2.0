@@ -174,3 +174,32 @@ ID-regler, D12/bid-orden, kildepopulation IKKE). Alle kopier byte-identiske (`cm
 
 Ikke arkiveret (deklareret): fuld stderr-strøm `out-a/OUT-angreb-r2.md.stderr.log` (`*.log` gitignored) — sha256
 `160f5029da90bc59dcfe40d8b16b6bc14a860d095a6399ca594e8ad475901142`; i job-tmp så længe jobbet lever.
+
+## B4-C — code-reviewer som frisk slutlæser af plan v2 efter A+B (`claude -p`, read-only, IKKE gate-verdikt) — arkiveret 2026-09-10 ~18:55 af driver-10b (session de4474)
+
+Kald, model/effort (claude-fable-5-1 · xhigh fra `actors.lock[code-reviewer]`), PIN2 `2949f69`, prompt-sha, blobs og
+resumé står i `plan-slutlaesning-r2.provenance.txt`. Result-JSON = kvittering (selv-erklæret): 88 ture · 16,8 min ·
+13,12 USD · `is_error: false` · ingen web. Værktøjsreglen (én kommando pr. Bash-kald) virkede: aktøren
+hash-verificerede alle input-blobs selv (afvig C fra B4-B lukket). **Dom: REST ≠ ∅ → én ekstra runde**; A2-1
+HALT-klasse (kræver Mathias); egne fund R2-1..R2-7, heraf to driver-opgaver (R2-5 trunkeret audit-arkiv · R2-6
+implplan-pin forældet). Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan-slutlaesning-r2.md` | result-tekst fra `OUT-slutlaesning-r2.json` (20 981 B, 128 linjer) | `32c9154ea685dd5c2ed37a2c9ccf3c2d80c4dfe13cf685a8208a50af5c1c07e1` | rest-dom · batch til v3 pr. v2-afsnit · pr. K (dybde · troskab · kill-list · bid) · A2-1..15 ægte/båret · FUND2/NF/D-1 dom · R2-1..7 · binding (10 input + 13 kodeblobs) |
+| `plan-slutlaesning-r2.prompt.txt` | job-tmp `b4/prompt-c.txt` | `c4a7e2f4efbda053b3e9b1cf1bc41868f5671ab4a70b9e58ce4b29450dd35e01` | code-reviewer.md @ cf1a135b + Prompt C m. PIN2/blobs + værktøjsregel |
+| `plan-slutlaesning-r2.claude-result.json` | `…/b4/out-c/OUT-slutlaesning-r2.json` | `9e64519745d054aa6110e0aa344754fcc4d4b6d4550d78e155effbb78dbaa838` | CLI result-JSON (session 6904feb5 · usage · varighed) |
+| `plan-slutlaesning-r2.settings.json` | job-tmp `settings-readonly-c.json` | `eaf8641cf96649bbcf2c224bc7cc19b57ff88f48da0db939a77e31df2854c3b0` | read-only permissions v2 |
+| `plan-slutlaesning-r2.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance |
+
+### Rettelse til B4-B (R2-5, driver-10b 2026-09-10 ~19:00): auditten var hoved-trunkeret — nu FULD
+
+Code-reviewerens slutlæsning fandt at `plan-audit-fresh-eyes-r2.md` @ `292d029c` begyndte midt i en sætning (»ag F,
+migration).«). Årsag: CLI'ens `result`-felt bærer kun den SIDSTE assistant-besked; fresh-eyes' audit lå i to
+beskeder (transkript-linje 102: 3 144 tegn m. »Rest-status: 6 fund«-indledning + binding-forbehold · linje 106:
+15 392 tegn = den arkiverede del). Rekonstrueret byte-eksakt ved sammenkædning af de to tekstblokke uden separator;
+sømmen »…prisforbrug, l« + »ag F, migration).« verificeret. Ny `../plan-audit-fresh-eyes-r2.md`: 19 118 B, 124 linjer,
+sha256 `be798f04b11c2af5403162c33c544f50a8b5c35123afae0cc5c98ac4e9df332b`, blob `417d96b6`. Den trunkerede version
+(blob `292d029c`, sha256 `19767b2d…`) består i historikken (commit 2949f69) — code-reviewerens slutlæsning dømte
+DEN. Lærdom (recept for Claude-aktører): udtræk leverancen fra transkriptets samtlige assistant-tekstblokke i sidste
+tur, ikke kun `result`; bed aktøren skrive leverancen i ÉN besked.

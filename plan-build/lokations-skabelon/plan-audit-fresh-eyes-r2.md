@@ -1,4 +1,24 @@
-ag F, migration).
+Alle syv input er læst i fuld længde (plan v2 796 linjer, krav 427, ledger M-1..M-41, ordbog, P-8, runde-1-audit, fold-ind-rapport). Her er auditen.
+
+---
+
+# Antag-aldrig-audit · plan v2 · lokations-skabelon · runde 2
+
+**Rest-status: 6 fund** (2 medium · 4 mindre). Heraf 2 ægte spørgsmål, 2 bekræftelser, 1 omklassificering af en eksisterende linje, 1 synlig default. Fold-ind-rapportens »KRÆVER MATHIAS = 0« holder ikke: to spørgsmål består bord-testen og er materielle nu.
+
+**Binding-forbehold først:** Bash er afvist i denne session, så jeg kunne IKKE køre `git hash-object`. Alle blobs nedenfor er læst ved sti i workdir'en; OID'erne er opgavens og planens egne påstande, ikke min verifikation. Se afsnit »Binding«.
+
+## Positivt først · hvad der bæres
+
+- **Formål** plan:5 er byte-identisk med krav K:7.
+- **Krav-linjeankre** plan:104/117/131/144/160/173/191/203/216 (K:17-31 … K:163-177) rammer kravets faktiske afsnit; alle 53 acceptkriterier er afbildet (5+6+6+9+5+10+4+5+3), og de fem aliasser (plan:18) parrer identisk krav-tekst: K:29=K:171-kontekst, K:100=K:171, K:120=K:63, K:121=K:65, K:125=K:85. Intet krav-indhold tabes i aliasserne.
+- **Plan-fase-afgørelser inden for kravets delegation K:181:** V3 type valgfri (kravets default) · V4 fravalg/frakobling på nedlagt afvises (kravets default) · V5 én entitet, ordbog:30 · V6 mindst én stand, K:46/K:48 · V7 gruppe-arv afledt · V8 ret afledes · V9 én model-ting, K:103 · V10 direkte-vs-godkendelse pr. handlings-type · V11 valuta/tom pris · V12 seeding · V13 gruppe ud af brug, K:64 + M-36 »sletning af en gruppe der har lokationer« umuligt.
+- **M-citater efterprøvet ordret mod ledgeren:** M-12 (V13 »frakobling virker altid«), M-13, M-14 (DDL-kommentar plan:414), M-17 »en gruppe oprettes med navn« (V3), M-18 (S-1), M-19, M-21 »antal hvile dage« (V9, hviledage-kolonnen), M-25.1, M-27b (stop-før-tid = W12 'aktiv'), M-28, M-29.5 korrekt mærket som kravets afledning (V10), M-36 (K-3/ac-4 »senere lokationer«). Ingen parafrase i anførselstegn.
+- **Kravets to godkendte afledninger** bæres videre uændret: K-1 »lokation uden klienter« (K:31) → P-8 T:214 + plan C2 »ingen krav om mindst én klient«; K-5 ac 3 straks-virkning (K:99) → W8 uden pending (plan:286). Begge er Mathias-sanktionerede via krav ok M-38.
+- **Ordbog:** de seks plan-fase-entries findes committet ordbog:29-34; planens systemnavne i §5 matcher dem 1:1 (stande, grupper, 'aktiv'/'dvale'/'nedlagt', gruppens type-værdier, gruppe_kontakter, klient_id).
+- **P-8 optaget loyalt:** T:24-matrixkravet → §1-kolonner C/N; alle T:26-planparametre har ét udfald (V1, V5, V6, V8/B-2, V9, V10, V11, S-3/S-4, S-20); T:150 eksplicit afvisning → K-2/ac-1 neg-1..4; T:163-165 overdragelser → §9; T:189 navnekollision → K-3/ac-3; T:191 clock-driver → FA-3; orakel T:196-203 = plan:96.
+- **Kravets negativer er i matrixen** med pinnet afvisningsklasse: K-1 ac1/2 · K-2 ac1/5/6 · K-3 ac1/2/3/5 · K-4 ac1/2/3/4/8 · K-5 ac2/3/5 · K-6 ac1/2/4/6/10 · K-7 ac1/S · K-8 ac1-4 · K-9 ac2/3.
+- **IKKE-i-scope respekteret:** §9's overdragelser svarer til K:411-418 (booking pr. stand, kampagne-trigger, bookings ved frakobling, prisforbrug, lag F, migration).
 - **HALT-flag INGEN** (plan:738): jeg finder heller ingen modsigelse mod kravet i forretnings-forstand; K-6 ac 3 (ingen slutdato), K-4 ac 6 (dvale rører ikke koblinger) og K-2 ac 4 (overdragelse) er alle holdt.
 
 ## FUND2 · ubekræftede afledninger i v2
