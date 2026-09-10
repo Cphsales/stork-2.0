@@ -153,13 +153,19 @@ if [ "$SELFTEST" -ne 1 ]; then
   kendt_prefix "$NODE" || blok "node-binær uden for pinnet prefix: $NODE"
 fi
 
-# --- F-3d: node pinnes FØR første node-start. Låsen læses som TEKST (git + grep fra system-PATH); node's sha SKAL stå i den.
-# Node parser bagefter låsen selv — men kun en node hvis bytes låsen kender. (Selvtest uden FORCE_BINCHECK: lempelse, kvittering selftest=true.)
+# --- F-3d (runde 10c): node autoriseres FØR første node-start gennem ÉN allerede betroet mekanisme: pin-filen
+# scripts/v5/node.pin @ regel_commit (git + grep/wc fra system-PATH). Streng grammatik: HELE filen er præcis én linje
+# `sha256=<64 lowercase hex>`. Ingen tekst-medlemskab i låsen (runde 10c: en fremmed nodes sha i et uvedkommende felt
+# gav start før den præcise sammenligning). Selvtest uden FORCE_BINCHECK: lempelse, kvittering selftest=true.
 BINLOCK=""
 if [ "$SELFTEST" -ne 1 ] || [ "${STORK_V5_SELFTEST_FORCE_BINCHECK:-}" = "1" ]; then
-  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
+  NODE_PIN_TXT=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/node.pin" 2>/dev/null) || blok "node.pin findes ikke @ $REGEL_COMMIT — node startes ikke (F-3d)"
+  [ "${#NODE_PIN_TXT}" -eq 71 ] && [ "$(printf '%s' "$NODE_PIN_TXT" | grep -cE '^sha256=[0-9a-f]{64}$')" = "1" ] \
+    || blok "node.pin har ikke grammatikken 'sha256=<64 hex>' som eneste linje — node startes ikke (F-3d)"
+  NODE_PIN_SHA=${NODE_PIN_TXT#sha256=}
   NODE_SHA=$(sha_of "$NODE")
-  printf '%s' "$BINLOCK" | grep -qF -- "\"$NODE_SHA\"" || blok "node ($NODE, sha ${NODE_SHA:0:12}) står ikke i binaries.lock.json @ $REGEL_COMMIT — node startes ikke (F-3d)"
+  [ "$NODE_SHA" = "$NODE_PIN_SHA" ] || blok "node ($NODE, sha ${NODE_SHA:0:12}) matcher ikke node.pin (${NODE_PIN_SHA:0:12}) @ $REGEL_COMMIT — node startes ikke (F-3d)"
+  BINLOCK=$(g -C "$REPO" show "$REGEL_COMMIT:scripts/v5/binaries.lock.json" 2>/dev/null) || blok "binaries.lock.json findes ikke @ $REGEL_COMMIT"
 fi
 NODE_PINNED=1
 # --- F-3c: PRIVAT Codex-hjem. CLI'en læser ALDRIG brugerens ~/.codex/config.toml (den kunne omdirigere udbyder/profil/sandbox
@@ -180,7 +186,7 @@ AUTH_SHA0=$(sha_of "$RUN_CODEX_HOME/auth.json")
 # codex-shim'en er `#!/usr/bin/env node` → den SKAL kunne finde node; vi giver PRÆCIS den verificerede node-mappe + system-PATH
 CODEX_PATH="$(dirname -- "$NODE"):$SYSPATH"
 CODEX_PKG_ROOT=$("$REALPATH" -e -- "$(dirname -- "$CODEX")/..") || blok "codex-pakkerod kan ikke resolves (F-3b)"
-# F-3b (runde 10/10b): RÆKKEFØLGE = lås → node-sha (ovenfor, før node) → shim-sha → native-sha → FØRST DEREFTER første start
+# F-3b (runde 10/10b/10c): RÆKKEFØLGE = node.pin (før node) → lås → shim-sha → native-sha → FØRST DEREFTER første start
 # (--version) → exec. Intet u-pinnet program startes. Eksekveringen BINDES til den hashede fil: vi kører den native binær
 # direkte (shim'en vælger sin native via require.resolve/package-exports og kan pege et andet sted hen end det vi hashede).
 CODEX_NATIVE=""; CODEX_EXEC=""
@@ -192,12 +198,10 @@ if [ -n "$BINLOCK" ]; then
     if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);
     const n = l.codex_native;
     if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !n.path_from_pkg_root.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(n.path_from_pkg_root)) process.exit(4);
-    if (!l.node || !hex64(l.node.sha256)) process.exit(5);
-    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root, l.node.sha256].join("\n"));
-  ') || blok "binaries.lock.json er ugyldig eller mangler codex.version / codex_native{sha256,path_from_pkg_root} / node.sha256 (F-3b/F-3d)"
+    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));
+  ') || blok "binaries.lock.json er ugyldig eller mangler codex.version / codex_native{sha256,path_from_pkg_root} (F-3b)"
   PIN_SHA=$(printf '%s\n' "$PIN" | sed -n 1p); PIN_VER=$(printf '%s\n' "$PIN" | sed -n 2p)
-  PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p); PIN_NODE_SHA=$(printf '%s\n' "$PIN" | sed -n 5p)
-  [ "$PIN_NODE_SHA" = "$NODE_SHA" ] || blok "node ($NODE) matcher ikke binaries.lock.json node.sha256 (${PIN_NODE_SHA:0:12}) (F-3d)"
+  PIN_NATIVE_SHA=$(printf '%s\n' "$PIN" | sed -n 3p); PIN_NATIVE_REL=$(printf '%s\n' "$PIN" | sed -n 4p)
   [ "$(sha_of "$CODEX")" = "$PIN_SHA" ] || blok "codex-entry ($CODEX) matcher ikke binaries.lock.json (${PIN_SHA:0:12}) — CLI'en er ændret/opdateret uden bevidst lås-opdatering (F-3)"
   CODEX_NATIVE=$("$REALPATH" -e -- "$CODEX_PKG_ROOT$PIN_NATIVE_REL" 2>/dev/null) || blok "native codex-binær findes ikke: $CODEX_PKG_ROOT$PIN_NATIVE_REL (F-3b)"
   [ -f "$CODEX_NATIVE" ] && [ -x "$CODEX_NATIVE" ] || blok "native codex-binær er ikke en eksekverbar almindelig fil: $CODEX_NATIVE (F-3b)"

@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "note": "M-41 Trin A / P2 F-3: pin af codex-CLI'ens entry-fil (realpath af shim) — version + sha256. Opdateres BEVIDST i en commit når preflight opdaterer CLI'en (aldrig automatisk). FUND 2026-09-10 (CLI 0.153.0→0.154.0): shim-filen codex.js er BYTE-IDENTISK på tværs af versioner — dens hash dækker IKKE den native binær (@openai/codex-linux-x64/vendor/.../bin/codex). Derfor pinnes den native binær nu også (codex_native); wrapperen håndhæver (F-3b) shim-sha + `codex --version` == codex.version + native sha på <pakkerod>+path_from_pkg_root, alle fail-closed. Fuld integritet (signeret binær/betroet runner) = deklareret residual til CI (DEL I: lokal = candidate, plan DEL VIII pkt. 36). F-3d (runde 10b): node pinnes også (node parser låsen — kun en node hvis bytes låsen kender, tjekket som tekst før første node-start). F-3c: CLI'en kører i privat CODEX_HOME uden config.toml og med allowlist-miljø — brugerens ~/.codex/config.toml læses aldrig.",
+ "note": "M-41 Trin A / P2 F-3: pin af codex-CLI'ens entry-fil (realpath af shim) — version + sha256. Opdateres BEVIDST i en commit når preflight opdaterer CLI'en (aldrig automatisk). FUND 2026-09-10 (CLI 0.153.0→0.154.0): shim-filen codex.js er BYTE-IDENTISK på tværs af versioner — dens hash dækker IKKE den native binær (@openai/codex-linux-x64/vendor/.../bin/codex). Derfor pinnes den native binær nu også (codex_native); wrapperen håndhæver (F-3b) shim-sha + `codex --version` == codex.version + native sha på <pakkerod>+path_from_pkg_root, alle fail-closed. Fuld integritet (signeret binær/betroet runner) = deklareret residual til CI (DEL I: lokal = candidate, plan DEL VIII pkt. 36). F-3d (runde 10c): node pinnes i den SEPARATE fil scripts/v5/node.pin (én linje 'sha256=<hex>', streng grammatik) og autoriseres med systemværktøjer FØR første node-start — node parser derefter denne lås. F-3c: CLI'en kører i privat CODEX_HOME uden config.toml og med allowlist-miljø — brugerens ~/.codex/config.toml læses aldrig.",
  "codex": {
   "version": "codex-cli 0.154.0",
   "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
@@ -11,10 +11,5 @@
   "sha256": "3188814c35471432d4123203e0eb38e5bddc60226e3d7ddf0e59e649ea140022",
   "bytes": 262858016,
   "path_from_pkg_root": "/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex"
- },
- "node": {
-  "version": "v24.15.0",
-  "sha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c",
-  "path_hint": "$HOME/.nvm/versions/node/v24.15.0/bin/node"
  }
 }
