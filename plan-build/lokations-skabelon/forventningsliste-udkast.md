@@ -1,10 +1,16 @@
-# B2 — forventningsliste (UDKAST) — lokations-skabelon, plan v2
+# B2 — forventningsliste (LÅST) — lokations-skabelon, plan v2
 
-**Status: UDKAST** — skrivebordsarbejde af driver-10b 2026-09-09, uden aktør. Låses først i Trin B
-(GRUNDPLAN-v2 B2) efter (a) Codex har vist at måle-adapteren kan udtrykke de fire bevisformer, og
-(b) fold-ind (B3) har givet hver ⚠-række én af tre tilstande. Listen bruges til BÅDE at producere
-beviset (planner-Code skriver plan v2's matrix mod den) og kontrollere det (Codex-angreb ·
-fresh-eyes · code-reviewer dømmer mod den; build-proof/prover får den som input, GRUNDPLAN-v2 C1).
+**Status: LÅST 2026-09-10 ~10:35 af driver-10b (session de4474)** — udkast skrevet 2026-09-09 uden
+aktør; låst efter B2's Codex-dom (`provenance/b2-adapter-tjek.leverance.md`, run_id
+`20260910T101827-1260310-4098`, dømte udkast-blob `090a5ed9`): konklusion »KAN IKKE — adapter-krav-liste
+følger« = **adapter-krav-liste modtaget (kontrakt-input til fabrik-armens C1), IKKE adapter-PASS**;
+PASS bogføres først ved Trin C (ny Codex-dom mod den integrerede adapter). Sekvens afgjort med
+mathias-9b 10/9 ~10:10. Ændringer mod den dømte blob 090a5ed9: denne status-blok · K-6 ac 5
+bevisform +UT (dommens frit pas) · §5 opdateret. Efter låsen ændres listen kun som NY version (ny
+blob → planner og dommere re-binder). ⚠-rækkerne er annoteringer til fold-ind (B3), ikke låse-blokkere:
+hver får én af tre tilstande i fold-ind-rapporten. Listen bruges til BÅDE at producere beviset
+(planner-Code skriver plan v2's matrix mod den) og kontrollere det (Codex-angreb · fresh-eyes ·
+code-reviewer dømmer mod den; build-proof/prover får den som input via C1's manifest, se §5 pkt. 6).
 
 **Bindinger (alle @ HEAD bd5c51a):** krav `9402164d` (K:linje = linje i krav-blobben) · plan v1
 `423d9b20` @ ec4a3d9 (P:linje — v1 er UDKAST; rækker mærket ⚠ har åbne fund i `fund-log.md`) ·
@@ -122,7 +128,7 @@ aktive klienter · sletning/omskrivning af historik · booking uden gældende re
 | 2 | dobbelt kobling AFVISES — én sandhed | dobbelt C1×G → 22023 (wrapper OG apply-handler); partial UNIQUE 23505 + EXCLUDE 23P01 = bagstoppere. **SA (E20-race 2):** to samtidige dublet-requests → ingen dobbelt aktiv relation efter commit | UT · SA | 4.1/4.2 | N6 · T:§4.3 SA | K:118 · P:97 · T:154,231 | P K-3(a)/K-6(a) · T K-6/N6 | Bid 4 angrebs-spec-krav (P:425) |
 | 3 | kobling uden slutdato AFVISES IKKE | åben kobling (`gaeldende_til` NULL) = normaltilstand; accepteres | MH | 4.2 | N6 · C1 | K:119 · P:98 · T:154,213 · M-12 · M-17 | — | — |
 | 4 | arv til alle + senere lokationer; til-valg uden for gruppen AFVISES | = K-3 ac 4 | FS · UT | 4.3 | N6 · C2 | K:120 · P:99 | — | — |
-| 5 | fravalg rammer kun den lokation; ophævelse genskaber | = K-3 ac 6 | FS · MH | 4.2/4.3 | N6 · C4 | K:121 · P:100 | — | — |
+| 5 | fravalg rammer kun den lokation; ophævelse genskaber | = K-3 ac 6 (inkl. dens UT-negativ: dobbelt fravalg → 22023) | FS · MH · UT | 4.2/4.3 | N6 · C4 | K:121 · P:100 | — | (B2-dom frit pas: alias ekspanderet, UT tilføjet) |
 | 6 | frakobling fra dato; fortid uændret; historik-omskrivning AFVISES | frakobl C1 fra G@D7: alle G-lokationer mister ret FRA D7, D<D7 uændret, H-ret består; UPDATE af lukket række/andre kolonner → P0001; DELETE → P0001 | FS (historisk) · UT | 4.2/4.3 | N6 · C7 · C10 | K:122 · P:101 · T:154,219,230 · M-13 | P K-6(j) | ⚠ F10 (forbillede-attribution forkert) |
 | 7 | opslaget »må X stå på Y på D?« entydigt, også historisk | tre daterede led (gruppe-på-dato · fravalg-på-dato · status-på-dato) læst på SAMME D; `read()` = `read_at(current_date)` under samme rolle; alle observerede datoer genlæses efter hvert step | FS | 4.3 | N6 · C4-C8 · C10 | K:123 · P:102 · T:193-201,230 · V8 | P K-6(b)(c)(d) · T K-6/N6 | ⚠ A-6 (INVOKER-orakel kan svare falsk pga. anden sides RLS) |
 | 8 | flere klienter samtidig AFVISES IKKE | C1 + C2 har begge ret på L1; C1 også koblet på H (kardinalitets-positiv) | MH · FS | 4.3 | N6 · C1 · C2 | K:124 · P:103 · T:154,213 · M-29.1 | P K-3(a) | — |
@@ -215,11 +221,24 @@ assertions skal være udført; deklareret nedstrøms-scope er ikke en skjult ski
 
 ---
 
-## 5. Hvad B2-låsen kræver ud over dette udkast
+## 5. Hvad B2-låsen kræver ud over dette udkast (status pr. låsen 2026-09-10)
 
-1. **Codex' måle-adapter-tjek:** adapteren (C1: `runBuildProofEngine` + `runProver`, kontraktbundne
-   reject-klasser) kan udtrykke UT · FS · MH · SA som særskilte udfald — herunder »læsning med nul
-   rækker« (K-8 ac 4) som FS-observation, ikke som fravær af fejl.
+1. **Codex' måle-adapter-tjek — KØRT 2026-09-10 (dom @ c843eb0):** adapteren @ HEAD kan IKKE
+   udtrykke UT · FS · MH · SA som særskilte udfald (kun UT-med-42501 + »positiv lykkes«; ingen
+   orakel-/sideeffekt-observation, ingen to-sessions-barriere; mutant pr. konfig-knap). Codex'
+   adapter-krav-liste (pr. bevisform · pr. K · reject-kontrakt m. `reject_contract_ref` · D10/D11/D12-
+   kontrakt) er arkiveret i `provenance/b2-adapter-tjek.leverance.md` og er C1's kontrakt-input
+   (fabrik-armen). »Adapter-tjek PASS« = ny Codex-dom mod den integrerede adapter = Trin C-kriterie
+   før første bid. Plan-låsen (B6/B7) afhænger ikke af adapter-PASS.
+6. **Manifest (B2-dommens frit pas — C1-kontrakt, driver leverer input):** listen mangler en kanonisk,
+   entydig K/ac/struktur/negativ-mængde som maskinen kan hente fra den låste blob (sammensatte nøgler
+   som K-9 »1+2«, K-7 »(struktur)«, rækker m. flere negativer, alias som K-6 ac 5 = K-3 ac 6).
+   Kontrakt: versionsbundet manifest m. stabile individuelle ac-/struktur-/negativ-/assertion-ID'er,
+   eksplicitte alias-/genbrugsrelationer, bevisformer, nu-scope vs. overdragelse og kildeankre — bundet
+   til DENNE låste blob + krav-blobben; verifieren udleder den forventede mængde derfra og afviser
+   udeladelser/dubletter/ukendte referencer (aldrig `proof.ks` fra beviset selv). ID-regler foreslået:
+   `K-n/ac-m` pr. enkelt ac (K-9 »1+2« → ac-1 + ac-2 hver med MH+UT) · `K-n/S` for strukturforbud
+   (K-7 nedgraderingsforbud = `K-7/S`) · `K-n/ac-m/neg-k` pr. negativ · alias skrives ud.
 2. **Plan v2's matrix** får kolonnerne chain-step (C0-C10) og canary (N1-N9) pr. ac og optager
    T-blob `4af07ef4` (A-13 · U01).
 3. **Hver ⚠-række** har i fold-ind-rapporten én af tre tilstande: rettet m. bevis · inden for

@@ -31,8 +31,14 @@ samme blob-OID og virker uden repo. Pinned commit: `<PIN>`.
 - **Codex' BLINDE kill-list:** `kill-list-udkast.md` @ `<udfyldes>` — skrevet fra låst krav +
   recon-2 UDEN at have set plan v1 (commit-orden er beviset). Den er **kill-list-autoritet**; plan
   v1's kill-list-UDKAST pr. K er dit sammenligningsgrundlag, ikke autoritet.
-- **Forventningsliste (B2, låst):** `forventningsliste-udkast.md` @ `<udfyldes>`. v2's matrix skal
-  kunne læses 1:1 mod den (ac · bevisform UT/FS/MH/SA · effekt-bid · chain-step · canary).
+- **Forventningsliste (B2, LÅST 2026-09-10):** `forventningsliste-udkast.md` @
+  `2200b76e29b52f7084c0bfe003c0a2e8121c2346` (filnavnet beholdt; status-blokken siger LÅST). v2's matrix
+  skal kunne læses 1:1 mod den (ac · bevisform UT/FS/MH/SA · effekt-bid · chain-step · canary). Brug
+  ID-reglerne i dens §5 pkt. 6 når du navngiver ac/negativer i matrixen (`K-n/ac-m` · `K-n/S` ·
+  `K-n/ac-m/neg-k`; K-9 »1+2« splittes; alias skrives ud) — så C1's manifest kan afledes uden tolkning.
+  Codex' adapter-krav-liste (`provenance/b2-adapter-tjek.leverance.md`) er C1-input, ikke plan-input;
+  men dens tabel 2 viser pr. K hvilke observationer/reject-klasser beviset skal kunne udtrykke — hvor
+  den skriver »MANGLER KILDE«, skal v2 låse den præcise kode/tilstand (eller markere det som åbent).
 
 ## Opgaven: plan v2 + fold-ind-rapport
 

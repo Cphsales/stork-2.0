@@ -58,3 +58,25 @@ Plan-audit færdig 09-08 17:04 · angreb færdig 09-08 17:31 · den gamle driver
 uden at arkivere (≈17 t u-arkiveret i driverens levetid) · sikkerhedskopi taget af mathias-9b
 09-09 12:31 (`backup-fase3-fund/`, sha256-identiske) · arkiveret her 09-09 ca. 13:25
 (≈20 t efter produktion).
+
+## B2 — Codex' måle-adapter-tjek (dom, read-only, IKKE gate-verdikt) — arkiveret 2026-09-10 ~10:30 af driver-10b (session de4474)
+
+Kørsel via `codex-run.sh codex-angreb dom` @ PIN `c843eb0` (regel_commit), run_id
+`20260910T101827-1260310-4098`, gpt-6-astra · xhigh · sandbox read-only (banner: ingen network-linje =
+offline), codex-cli 0.154.0, `gate_input: null`, `STORK_V5_GATE_INPUT` ikke sat. Workdir = fuldt
+arkiv @ PIN uden `.git` (ikke blind — B2 må se plan og forventningsliste). Konklusion: **»KAN IKKE —
+adapter-krav-liste følger«** — bogført som »adapter-krav-liste modtaget« (kontrakt-input til
+fabrik-armens C1), IKKE som PASS. Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde (job-tmp `870c5b0e/tmp/b2/`) | sha256 | indhold |
+| --- | --- | --- | --- |
+| `b2-adapter-tjek.leverance.md` | `out/OUT-b2-adapter.md` (`-o`, 24 662 B) | `6cdac2c7a33c58d92c648c87f3cdeec461855873e966e5c7a94663e2d481b490` | Codex' dom: tabel 1 pr. bevisform · tabel 2 pr. K · reject-kontrakt · D10/D11/D12-kontrakt · frit pas (manifest-fund) · binding (7 blobs) |
+| `b2-adapter-tjek.prompt.txt` | `prompt-b2.txt` (opgave-delen; rolleteksten @ skill_oid f6e64979 injiceres af wrapperen) | `4b0f7ffc134747f5f41d8ab6e5876e5c84419daa994fd5f0ea791dc4a034de7d` | prompten m. PIN + blobs udfyldt |
+| `b2-adapter-tjek.provenance.txt` | `out/OUT-b2-adapter.md.provenance` | `e11e6e68f7414ff45818739584aba40c8db42347824e90d2cc154c3fc7721505` | wrapper-provenance (start · attempt 1 rc=0 · 453 s) |
+| `b2-adapter-tjek.receipt.json` | `out/OUT-b2-adapter.md.receipt.json` | `83d88b90a54feaac88a8c10bfdb568f63d541843e98b1a90ebf84bc1af9f60f1` | transport-kvittering v2 (status success · binaries · attempts · prompt_sha256 12c989fc…) |
+| `b2-adapter-tjek.codex-banner.txt` | første 14 linjer af `out/OUT-b2-adapter.md.stderr.log` | `9978f6871468edadfc39e8bf106a60de02181558b06675cf6d2e9f6ceb059c77` | Codex' banner = bevis for faktisk kørt politik (sandbox read-only, xhigh, session-id) |
+| `b2-adapter-tjek.workdir-blobs.txt` | `provenance/workdir-blobs.txt` | `153438000d9becc62ca41169e39f28bdc9f4d331649a203e9534a595a9874753` | hash-object af de 6 input-filer i workdir'en før spawn |
+
+Ikke arkiveret (deklareret): fuld stderr-strøm `out/OUT-b2-adapter.md.stderr.log` (`*.log` er gitignored)
+— sha256 `2ea3457c072aeb298abceb30924663e5c748b8ca1b9956a5abc83cec179d5352`; ligger i job-tmp så længe
+jobbet lever.

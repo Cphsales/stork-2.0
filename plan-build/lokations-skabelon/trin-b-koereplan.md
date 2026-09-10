@@ -123,5 +123,16 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   npm nyeste 0.154.0 → »opdater før spawn« (2.F); `binaries.lock.json` pinner 0.153.0 → CLI +
   lås-commit er fabrik-armens; meldt 10:0x, B1/B2-Codex holdes til svar (opdatering eller
   deklareret afvig). SHA = denne commit.
+- 2026-09-10 10:05-10:18: preflight løst (a): fabrik-armen opdaterede codex-cli → 0.154.0 + `binaries.lock`
+  i 6e8ea9e (fund: shim byte-identisk på tværs af versioner → native pin fra runde 10). Recept-udvidelse
+  fe24947 (analyser-mappen fjernes fra blind workdir). **B1 spawnet 10:14:53 @ PIN fe24947** (run_id
+  20260910T101453-1257166-23934, produktion, workspace-write — kørte m. netværk TIL, afvig noteret) ·
+  **B2 adapter-dom spawnet 10:18:27 @ PIN c843eb0** (run_id 20260910T101827-1260310-4098, dom,
+  read-only, gate_input null). B5 bekræftet leveret af fabrik-armen @ fd443c4.
+- 2026-09-10 10:26-10:35: **B2 dom modtaget:** »KAN IKKE — adapter-krav-liste følger« → arkiveret
+  `provenance/b2-adapter-tjek.*` (leverance-blob 460a9b26), bogført som adapter-krav-liste modtaget
+  (C1-input), IKKE PASS (sekvens afgjort m. mathias-9b: PASS = ny dom mod integreret adapter i Trin C).
+  Frit pas: manifest m. stabile ID'er mangler (C1-kontrakt, §5 pkt. 6). **Forventningsliste LÅST —
+  blob `2200b76e`** (ændringer mod dømt 090a5ed9: status-blok · K-6 ac 5 +UT · §5). SHA = denne commit.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: <SHA> · B2 låst: <blob> · B3: <SHA> · B4: <SHA> · B5: <SHA> · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: <SHA> · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: <SHA> · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
