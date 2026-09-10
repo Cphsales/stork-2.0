@@ -25,6 +25,10 @@ W=/home/mathias/.claude/jobs/870c5b0e/tmp/b1-blind        # driverens job-tmp; i
 rm -rf "$W" "$W.tar" && mkdir -p "$W"
 git archive --format=tar -o "$W.tar" "$PIN" && tar -xf "$W.tar" -C "$W" && rm -f "$W.tar"   # to trin (worktree-guard tillader ikke pipe fra git)
 rm -rf "$W/plan-build/lokations-skabelon"                  # ALT plan-afledt væk i ét hug
+# 10/9: fabrik-armens arkiver fjernes også — analyser-2026-09-08 er workflow-analyser skrevet EFTER plan v1
+# (refererer plan-blob 423d9b20, angrebs-/audit-/kildetjek-fund-tal og plan-fasens kørsler) → plan-afledt;
+# p2-haerdning-2026-09-09 er transport-hærdning (ikke B1-input; fjernes for enkelhed og skarpt grep-tjek)
+rm -rf "$W/docs/workflow-faerdiggoerelse/analyser-2026-09-08" "$W/docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09"
 mkdir -p "$W/plan-build/lokations-skabelon"
 # kun de fire lovlige plan-build-input lægges tilbage — ved blob, ikke ved arbejdstræ:
 git show "$PIN":plan-build/lokations-skabelon/recon2.md              > "$W/plan-build/lokations-skabelon/recon2.md"
@@ -38,6 +42,12 @@ git hash-object "$W"/docs/sandhed/krav/lokations-skabelon-krav.md \
 # forventet: 9402164d · 2bdbb122 · 4af07ef4 · <ledger-blob @ PIN — @ 5eb3736 = 14722b4c; genberegn: git rev-parse "$PIN":plan-build/lokations-skabelon/mathias-ord.md> · 714f9b80 · 6e569779
 grep -rl "423d9b20\|lokation_status_skift\|lokation_opret" "$W" --include=*.md | grep -vE 'recon2\.md|mathias-ord\.md'   # skal være TOM
 grep -n "423d9b20\|lokation_status_skift\|lokation_opret" "$W/plan-build/lokations-skabelon/mathias-ord.md"   # forventet: KUN M-41-rækken (OID-reference, intet plan-indhold) — output gemmes i provenance
+# informativt bredere tjek (ikke bindende): forventede træf = docs/teknisk/cutover-checklist.md (gammel »plan v1
+# sektion 4«, urelateret master-plan-reference) · scripts/v5/roller/{codex-angreb,code-reviewer,planner-code}.md
+# (rolle-regler om kill-list/fold-ind) · docs/workflow-faerdiggoerelse/workflow-implementeringsplan.md (lovligt input,
+# nævner kun at plan v1's kill-list var plannerens) · docs/foraeldet-workflow/arkiv/mathias-afgoerelser-historik.md
+# (dødt arkiv, andet »plan v1«) — INGEN andre; nye træf = STOP og vurdér
+grep -rlE "plan-angreb|fresh-eyes-r1|kildetjek|FUND-[1-5]|fold-ind|kill-list-UDKAST|plan v1|plan\.md:[0-9]" "$W" --include=*.md | grep -vE 'recon2\.md|mathias-ord\.md'
 ```
 
 **Hvad Codex ser:** hele kodebasen @ PIN (migrationer, scripts, fitness, roller) · krav (låst) ·
@@ -45,7 +55,9 @@ recon2 + recon-2-bilag (mutationsfrø) · P-8 · ledger M-1..M-41 · ordbog @ f�
 **Hvad Codex IKKE ser:** plan.md · forventningsliste-udkast · fold-ind-instruks-udkast · fund-log ·
 plan-angreb-r1 · plan-audit-fresh-eyes-r1 · p4-plan-kildetjek · drift-log · ordbogens plan-sektion
 · alle øvrige plan-build-filer (buildability, verdikter, krav-udkast — irrelevante for B1 og
-fjernet for enkelhed). NB: recon2.md nævner kandidat-navne (fx `lokation_opret`) som recon-forslag
+fjernet for enkelhed) · `docs/workflow-faerdiggoerelse/analyser-2026-09-08/` (workflow-analyser efter
+plan v1: GRUNDPLAN v1/v2, flow, over-test, tid, validering — plan-afledte) ·
+`docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/` (transport-hærdning, fabrik-materiale). NB: recon2.md nævner kandidat-navne (fx `lokation_opret`) som recon-forslag
 — det er recon-føde, ikke plan-indhold, og er tilladt. NB2 (tørkørsel 10/9): ledgerens M-41-række
 nævner plan-blob-OID'et `423d9b20` i sætningen »er IKKE `plan ok` til plan v1 (blob 423d9b20)« — en
 reference til at planen findes, ikke plan-indhold; ledgeren er lovligt input (M-ord binder), derfor
@@ -174,3 +186,9 @@ Formål: bevise at recepten er mekanisk sund FØR den endelige PIN kendes. Resul
 - Udestående til den endelige PIN: wrapper v4 (ikke @ 5eb3736) · `binaries.lock.json` (ikke @
   5eb3736) · `.prettierignore` for `plan-build/` (ikke @ 5eb3736) · ledger-blob genberegnes ·
   rolletekst genlæses. Alle fire er Trin A-leverancer — bekræfter aktør-stoppet.
+- **Anden tørkørsel @ cae6fb0 (efter Trin A-push, 10/9 ~10:10):** grep-tjekket var IKKE tomt — fire
+  filer i `docs/workflow-faerdiggoerelse/analyser-2026-09-08/` (grundplan-v1/v2 · flow-claude ·
+  validering-codex) nævner plan-blobben og plan-fasens fund-tal/kørsler. Mappen (10 filer) er
+  fabrik-armens workflow-analyser skrevet efter plan v1 → plan-afledt → fjernes fra den blinde
+  workdir sammen med `p2-haerdning-2026-09-09/`. Recepten ovenfor er opdateret; kørslen bruger den
+  PIN der bærer denne recept.
