@@ -187,3 +187,14 @@ REST-DOM: REST ≠ ∅ → én ekstra runde (batch → v3). C's dom over A2: A2-
 | R2-5 | proces (driver) | `plan-audit-fresh-eyes-r2.md` @ 292d029c er hoved-trunkeret (linje 1 »ag F, migration).«); trunkeringen skete før arkivering (result-feltet starter identisk); provenance-resuméet »Rest-status: 6 fund« findes ikke i filen | B4-B-arkivering · C dømte den trunkerede fil | rettet m. bevis (driver) | 417d96b6 (fuld audit) | fuld audit rekonstrueret byte-eksakt fra transkriptets to assistant-beskeder (søm verificeret); README + provenance opdateret; den trunkerede 292d029c består i historikken |
 | R2-6 | binding (driver) | implplan i workdir @ 2949f69 har blob 0fdd5b1e (fabrik-push cb55344 ændrede 2.F), mens plan.md:20, kill-list:254 og plan-angreb-r2:387 pinner 8fab089d; D13-læsning i plan:720 uverificeret mod ledgeren | plan v2 hoved · kill-list · angreb-r2 | modtaget | — | — |
 | R2-7 | mindre | AK-DATO-DRIFT sammenligner `payload->>'gaeldende_fra' <> effective_from::text` som tekst (DateStyle-afhængig) — sammenlign som date | plan:324 | modtaget | — | — |
+
+## Efter spørgsmåls-devil kørsel 1 (`spoergsmaal-plan-r2.md` @ 4cef5bee, FAIL 11 fund) — modtaget 2026-09-10 19:12
+
+### Kilde 9: spørgsmåls-devil (codex-angreb i devil-funktion, read-only @ 1e62bca; provenance/spoergsmaal-plan-r2.devil-1.\*)
+
+Devilens fund gælder Mathias-teksten (form/klassifikation, rettet i ny blob) — to har plan-substans og registreres her:
+
+| fund-id | klasse | kort (driverens resumé — kilden er autoritet) | berører | status | rettelses-OID | bevis |
+| --- | --- | --- | --- | --- | --- | --- |
+| DV-1 | ny afvisning uden mandat | AK-DATO-FOER-START (»en kobling/fravalg varer mindst én dag«, plan:81/292/324) er et model-valg uden citeret mandat (audit: »ingen; model-valg«; K:181 delegerer fortrydelsesmekanik, ikke dette negativ) → kræver Mathias (D-6 som ja/nej) eller planneren fjerner reglen | K-6/ac-6 · K-6/ac-10 · K-3/ac-6 · plan v2 §0.2 | modtaget | — | — |
+| DV-2 | klassifikation | S-1 (gruppens feltliste FAST, V1) er planens bord — K:57 »analogi, ikke krav« + K:179/181 delegerer udtrykkeligt; FUND2-1 var fejlklassificeret som ægte spørgsmål → orientering; v3 skal ikke skrive S-1 som kræver-Mathias-variant (V1 står, synlig afvigelse fra udgangspunktet) | plan:566 · K:57 · K:181 | modtaget | — | — |
