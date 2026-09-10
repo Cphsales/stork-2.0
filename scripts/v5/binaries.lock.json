@@ -1,9 +1,15 @@
 {
  "schema_version": 1,
- "note": "M-41 Trin A / P2 F-3: pin af codex-CLI'ens entry-fil (realpath af shim) \u2014 version + sha256. Opdateres BEVIDST i en commit n\u00e5r preflight opdaterer CLI'en (aldrig automatisk). Fuld integritet (signeret bin\u00e6r/betroet runner) = deklareret residual til CI (DEL I: lokal = candidate).",
+ "note": "M-41 Trin A / P2 F-3: pin af codex-CLI'ens entry-fil (realpath af shim) — version + sha256. Opdateres BEVIDST i en commit når preflight opdaterer CLI'en (aldrig automatisk). FUND 2026-09-10 (CLI 0.153.0→0.154.0): shim-filen codex.js er BYTE-IDENTISK på tværs af versioner — dens hash dækker IKKE den native binær (@openai/codex-linux-x64/vendor/.../bin/codex). Derfor pinnes den native binær nu også (codex_native); wrapperen håndhæver den fra hærdnings-runde 10 (indtil da: informativ + kendt prefix). Fuld integritet (signeret binær/betroet runner) = deklareret residual til CI (DEL I: lokal = candidate, plan DEL VIII pkt. 36).",
  "codex": {
-  "version": "codex-cli 0.153.0",
+  "version": "codex-cli 0.154.0",
   "sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
   "entry_suffix": "/node_modules/@openai/codex/bin/codex.js"
+ },
+ "codex_native": {
+  "version": "codex-cli 0.154.0",
+  "sha256": "3188814c35471432d4123203e0eb38e5bddc60226e3d7ddf0e59e649ea140022",
+  "bytes": 262858016,
+  "path_suffix": "/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex"
  }
 }
