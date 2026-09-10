@@ -103,6 +103,21 @@ Bash-kald). Skriv KUN `plan-build/lokations-skabelon/plan.md` (v3) og `fold-ind-
         "sole_guard_ref"?: "g.<navn>" } ] } ] }
 ```
 
+**Skema-DELTA (fabrik-armen 10/9 ~19:35, efter Codex' C1-runde 1 — gælder v3.1/manifest-rettelsen; v3 blev spawnet
+før deltaet):**
+1. `reject_contract` (sqlstate-kanal) får `grund` = det PRÆCISE fejl-token koden raiser (MESSAGE — lighed, ikke
+   substring); `afvisningssted` = PL/pgSQL-routinen der raiser (fx `public.lokation_opret`) eller `"-"` for afvisninger
+   uden routine (ACL/constraint — da er `grund` Postgres' faste message, fx `permission denied for table lokation`);
+   `aktoer` = DB-rollen forsøget kører som.
+2. `assertions: [{ id, form }]` pr. forpligtelse for FS/MH/SA = de NAVNGIVNE obligatoriske delbeviser (historiske
+   checkpoints · sideeffekt-vidner · race-id) — verifieren kræver hvert observeret; UT's delbeviser er negativerne.
+3. `aliases` er objekter `{ id, former: [...] }` (eksplicit ekspansion; former ⊆ målets; UT via alias kræver at ejeren
+   selv deklarerer sit negativ); deloverdragelse pr. form: `overdraget_former: ["SA"]` + `overdragelse_ref` på en
+   nu-forpligtelse (hel overdragelse = `scope: overdragelse` som før).
+4. `effekt_bid` = plan v3's FAKTISKE bid-id (verifieren kræver at netop det bid dækker forpligtelsen).
+5. Manifestet bliver GATE-binding på både plan- og build-gaten (layout `plan-build/<pakke>/forventnings-manifest.json`) —
+   »plan ok« dømmer manifestet med; build kan ikke vælge et andet. Endeligt skema + validator følger ved Codex PASS.
+
 Regler validatoren håndhæver (v3's matrix SKAL levere dem): ét ID pr. enkelt ac (K-9 »1+2« → `K-9/ac-1` +
 `K-9/ac-2` hver m. egne former) · `K-n/S` for strukturforbud · UT ⇒ ≥1 negativ, negativ ⇒ UT blandt formerne ·
 sqlstate KUN 22023/P0001/P0002/42501 (ingen 23505/fri liste — bagstoppere nævnes i beskrivelse, ikke som klasse) ·
