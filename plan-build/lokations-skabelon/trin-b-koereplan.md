@@ -167,5 +167,12 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   v2-afsnit. v3-instruks (`fold-ind-instruks-v3-udkast.md`, pkt. 11-21 + C1's manifest-skema) klar. SHA = denne
   commit. Næste: planner v3 → A'/B' delta → C slutlæser; Mathias-listen (S-1 · S-2 · B-1 · B-2 · B-4 · B-5 ·
   D-1..D-8) gennem spørgsmåls-devilen parallelt.
-- Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
+- 2026-09-10 18:56-19:3x: **B4 ekstra runde i gang:** planner v3 spawnet 18:56 @ 3d4c7da (runde-1 + runde-2-instruks
+  m. C1's manifest-skema; tre leverancer). **Mathias-liste efter runde 2:** `spoergsmaal-plan-r2.md` gennem
+  spørgsmåls-devilen i tre kørsler (11 fund → 1 → REN) — S-1/B-2 blev planens bord (K:181), S-3 taget ud, B-5/D-6 blev
+  ja/nej-spørgsmål; **REN blob 598f98fd @ 55c1c05 sendt til mathias-df 19:3x** (tre ja/nej: S-2 undtagelse fra K:143 ·
+  B-5 ny stand på nedlagt · D-6 samme-dags-afvisning; elleve orienteringer). Svar → ledger M-42.. → lægges i v3's
+  varianter. A2-14 (kilde-identitet): p8-kilde.json + p8-kilde-scope.sql (skema fra fabrik-armen) leveres af
+  driveren m. v3; adgangsspørgsmålet (PROD read-only vs. kopi) forelægges senere m. navngiven kilde. SHA = denne commit.
+- Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer> · Mathias-liste r2 (S-2 · B-5 · D-6): sendt 10/9 19:3x @ 598f98fd — svar <afventer>.
 - B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ deb8b2c · B4-A: plan-angreb-r2 0b2a36ca · B4-B: plan-audit-fresh-eyes-r2 417d96b6 (fuld; trunkeret 292d029c @ 2949f69) · B4-C: plan-slutlaesning-r2 9f13a7cb · v3-runde: <afventer> · B4 rest-dom: ekstra runde · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

@@ -203,3 +203,20 @@ sha256 `be798f04b11c2af5403162c33c544f50a8b5c35123afae0cc5c98ac4e9df332b`, blob 
 (blob `292d029c`, sha256 `19767b2d…`) består i historikken (commit 2949f69) — code-reviewerens slutlæsning dømte
 DEN. Lærdom (recept for Claude-aktører): udtræk leverancen fra transkriptets samtlige assistant-tekstblokke i sidste
 tur, ikke kun `result`; bed aktøren skrive leverancen i ÉN besked.
+
+## Spørgsmåls-devil på Mathias-listen efter plan-runde 2 (`spoergsmaal-plan-r2.md`) — tre kørsler, arkiveret 2026-09-10 19:1x-19:3x af driver-10b
+
+Rolle codex-angreb i devil-funktion (implplan 2.F), `codex-run.sh … dom` read-only, `gate_input: null` (ikke gate-verdikt),
+hærdet wrapper (cb55344: native codex_exec, privat CODEX_HOME). Akser: bord-test · form · afled-tjek (M-33) · troskab (P-3 mod
+plan v2 2069aa16 · audit r2 417d96b6 · slutlæsning 9f13a7cb · krav · ledger 14722b4c · ordbog bcab6b4e) · komplethed.
+Sidste linje `DEVIL-JSON: {konklusion, fremlaeggelse_blob, fund}` (spejler B7's devil-kontrakt). Devil-fund → kun FORM/
+klassifikation rettet, aldrig substans (planens stilling gengives uændret).
+
+| kørsel | genstand-blob | run_id | dom | filer |
+| --- | --- | --- | --- | --- |
+| 1 | `4cef5bee` (3 spørgsmål S-1/S-2/S-3 · 4 regler · 8 defaults) | `20260910T190312-1590769-2853` (527 s) | **FAIL — 11 fund** (F1-F11: S-1/B-2 planens bord jf. K:181 · S-2 = undtagelse fra K:143 · S-3 teknisk valg → ud · B-5/D-6 nye afvisningsregler uden mandat → spørgsmål · B-1 godkendelse ≠ ikrafttræden · B-4 adgangsvindue · D-4 · F1 løfte · F11 processprog) | `spoergsmaal-plan-r2.devil-1.{leverance.md,prompt.txt,provenance.txt,receipt.json}` |
+| 2 | `76f2fe91` (omskrevet: 3 ja/nej S-2/B-5/D-6 · 11 orienteringer · »Senere«) | `20260910T191631-1601395-26560` (355 s) | **FAIL — 1 fund** (F7 rest: B-4-citat ikke ordret — M-17 staver »loaktioner«) | `spoergsmaal-plan-r2.devil-2.*` |
+| 3 | **`598f98fd`** (B-4 m. ordret M-36-uddrag) | `20260910T192443-1611655-32624` (239 s) | **REN — PASS, 0 fund**; F1-F11 lukket | `spoergsmaal-plan-r2.devil-3.*` |
+
+Afsendelse: blob `598f98fd` (commit 55c1c05) sendt til mathias-df (Mathias' vindue) 2026-09-10 ~19:32 m. anmodning om
+verbatim fremlæggelse og verbatim relæ af svar til ledgeren (M-42..). Enhver ændring af teksten efter devil 3 → ny devil.
