@@ -123,5 +123,32 @@ true`. Verdikt-filer: `verdikt-<aktør>-plan*.json`, udvalgt via
   npm nyeste 0.154.0 → »opdater før spawn« (2.F); `binaries.lock.json` pinner 0.153.0 → CLI +
   lås-commit er fabrik-armens; meldt 10:0x, B1/B2-Codex holdes til svar (opdatering eller
   deklareret afvig). SHA = denne commit.
+- 2026-09-10 10:05-10:18: preflight løst (a): fabrik-armen opdaterede codex-cli → 0.154.0 + `binaries.lock`
+  i 6e8ea9e (fund: shim byte-identisk på tværs af versioner → native pin fra runde 10). Recept-udvidelse
+  fe24947 (analyser-mappen fjernes fra blind workdir). **B1 spawnet 10:14:53 @ PIN fe24947** (run_id
+  20260910T101453-1257166-23934, produktion, workspace-write — kørte m. netværk TIL, afvig noteret) ·
+  **B2 adapter-dom spawnet 10:18:27 @ PIN c843eb0** (run_id 20260910T101827-1260310-4098, dom,
+  read-only, gate_input null). B5 bekræftet leveret af fabrik-armen @ fd443c4.
+- 2026-09-10 10:26-10:35: **B2 dom modtaget:** »KAN IKKE — adapter-krav-liste følger« → arkiveret
+  `provenance/b2-adapter-tjek.*` (leverance-blob 460a9b26), bogført som adapter-krav-liste modtaget
+  (C1-input), IKKE PASS (sekvens afgjort m. mathias-9b: PASS = ny dom mod integreret adapter i Trin C).
+  Frit pas: manifest m. stabile ID'er mangler (C1-kontrakt, §5 pkt. 6). **Forventningsliste LÅST —
+  blob `2200b76e`** (ændringer mod dømt 090a5ed9: status-blok · K-6 ac 5 +UT · §5). SHA = denne commit.
+- 2026-09-10 10:37-10:45: **B1 FÆRDIG** (success, attempt 1, 1372 s): `kill-list-udkast.md` blob
+  `13b78392` (92 795 B; 82 targeted kandidater · 5 schema-kontroller · 2 to-sessions · 20 skal-leveres;
+  ingen HALT; alle bindinger matcher) + `provenance/kill-list-udkast.*` + README (afvig: netværk TIL i
+  produktions-sandboxen, A5). Committet + pushet FØR B3 (commit-orden = blindheds-bevis). SHA = denne
+  commit. Næste: B3 planner-code via `claude -p` efter fold-ind-instruksens kørselsrecept.
+- 2026-09-10 10:44-11:36 (arkiveret 16:5x): **B3 planner-code kørt** via `claude -p` @ PIN d7972a1
+  (claude-fable-5-1/xhigh fra lås; prompt sha 862ac195). **To deklarerede afvig:** (A) workdir under
+  `~/.claude/` → al skrivning nægtet (»sensitive file«) → planneren skrev til `/tmp/b3-planner/`
+  (recept rettet: workdir uden for `~/.claude`); (B) afbrudt af »org's monthly spend limit« 11:36:20,
+  ét sekund efter rapporten (sidste handling) — ingen slutbesked/slutkontrol (`is_error: true`, 100
+  ture, 31,8 USD). Leverancer byte-identisk: **plan v2 blob `2069aa16`** (795 linjer; HALT: ingen;
+  B-1..B-3 bekræftelser; BV-1..BV-5; ID-regler brugt) · **fold-ind-rapport-r2 blob `39936c64`**
+  (46/46 »RETTET M. BEVIS« · 0 kræver Mathias · NF-1/NF-2 »inden for mandat« · ordbog: ingen nye
+  entries). Fund-log: 46 rækker → rettet m. bevis (rettelses-OID 2069aa16) + NF-1/NF-2 + driver-obs
+  D-1 (formålsblok-påstand) som »modtaget«. Fuldstændighed dømmes i B4. Driver-fejl: B3-monitoren
+  matchede sig selv (pgrep -f) → ~5 t forsinkelse; drift-log. SHA = denne commit.
 - Trin A færdig (mekanik): fd443c4 (mathias-9b, 10/9 09:54) · Mathias' residual-ord (B6/B7): <afventer>.
-- B1: <SHA> · B2 låst: <blob> · B3: <SHA> · B4: <SHA> · B5: <SHA> · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.
+- B1: kill-list-blob 13b78392 @ d7972a1 · B2 låst: 2200b76e (adapter-krav-liste 460a9b26; adapter-PASS først i Trin C) · B3: plan v2 2069aa16 + rapport 39936c64 @ denne commit · B4: <SHA> · B5: fd443c4 (leveret af fabrik-armen) · B6: <SHA> · B7 kvittering: <SHA> · plan ok: M-<n> · approval: <SHA>.

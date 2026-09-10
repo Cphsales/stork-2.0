@@ -1,0 +1,32 @@
+# B1 blind workdir @ PIN fe24947c505450f48338eb398c65891ff6f60ea7 — verifikation FØR spawn
+# driver-10b (session de4474), 2026-09-10 10:13; recept: b1-killlist-prompt-udkast.md @ PIN
+# arkiv (git archive -o + tar -xf) uden .git; fjernet: plan-build/lokations-skabelon/ (alt) ·
+# docs/workflow-faerdiggoerelse/analyser-2026-09-08/ · docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/
+# lagt tilbage ved blob: recon2.md · p8-slutproeve-spec.md · mathias-ord.md (@ PIN) · ordbog.md (@ 04e5cfb)
+# filer i alt efter opsætning: 511
+
+## hash-object i workdir'en (rækkefølge: krav · recon2 · p8 · ledger · ordbog · bilag) — alle som forventet
+9402164d87a35fb939661058bea77c1a052493d0
+2bdbb122158b6f8c72fc942b8de28e679742b4aa
+4af07ef4164882ca54643e79df3554c0bf22b0e4
+14722b4c17fba1011709525ef4a06a7cabe2cfa8
+714f9b80028ad34656d94ccd2bfadb4ceb2e70b6
+6e569779353ea1d0a2bf747ce6eda6509de1aea0
+
+## bindende grep-tjek: "423d9b20|lokation_status_skift|lokation_opret" (--include=*.md), minus recon2.md/mathias-ord.md
+(TOM — som krævet)
+
+## kontrol-grep i ledgeren (mathias-ord.md) — forventet KUN M-41-rækken (OID-reference, intet plan-indhold)
+95:| M-41 | 2026-09-09 ca. 13:15 | mathi
+
+## informativt bredere grep: "plan-angreb|fresh-eyes-r1|kildetjek|FUND-[1-5]|fold-ind|kill-list-UDKAST|plan v1|plan\.md:[0-9]"
+## — forventede træf (dokumenteret i recepten), INGEN andre:
+docs/foraeldet-workflow/arkiv/mathias-afgoerelser-historik.md
+docs/teknisk/cutover-checklist.md
+docs/workflow-faerdiggoerelse/workflow-implementeringsplan.md
+scripts/v5/roller/code-reviewer.md
+scripts/v5/roller/codex-angreb.md
+scripts/v5/roller/planner-code.md
+
+## efter kørsel (10:38): eneste ny/ændret fil i workdir'en = kill-list-udkast.md (find -newer ordbog.md)
+## Codex' sandbox-mounts .git/.codex/.agents (tomme, read-only) sås kun inde i sandboxen — ikke på værten
