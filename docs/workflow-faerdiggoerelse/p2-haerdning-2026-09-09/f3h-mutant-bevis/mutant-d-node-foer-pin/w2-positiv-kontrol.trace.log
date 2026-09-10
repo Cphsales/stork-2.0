@@ -1,0 +1,120 @@
+EXEC 1473179 /usr/bin/bash bash /home/mathias/stork-implplan/scripts/v5/codex-run.sh codex-angreb dom /tmp/v5-codex-run-C90Mqi/wd-xNYySP 5 /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md /tmp/v5-codex-run-C90Mqi/prompt.txt
+EXEC 1473180 /usr/bin/realpath realpath -e -- /usr/bin/git
+EXEC 1473182 /usr/bin/realpath realpath -e -- /usr/bin/timeout
+EXEC 1473184 /usr/bin/realpath realpath -e -- /usr/bin/sha256sum
+EXEC 1473186 /usr/bin/realpath realpath -e -- /usr/bin/realpath
+EXEC 1473188 /usr/bin/realpath realpath -e -- /usr/bin/flock
+EXEC 1473190 /usr/bin/realpath realpath -e -- /usr/bin/mktemp
+EXEC 1473192 /usr/bin/realpath realpath -e -- /usr/bin/stat
+EXEC 1473194 /usr/bin/realpath realpath -e -- /usr/bin/date
+EXEC 1473196 /usr/bin/realpath realpath -e -- /usr/bin/env
+EXEC 1473198 /usr/bin/realpath realpath -e -- /usr/bin/cmp
+EXEC 1473202 /usr/bin/grep grep -E ^NODE_
+EXEC 1473203 /usr/bin/date /usr/bin/date +%Y%m%dT%H%M%S
+EXEC 1473204 /usr/bin/date /usr/bin/date -Is
+EXEC 1473205 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/wd-xNYySP
+EXEC 1473207 /usr/bin/dirname dirname -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md
+EXEC 1473206 /usr/bin/realpath /usr/bin/realpath -m -- /tmp/v5-codex-run-C90Mqi/out-cquO9d
+EXEC 1473208 /usr/bin/basename basename -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md
+EXEC 1473209 /usr/bin/flock /usr/bin/flock -n 9
+EXEC 1473210 /usr/bin/rm rm -f -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.attempt*.done /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.attempt*.started /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.attempt*.out /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.pid /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.receipt.json
+EXEC 1473211 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.attempt*.done
+EXEC 1473212 /usr/bin/mktemp /usr/bin/mktemp -d /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-XXXXXXXX
+EXEC 1473213 /usr/bin/realpath /usr/bin/realpath -e -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1473215 /usr/bin/dirname dirname -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1473216 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/klon
+EXEC 1473218 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon rev-parse --verify HEAD^{commit}
+EXEC 1473219 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/bin/node
+EXEC 1473221 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/bin/codex
+EXEC 1473223 /usr/bin/bash /bin/bash /tmp/v5-codex-run-C90Mqi/bin/node -e 
+EXEC 1473225 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/calls
+EXEC 1473226 /usr/bin/grep grep -c ^node\.
+EXEC 1473223 /usr/bin/env /usr/bin/env -u PWD -u SHLVL -u _ /home/mathias/.nvm/versions/node/v24.15.0/bin/node
+EXEC 1473223 /home/mathias/.nvm/versions/node/v24.15.0/bin/node /home/mathias/.nvm/versions/node/v24.15.0/bin/node -e 
+EXEC 1473234 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon show de6f7c0c103deca4096122f0f7d6c0d91a4b65aa:scripts/v5/node.pin
+EXEC 1473237 /usr/bin/grep grep -cE ^sha256=[0-9a-f]{64}$
+EXEC 1473239 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/bin/node
+EXEC 1473240 /usr/bin/cut cut -d  -f1
+EXEC 1473242 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon show de6f7c0c103deca4096122f0f7d6c0d91a4b65aa:scripts/v5/binaries.lock.json
+EXEC 1473245 /usr/bin/tr tr -d [:space:]
+EXEC 1473246 /usr/bin/mkdir mkdir -m 700 -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home
+EXEC 1473247 /usr/bin/cp cp -- /tmp/v5-codex-run-C90Mqi/auth.json /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home/auth.json
+EXEC 1473248 /usr/bin/chmod chmod 600 -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home/auth.json
+EXEC 1473250 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home/auth.json
+EXEC 1473251 /usr/bin/cut cut -d  -f1
+EXEC 1473252 /usr/bin/dirname dirname -- /tmp/v5-codex-run-C90Mqi/bin/node
+EXEC 1473254 /usr/bin/dirname dirname -- /tmp/v5-codex-run-C90Mqi/bin/codex
+EXEC 1473253 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/bin/..
+EXEC 1473257 /usr/bin/bash /bin/bash /tmp/v5-codex-run-C90Mqi/bin/node -e \n    const l = JSON.parse(require("fs").readFileSync(0, "utf8"));\n    const hex64 = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);\n    const str = (s) => typeof s === "string" && s.length > 0 && !/[\r\n]/.test(s);\n    if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);\n    const n = l.codex_native;\n    // F-3g (runde 10e): native SKAL ligge i platform-pakkens vendor-mappe og hedde codex; shim-filen bin/codex.js eller andre filer kan aldrig blive native\n    if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !/^\/node_modules\/@openai\/codex-[a-z0-9-]+\/vendor\/[A-Za-z0-9_.-]+\/bin\/codex$/.test(n.path_from_pkg_root)) process.exit(4);\n    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));\n  
+EXEC 1473259 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/calls
+EXEC 1473260 /usr/bin/grep grep -c ^node\.
+EXEC 1473257 /usr/bin/env /usr/bin/env -u PWD -u SHLVL -u _ /home/mathias/.nvm/versions/node/v24.15.0/bin/node
+EXEC 1473257 /home/mathias/.nvm/versions/node/v24.15.0/bin/node /home/mathias/.nvm/versions/node/v24.15.0/bin/node -e \n    const l = JSON.parse(require("fs").readFileSync(0, "utf8"));\n    const hex64 = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);\n    const str = (s) => typeof s === "string" && s.length > 0 && !/[\r\n]/.test(s);\n    if (!l || typeof l !== "object" || !l.codex || !hex64(l.codex.sha256) || !str(l.codex.version)) process.exit(3);\n    const n = l.codex_native;\n    // F-3g (runde 10e): native SKAL ligge i platform-pakkens vendor-mappe og hedde codex; shim-filen bin/codex.js eller andre filer kan aldrig blive native\n    if (!n || !hex64(n.sha256) || !str(n.path_from_pkg_root) || !/^\/node_modules\/@openai\/codex-[a-z0-9-]+\/vendor\/[A-Za-z0-9_.-]+\/bin\/codex$/.test(n.path_from_pkg_root)) process.exit(4);\n    process.stdout.write([l.codex.sha256, l.codex.version, n.sha256, n.path_from_pkg_root].join("\n"));\n  
+EXEC 1473269 /usr/bin/sed sed -n 1p
+EXEC 1473272 /usr/bin/sed sed -n 2p
+EXEC 1473275 /usr/bin/sed sed -n 3p
+EXEC 1473278 /usr/bin/sed sed -n 4p
+EXEC 1473280 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/bin/codex
+EXEC 1473281 /usr/bin/cut cut -d  -f1
+EXEC 1473283 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex
+EXEC 1473285 /usr/bin/cmp /usr/bin/cmp -s -n 4 - /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex
+EXEC 1473287 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex
+EXEC 1473288 /usr/bin/cut cut -d  -f1
+EXEC 1473290 /usr/bin/env /usr/bin/env -i HOME=/home/mathias PATH=/tmp/v5-codex-run-C90Mqi/bin:/usr/bin:/bin:/usr/local/bin LANG=C.UTF-8 CODEX_HOME=/tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home CODEX_MANAGED_PACKAGE_ROOT=/tmp/v5-codex-run-C90Mqi CODEX_MANAGED_BY_NPM=1
+EXEC 1473290 /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --version
+EXEC 1473293 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/bin/codex
+EXEC 1473294 /usr/bin/cut cut -d  -f1
+EXEC 1473296 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex
+EXEC 1473297 /usr/bin/cut cut -d  -f1
+EXEC 1473299 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/bin/node
+EXEC 1473300 /usr/bin/cut cut -d  -f1
+EXEC 1473302 /usr/bin/sha256sum /usr/bin/sha256sum -- /usr/bin/git
+EXEC 1473303 /usr/bin/cut cut -d  -f1
+EXEC 1473305 /usr/bin/sha256sum /usr/bin/sha256sum -- /usr/bin/timeout
+EXEC 1473306 /usr/bin/cut cut -d  -f1
+EXEC 1473309 /usr/bin/cut cut -d  -f1
+EXEC 1473308 /usr/bin/sha256sum /usr/bin/sha256sum -- /usr/bin/flock
+EXEC 1473312 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex
+EXEC 1473313 /usr/bin/cut cut -d  -f1
+EXEC 1473315 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon show de6f7c0c103deca4096122f0f7d6c0d91a4b65aa:scripts/v5/actors.lock.json
+EXEC 1473316 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon rev-parse de6f7c0c103deca4096122f0f7d6c0d91a4b65aa:scripts/v5/actors.lock.json
+EXEC 1473318 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon hash-object -- scripts/v5/actors.lock.json
+EXEC 1473321 /usr/bin/bash /bin/bash /tmp/v5-codex-run-C90Mqi/bin/node -e \n  const l = JSON.parse(require("fs").readFileSync(0, "utf8")); const k = process.argv[1];\n  const r = Object.prototype.hasOwnProperty.call(l, k) ? l[k] : null;\n  if (!r || typeof r !== "object") process.exit(3);\n  for (const f of ["model","reasoning","skill_path","skill_oid","aktoer"]) if (typeof r[f] !== "string" || !r[f] || /\s/.test(r[f])) process.exit(4);\n  console.log([r.model, r.reasoning, r.skill_path, r.skill_oid, r.aktoer].join(" ")); codex-angreb
+EXEC 1473323 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/calls
+EXEC 1473324 /usr/bin/grep grep -c ^node\.
+EXEC 1473321 /usr/bin/env /usr/bin/env -u PWD -u SHLVL -u _ /home/mathias/.nvm/versions/node/v24.15.0/bin/node
+EXEC 1473321 /home/mathias/.nvm/versions/node/v24.15.0/bin/node /home/mathias/.nvm/versions/node/v24.15.0/bin/node -e \n  const l = JSON.parse(require("fs").readFileSync(0, "utf8")); const k = process.argv[1];\n  const r = Object.prototype.hasOwnProperty.call(l, k) ? l[k] : null;\n  if (!r || typeof r !== "object") process.exit(3);\n  for (const f of ["model","reasoning","skill_path","skill_oid","aktoer"]) if (typeof r[f] !== "string" || !r[f] || /\s/.test(r[f])) process.exit(4);\n  console.log([r.model, r.reasoning, r.skill_path, r.skill_oid, r.aktoer].join(" ")); codex-angreb
+EXEC 1473332 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon rev-parse de6f7c0c103deca4096122f0f7d6c0d91a4b65aa:scripts/v5/roller/codex-angreb.md
+EXEC 1473333 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-C90Mqi/klon cat-file blob f6e64979941b55b57d6000306ccf9404dd2a15d1
+EXEC 1473334 /usr/bin/git /usr/bin/git --no-replace-objects hash-object -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/role.md
+EXEC 1473335 /usr/bin/cat cat -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/role.md
+EXEC 1473336 /usr/bin/cat cat -- /tmp/v5-codex-run-C90Mqi/prompt.txt
+EXEC 1473339 /usr/bin/sha256sum /usr/bin/sha256sum
+EXEC 1473340 /usr/bin/cut cut -d  -f1
+EXEC 1473341 /usr/bin/date /usr/bin/date -Is
+EXEC 1473342 /usr/bin/date /usr/bin/date +%s
+EXEC 1473344 /usr/bin/env /usr/bin/env -i HOME=/home/mathias PATH=/tmp/v5-codex-run-C90Mqi/bin:/usr/bin:/bin:/usr/local/bin LANG=C.UTF-8 CODEX_HOME=/tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home CODEX_MANAGED_PACKAGE_ROOT=/tmp/v5-codex-run-C90Mqi CODEX_MANAGED_BY_NPM=1
+EXEC 1473344 /usr/bin/timeout /usr/bin/timeout --signal=KILL 5s /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex exec --skip-git-repo-check --sandbox read-only
+EXEC 1473345 /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex /tmp/v5-codex-run-C90Mqi/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex exec --skip-git-repo-check --sandbox read-only -c sandbox_workspace_write.network_access=false -c
+EXEC 1473352 /usr/bin/date /usr/bin/date +%s
+EXEC 1473353 /usr/bin/date /usr/bin/date -Is
+EXEC 1473355 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/attempt1.out
+EXEC 1473356 /usr/bin/cut cut -d  -f1
+EXEC 1473357 /usr/bin/stat /usr/bin/stat -c %s -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/attempt1.out
+EXEC 1473360 /usr/bin/bash /bin/bash /tmp/v5-codex-run-C90Mqi/bin/node -e \n    const a = JSON.parse(require("fs").readFileSync(0, "utf8")); const e = process.env;\n    a.push({ attempt: Number(e.A), rc: Number(e.RC), model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX,\n      output_sha256: e.OSHA === "null" ? null : JSON.parse(e.OSHA), output_bytes: Number(e.OBYTES),\n      varighed_mono_s: Number(e.MONO), varighed_vaeg_s: Number(e.VAEG), started: e.ST, ended: e.EN });\n    process.stdout.write(JSON.stringify(a));
+EXEC 1473362 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/calls
+EXEC 1473363 /usr/bin/grep grep -c ^node\.
+EXEC 1473360 /usr/bin/env /usr/bin/env -u PWD -u SHLVL -u _ /home/mathias/.nvm/versions/node/v24.15.0/bin/node
+EXEC 1473360 /home/mathias/.nvm/versions/node/v24.15.0/bin/node /home/mathias/.nvm/versions/node/v24.15.0/bin/node -e \n    const a = JSON.parse(require("fs").readFileSync(0, "utf8")); const e = process.env;\n    a.push({ attempt: Number(e.A), rc: Number(e.RC), model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX,\n      output_sha256: e.OSHA === "null" ? null : JSON.parse(e.OSHA), output_bytes: Number(e.OBYTES),\n      varighed_mono_s: Number(e.MONO), varighed_vaeg_s: Number(e.VAEG), started: e.ST, ended: e.EN });\n    process.stdout.write(JSON.stringify(a));
+EXEC 1473370 /usr/bin/mv mv -f -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/attempt1.out /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md
+EXEC 1473371 /usr/bin/date /usr/bin/date -Is
+EXEC 1473372 /usr/bin/bash /bin/bash /tmp/v5-codex-run-C90Mqi/bin/node -e \n    const e = process.env;\n    const r = { schema_version: 2, status: e.STATUS, run_id: e.RUN_ID, rolle: e.ROLLE, aktivitet: e.AKT,\n      model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX, sandbox_policy: { network_access: false, exclude_slash_tmp: true, exclude_tmpdir_env_var: true }, service_tier: "default", codex_version: e.CODEX_VER,\n      regel_commit: e.REGEL_COMMIT, lock_mode: e.LOCK_MODE, lock_blob: e.LOCK_BLOB, skill_path: e.SKILL_PATH,\n      skill_oid: e.SKILL_OID, prompt_sha256: e.PROMPT_SHA, gate_input: JSON.parse(e.GATE_JSON || "null"),\n      selftest: e.SELFTEST === "1", workdir: e.WORKDIR, out: e.OUT, codex_home: e.RUN_CODEX_HOME, codex_home_mode: "privat-uden-config", auth_source: e.AUTH_SRC, env_mode: "allowlist(HOME,PATH,LANG,CODEX_HOME,CODEX_MANAGED_PACKAGE_ROOT,CODEX_MANAGED_BY_NPM)",\n      binaries: JSON.parse(e.BIN_JSON || "{}"), attempts: JSON.parse(e.ATTEMPTS_JSON || "[]"),\n      started: e.STARTED, ended: e.ENDED };\n    if (e.REASON) r.reason = e.REASON;\n    process.stdout.write(JSON.stringify(r, null, 1) + "\n");
+EXEC 1473374 /usr/bin/ls ls /tmp/v5-codex-run-C90Mqi/calls
+EXEC 1473375 /usr/bin/grep grep -c ^node\.
+EXEC 1473372 /usr/bin/env /usr/bin/env -u PWD -u SHLVL -u _ /home/mathias/.nvm/versions/node/v24.15.0/bin/node
+EXEC 1473372 /home/mathias/.nvm/versions/node/v24.15.0/bin/node /home/mathias/.nvm/versions/node/v24.15.0/bin/node -e \n    const e = process.env;\n    const r = { schema_version: 2, status: e.STATUS, run_id: e.RUN_ID, rolle: e.ROLLE, aktivitet: e.AKT,\n      model: e.MODEL, effort: e.EFFORT, sandbox: e.SANDBOX, sandbox_policy: { network_access: false, exclude_slash_tmp: true, exclude_tmpdir_env_var: true }, service_tier: "default", codex_version: e.CODEX_VER,\n      regel_commit: e.REGEL_COMMIT, lock_mode: e.LOCK_MODE, lock_blob: e.LOCK_BLOB, skill_path: e.SKILL_PATH,\n      skill_oid: e.SKILL_OID, prompt_sha256: e.PROMPT_SHA, gate_input: JSON.parse(e.GATE_JSON || "null"),\n      selftest: e.SELFTEST === "1", workdir: e.WORKDIR, out: e.OUT, codex_home: e.RUN_CODEX_HOME, codex_home_mode: "privat-uden-config", auth_source: e.AUTH_SRC, env_mode: "allowlist(HOME,PATH,LANG,CODEX_HOME,CODEX_MANAGED_PACKAGE_ROOT,CODEX_MANAGED_BY_NPM)",\n      binaries: JSON.parse(e.BIN_JSON || "{}"), attempts: JSON.parse(e.ATTEMPTS_JSON || "[]"),\n      started: e.STARTED, ended: e.ENDED };\n    if (e.REASON) r.reason = e.REASON;\n    process.stdout.write(JSON.stringify(r, null, 1) + "\n");
+EXEC 1473382 /usr/bin/mv mv -f -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.receipt.json.tmp /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.receipt.json
+EXEC 1473383 /usr/bin/rm rm -f -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/out33.md.pid
+EXEC 1473385 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM/codex-home/auth.json
+EXEC 1473386 /usr/bin/cut cut -d  -f1
+EXEC 1473387 /usr/bin/rm rm -rf -- /tmp/v5-codex-run-C90Mqi/out-cquO9d/.run-2rIBuDeM

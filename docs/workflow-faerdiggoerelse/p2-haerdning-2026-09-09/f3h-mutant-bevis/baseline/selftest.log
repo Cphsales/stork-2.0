@@ -1,0 +1,149 @@
+codex-run.sh v3 — kontrakt (mock-codex):
+  ✓ dom/ok → exit 0
+  ✓ leverance publiceret til OUT
+  ✓ .attempt1.done sat · PID-fil fjernet
+  ✓ præcis ét codex-kald
+  ✓ præcis to starter: --version (efter kontrollerne) + exec — intet andet program startes (F-3b)
+  ✓ ptrace-sporet (kernel) ser det samme: præcis 2 starter af den falske codex, ingen ELF-fixture (F-3h måling uafhængig af fixturen)
+  ✓ CLI-miljø = ALLOWLIST præcis (F-3c): kun HOME·PATH·LANG·CODEX_HOME·CODEX_MANAGED_* — intet andet arves
+  ✓ privat CODEX_HOME i den private kørselsmappe, UDEN config.toml, MED auth.json-kopi (F-3c)
+  ✓ kvittering: codex_home_mode privat-uden-config · auth_source = kilden · env_mode allowlist
+  ✓ stdin var /dev/null (fake exiter ellers 99)
+  ✓ rolle → model fra låsen
+  ✓ rolle → effort fra låsen
+  ✓ dom → sandbox read-only
+  ✓ sandbox-politik eksplicit pr. kald (A5): netværk fra · /tmp · $TMPDIR ikke skrivbare — uafhængigt af ~/.codex/config
+  ✓ prompten STARTER med rolleteksten (F-5: rollen sendes faktisk)
+  ✓ prompten SLUTTER med opgaven
+  ✓ kvittering: status success · lock_mode OVERRIDE(selftest) · schema v2 · selftest=true (F-11)
+  ✓ forsøgs-output ligger IKKE i OUT-navnerummet (privat kørselsmappe, F-7)
+  ✓ privat kørselsmappe ryddet efter kørsel
+  ✓ kvittering: model/effort/sandbox/rolle
+  ✓ kvittering: regel_commit + skill_oid + prompt_sha256 er OID/sha
+  ✓ kvittering: prompt_sha256 == sha256(faktisk sendt prompt)
+  ✓ kvittering: leverance-sha == sha256(OUT-bytes)
+  ✓ kvittering: binaries m. realpath+sha256 for codex/git/node/timeout
+  ✓ kvittering: codex-binær = den falske (realpath under selftest-bin)
+  ✓ produktion → sandbox workspace-write · exit 0
+  ✓ produktion → sandbox-politik (A5) også her: network_access=false · exclude_slash_tmp · exclude_tmpdir_env_var
+  ✓ rc=0 uden output → exit 1 · 2 forsøg · ingen .done
+  ✓ retry: BEGGE kald bar effort=xhigh (argv, ikke log)
+  ✓ retry: BEGGE kald bar samme model + sandbox
+  ✓ kvittering: status fejl · 2 forsøg · sidste output_sha256 null
+  ✓ tom EKSISTERENDE fil som leverance → afvist (-s alene)
+  ✓ mappe som leverance → afvist (-f alene)
+  ✓ eksisterende forkert rolleblob i låsen → rolletekst-drift BLOKER (mutant c: frys-check)
+  ✓ lås m. anden model/effort → argv bærer PRÆCIS dem (ingen hardkodning)
+  ✓ symlink som leverance → afvist (ikke almindelig fil)
+  ✓ codex rc≠0 → exit 1 efter 2 forsøg (rc=7 begge)
+  ✓ hang: PID-fil fandtes MENS kørslen levede og pegede på levende proces
+  ✓ hang: timeout → exit 1 · præcis ét genforsøg
+  ✓ hang: begge forsøg dræbt (rc=137)
+  ✓ hang: monotont ur MÅLER (≥1 s pr. forsøg)
+  ✓ hang: PID-fil fjernet efter BLOKER
+
+codex-run.sh v3 — BLOKER FØR kaldet (rollen bestemmer kaldet · fabrik-frys):
+  ✓ ukendt rolle → exit 1 · codex ALDRIG kaldt · kvittering blokeret
+  ✓ claude-rolle gennem codex-transport → BLOKER
+  ✓ rolletekst-drift (lock ≠ pinned commit) → BLOKER før kaldet
+  ✓ ukendt aktivitet → BLOKER
+  ✓ BLOKER før låsen rører INGEN fælles fil (ingen provenance/kvittering, F-7)
+  ✓ timeout 0 (= ingen grænse) → BLOKER
+  ✓ ikke-numerisk timeout → BLOKER
+  ✓ OUT er en mappe → BLOKER før kaldet (F-12)
+  ✓ gate_input bindes i kvitteringen (F-10)
+  ✓ gate_input + produktion → BLOKER (en gate-dom kommer aldrig fra en produktions-kørsel)
+  ✓ gate_input m. ugyldig commit → BLOKER
+  ✓ OUT inde i workdir → BLOKER (aktøren kunne skrive den, F-7)
+  ✓ manglende prompt-fil → BLOKER
+  ✓ prompt-fil kaldet '--help' læses som fil (ikke cat --help)
+  ✓ forkert antal argumenter → exit 2
+  ✓ v1-signatur (model som argument) → BLOKER, aldrig kørt
+  ✓ falsk `cat` på kalderens PATH ignoreres — rolleteksten er den ægte (T-F3)
+  ✓ OUT='a.lock' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='b.receipt.json' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='c.provenance' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='d.pid' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='e.log' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='f.attempt1.out' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+  ✓ OUT='.run-x' (reserveret navnerum) → BLOKER før kaldet (T-F7)
+
+codex-run.sh v3 — guards uden override (committed-lås-grenen udøves, F-9):
+  ✓ committed lås (klon, ingen override) → kører · kvittering lock_mode=committed
+  ✓ … men kvittering.selftest=true — STORK_V5_REPO er en selvtest-lempelse (F-11)
+  ✓ node.pin peger på en anden node end den valgte → BLOKER med NUL node-starter (F-3d kill 1: rigtig pin, fremmed node)
+  ✓ ptrace bekræfter: ingen exec af nogen node-binær i hele procestræet før BLOKER (F-3d/F-3h)
+  ✓ den valgte nodes sha står i et UVEDKOMMENDE låsefelt, node.pin uændret → stadig BLOKER, nul node-starter (F-3d feltbinding: låsen er ikke en kilde)
+  ✓ arbejdstræets node.pin = den valgte node, men committet pin ≠ → BLOKER, nul node-starter (F-3d: pin læses fra regel_commit, ikke arbejdstræet)
+  ✓ låsens node.sha256 = den valgte node, committet pin ≠ → stadig BLOKER, nul node-starter (F-3d: »pin ELLER lås« dør)
+  ✓ node.pin mangler → BLOKER, nul node-starter (F-3d rækkefølge)
+  ✓ node.pin m. to linjer → BLOKER på grammatik, nul node-starter (F-3d)
+  ✓ node.pin m. STORE bogstaver → BLOKER på grammatik, nul node-starter (F-3d)
+  ✓ node.pin m. hale-tekst → BLOKER på grammatik, nul node-starter (F-3d)
+  ✓ node.pin m. forkert nøgle → BLOKER på grammatik, nul node-starter (F-3d)
+  ✓ node.pin m. uden newline men ekstra tegn → BLOKER på grammatik, nul node-starter (F-3d)
+  ✓ binaries.lock-pin ≠ faktisk codex-entry → BLOKER (F-3 nået, ikke kun læst) — INGEN codex-start, heller ikke --version (ptrace: 0 starter af shim og fixture)
+  ✓ binaries.lock.json tom blob i produktion → BLOKER, INGEN codex-start (F-3f: selvtest-grenen styres af SELFTEST, ikke af låsens indhold)
+  ✓ binaries.lock.json kun LF'er i produktion → BLOKER, INGEN codex-start (F-3f: selvtest-grenen styres af SELFTEST, ikke af låsens indhold)
+  ✓ binaries.lock.json kun whitespace i produktion → BLOKER, INGEN codex-start (F-3f: selvtest-grenen styres af SELFTEST, ikke af låsens indhold)
+  ✓ shim-sha matcher men native binær findes ikke på låsens sti → BLOKER (F-3b)
+  ✓ native binær ≠ låsens sha → BLOKER (F-3b) — ptrace: NUL starter af fixturen, heller ikke --version (F-3h: mutanten »hash efter version« ville give 1)
+  ✓ codex --version ≠ låsens version → BLOKER (F-3b) — ptrace: præcis ÉN start af fixturen og den er --version (efter alle byte-kontroller), intet exec
+  ✓ lås uden codex_native → BLOKER (F-3b fail-closed)
+  ✓ path_from_pkg_root m. '..' → BLOKER (F-3b)
+  ✓ binaries.lock-pin == codex-entry + native + version → kører
+  ✓ kvittering: binaries.codex_native = realpath + sha af den native binær (F-3b)
+  ✓ EKSEKVERINGEN er bundet til den hashede ELF: codex_exec == native, exec-starten kom fra native-fixturen (self == process.execPath) — JS-shim'en (en fælde der fejler uden output) startes aldrig (F-3b/runde 10b fund 2)
+  ✓ ptrace (positiv kontrol): fixturen startet præcis 2 gange — først --version, så exec — og shim'en 0 gange (F-3h)
+  ✓ kvittering: binaries.node = den autoriserede node (sha == node.pin) og node blev startet først EFTER autorisation (mindst én node-start, alle efter pin)
+  ✓ codex --version m. flere linjer → BLOKER (F-3b: head -1 accepterede før) — ptrace: præcis én start (--version), intet exec
+  ✓ codex_native peger på shim'en selv (/bin/codex.js) → BLOKER på sti-grammatik, ingen start (F-3g; ptrace: 0 starter af shim og fixture)
+  ✓ codex_native peger på realpath-alias (/bin/./codex.js) → BLOKER på sti-grammatik, ingen start (F-3g; ptrace: 0 starter af shim og fixture)
+  ✓ codex_native peger på fil uden for vendor (/vendor/codex) → BLOKER på sti-grammatik, ingen start (F-3g; ptrace: 0 starter af shim og fixture)
+  ✓ shim-KOPI på vendor-stien, korrekt pinnet → BLOKER: ikke ELF, ingen start (F-3g: en kopi der starter et andet program kan ikke være native)
+  ✓ native binær udskiftet efter låsen (shim uændret) → BLOKER uden nogen start (F-3b: 0.153→0.154-hullet)
+  ✓ git replace på rolleblobben ignoreres — original rolletekst sendes, kørslen grøn (F-13)
+  ✓ kvittering: regel_commit = klonens HEAD (ved kørslen)
+  ✓ arbejdstræets lås ≠ pinned commit → BLOKER (fabrik-frys uden override)
+  ✓ symlink til wrapperen → frys mod wrapperens RIGTIGE repo (realpath), ikke symlinkets
+  ✓ GIT_DIR i miljøet ignoreres (renses før første git-kald)
+  ✓ PATH-injiceret codex uden for pinnet prefix + ingen selftest → BLOKER
+  ✓ STORK_V5_LOCK uden STORK_V5_SELFTEST=1 → BLOKER
+  ✓ gammel .done ryddes FØR validering — BLOKER efterlader ingen grøn markør
+
+verdikt-byg.mjs — kvitterings-binding v4 (F-1/F-2/F-10/F-11):
+  ✓ gyldig v4-kvittering + leverance m. verdikt-draft-blok → verdikt bygget (exit 0)
+  ✓ verdikt.run: run_attempt=1 · effort=xhigh · run_id · receipt_sha256 · raw_output_sha256 = sha256(leverance)
+  ✓ separat draft identisk m. blokken → ok
+  ✓ separat draft ≠ blokken (dom forsøgt byttet) → PROVENANCE-RØD (F-10)
+  ✓ leverance uden VERDIKT-DRAFT-linje → RØD (hash matcher ikke først; ellers marker-krav)
+  ✓ to VERDIKT-DRAFT-linjer (citeret + ægte) → RØD
+  ✓ kun et citeret eksempel, ikke sidste ikke-tomme linje → RØD
+  ✓ Markdown-containere/fences i leverancen er irrelevante — kun marker-linjen tæller → OK
+  ✓ ikke-kanonisk base64 → RØD
+  ✓ kvittering m. regel_commit = tree-OID → RØD (F-18: git-type commit)
+  ✓ kvittering m. regel_commit='HEAD' → RØD (F-18: flytbar ref)
+  ✓ kvitteringens rolle er ikke gatens codex-rolle → RØD (F-15)
+  ✓ kvittering m. selftest=true → RØD (F-11)
+  ✓ kvittering m. andet gate_input → RØD (F-10: dommen skrevet på andet input)
+  ✓ kvittering fra produktions-kørsel → RØD (F-10)
+  ✓ kvitteringens rolle er en anden codex-rolle (forbedring m. angrebs skill_oid) → RØD (F-15 gatens rolle / F-10 lås-binding)
+  ✓ lås-override → RØD
+  ✓ status=fejl → RØD (F-1)
+  ✓ forsøg m. andet effort end kvitteringen → RØD (tavs sænkning)
+  ✓ kvittering schema v1 (gammel wrapper) → RØD
+  ✓ codex-aktør UDEN kvittering → RØD (F-2)
+  ✓ claude-aktør uden kvittering → tilladt, mærket SELV-ERKLÆRET, ingen receipt_sha256
+  ✓ ÆGTE wrapper-kvittering fra selvtest (committed lås, selftest=true) → RØD i verdikt-byg (F-11 lukket e2e)
+
+codex-run.sh — F-3c: privat Codex-hjem + allowlist-miljø — lokal config/env kan ikke omdirigere kaldet:
+  ✓ gift-env (base_url · proxy · CA · NODE_OPTIONS · api-key) når ALDRIG CLI'en — kun allowlisten; og NODE_OPTIONS rammer heller ikke wrapperens egne node-kald (F-3e)
+  ✓ brugerens ~/.codex læses ikke: CODEX_HOME er privat og uden config.toml — selv når $HOME/.codex/config.toml findes på maskinen
+  ✓ auth.json-kilden urørt når CLI'en ikke ændrer kopien
+  ✓ CLI'en refresher auth.json i den private kopi → kilden opdateres ved afslutning (F-3c auth_tilbage)
+  ✓ privat CODEX_HOME ligger i den private kørselsmappe og er ryddet efter kørsel
+  ✓ auth.json mangler → BLOKER uden start (login kræves; ingen tavs kørsel uden identitet)
+  ✓ auth.json som symlink → BLOKER (F-3c)
+  ✓ STORK_V5_AUTH_SRC uden STORK_V5_SELFTEST=1 → BLOKER
+
+codex-run: 138 ok

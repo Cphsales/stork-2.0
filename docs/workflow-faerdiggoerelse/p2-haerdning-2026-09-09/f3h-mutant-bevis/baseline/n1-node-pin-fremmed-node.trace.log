@@ -1,0 +1,37 @@
+EXEC 1438103 /usr/bin/bash bash /home/mathias/stork-implplan/scripts/v5/codex-run.sh codex-angreb dom /tmp/v5-codex-run-966t4T/wd-5UN03j 5 /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md /tmp/v5-codex-run-966t4T/prompt.txt
+EXEC 1438104 /usr/bin/realpath realpath -e -- /usr/bin/git
+EXEC 1438106 /usr/bin/realpath realpath -e -- /usr/bin/timeout
+EXEC 1438108 /usr/bin/realpath realpath -e -- /usr/bin/sha256sum
+EXEC 1438110 /usr/bin/realpath realpath -e -- /usr/bin/realpath
+EXEC 1438112 /usr/bin/realpath realpath -e -- /usr/bin/flock
+EXEC 1438114 /usr/bin/realpath realpath -e -- /usr/bin/mktemp
+EXEC 1438116 /usr/bin/realpath realpath -e -- /usr/bin/stat
+EXEC 1438118 /usr/bin/realpath realpath -e -- /usr/bin/date
+EXEC 1438120 /usr/bin/realpath realpath -e -- /usr/bin/env
+EXEC 1438122 /usr/bin/realpath realpath -e -- /usr/bin/cmp
+EXEC 1438126 /usr/bin/grep grep -E ^NODE_
+EXEC 1438127 /usr/bin/date /usr/bin/date +%Y%m%dT%H%M%S
+EXEC 1438128 /usr/bin/date /usr/bin/date -Is
+EXEC 1438129 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-966t4T/wd-5UN03j
+EXEC 1438131 /usr/bin/dirname dirname -- /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md
+EXEC 1438130 /usr/bin/realpath /usr/bin/realpath -m -- /tmp/v5-codex-run-966t4T/out-x458Nm
+EXEC 1438132 /usr/bin/basename basename -- /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md
+EXEC 1438133 /usr/bin/flock /usr/bin/flock -n 9
+EXEC 1438134 /usr/bin/rm rm -f -- /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.attempt*.done /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.attempt*.started /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.attempt*.out /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.pid /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.receipt.json
+EXEC 1438135 /usr/bin/ls ls /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.attempt*.done
+EXEC 1438136 /usr/bin/mktemp /usr/bin/mktemp -d /tmp/v5-codex-run-966t4T/out-x458Nm/.run-XXXXXXXX
+EXEC 1438137 /usr/bin/realpath /usr/bin/realpath -e -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1438139 /usr/bin/dirname dirname -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1438140 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-966t4T/klon
+EXEC 1438142 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-966t4T/klon rev-parse --verify HEAD^{commit}
+EXEC 1438143 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-966t4T/bin/node
+EXEC 1438145 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-966t4T/bin/codex
+EXEC 1438148 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-966t4T/klon show 180c20a2a9c8bbf9a94d9da6d0062e9721b5bf90:scripts/v5/node.pin
+EXEC 1438151 /usr/bin/grep grep -cE ^sha256=[0-9a-f]{64}$
+EXEC 1438153 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-966t4T/bin/node
+EXEC 1438154 /usr/bin/cut cut -d  -f1
+EXEC 1438158 /usr/bin/cut cut -c1-300
+EXEC 1438157 /usr/bin/tr tr -d "\\\r\n
+EXEC 1438160 /usr/bin/mv mv -f -- /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.receipt.json.tmp /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.receipt.json
+EXEC 1438161 /usr/bin/rm rm -f -- /tmp/v5-codex-run-966t4T/out-x458Nm/out14.md.pid
+EXEC 1438162 /usr/bin/rm rm -rf -- /tmp/v5-codex-run-966t4T/out-x458Nm/.run-4sEc8w8X

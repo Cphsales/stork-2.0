@@ -1,0 +1,37 @@
+EXEC 1455187 /usr/bin/bash bash /home/mathias/stork-implplan/scripts/v5/codex-run.sh codex-angreb dom /tmp/v5-codex-run-aBSjHI/wd-bQMzUO 5 /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md /tmp/v5-codex-run-aBSjHI/prompt.txt
+EXEC 1455188 /usr/bin/realpath realpath -e -- /usr/bin/git
+EXEC 1455190 /usr/bin/realpath realpath -e -- /usr/bin/timeout
+EXEC 1455192 /usr/bin/realpath realpath -e -- /usr/bin/sha256sum
+EXEC 1455194 /usr/bin/realpath realpath -e -- /usr/bin/realpath
+EXEC 1455196 /usr/bin/realpath realpath -e -- /usr/bin/flock
+EXEC 1455198 /usr/bin/realpath realpath -e -- /usr/bin/mktemp
+EXEC 1455200 /usr/bin/realpath realpath -e -- /usr/bin/stat
+EXEC 1455202 /usr/bin/realpath realpath -e -- /usr/bin/date
+EXEC 1455204 /usr/bin/realpath realpath -e -- /usr/bin/env
+EXEC 1455206 /usr/bin/realpath realpath -e -- /usr/bin/cmp
+EXEC 1455210 /usr/bin/grep grep -E ^NODE_
+EXEC 1455211 /usr/bin/date /usr/bin/date +%Y%m%dT%H%M%S
+EXEC 1455212 /usr/bin/date /usr/bin/date -Is
+EXEC 1455213 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-aBSjHI/wd-bQMzUO
+EXEC 1455215 /usr/bin/dirname dirname -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md
+EXEC 1455214 /usr/bin/realpath /usr/bin/realpath -m -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe
+EXEC 1455216 /usr/bin/basename basename -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md
+EXEC 1455217 /usr/bin/flock /usr/bin/flock -n 9
+EXEC 1455218 /usr/bin/rm rm -f -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.attempt*.done /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.attempt*.started /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.attempt*.out /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.pid /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.receipt.json
+EXEC 1455219 /usr/bin/ls ls /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.attempt*.done
+EXEC 1455220 /usr/bin/mktemp /usr/bin/mktemp -d /tmp/v5-codex-run-aBSjHI/out-QFCrXe/.run-XXXXXXXX
+EXEC 1455221 /usr/bin/realpath /usr/bin/realpath -e -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1455223 /usr/bin/dirname dirname -- /home/mathias/stork-implplan/scripts/v5/codex-run.sh
+EXEC 1455224 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-aBSjHI/klon
+EXEC 1455226 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-aBSjHI/klon rev-parse --verify HEAD^{commit}
+EXEC 1455227 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-aBSjHI/bin/node
+EXEC 1455229 /usr/bin/realpath /usr/bin/realpath -e -- /tmp/v5-codex-run-aBSjHI/bin/codex
+EXEC 1455232 /usr/bin/git /usr/bin/git --no-replace-objects -C /tmp/v5-codex-run-aBSjHI/klon show 1e99e165a4a356f5f5f08bb62320a3e50b7ab6f0:scripts/v5/node.pin
+EXEC 1455235 /usr/bin/grep grep -cE ^sha256=[0-9a-f]{64}$
+EXEC 1455238 /usr/bin/cut cut -d  -f1
+EXEC 1455237 /usr/bin/sha256sum /usr/bin/sha256sum -- /tmp/v5-codex-run-aBSjHI/bin/node
+EXEC 1455241 /usr/bin/tr tr -d "\\\r\n
+EXEC 1455242 /usr/bin/cut cut -c1-300
+EXEC 1455244 /usr/bin/mv mv -f -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.receipt.json.tmp /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.receipt.json
+EXEC 1455245 /usr/bin/rm rm -f -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/out14.md.pid
+EXEC 1455246 /usr/bin/rm rm -rf -- /tmp/v5-codex-run-aBSjHI/out-QFCrXe/.run-07qwavJP
