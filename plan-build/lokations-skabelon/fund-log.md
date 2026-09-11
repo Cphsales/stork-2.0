@@ -211,3 +211,18 @@ Rapport-r3 §1's tilstande er overført mekanisk til de 77 rækker ovenfor (stat
 | NF-4 | K-genlæsning | T4.3 omdisponeret I → R (immutability-guard gør omskrivning urepræsenterbar); K-4's gulv består (8 I); ac-4 bevisform udvidet til UT + FS (historik-genlæsning C10) | K-4/ac-4 | modtaget (planner: inden for mandat, D10) | c5f451f8 (plan v3) | fold-ind-rapport-r3 §3 NF-4 — dømmes i A'/B' |
 | NF-5 | K-genlæsning | `pending_change_apply` undtaget fra »hver handling som R− → AK-PERM«: fundamentet har ingen page-gate på apply (`f49e7d5b:220`) — enhver authenticated kan udløse apply af en DUE, APPROVED pending (samme effekt som cron); fundament-egenskab, ikke pakke-svaghed | K-9/ac-2 | modtaget (planner: inden for mandat + synlig default) | c5f451f8 (plan v3) | fold-ind-rapport-r3 §3 NF-5 — dømmes i A'/B' |
 | NF-6 | K-genlæsning | Alias-udskrivningen (A2-10) gav K-1/ac-5 · K-5/ac-4 · K-6/ac-4 · K-6/ac-5 · K-6/ac-9 egne negativ-ID'er der er »samme case som« mål-obligationens; casen køres én gang | K-1/ac-5 · K-5/ac-4 · K-6/ac-4 · K-6/ac-5 · K-6/ac-9 | modtaget (planner: inden for mandat, §5 pkt. 6) | c5f451f8 (plan v3) | fold-ind-rapport-r3 §3 NF-6 — dømmes i A'/B' |
+
+## Efter B' (fresh-eyes r3 af plan v3 `c5f451f8` @ 4716507) — modtaget 2026-09-11 11:19
+
+### Kilde 11: fresh-eyes r3 — `plan-audit-fresh-eyes-r3.md` (frisk claude-ai-instans, read-only; provenance/plan-audit-fresh-eyes-r3.\*)
+
+»Rest-status: 4 fund« — ingen nye Mathias-spørgsmål; alle fire er rettelser til planens egen tekst/bogføring ved næste plan-SHA (v3.2) eller en proces-konsekvens. SM-1..4 er orienteringer til næste Mathias-tur (ikke fund).
+
+| fund-id | alvor | kort (driverens resumé — kilden er autoritet) | berører (plan v3-linje) | status | rettelses-OID | bevis |
+| --- | --- | --- | --- | --- | --- | --- |
+| FUND3-1 | mindre | B-4's »Dit ord«-citat i plan §10 er ikke ordret (M-17 staver »loaktioner«) — samme fejl devil-2 fangede i den sendte liste; plan skal citere M-36 ordret ved næste SHA | plan:768 · rapport-r3:170 · ledger:38/85 | modtaget | — | — |
+| FUND3-2 | medium | B-5 (ny stand på nedlagt afvises, W9) står som »INDEN FOR MANDAT + bekræftelse via analogi M-30.2« — M-30.2 handler om klient-aftaler, K:71/K:181 delegerer ikke stand-oprettelse → SPØRGSMÅL (sendt korrekt i devil-listen); relabel plan:769 + rapport-r3 FUND2-4 → KRÆVER MATHIAS + optælling (mandat 6→5, kræver 8→9) | plan:608 · plan:769 · rapport-r3:36/110 | modtaget | — | — |
+| FUND3-3 | medium | D-6 (»mindst én dag«, AK-DATO-FOER-START) er ny afvisning uden kilde (planen skriver selv »ingen; model-valg«) og planen beskriver ikke nej-udfaldet — sendt som ja/nej-spørgsmål (devil); planen skal tilføje hvad der sker ved »nej« | plan:775 · plan:81 · plan:511/531 · DV-1 | modtaget | — | — |
+| FUND3-4 | medium | Påstanden »Ingen krav-ændring foretaget eller foreslået« (plan:23/751) holder ikke for S-2's udfald A (registrering ok): et aktivt valgt persondata-felt uden anonymiseringsvej = UNDTAGELSE fra K:143 → ved Mathias' »ja«: ledger-entry m. hans ord + Mathias retter/fodnoterer kravet (sandhed-protect) FØR plan-lås; planen skal erkende det | plan:23 · plan:751 · plan:758 · K:143 | modtaget | — | — |
+
+Orienteringer til næste Mathias-tur (ikke fund): SM-1 dagspris krævet på butikken (0 kr. er en pris; stand uden egen pris følger butikkens) · SM-2 gruppe taget ud af brug (ingen nye butikker/skift/koblinger; det bestående består; superadmin kan) · SM-3 klient sat inaktiv kan ikke kobles på gruppe (superadmin kan) · SM-4 kendt grænse: tidsbaseret sletning/anonymisering af kontaktpersoner har ingen udførende vej i fundamentet · D-9 (ny synlig default, godkender skriver ingen ny årsag) · D-10 (kendt grænse, allerede sendt inde i B-1 — eget id næste gang).

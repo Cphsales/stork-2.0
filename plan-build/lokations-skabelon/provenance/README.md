@@ -249,3 +249,21 @@ FA-5-reference) · `../p8-kilde.json` (bindinger: krav · p8_spec · kildekontra
 `../b4-delta-scope-r3.md` (mekanisk delta v2→v3: 28 hunks · fund→v3-afsnit · berørte K/ac). Ikke arkiveret (deklareret):
 session-transkript `~/.claude/projects/-tmp-claude-1000--home-mathias-stork-implplan-870c5b0e-c4d1-4463-a6cd-ff1caa59667d-b3v3-wd/e9a45791-5dbc-436a-b6fd-184886c8674e.jsonl`
 (639 linjer; 62 Bash · 43 Read · 103 Edit · 2 Write) sha256 `f075e175d6be45369dc3a0cc70b293876a9328dc9483f3418eaca0ce773a4a0e`.
+
+## B4 ekstra runde — B' fresh-eyes antag-aldrig-audit r3 af plan v3 (frisk claude-ai-instans via `claude -p`, read-only, IKKE gate-verdikt) — arkiveret 2026-09-11 ~11:30 af driver-10b (session de4474)
+
+Kald, model/effort (claude-fable-5-1 · xhigh fra `actors.lock[claude-ai]`), PIN `4716507`, prompt-sha, blobs, resumé og
+afvig står i `plan-audit-fresh-eyes-r3.provenance.txt`. Result-JSON = kvittering (selv-erklæret): 44 ture · 18,8 min monoton
+(vægur ~15 t pga. værtsdvale 10/9 20:13 → 11/9 09:47) · 15,21 USD · `is_error: false` · ingen web · aktøren
+hash-verificerede alle 15 input-blobs selv. **Dom: »Rest-status: 4 fund«, ingen nye Mathias-spørgsmål** (FUND3-1 citat ·
+FUND3-2 B-5 klassifikation · FUND3-3 D-6 nej-udfald · FUND3-4 S-2 udfald A = undtagelse fra K:143 → krav-fodnote ved
+Mathias' hånd). Afstemningstabel plan §10 vs. devil-REN liste + »plan-SHA-synk«-liste til planneren + liste til næste
+Mathias-tur (D-9 · D-10 · SM-1..4). Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan-audit-fresh-eyes-r3.md` | result-tekst fra `OUT-audit-r3.json` (19 441 B, 118 linjer, én blok) | `d64127012c35e973dbb5deb44489398e4c31020f4bc25f59af4a8283ab6bf617` | positivt først · FUND3-1..4 · SM-1..4 · form-noter · runde-2-status FUND2-1..6 · afstemning §10 vs. devil-liste · næste Mathias-tur · binding (15 blobs) |
+| `plan-audit-fresh-eyes-r3.prompt.txt` | job-tmp `b4r3/prompt-b3.txt` | `c441e3bc7b659739517060540d1a48ff7a00d1b69d402c1f9349447a7f515dd0` | claude-ai.md @ 94628494 + Prompt B' m. blobs |
+| `plan-audit-fresh-eyes-r3.claude-result.json` | `…/b4r3/out-b/OUT-audit-r3.json` | `e6aec04c7d8d80ac2d603606d82f1fe210fd4353ec854168c27ab9f84f03fd9b` | CLI result-JSON (session b5104e5e) |
+| `plan-audit-fresh-eyes-r3.settings.json` | job-tmp `settings-readonly-c.json` | `eaf8641cf96649bbcf2c224bc7cc19b57ff88f48da0db939a77e31df2854c3b0` | read-only permissions v2 |
+| `plan-audit-fresh-eyes-r3.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance inkl. værtsdvale-afvig |
