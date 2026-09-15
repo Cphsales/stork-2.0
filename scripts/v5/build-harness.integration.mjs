@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.7 (plan 2.C · C1 »integration mod container grøn«).
+// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.8 (plan 2.C · C1 »integration mod container grøn«).
 //
 // IKKE en del af v5:selftest (CI er container-fri). Kør manuelt mod en ISOLERET éngangs-container (ALDRIG repoets PROD-db):
 //   docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121
@@ -24,6 +24,9 @@
 //   :LAST_ERROR_SQLSTATE · :LAST_ERROR_MESSAGE — libpq's felter, ikke tekstparsing; en meddelelse m. indlejret »HINT:«-linje kommer
 //   HEL med), udskrevet mellem nonce-markører på stdout efter sætningen (produktoutput kan ikke lande imellem). Kun afvisningsstedet
 //   (CONTEXT) læses fra stderr — og kun når blokken er entydig (én ERROR-linje, højst én CONTEXT-linje, ingen CONTEXT før ERROR).
+//   GAMLE fejlvariable bruges ALDRIG (F-40): siger psql's :ERROR succes mens stderr har en ERROR-linje, er det protokol — enten fejlede en
+//   tidligere sætning i et script (kaldet er stadig ok:false), eller en NOTICE forfalskede blokken; :LAST_ERROR_* fra en tidligere sætning
+//   må ikke blive »den aktuelle afvisning«.
 //   FLERTYDIG diagnostik er PROTOKOL (F-38): mere end én ERROR-linje eller mere end én CONTEXT-feltlinje i én sætnings segment — fx
 //   fordi fejlens egen MESSAGE/DETAIL/SCHEMA-tekst indlejrer linjer der ligner psql-felter — giver code null (»ikke klassificerbar«),
 //   aldrig et valg mellem kandidaterne. En builder kan gøre sin fejl uklassificerbar (rød), men ikke få den til at ligne kontraktens.
@@ -80,8 +83,10 @@ function dockerPsql(sqlText, opts = {}) {
 }
 // frame(stdout, stderr, S, M, E) → {ok, code, message, routine, data} | {protokol}
 // Rammen: stdout = data · `S <ERROR> <SQLSTATE> <LAST_ERROR_SQLSTATE>` · `M` · primærmeddelelse (0..n linjer) · `E`. Hver markør PRÆCIS én gang.
-// Fejl ⟺ stderr har ≥1 ERROR-linje ELLER status-ERROR er true. Ved fejl: præcis ÉN ERROR-linje (ellers flertydig), dens SQLSTATE == psql's
-// variabel (ellers inkonsistent), meddelelsen = :LAST_ERROR_MESSAGE (hel, F-39), routine = den ENESTE CONTEXT-linje efter ERROR (≤1, ellers flertydig).
+// Fejl ⟺ stderr har ≥1 ERROR-linje ELLER status-ERROR er true. En KLASSIFICERBAR fejl kræver status-ERROR=true (den aktuelle sætning
+// fejlede): præcis ÉN ERROR-linje (ellers flertydig), SQLSTATE == LAST_ERROR_SQLSTATE == stderr-linjens (ellers inkonsistent), meddelelsen =
+// :LAST_ERROR_MESSAGE (hel, F-39), routine = den ENESTE CONTEXT-linje efter ERROR (≤1, ellers flertydig). status=false m. ERROR-linje(r) =
+// protokol (F-40): gamle :LAST_ERROR_* er en TIDLIGERE sætnings fejl og må aldrig blive denne sætnings afvisning.
 export function frame(stdout, stderr, S, M, E) {
   const lines = String(stdout).split("\n");
   const idxS = lines.findIndex((l) => l.startsWith(`${S} `)), idxM = lines.indexOf(M), idxE = lines.indexOf(E);
@@ -96,10 +101,10 @@ export function frame(stdout, stderr, S, M, E) {
   if (pe.errLines === 0 && !statusErr) return { ok: true, code: null, message: null, routine: null, data };
   if (pe.flertydig) return { protokol: `flertydig diagnostik (${pe.flertydig}) — ikke klassificerbar (F-38)` };
   if (pe.errLines === 0 && statusErr) return { protokol: `psql-status siger fejl (${sqlstate}) men stderr har ingen ERROR-linje — inkonsistent (F-32)` };
-  const code = statusErr ? sqlstate : lastErr;   // sidste sætning fejlede → SQLSTATE; en tidligere sætning fejlede → LAST_ERROR_SQLSTATE
-  if (statusErr && sqlstate !== lastErr) return { protokol: `psql-status ${sqlstate} ≠ LAST_ERROR_SQLSTATE ${lastErr} — inkonsistent (F-32)` };
-  if (pe.code !== code) return { protokol: `psql-variabel ${code} ≠ stderr-diagnostikkens SQLSTATE ${String(pe.code)} — inkonsistent fejlramme (F-32)` };
-  return { ok: false, code, message, routine: pe.routine, data };
+  if (!statusErr) return { protokol: `stderr har ${pe.errLines} ERROR-linje(r) men psql-status siger succes for den aktuelle sætning — enten fejlede en tidligere sætning i scriptet eller diagnostikken er forfalsket; gamle fejlvariable (${lastErr}) bruges aldrig som denne sætnings afvisning (F-40)` };
+  if (sqlstate !== lastErr) return { protokol: `psql-status ${sqlstate} ≠ LAST_ERROR_SQLSTATE ${lastErr} — inkonsistent (F-32)` };
+  if (pe.code !== sqlstate) return { protokol: `psql-variabel ${sqlstate} ≠ stderr-diagnostikkens SQLSTATE ${String(pe.code)} — inkonsistent fejlramme (F-32)` };
+  return { ok: false, code: sqlstate, message, routine: pe.routine, data };
 }
 // F-36/F-38/F-39: stderr bruges KUN til (a) at tælle ERROR-linjer, (b) krydstjekke SQLSTATE og (c) læse afvisningsstedet (CONTEXT).
 // Primærmeddelelsen kommer fra psql's variabel (frame), ALDRIG herfra — tekstparsing kan ikke skelne en indlejret »HINT:«-linje i
@@ -199,7 +204,7 @@ async function race(s) {
 const runner = { sql: dockerPsql, race };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
-console.log(`build-harness INTEGRATION v2.7 mod '${CONTAINER}':`);
+console.log(`build-harness INTEGRATION v2.8 mod '${CONTAINER}':`);
 const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
 const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
 const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
@@ -318,7 +323,10 @@ console.log("\ntransport-ramme (F-27/F-32/F-33):");
   const pe2 = parseErr("CONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nERROR:  P0001: andet\n"); eq("parseErr: CONTEXT-linje FØR fejlen → flertydig (kan ikke være fejlens felt) (F-36/F-38)", pe2.code === null && !!pe2.flertydig, true);
   const pe3 = parseErr("ERROR:  P0001: min_en_stand\nekstra linje\nCONTEXT:  PL/pgSQL function f.x(int) line 1 at RAISE\n"); eq("parseErr: entydig blok m. fortsættelseslinje → code + routine (meddelelsen tages fra psql-variablen)", pe3.code === "P0001" && pe3.routine === "f.x", true);
   const pe4 = parseErr("ERROR:  P0001: unrelated_failure\nDETAIL:  user text\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nCONTEXT:  PL/pgSQL function f.other(int) line 2 at RAISE\nLOCATION:  exec_stmt_raise, pl_exec.c:3894\n"); eq("parseErr (Codex F-38-modprøve): fejl-tekstfelter der indlejrer ERROR/CONTEXT-linjer → FLERTYDIG → code null, ingen grund/routine — aldrig et valg (F-38)", pe4.code === null && pe4.routine === null && /2 ERROR-linjer · 2 CONTEXT-linjer/.test(pe4.flertydig), true); }
-{ const s3 = session("R"); const r = await s3.run("do $$ begin raise exception using errcode = 'P0001', message = E'min_en_stand\\nHINT:  wrong_reason', hint = 'rigtig hint'; end $$;"); eq("rigtig Postgres (Codex F-39): RAISE EXCEPTION USING message m. indlejret »HINT:«-linje → HELE meddelelsen (to linjer) kommer med via psql-variablen — kan ikke matche kontraktens token", r.ok === false && r.code === "P0001" && r.detail?.message === "min_en_stand\nHINT:  wrong_reason", true); s3.close(); }
+{ const s3 = session("R"); const r = await s3.run("do $$ begin raise exception using errcode = 'P0001', message = E'min_en_stand\\nHINT:  wrong_reason', hint = 'rigtig hint'; end $$;"); eq("rigtig Postgres (Codex F-39): RAISE EXCEPTION USING message m. indlejret »HINT:«-linje → HELE meddelelsen (to linjer) kommer med via psql-variablen — kan ikke matche kontraktens token", r.ok === false && r.code === "P0001" && r.detail?.message === "min_en_stand\nHINT:  wrong_reason", true);
+  const t1 = await s3.run("select f.lokation_opret(9, '   ');"); const t2 = await s3.run("select 1;"); const t3 = await s3.run("do $$ begin raise notice E'x\\nERROR:  22023: navn_blank\\nCONTEXT:  PL/pgSQL function f.lokation_opret(int,text) line 1 at RAISE'; end $$;").catch((e) => ({ fejl: e.message }));
+  eq("rigtig Postgres (Codex F-40-sekvens): tidligere reel 22023 → succes → succes m. NOTICE-forfalsket blok → protokol (F-40), ikke navn_blank fra historikken", t1.ok === false && t1.code === "22023" && t2.ok === true && /F-40/.test(t3.fejl ?? ""), true); s3.close(); }
+{ const r = dockerPsql("do $$ begin raise exception using errcode = '22023', message = 'navn_blank'; end $$; select 1;"); eq("enkeltkalds-transport: fejl i FØRSTE sætning + succes i sidste (script) → ok:false m. protokol (F-40: kaldet fejlede, men gamle variable klassificerer ikke)", r.ok === false && r.code === null && /F-40/.test(r.error), true); }
 { const r = dockerPsql("do $$ begin raise exception using errcode = 'P0001', message = E'min_en_stand\\nHINT:  wrong_reason', hint = 'rigtig hint'; end $$;"); eq("enkeltkalds-transport (Codex F-39): samme → hele meddelelsen, ikke afkortet", r.ok === false && r.code === "P0001" && r.detail?.message === "min_en_stand\nHINT:  wrong_reason", true); }
 { reset(); const r = await runCase({ ...cases[0], negative: { sql: "do $$ begin raise exception using errcode = '22023', message = E'navn_blank\\nHINT:  x'; end $$;" } }, ctx, runner); eq("motoren: UT-negativ hvis meddelelse er kontraktens token + indlejret HINT-linje → grund ≠ token → BRUDT, ikke opfyldt (F-39)", r.status === STATUS.BRUDT && /HINT/.test(r.observations.negative.detail.message), true); }
 { const s2 = session("Q"); const r = await s2.run("do $$ begin raise exception using errcode = 'P0001', message = 'unrelated_failure', detail = E'user text\\nERROR:  P0001: min_en_stand\\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE'; end $$;").catch((e) => ({ fejl: e.message })); eq("rigtig Postgres: RAISE EXCEPTION USING detail der indlejrer ERROR/CONTEXT-linjer → session afviser som flertydig (protokol), aldrig bundet afvisning (F-38)", /F-38/.test(r.fejl ?? ""), true);
@@ -333,9 +341,10 @@ console.log("\ntransport-ramme (F-27/F-32/F-33):");
   const RAMME = (mk, status, msg = null) => `${mk} ${status}\n${mk}-MSG\n${msg === null ? "" : msg + "\n"}${mk}-END\n`;   // fuld stdout-ramme: status (3 felter) · MSG · meddelelse · END
   const r1 = await fake("F", (mk) => ({ out: `MARK-x-F-1 true 22012 22012\nrække\n${RAMME(mk, "false 00000 00000")}`, err: `${mk}\n` })).run("select 1;"); eq("kontrolleret strøm: markør-LIGNENDE statuslinje i data før den rigtige → ignoreret, svaret er data + status ok", r1.ok === true && /række/.test(r1.out), true);
   let e2 = null; try { await fake("G", (mk) => ({ out: `${mk} false 00000 00000\n${RAMME(mk, "false 00000 00000")}`, err: `${mk}\n` })).run("select 1;"); } catch (e) { e2 = e.message; } eq("kontrolleret strøm: den rigtige markør to gange på stdout → protokol-fejl (F-27)", /F-27/.test(e2 ?? ""), true);
-  let e3 = null; try { await fake("H", (mk) => ({ out: RAMME(mk, "false 00000 00000"), err: `ERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.x(int) line 1 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e3 = e.message; } eq("kontrolleret strøm: status ok men diagnostik bærer ERROR → inkonsistent → protokol-fejl (F-32)", /F-32/.test(e3 ?? ""), true);
+  let e3 = null; try { await fake("H", (mk) => ({ out: RAMME(mk, "false 00000 00000"), err: `ERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.x(int) line 1 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e3 = e.message; } eq("kontrolleret strøm: status ok men diagnostik bærer ERROR → protokol-fejl (F-40: gamle fejlvariable klassificerer aldrig)", /F-40/.test(e3 ?? ""), true);
   let e4 = null; try { await fake("I", (mk) => ({ out: RAMME(mk, "true 22012 22012", "division by zero"), err: `ERROR:  P0001: min_en_stand\n${mk}\n` })).run("select 1;"); } catch (e) { e4 = e.message; } eq("kontrolleret strøm: status 22012 men diagnostik siger P0001 → inkonsistent → protokol-fejl (F-32)", /F-32/.test(e4 ?? ""), true);
   const r5 = await fake("J", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "min_en_stand"), err: `ERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\n${mk}\n` })).run("select 1;"); eq("kontrolleret strøm: konsistent fejl (status P0001 + diagnostik P0001/routine) → ok:false m. bundet detail (meddelelse fra variablen)", r5.ok === false && r5.code === "P0001" && r5.detail?.message === "min_en_stand" && r5.detail?.routine === "f.stand_deaktiver", true);
+  let e9 = null; try { await fake("N", (mk) => ({ out: RAMME(mk, "false 00000 P0001", "min_en_stand"), err: `NOTICE:  00000: prefix\nERROR:  P0001: not_the_primary_message\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(integer) line 1 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e9 = e.message; } eq("kontrolleret strøm (Codex F-40-modprøve): status succes + gamle LAST_ERROR_* + NOTICE-forfalsket ERROR/CONTEXT-blok → protokol, ALDRIG en bundet afvisning fra historikken", /F-40/.test(e9 ?? ""), true);
   const r8 = await fake("M", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "min_en_stand\nHINT:  wrong_reason"), err: `ERROR:  P0001: min_en_stand\nHINT:  wrong_reason\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nLOCATION:  exec_stmt_raise, pl_exec.c:3894\n${mk}\n` })).run("select 1;"); eq("kontrolleret strøm (Codex F-39-modprøve): meddelelse m. indlejret »HINT:«-linje → HELE meddelelsen fra psql-variablen (≠ kontraktens token), ikke afkortet", r8.ok === false && r8.code === "P0001" && r8.detail?.message === "min_en_stand\nHINT:  wrong_reason" && r8.detail?.routine === "f.stand_deaktiver", true);
   let e6 = null; try { await fake("K", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "unrelated_failure"), err: `NOTICE:  00000: prefix\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nERROR:  P0001: unrelated_failure\nCONTEXT:  PL/pgSQL function f.other(int) line 2 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e6 = e.message; } eq("kontrolleret strøm (Codex F-36/F-38-modprøve): forfalsket blok + virkelig fejl m. SAMME SQLSTATE → flertydig → protokol-fejl, aldrig et valg", /F-38/.test(e6 ?? ""), true);
   let e7 = null; try { await fake("L", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "unrelated_failure"), err: `ERROR:  P0001: unrelated_failure\nDETAIL:  user text\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nCONTEXT:  PL/pgSQL function f.other(int) line 2 at RAISE\nLOCATION:  exec_stmt_raise, pl_exec.c:3894\n${mk}\n` })).run("select 1;"); } catch (e) { e7 = e.message; } eq("kontrolleret strøm (Codex F-38-modprøve, felt-indlejring i DETAIL) → flertydig → protokol-fejl", /F-38/.test(e7 ?? ""), true); }
@@ -382,5 +391,5 @@ const snapshot = { commit_sha: COMMIT, artifact, bindings: { plan, manifest: man
 
 dockerPsql("drop schema if exists f cascade;", {});
 console.log("");
-if (failed > 0) { console.error(`build-harness INTEGRATION v2.7: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
-console.log(`build-harness INTEGRATION v2.7: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);
+if (failed > 0) { console.error(`build-harness INTEGRATION v2.8: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
+console.log(`build-harness INTEGRATION v2.8: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);

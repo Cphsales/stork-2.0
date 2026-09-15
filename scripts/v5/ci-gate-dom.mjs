@@ -13,7 +13,9 @@
 //      artefakt gaten dømmer (verdikter og kvittering er bundet til den) — med evidenceRef = den PUSHEDE commit (hvor approval/verdikter
 //      ligger). Den pinnede commit læses fra det committede kandidat-resultat `<gate>-gate-resultat.json`.commit_sha @ pushed commit og
 //      SKAL være en forfader til (eller lig) den pushede commit; mangler filen eller er commit'en ikke i historikken → FAILURE m. grund.
-//      recon dømmes ved den pushede commit selv (ingen approval). Committede gate-resultat-filer er spor; dommen fældes her.
+//      IDENTITET (Codex P-1 F-C4-1): gatens artefakt og ALLE bindinger skal have samme blob-OID ved pinned og ved pushed, og launch.pakke
+//      skal være den samme — en gammel åben dom må ikke blive grøn for ændret indhold. Nyere evidens-commits (approval/verdikter) er tilladt;
+//      ændret artefakt/binding/pakke → FAILURE m. hvad der ændrede sig. recon dømmes ved den pushede commit selv (ingen approval).
 //      build/slut: udfør-siden er ikke bygget endnu → FAILURE med grund (fail-closed), ikke succes og ikke tavshed.
 //   3. EMISSION: resultatet mappes til check-run-payload (checkrun.mjs, fail-closed) og publiceres som `v5/gate/<id>` på head_sha via
 //      GitHub REST (workflow-tokenets checks:write). Emission der fejler → exit ≠ 0 (aldrig stille).
@@ -28,6 +30,7 @@
 
 import { GATE_IDS, checkRunName } from "./gates.mjs";
 import { checkRunFromGateResult } from "./checkrun.mjs";
+import { buildSnapshot } from "./gate-eval.mjs";
 import { makeGit } from "./git.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -61,12 +64,22 @@ async function defaultRunners() {
 }
 
 // doemGates({commitSha (pushed), root, git?, runners?, exists?, readJson?, isAncestor?, pakke?}) → [{gate, naaet, fil, pinned, result|null, checkRun|null}]
-export async function doemGates({ commitSha, root = repoRoot, git = null, runners = null, exists = null, readJson = null, isAncestor = null, pakke = null, gates = GATE_IDS } = {}) {
+// identitet(gate, sha, pakke) → { pakke, artifact: oid, bindings: {k: oid} } — det gaten dømmer, ved én commit (default: gate-eval's layout + launch.json)
+function defaultIdentitet(g) {
+  return (gate, sha, pakke) => {
+    const launch = JSON.parse(g.bytes("show", `${sha}:launch/launch.json`).toString("utf8"));
+    const snap = buildSnapshot(gate, { git: g, commitSha: sha, pakke });
+    return { pakke: launch.pakke, artifact: snap.artifact?.oid ?? null, bindings: Object.fromEntries(Object.entries(snap.bindings ?? {}).map(([k, v]) => [k, v?.oid ?? null])) };
+  };
+}
+const canonId = (x) => JSON.stringify({ pakke: x.pakke, artifact: x.artifact, bindings: Object.fromEntries(Object.entries(x.bindings ?? {}).sort()) });
+export async function doemGates({ commitSha, root = repoRoot, git = null, runners = null, exists = null, readJson = null, isAncestor = null, identitet = null, pakke = null, gates = GATE_IDS } = {}) {
   if (!isOid(commitSha)) throw new Error("commitSha skal være en fuld 40-hex commit-OID (pinned — aldrig en mutable ref)");
   const g = git ?? makeGit(root);
   const findes = exists ?? ((path) => { try { g("cat-file", "-e", `${commitSha}:${path}`); return true; } catch { return false; } });
   const laesJson = readJson ?? ((path) => JSON.parse(g.bytes("show", `${commitSha}:${path}`).toString("utf8")));
   const erForfader = isAncestor ?? ((anc, desc) => { if (anc === desc) return true; try { g("merge-base", "--is-ancestor", anc, desc); return true; } catch { return false; } });
+  const idAt = identitet ?? defaultIdentitet(g);
   let pk = pakke;
   if (!pk) { try { pk = JSON.parse(g.bytes("show", `${commitSha}:launch/launch.json`).toString("utf8")).pakke; } catch (e) { throw new Error(`launch/launch.json kan ikke læses i ${commitSha.slice(0, 7)}: ${e?.message ?? e}`); } }
   if (typeof pk !== "string" || !pk) throw new Error("launch.pakke mangler");
@@ -84,6 +97,16 @@ export async function doemGates({ commitSha, root = repoRoot, git = null, runner
       else {
         let cs = null; try { cs = laesJson(kilde)?.commit_sha; } catch (e) { result = { open: false, gate_id: gate, reasons: [`${kilde} kan ikke læses: ${e?.message ?? e}`] }; }
         if (!result) { if (!isOid(cs)) result = { open: false, gate_id: gate, reasons: [`${kilde}.commit_sha mangler/ikke en fuld OID (fail-closed)`] }; else if (!erForfader(cs, commitSha)) result = { open: false, gate_id: gate, reasons: [`${kilde}.commit_sha ${cs.slice(0, 7)} er ikke forfader til den pushede commit ${commitSha.slice(0, 7)} — gaten dømmer en fremmed historik (fail-closed)`] }; else pinned = cs; }
+      }
+      // F-C4-1: identitetsbinding pinned ↔ pushed — samme pakke, samme artefakt-OID, samme bindings-OID'er; ellers er den gamle dom forældet
+      if (!result && pinned !== commitSha) {
+        let a = null, b = null;
+        try { a = idAt(gate, pinned, pk); b = idAt(gate, commitSha, pk); } catch (e) { result = { open: false, gate_id: gate, reasons: [`identitet kan ikke afgøres (${e?.message ?? e}) — artefakt/bindinger findes ikke ens ved pinned og pushed (fail-closed)`] }; }
+        if (!result && canonId(a) !== canonId(b)) {
+          const diff = []; if (a.pakke !== b.pakke) diff.push(`pakke ${a.pakke} → ${b.pakke}`); if (a.artifact !== b.artifact) diff.push(`artefakt ${String(a.artifact).slice(0, 12)} → ${String(b.artifact).slice(0, 12)}`);
+          for (const k of new Set([...Object.keys(a.bindings), ...Object.keys(b.bindings)])) if (a.bindings[k] !== b.bindings[k]) diff.push(`binding ${k} ${String(a.bindings[k]).slice(0, 12)} → ${String(b.bindings[k]).slice(0, 12)}`);
+          result = { open: false, gate_id: gate, reasons: [`indholdet er ÆNDRET siden den dømte commit ${pinned.slice(0, 7)}: ${diff.join(" · ")} — en gammel åben dom gælder ikke ændret indhold (F-C4-1); ny gate-dom kræves`] };
+        }
       }
     }
     if (!result) { try { result = await R[gate](pinned, { root, pakke: pk, evidenceRef: commitSha }); } catch (e) { result = { open: false, gate_id: gate, reasons: [`dommeren kastede (fail-closed): ${e?.message ?? String(e)}`] }; } }
