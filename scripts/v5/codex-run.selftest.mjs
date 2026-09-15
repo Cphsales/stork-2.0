@@ -446,12 +446,12 @@ console.log("\ncodex-run.sh v3 — guards uden override (committed-lås-grenen u
   const FREMMED = mkdtempSync(join(T, "fremmed-")); mkdirSync(join(FREMMED, "scripts/v5"), { recursive: true });
   symlinkSync(join(CLONE, "scripts/v5/codex-run.sh"), join(FREMMED, "scripts/v5/codex-run.sh"));
   clearCalls();
-  const r = spawnSync("bash", [join(FREMMED, "scripts/v5/codex-run.sh"), "codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, "sym.md"), promptFil], { encoding: "utf8", env: { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: "1" } });
+  const r = spawnSync("bash", [join(FREMMED, "scripts/v5/codex-run.sh"), "codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, "sym.md"), promptFil], { encoding: "utf8", env: { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: "1", STORK_V5_AUTH_SRC: FAKE_AUTH } });   // auth-kilden som run(): i CI findes ingen ~/.codex/auth.json, og wrapperen BLOKERER korrekt uden den
   const rec = JSON.parse(readFileSync(join(OUTDIR, "sym.md.receipt.json"), "utf8"));
   eq("symlink til wrapperen → frys mod wrapperens RIGTIGE repo (realpath), ikke symlinkets", r.status === 0 && rec.regel_commit === execFileSync("git", ["-C", CLONE, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(), true);
   // GIT_DIR i miljøet må ikke flytte opslag (F-4)
   clearCalls();
-  const g = spawnSync("bash", [join(CLONE, "scripts/v5/codex-run.sh"), "codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, "gitdir.md"), promptFil], { encoding: "utf8", env: { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: "1", GIT_DIR: join(T, "ingen.git") } });
+  const g = spawnSync("bash", [join(CLONE, "scripts/v5/codex-run.sh"), "codex-angreb", "dom", WORKDIR, "5", join(OUTDIR, "gitdir.md"), promptFil], { encoding: "utf8", env: { ...process.env, PATH: `${BIN}:${process.env.PATH}`, STORK_V5_SELFTEST: "1", STORK_V5_AUTH_SRC: FAKE_AUTH, GIT_DIR: join(T, "ingen.git") } });
   eq("GIT_DIR i miljøet ignoreres (renses før første git-kald)", g.status, 0);
 }
 {

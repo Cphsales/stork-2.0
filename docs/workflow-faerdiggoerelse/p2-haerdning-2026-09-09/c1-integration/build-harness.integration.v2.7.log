@@ -1,0 +1,80 @@
+build-harness INTEGRATION v2.7 mod 'v5-buildproof-pg':
+  ✓ fixture opsat
+  ✓ angrebs-spec (den faktiske måle-spec) er komplet mod manifestet
+
+cases mod rigtig Postgres (baseline):
+  ✓ c-navn-ut [UT] → opfyldt
+  ✓ c-dml-ut [UT] → opfyldt
+  ✓ c-opret-mh [MH] → opfyldt
+  ✓ c-pris-fs [FS] → opfyldt
+  ✓ c-tom-fs [FS] → opfyldt
+  ✓ c-min-ut [UT] → opfyldt
+  ✓ c-race-sa [SA] → opfyldt
+  ✓ SA: OVERLAP vidnet af en TREDJE backend (witness_pid ∉ {A,B}, a_pid/b_pid = sessionernes) — uafhængigt af produktlåsen (F-22)
+  ✓ SA: præcis én afvisning og den er P0001 fra f.stand_deaktiver
+  ✓ SA: race.setup udført af motoren og observeret (F-20)
+  ✓ runner: produktlåsen BLOKERER faktisk B bag A i baseline (pg_blocking_pids — produkt-observation, ikke dom)
+  ✓ runner: scenario MED setup afvises som protokol-fejl (setup er motorens, F-20)
+  ✓ K-8-typen: komplet rows=[] er opfyldt (ikke manglende svar)
+  ✓ UT: forbudt handling TILLADT (ingen afvisning) → brudt, observationen viser negative.ok=true
+
+transport-ramme (F-27/F-32/F-33):
+  ✓ data der LIGNER en markør (uden nonce) afslutter ikke rammen — svaret er dataen selv
+  ✓ fejl i sætning n står i sætning n's ramme: status true/22012 fra psql's variable, diagnostik fra stderr
+  ✓ produktdata der er en KOMPLET falsk ERROR/CONTEXT-blok → ok:true, det er data — ikke en afvisning (F-32)
+  ✓ falsk fejl-data efterfulgt af en VIRKELIG fejl m. anden kode → den virkelige kode (22012) vinder, aldrig P0001 (F-32)
+  ✓ virkelig 22023 fra routinen: kode fra psql-status, message/routine fra stderr-diagnostik
+  ✓ RAISE NOTICE der forfalsker en ERROR/CONTEXT-blok på stderr FØR en virkelig 22012 → FLERTYDIG diagnostik → protokol (F-36/F-38) — det forfalskede f.stand_deaktiver vinder aldrig
+  ✓ RAISE NOTICE der forfalsker en ERROR-linje uden virkelig fejl → status ok — NOTICE-linjen begynder med NOTICE:, ikke ERROR:, så konsistensen holder
+  ✓ enkeltkalds-transport (dockerPsql): forfalsket P0001-blok før virkelig 22012 → flertydig → ok:false, code null (uklassificerbar), aldrig P0001 (F-36/F-38)
+  ✓ enkeltkalds-transport: almindelig NOTICE + virkelig 22012 → 22012/division by zero (NOTICE er ikke flertydighed)
+  ✓ parseErr: to P0001-blokke (samme SQLSTATE) → FLERTYDIG → code null, ingen felter (F-36/F-38)
+  ✓ parseErr: én fejl m. NOTICE foran → entydig: P0001 + routine f.stand_deaktiver (meddelelsen kommer IKKE herfra, F-39)
+  ✓ parseErr: CONTEXT-linje FØR fejlen → flertydig (kan ikke være fejlens felt) (F-36/F-38)
+  ✓ parseErr: entydig blok m. fortsættelseslinje → code + routine (meddelelsen tages fra psql-variablen)
+  ✓ parseErr (Codex F-38-modprøve): fejl-tekstfelter der indlejrer ERROR/CONTEXT-linjer → FLERTYDIG → code null, ingen grund/routine — aldrig et valg (F-38)
+  ✓ rigtig Postgres (Codex F-39): RAISE EXCEPTION USING message m. indlejret »HINT:«-linje → HELE meddelelsen (to linjer) kommer med via psql-variablen — kan ikke matche kontraktens token
+  ✓ enkeltkalds-transport (Codex F-39): samme → hele meddelelsen, ikke afkortet
+  ✓ motoren: UT-negativ hvis meddelelse er kontraktens token + indlejret HINT-linje → grund ≠ token → BRUDT, ikke opfyldt (F-39)
+  ✓ rigtig Postgres: RAISE EXCEPTION USING detail der indlejrer ERROR/CONTEXT-linjer → session afviser som flertydig (protokol), aldrig bundet afvisning (F-38)
+  ✓ rigtig Postgres: falsk CONTEXT indlejret i MESSAGE → to CONTEXT-linjer → flertydig (F-38)
+  ✓ rigtig Postgres: falsk CONTEXT indlejret i SCHEMA NAME (efter den rigtige CONTEXT) → flertydig (F-38)
+  ✓ enkeltkalds-transport: indlejrede felt-linjer i DETAIL → ok:false m. code null (uklassificerbar → motoren: uvedkommende/protokol), aldrig P0001/min_en_stand (F-38)
+  ✓ motoren: UT-negativ der forfalsker kontraktens routine via DETAIL → flertydig → protokol-fejl, ikke opfyldt (F-38)
+  ✓ kontrolleret strøm: markør-LIGNENDE statuslinje i data før den rigtige → ignoreret, svaret er data + status ok
+  ✓ kontrolleret strøm: den rigtige markør to gange på stdout → protokol-fejl (F-27)
+  ✓ kontrolleret strøm: status ok men diagnostik bærer ERROR → inkonsistent → protokol-fejl (F-32)
+  ✓ kontrolleret strøm: status 22012 men diagnostik siger P0001 → inkonsistent → protokol-fejl (F-32)
+  ✓ kontrolleret strøm: konsistent fejl (status P0001 + diagnostik P0001/routine) → ok:false m. bundet detail (meddelelse fra variablen)
+  ✓ kontrolleret strøm (Codex F-39-modprøve): meddelelse m. indlejret »HINT:«-linje → HELE meddelelsen fra psql-variablen (≠ kontraktens token), ikke afkortet
+  ✓ kontrolleret strøm (Codex F-36/F-38-modprøve): forfalsket blok + virkelig fejl m. SAMME SQLSTATE → flertydig → protokol-fejl, aldrig et valg
+  ✓ kontrolleret strøm (Codex F-38-modprøve, felt-indlejring i DETAIL) → flertydig → protokol-fejl
+  ✓ query-transport: komplet tomt rækkesæt → ok:true rows=[]; syntaksfejl → ok:false rows=null (aldrig []) (F-33)
+  ✓ SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)
+
+mutanter (én pr. værn) — formbestemt kill:
+  ✓ engine: alle cases opfyldt
+  ✓ m-navn (g.navn) → dræbt som UT · restored · ren
+  ✓ m-grant (g.grant) → dræbt som MH · restored · ren
+  ✓ m-audit (g.audit) → dræbt som MH · restored · ren
+  ✓ m-pris (g.pris) → dræbt som FS · restored · ren
+  ✓ m-min-check (g.min-check) → dræbt som UT · restored · ren
+  ✓ m-min-laas (g.min-laas) → dræbt som SA · restored · ren
+  ✓ m-dml (g.dml) → dræbt som UT · restored · ren
+  ✓ m-audit-filter (g.audit-filter) → dræbt som FS · restored · ren
+  ✓ engine: allOk (alle former opfyldt + alle 8 mutanter dræbt formbestemt)
+  ✓ break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT·FS
+  ✓ SA-observationer bærer to forskellige backend-pids, uafhængigt overlap-vidne, afslutnings-udfald, aktør og fase (F-8/F-22/F-24)
+  ✓ SA-kill: under den fjernede lås gik BEGGE igennem og committede, overlappet blev stadig vidnet uafhængigt, invarianten brød (F-22)
+  ✓ UT-observationer bærer struktureret afvisning: kode + præcist message-token + routine (F-4)
+  ✓ kontrast: »findes«-mutant (kun kommentar) OVERLEVER → allOk=false (footprint uændret = ingen mutation attesteret)
+  ✓ kontrast: footprint-kaldet FEJLER (22012 under alle faser) → footprint null → ingen attesteret mutation → ikke dræbt (F-21)
+  ✓ footprint attesterer mutation og restore: baseline ≠ under, restored == baseline (F-13/F-16)
+
+verifyBuildProof over det faktisk producerede bevis (manifest + angrebs-spec som gate-bindinger @ rigtig commit):
+  ✓ verifyBuildProof → grøn over det rigtige, ikke-redigerede bevis (alle 7 cases + 8 mutanter genudledt mod spec + manifest)
+  ✓ … og rød når det foreskrevne setup udelades af K-8-casen (F-20)
+  ✓ … og rød når K-1-claimets anker peger på en anden routine end værnets låste locus (F-31)
+  ✓ … og rød når ankeret flyttes til en anden fil end værnets locus-sti (F-31)
+
+build-harness INTEGRATION v2.7: alle 69 cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)
