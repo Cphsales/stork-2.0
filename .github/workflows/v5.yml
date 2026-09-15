@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # selvtests dømmer mod RIGTIG historik (fx krav-godkendelsens commit efc85d5) — shallow clone gør dommerne blinde
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -48,5 +50,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: hærdet-register (strengt)
+      - name: hærdet-register (strengt — rød så længe kandidater kører uden Codex-pas)
         run: node scripts/v5/haerdet-register.selftest.mjs

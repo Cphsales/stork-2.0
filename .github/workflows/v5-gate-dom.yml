@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   gate-dom:
-    name: v5/gate/* — frisk dom @ ${{ github.sha }}
+    name: gate-dommer (frisk dom pr. gate → check-runs v5/gate/<id>) # jobbets eget check må ikke ligne et gate-check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
