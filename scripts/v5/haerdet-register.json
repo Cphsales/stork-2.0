@@ -90,5 +90,19 @@
   "pas_afventer": "Codex C1-runde 7 (F-C1-37 rå kald-udfald valideres i helhed før projektion, også SA-sessions)",
   "kandidat_siden": "2026-09-15",
   "note": "M-41 Trin C1: case-engine v2.6 (fire bevisformer · footprint · SA-overlap-vidne · exit-protokol · rå-typetjek). Runde 6 FAIL m. F-37 (sess()/safeSql reparerede ugyldigt rå-detail til null; code '' passerede) — lukket i v2.6 (raaKaldFejl før al normalisering), selvtests 166 + integration grønne. KANDIDAT-drift efter plan DEL VIII pkt. 36; CI's register-autoritetsjob er rødt indtil pas."
+ },
+ "ci-gate-dom.mjs": {
+  "status": "kandidat",
+  "blob_oid": "ef8b31b48f33b21cf7dbb12ce1b535088a5df0aa",
+  "pas_afventer": "Codex P-1 transport-red-team FØR autoritativ ibrugtagning (C4; plan DEL V + GRUNDPLAN-v2 C4)",
+  "kandidat_siden": "2026-09-15",
+  "note": "M-41 Trin C4: CI-dommer-entrypoint — nåethed pr. gate · frisk udfør-side mod pinned commit (evidenceRef = commit) · checkrun-mapper · emission v5/gate/<id> via GitHub REST (checks:write). Autoritet kræver repo-admin (branch protection + ruleset). Selvtest 24."
+ },
+ "checkrun.mjs": {
+  "status": "kandidat",
+  "blob_oid": "137cfe05adbb9f8fcbee9a5a0b5f24590296b485",
+  "pas_afventer": "Codex P-1 transport-red-team sammen med ci-gate-dom.mjs (C4) — modulet har egen red-team-selftest (checkrun.selftest) men intet Codex-pas; blev gate-afhængigt da ci-gate-dom importerede det",
+  "kandidat_siden": "2026-09-15",
+  "note": "check-run-payload-mapper (fail-closed: kun eksplicit eget-data open===true m. tomme reasons → success; ukendt/mismatchet gate → failure)."
  }
 }

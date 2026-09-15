@@ -1,0 +1,44 @@
+name: v5 gate-dommer (CI = autoritet)
+
+# C4 (plan 2.A/2.E/DEL V · M-41 Trin C4 · fabrik-beslutning 2026-09-15, DEL VIII pkt. 36): CI genkører gate-dommerne FRISK mod den
+# pushede commit (evidens = commit'en selv, aldrig arbejdstræet) og emitterer required check-runs `v5/gate/<id>` for de gates pakken har
+# NÅET. Ikke-nået gate = intet check (aldrig skipped=green). Jobbet er grønt når dommeren kørte og emitterede; gaternes udfald står i
+# check-runs. checks:write fra workflow-tokenet; contents:read (gate-state muterer aldrig træet).
+#
+# AUTORITET kræver repo-admin (Mathias): branch protection der kræver `v5/gate/<id>` fra kilden »GitHub Actions« + ruleset der
+# beskytter scripts/v5/** og .github/workflows/** mod ikke-reviewede pushes. Indtil da er også denne dom en navngiven kandidat.
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: v5-gate-dom-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate-dom:
+    name: v5/gate/* — frisk dom @ ${{ github.sha }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # kvitterings-kæden dømmer commit-ORDEN (ægte forfader) — kræver historik
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: git-identitet (dommerne kan bygge temp-git-repos i selvtests)
+        run: |
+          git config --global user.name "v5-ci"
+          git config --global user.email "v5-ci@users.noreply.github.com"
+      - name: dømmer-selvtest (fail-closed før dom)
+        run: node scripts/v5/ci-gate-dom.selftest.mjs
+      - name: frisk gate-dom + emission af v5/gate/<id>
+        run: node scripts/v5/ci-gate-dom.mjs --commit "$GITHUB_SHA" --emit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
