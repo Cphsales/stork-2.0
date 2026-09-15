@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.5 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30 · C1-r5 F-34/35).
+// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.6 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30 · C1-r5 F-34/35 · C1-r6 F-37).
 //
 // verifyBuildProof (build-proof.mjs) VALIDERER en build-proof; DETTE modul PRODUCERER beviset ved at KØRE cases mod en real
 // backing store som ikke-bypass rolle og dræbe mutanter formbestemt. Kernen i v2.1: hvert delbevis afleverer RÅ OBSERVATIONER,
@@ -72,6 +72,22 @@ const kaldGyldig = (x) => {
   return typeof code === "string" && code.length > 0 && detOk;
 };
 const pidGyldig = (v) => Number.isInteger(v) && v > 0;
+// F-37: RÅ kald-udfald fra runneren valideres i deres HELHED før noget normaliseres eller projiceres — ingen felt »repareres« til null.
+// Regler: ok boolean · code streng|null|udeladt · detail objekt|null|udeladt m. message/routine streng|null|udeladt ·
+// ok:true ⇒ code null/udeladt OG detail uden message/routine · ok:false ⇒ code ikke-tom streng. Returnerer fejltekst eller null.
+const raaKaldFejl = (x) => {
+  if (!isPlain(x) || typeof own(x, "ok") !== "boolean") return "udfald er ikke {ok:boolean}";
+  const code = own(x, "code"), det = own(x, "detail");
+  if (code !== null && code !== undefined && typeof code !== "string") return `code af forkert type (${typeof code}) — SQLSTATE skal være streng eller null`;
+  if (det !== null && det !== undefined && !isPlain(det)) return `detail af forkert type (${Array.isArray(det) ? "array" : typeof det}) — skal være objekt eller null`;
+  if (isPlain(det)) for (const k of ["message", "routine"]) { const v = own(det, k); if (v !== null && v !== undefined && typeof v !== "string") return `detail.${k} af forkert type (${typeof v})`; }
+  if (own(x, "ok") === true) {
+    if (code !== null && code !== undefined) return `ok:true m. code '${code}' — selvmodsigende (også tom streng)`;
+    if (isPlain(det) && ((own(det, "message") ?? null) !== null || (own(det, "routine") ?? null) !== null)) return `ok:true m. fejl-detail '${String(own(det, "message") ?? own(det, "routine"))}' — selvmodsigende`;
+    return null;
+  }
+  return typeof code === "string" && code.length > 0 ? null : "afvisning uden SQLSTATE — ikke klassificerbar";
+};
 // et OBSERVATIONS-kald ({ok, code, rows}) er konsistent når ok:true ⇒ code null/udeladt og ok:false ⇒ code er SQLSTATE-streng (F-34: den rene
 // dommer må ikke ignorere en bevaret modstrid i proofens observationer — verifieren genbruger dommen)
 const obsKaldGyldig = (x) => { if (!isPlain(x) || typeof own(x, "ok") !== "boolean") return false; const code = own(x, "code"); return own(x, "ok") === true ? code === null || code === undefined : typeof code === "string" && code.length > 0; };
@@ -86,17 +102,12 @@ async function safeSql(runner, text, opts) {
   const okVal = own(r, "ok");
   if (!isPlain(r) || typeof okVal !== "boolean") return dead("runner returnerede ikke {ok:boolean} som eget data-felt (fail-closed)");
   const code = own(r, "code"); const err = own(r, "error"); const rows = own(r, "rows"); const det = own(r, "detail");
-  // F-34: RÅ typer valideres FØR normalisering — en numerisk kode, et ikke-objekt detail eller en fejl-detail på et ok-udfald er en
-  // protokolfejl i runnerens svar, ikke noget der »repareres« til succes
-  if (code !== null && code !== undefined && typeof code !== "string") return dead(`runner leverede code af forkert type (${typeof code}) — SQLSTATE skal være streng eller null (F-34)`);
-  if (det !== null && det !== undefined && !isPlain(det)) return dead("runner leverede detail af forkert type (skal være objekt eller null) (F-34)");
+  // F-34/F-37: det RÅ udfald valideres i sin helhed FØR normalisering — intet felt repareres til null/succes
+  const rf = raaKaldFejl(r); if (rf) return dead(`runner leverede ugyldigt/selvmodsigende udfald: ${rf} (F-28/F-34/F-37)`);
   if (err !== null && err !== undefined && typeof err !== "string") return dead("runner leverede error af forkert type (skal være streng eller null) (F-34)");
   if (rows !== null && rows !== undefined && !isDense(rows, isPlain)) return dead("runner leverede rows der ikke er et tæt rækkesæt (F-34)");
   const detail = isPlain(det) ? { message: typeof own(det, "message") === "string" ? own(det, "message") : null, routine: typeof own(det, "routine") === "string" ? own(det, "routine") : null } : null;
   const rowsOk = isDense(rows, isPlain) && rows.every((row) => safeCanon(row) !== null);
-  if (okVal === true && typeof code === "string" && code.length) return dead(`runner leverede selvmodsigende udfald: ok:true m. fejlkode ${code} (F-28)`);
-  if (okVal === true && detail && (detail.message !== null || detail.routine !== null)) return dead(`runner leverede selvmodsigende udfald: ok:true m. fejl-detail '${String(detail.message ?? detail.routine)}' (F-34)`);
-  if (okVal === false && !(typeof code === "string" && code.length)) return dead(`runner leverede afvisning UDEN SQLSTATE (${typeof err === "string" ? err.slice(0, 120) : "ingen fejltekst"}) — ikke klassificerbar (F-28)`);
   return { protocolOk: true, ok: okVal, code: typeof code === "string" ? code : null, error: typeof err === "string" ? err : null, detail, rows: rowsOk ? rows : null };
 }
 const kald = (r) => ({ ok: r.ok, code: r.code, detail: r.detail });   // det der gemmes i observationerne
@@ -334,7 +345,8 @@ export async function runCase(c, ctx, runner) {
     const { setup: _udenSetup, ...scenario } = race; void _udenSetup;
     let r; try { r = await rf({ ...scenario, actor: opts }); } catch (e) { return protokol(`runner.race kastede: ${e?.message}`); }
     if (!isPlain(r) || own(r, "protocolOk") !== true) return protokol(`race-runner protokol-fejl: ${String(own(r, "error") ?? "ukendt")}`);
-    const sess = (x) => (isPlain(x) ? { pid: own(x, "pid") ?? null, ok: own(x, "ok"), code: own(x, "code") ?? null, detail: isPlain(own(x, "detail")) ? { message: own(own(x, "detail"), "message") ?? null, routine: own(own(x, "detail"), "routine") ?? null } : null, commit: own(x, "commit") ?? null } : null);
+    for (const nm of ["a", "b"]) { const rf = raaKaldFejl(own(r, nm)); if (rf) return protokol(`race-runner: session ${nm} leverede ugyldigt/selvmodsigende udfald: ${rf} (F-37)`); }   // rå validering FØR projektion
+    const sess = (x) => ({ pid: own(x, "pid") ?? null, ok: own(x, "ok"), code: own(x, "code") ?? null, detail: isPlain(own(x, "detail")) ? { message: own(own(x, "detail"), "message") ?? null, routine: own(own(x, "detail"), "routine") ?? null } : null, commit: own(x, "commit") ?? null });
     const ov = own(r, "overlap"); const rawBool = (v) => (typeof v === "boolean" ? v : null);   // F-22: en manglende måling normaliseres IKKE til false
     obs.race_id = race.race_id; obs.kontrakt = { kanal: "sqlstate", sqlstate: neg.reject_contract.sqlstate, grund: neg.reject_contract.grund, afvisningssted: neg.reject_contract.afvisningssted, aktoer: neg.reject_contract.aktoer, fase: neg.reject_contract.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;   // F-24
     obs.a = sess(own(r, "a")); obs.b = sess(own(r, "b")); obs.overlap = isPlain(ov) ? { observed: rawBool(own(ov, "observed")), witness_pid: own(ov, "witness_pid") ?? null, a_pid: own(ov, "a_pid") ?? null, b_pid: own(ov, "b_pid") ?? null } : null;
