@@ -10,7 +10,9 @@
 //   manifest = {
 //     schema_version: 1, pakke,
 //     bindings: { forventningsliste:{path,oid}, krav:{path,oid}, plan:{path,oid} },
-//     guards?:  [{ id, beskrivelse, locus? }],                       // værn som D10-mutanter refererer (guard_ref)
+//     guards?:  [{ id, beskrivelse, locus?: {path, pattern} }],     // værn som D10-mutanter refererer (guard_ref); locus = værnets LÅSTE
+//                                                                   // definitionssted (repo-sti + regex over uddraget) — build-proofens claim-ankre
+//                                                                   // SKAL ligge dér (C1-r4 F-31: producenten kan ikke vælge et andet uddrag)
 //     obligations: [{
 //       id: "K-n/ac-m" | "K-n/S", k_id: "K-n", kind: "ac"|"struktur",
 //       proof_forms: ["UT"|"FS"|"MH"|"SA", …],                       // formen hentes HERFRA, aldrig fra buildets udfald
@@ -100,6 +102,15 @@ export function validateManifest(m) {
         else if (guardIds.has(id)) fail(`dublet guard-id: ${id}`);
         else guardIds.add(id);
         if (!isStr(own(x, "beskrivelse"))) fail(`guard ${String(id)}: beskrivelse mangler`);
+        if (hasOwn(x, "locus")) {   // F-31: låst anker-locus (plan-gatens dom): relativ repo-sti uden traversal + gyldigt regex (multiline)
+          const L = own(x, "locus");
+          if (!isPlain(L) || !isStr(own(L, "path")) || !isStr(own(L, "pattern"))) fail(`guard ${String(id)}: locus skal være {path, pattern}`);
+          else {
+            const lp = own(L, "path");
+            if (lp.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(lp) || lp.includes("\\")) fail(`guard ${String(id)}: locus.path skal være en relativ repo-sti uden traversal`);
+            try { new RegExp(own(L, "pattern"), "m"); } catch { fail(`guard ${String(id)}: locus.pattern er ikke et gyldigt regex`); }
+          }
+        }
       }
   }
   // obligations
@@ -233,12 +244,12 @@ export function validateManifest(m) {
 // expectedSet(m) → den forventede mængde (kun scope=nu) — verifierens sandhed
 //   { obligations: Map(id → {k_id, kind, forms:Set (inkl. alias-former, minus overdraget_former), negatives:[nid], assertions:[{id,form}], aliases:[id], effekt_bid}),
 //     negatives: Map(nid → {obligation_id, reject_contract, sole_guard_ref|null}),
-//     ks: Set(k_id), soleGuards: Map(guard_id → [nid]), overdraget: Set(id), guards: Set(guard_id) }
+//     ks: Set(k_id), soleGuards: Map(guard_id → [nid]), overdraget: Set(id), guards: Map(guard_id → {beskrivelse, locus|null}) }
 export function expectedSet(m) {
   const v = validateManifest(m);
   if (!v.ok) throw new Error("ugyldigt manifest: " + v.reasons.join("; "));
   const obligations = new Map(), negatives = new Map(), ks = new Set(), soleGuards = new Map(), overdraget = new Set();
-  const guards = new Set(Array.isArray(m.guards) ? m.guards.map((g) => g.id) : []);
+  const guards = new Map((Array.isArray(m.guards) ? m.guards : []).map((g) => [g.id, { beskrivelse: g.beskrivelse, locus: hasOwn(g, "locus") ? { path: g.locus.path, pattern: g.locus.pattern } : null }]));
   const overdragetFormer = new Map();
   for (const o of m.obligations) {
     if (o.scope !== "nu") { overdraget.add(o.id); continue; }

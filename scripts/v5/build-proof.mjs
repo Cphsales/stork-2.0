@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier, v2.3 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27).
+// build-proof.mjs — v5's build-gate proof-verifier, v2.4 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31).
 //
 // Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run. Verifieren GENUDLEDER alt:
 //   - FORVENTNINGEN = manifestet (gate-binding `manifest`, kæde-bundet til plan-gaten) · MÅLINGEN = angrebs-/måle-spec'en
@@ -15,8 +15,9 @@
 //   - bids i proofen == spec'ens graf (F-18) · engine.summary genudledes · prover_result er et konsistent resumé (judgeTestSummary)
 //     hvis executed_ids er PRÆCIS mængden af alle case_ids+mutant_ids — uden dubletter eller fremmede id'er (F-19, F-26)
 //   - claim_graph: hvert claim binder ét VÆRN (guard_ref) → dets dræbte mutanter → deres target-cases (⊆ claim.case_ids) → den navngivne
-//     target-assertion opfyldt i topniveau-delbeviset (udført trace) → source_anchor git-verificeret OG dets uddrag nævner den routine/indgang
-//     casene rammer (F-25: samme K er ikke en forbindelse) · async-review PASS pr. bid
+//     target-assertion opfyldt i topniveau-delbeviset (udført trace) → source_anchor git-verificeret OG placeret på værnets LÅSTE locus fra
+//     manifestet (guards[].locus {path, pattern}: sti == locus.path, uddraget matcher mønstret — F-25/F-31: samme K er ikke en forbindelse,
+//     og producenten kan ikke vælge et andet uddrag/en kommentar; locus-indholdet er plan-gatens dom) · async-review PASS pr. bid
 //   ENFORCEMENT-RESIDUAL (R-CI-AUTENTICITET): at observationerne stammer fra en real store som ikke-bypass rolle attesteres af den
 //   betroede runner i CI's build-job; R-PREDECESSOR-WIRING: build-gate-run (frisk plan-dom → predecessor.bindings_oids) er C4.
 
@@ -70,15 +71,6 @@ function obsProj(form, obs) {
   if (form === "SA") return { has_setup: hasSetup, race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer"), fase: own(obs, "fase") };
   return null;
 }
-// F-25: symbolet et claim SKAL kunne finde i sit source-anker — den routine der afviste (UT/SA sqlstate m. afvisningssted ≠ "-"), ellers den
-// offentlige indgang casen rammer; unqualified (sidste segment efter '.') så et migrations-uddrag »create function f.lokation_opret« matcher
-function caseSymbol(c, F) {
-  let sted = null;
-  if (c.proof_form === "UT") { const rc = F.negatives.get(c.negative_id).reject_contract; if (rc.kanal === "sqlstate" && rc.afvisningssted !== "-") sted = rc.afvisningssted; }
-  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; if (rc.afvisningssted !== "-") sted = rc.afvisningssted; }
-  const sym = String(sted ?? c.entrypoint.ref); const parts = sym.replace(/\(.*$/, "").split("."); return parts[parts.length - 1];
-}
-
 export function verifyBuildProof(proof, snapshot, { git } = {}) {
   const reasons = []; const fail = (r) => reasons.push(r);
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"] };
@@ -227,23 +219,27 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (!cidsOk || !cids.every((x) => caseOk(x) && F.obligations.get(specCase.get(x)?.obligation_id)?.k_id === kId)) fail(`${lab}: case_ids skal være ≥1 distinkte, opfyldte cases for netop dette K`);
     const midsOk = isDense(mids, isStr) && mids.length === new Set(mids).size && mids.length > 0;
     if (!midsOk || !mids.every((x) => mutOk.has(x) && F.obligations.get(specCase.get(specMut.get(x)?.target_case_id)?.obligation_id)?.k_id === kId)) fail(`${lab}: mutant_ids skal være ≥1 distinkte, dræbte mutanter for netop dette K`);
-    const symbols = new Set();
+    const guard = isStr(gref) ? F.guards.get(gref) : null; const locus = guard ? guard.locus : null;
+    if (guard && !locus) fail(`${lab}: værnet '${gref}' har intet låst locus i manifestet (guards[].locus {path, pattern}) — et claim kræver et plan-bundet anker-locus (F-31)`);
     if (midsOk && cidsOk && isStr(gref)) for (const mid of mids) {
       const sm = specMut.get(mid); if (!sm) continue;
       if (sm.guard_ref !== gref) fail(`${lab}: mutant ${mid} rammer værnet '${sm.guard_ref}' ≠ claimets '${gref}' (F-25)`);
       if (!cids.includes(sm.target_case_id)) fail(`${lab}: mutant ${mid} rammer casen '${sm.target_case_id}' som ikke er blandt claimets case_ids (F-25: samme K er ikke en forbindelse)`);
       const top = resById.get(sm.target_case_id)?.judged;   // udført trace: den navngivne target-assertion blev kørt og opfyldt i topniveau-delbeviset, og brød under mutanten (kill genudledt ovenfor)
       if (!top || !isDense(top.assertions, isPlain) || !top.assertions.some((a) => a.id === sm.target_assertion_id && a.ok === true)) fail(`${lab}: target-assertion '${sm.target_assertion_id}' for ${mid} er ikke et udført, opfyldt delbevis i casen '${sm.target_case_id}'`);
-      const tc = specCase.get(sm.target_case_id); if (tc) symbols.add(caseSymbol(tc, F));
     }
     if (!ownTrue(c, "executed") || !ownTrue(c, "mutant_killed")) fail(`${lab}: executed/mutant_killed ikke eksplicit true (og skal stemme med case_ids/mutant_ids)`);
     const anchor = own(c, "source_anchor");
     if (!isPlain(anchor)) { fail(`${lab}: source_anchor mangler`); continue; }
     const ev = verifyEvidence(anchor, snapshot, { git }); if (!ev.ok) { fail(`${lab}: source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`); continue; }
-    if (symbols.size) {   // F-25: ankerets uddrag skal nævne det claimet handler om — routinen der afviser / indgangen casene rammer
-      const bl = readBlobLines(git, own(anchor, "blob_oid")); const excerpt = bl && !bl.error ? excerptAt(bl.lines, own(anchor, "line_span")) : null;
-      if (typeof excerpt !== "string") fail(`${lab}: ankerets uddrag kan ikke læses`);
-      else for (const sym of symbols) if (!excerpt.includes(sym)) fail(`${lab}: ankerets uddrag (${own(anchor, "path")} ${JSON.stringify(own(anchor, "line_span"))}) nævner ikke '${sym}' — source-ankeret er ikke forbundet til casen/mutanten (F-25)`);
+    if (locus) {   // F-31: ankeret SKAL ligge på værnets låste locus (sti fra manifestet) og uddraget skal matche det låste mønster — en kommentar
+      // eller et andet objekts uddrag matcher ikke; hvad mønstret dækker, er plan-gatens dom over manifestet (R-PLAN-SEMANTIK)
+      if (own(anchor, "path") !== locus.path) fail(`${lab}: source_anchor.path '${String(own(anchor, "path"))}' ≠ værnets låste locus-sti '${locus.path}' (F-31)`);
+      else {
+        const bl = readBlobLines(git, own(anchor, "blob_oid")); const excerpt = bl && !bl.error ? excerptAt(bl.lines, own(anchor, "line_span")) : null;
+        if (typeof excerpt !== "string") fail(`${lab}: ankerets uddrag kan ikke læses`);
+        else { let re = null; try { re = new RegExp(locus.pattern, "m"); } catch { re = null; } if (!re || !re.test(excerpt)) fail(`${lab}: ankerets uddrag (${locus.path} ${JSON.stringify(own(anchor, "line_span"))}) matcher ikke værnets låste locus-mønster — en kommentar eller et andet objekt er ikke værnets definition (F-31)`); }
+      }
     }
   }
 

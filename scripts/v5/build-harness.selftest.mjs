@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.selftest.mjs — red-team af case-engine v2.3 (C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27): observationer er rå, dommen
+// build-harness.selftest.mjs — red-team af case-engine v2.4 (C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30): observationer er rå, dommen
 // er ren (judgeObservations/judgeKill), reject-kontraktens grund/sted/aktør/fase håndhæves i alle varianter, uvedkommende fejl og
 // manglende målinger er protokol (aldrig brudt/kill), kills er målrettede, SA-kill kræver et gyldigt, vidnet raceforløb.
 import { runCase, killCaseMutant, runBuildProofEngine, matchExpect, judgeObservations, judgeKill, brudtPaaFormensMaade, STATUS } from "./build-harness.mjs";
@@ -139,12 +139,22 @@ eq("exit-kanal: exit 1 + tom stdout (throw i node) → protokol (F-23)", await s
 eq("exit-kanal: exit 0 uden klasse-linje → brudt (afvisningen bortfaldt — det legitime brud)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "" }) })), STATUS.BRUDT);
 eq("exit-kanal: exit 0 MED klasse-linje → protokol (inkonsistent diagnose)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "klasse=klassifikation\n" }) })), STATUS.PROTOKOL);
 eq("exit-kanal: exit 127 (processen fungerer ikke) → protokol-fejl, ikke brudt (F-15)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 127, stdout: "" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: TO klasse-linjer (klassifikation + ENOENT) → protokol, første linje vinder ikke (F-30)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klasse=klassifikation\nklasse=ENOENT\n" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: samme klasse to gange → protokol (flertydig diagnose, F-30)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klasse=klassifikation\nklasse=klassifikation\n" }) })), STATUS.PROTOKOL);
+{ const r = await run(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "x\nklasse=klassifikation\nklasse=ENOENT\n" }) })); eq("exit-observationer bærer klasse_linjer (rå antal) og klasse_observeret=null ved flere (F-30)", r.observations.exit.klasse_linjer === 2 && r.observations.exit.klasse_observeret === null, true); }
+eq("judgeObservations: exit uden klasse_linjer-felt → protokol (F-30)", judgeObservations("UT", { kontrakt: { kanal: "exit", exit_code: 1, klasse: "k", fase: "ci", aktoer: "ci" }, aktoer: "ci", fase: "ci", exit: { exit_code: 1, klasse_observeret: "k" } }).status, STATUS.PROTOKOL);
+eq("judgeObservations: klasse_linjer=0 men klasse_observeret sat → protokol (inkonsistent, F-30)", judgeObservations("UT", { kontrakt: { kanal: "exit", exit_code: 1, klasse: "k", fase: "ci", aktoer: "ci" }, aktoer: "ci", fase: "ci", exit: { exit_code: 1, klasse_observeret: "k", klasse_linjer: 0 } }).status, STATUS.PROTOKOL);
 eq("exit-kanal: kontrollen kørte i anden fase end kontraktens → brudt (F-24)", await st(withCase(C.ci, (x) => (x.fase = "wrapper"))), STATUS.BRUDT);
 eq("exit-kanal: kontrollen kørte som anden aktør → brudt (F-24)", await st(withCase(C.ci, (x) => (x.actor = { role: "postgres" }))), STATUS.BRUDT);
 { const r = await run(C.ci); eq("exit-observationer bærer kontrakt m. fase/aktør + aktoer + fase (F-24)", r.observations.kontrakt.fase === "ci" && r.observations.kontrakt.aktoer === "ci" && r.observations.aktoer === "ci" && r.observations.fase === "ci", true); }
 eq("setup-observation {ok:false} i beviset → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, setup: { ok: false } }).status, STATUS.PROTOKOL);
 eq("setup-observation uden ok → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, setup: {} }).status, STATUS.PROTOKOL);
 eq("positivt kald som ufuldstændigt udfald ({}) → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, positive: {} }).status, STATUS.PROTOKOL);
+eq("SELVMODSIGENDE kald-udfald {ok:true, code:'42601'} som negativ → protokol, aldrig brudt (F-28)", judgeObservations("UT", { ...(await run(C.ut)).observations, negative: { ok: true, code: "42601", detail: { message: "syntax error", routine: null } } }).status, STATUS.PROTOKOL);
+eq("selvmodsigende udfald som positivt kald → protokol (F-28)", judgeObservations("UT", { ...(await run(C.ut)).observations, positive: { ok: true, code: "42601", detail: null } }).status, STATUS.PROTOKOL);
+eq("afvisning UDEN kode {ok:false, code:null} → protokol (F-28: ikke klassificerbar)", judgeObservations("UT", { ...(await run(C.ut)).observations, negative: { ok: false, code: null, detail: null } }).status, STATUS.PROTOKOL);
+eq("runner leverer selvmodsigende udfald → safeSql → protokol (F-28)", await st(C.ut, mkRunner({ sql: (t) => (t === "NEG" ? { ok: true, code: "42601", error: "syntax error", detail: { message: "syntax error", routine: null } } : undefined) })), STATUS.PROTOKOL);
+eq("selvmodsigende udfald i FS-handling → protokol (F-28)", judgeObservations("FS", { ...(await run(C.fs)).observations, action: { ok: true, code: "42501", detail: null } }).status, STATUS.PROTOKOL);
 
 console.log("\nFS — forkert slutværdi:");
 eq("baseline → opfyldt (m. navngivet checkpoint)", await st(C.fs), STATUS.OPFYLDT);
@@ -198,7 +208,9 @@ eq("… men INTET overlap observeret → ikke formens brud", brudtPaaFormensMaad
 eq("… men samme pid for A og B → ikke formens brud", brudtPaaFormensMaade(await saRes({ a: OKS(5), b: OKS(5), overlap: OV(5, 5) })), false);
 eq("… men A lykkedes og »rullede tilbage« → ikke formens brud (afslutning inkonsistent)", brudtPaaFormensMaade(await saRes({ a: { ...OKS(1), commit: "rollback" } })), false);
 eq("… men B afvist m. FORKERT grund + invariant brudt → ikke formens brud (uvedkommende afvisning medregnes ikke)", brudtPaaFormensMaade(await saRes({ b: { ...REJ(2), detail: { message: "andet", routine: "f.stand_deaktiver" } } })), false);
-eq("… men B afvist m. RIGTIG grund + invariant brudt → ikke formens brud (inkonsistent billede: en afvist session kan ikke have brudt invarianten)", brudtPaaFormensMaade(await saRes({ b: REJ(2) })), false);
+eq("… B afvist m. RIGTIG grund + invariant brudt → FORMENS BRUD (F-29: den committende session A brød invarianten mens B korrekt afvistes — én bundet afvisning er tilladt)", brudtPaaFormensMaade(await saRes({ b: REJ(2) })), true);
+eq("… men BEGGE afvist (ingen committet) + invariant brudt → ikke formens brud (F-29: mindst én committet session kræves)", brudtPaaFormensMaade(await saRes({ a: REJ(1), b: REJ(2) })), false);
+eq("… men B afvist m. UVEDKOMMENDE kode → protokol (ikke brudt)", (await saRes({ b: { pid: 2, ok: false, code: "42601", detail: { message: "syntax", routine: null }, commit: "rollback" } })).status, STATUS.PROTOKOL);
 eq("… men vidnet er B selv → ikke formens brud", brudtPaaFormensMaade(await saRes({ overlap: OV(1, 2, 2) })), false);
 
 console.log("\nkillCaseMutant — målrettet, formbestemt kill m. nødvendige kontroller:");
@@ -221,6 +233,8 @@ const kill = (m, r = mkRunner()) => killCaseMutant(m, cases, ctx, r);
 { const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(st.trg ? 1 : 9), b: st.trg ? REJ(2) : OKS(9), overlap: st.trg ? OV() : OV(9, 9), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: samme pid for A og B under mutanten → ikke dræbt (F-22)", r.killed, false); }
 { const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: st.trg ? OKS(1) : { ...OKS(1), commit: "rollback" }, b: st.trg ? REJ(2) : OKS(2), overlap: OV(), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: A lykkedes men »rollback« under mutanten → ikke dræbt (F-22)", r.killed, false); }
 { const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(1), b: st.trg ? REJ(2) : { ...REJ(2), detail: { message: "andet", routine: "f.stand_deaktiver" } }, overlap: OV(), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: forkert afvisningsgrund + invariant brudt under mutanten → ikke dræbt (F-22)", r.killed, false); }
+{ const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(1), b: REJ(2), overlap: OV(), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant (prædikat udvidet): A committer nul aktive mens B KORREKT afvises → invariant brudt i gyldigt forløb → DRÆBT (F-29)", r.killed === true && r.break_form === "SA", true); }
+{ const r = await kill(M.ut, mkRunner({ sql: (t, o, s) => (t === "NEG" && !s.guardNavn ? { ok: true, code: "42601", error: "syntax", detail: { message: "syntax", routine: null } } : undefined) })); eq("UT-mutant: under mutanten leverer runneren selvmodsigende udfald {ok:true, code:42601} → protokol → ikke dræbt (F-28)", r.killed === false && r.under?.status === STATUS.PROTOKOL, true); }
 { const r = await kill({ ...M.ut, target_assertion_id: "tilstand-uaendret" }); eq("mutanten bryder en ANDEN assertion end den målrettede → ikke dræbt (målrettet kill)", r.killed, false); }
 { const r = await kill({ ...M.ut, apply: "MUT_NOOP", restore: "MUT_NOOP" }); eq("»findes«-mutant → overlever", r.killed, false); }
 { const r = await kill({ ...M.ut, footprint: { observe: { sql: "FP_KONSTANT" } } }); eq("mutation uden aftryk i footprint → ikke attesteret → ikke dræbt (F-13)", r.killed === false && /mutation_attesteret=false/.test(r.detail), true); }

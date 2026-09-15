@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.3 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27).
+// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.4 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30).
 //
 // verifyBuildProof (build-proof.mjs) VALIDERER en build-proof; DETTE modul PRODUCERER beviset ved at KØRE cases mod en real
 // backing store som ikke-bypass rolle og dræbe mutanter formbestemt. Kernen i v2.1: hvert delbevis afleverer RÅ OBSERVATIONER,
@@ -12,12 +12,15 @@
 //       (kanal exit: rc==kontrakt + struktureret klasse-linje == kontraktens klasse; rc 0 = afvisningen bortfaldt (brudt); rc==kontrakt UDEN
 //       klasse-linje = crash/manglende diagnose (protokol, F-23); rc==kontrakt m. ANDEN klasse = ikke kontraktens udfald (protokol); rc ∉ {0,kontrakt} = protokol)
 //   SETUP (ejer) er en del af det foreskrevne forløb: er den deklareret skal observationen findes og være ok (F-20)
+//   KALD-UDFALD er konsistente: ok:true ⇒ ingen fejlkode/detail · ok:false ⇒ SQLSTATE-streng (F-28: {ok:true, code:'42601'} er protokol)
+//   EXIT-DIAGNOSE er entydig: præcis én klasse-linje når rc==kontrakt; flere/modstridende linjer er protokol (F-30)
 //   FS  lovlig handling → typet observation == orakel · NAVNGIVNE checkpoints (historisk genlæsning) · komplet rows=[] ≠ manglende svar
 //   MH  legitim non-admin kan handle via offentlig indgang OG hvert NAVNGIVET sideeffekt-vidne observeres
 //   SA  to bundne sessions (pid'er) · OVERLAP observeret af et UAFHÆNGIGT vidne (tredje session ser begge i åben transaktion FØR nogen
 //       commit — uafhængigt af produktlåsen, F-22) · præcis én bundet afvisning · afslutning konsistent (ok→commit, afvist→rollback) ·
-//       aktør + fase = kontraktens · invariant efter commit. SA-KILL = begge forløb gik igennem og committede med overlap vidnet, og
-//       invarianten brød — aldrig et ugyldigt forløb (manglende overlap, samme pid, forkert afslutning, uvedkommende afvisning)
+//       aktør + fase = kontraktens · invariant efter commit. SA-KILL = et GYLDIGT, vidnet raceforløb (to sessions · overlap · aktør ·
+//       fase · konsistent afslutning · alle afvisninger bundne · højst én afvisning · mindst én committet) hvor invarianten brød —
+//       også når den anden session korrekt afvistes (F-29: den committende session kan bryde invarianten); aldrig et ugyldigt forløb
 // PROTOKOL-FEJL (aldrig et udfald): runner-fejl, manglende rows, afvist observations-/state-kald, afvisning med kode UDEN FOR de
 // anerkendte klasser (fx 42601 syntax = uvedkommende), manglende orakel-værdi, ikke-endelige tal, fejlet/malformet setup- eller
 // footprint-observation (F-20/F-21), SA uden pids/afslutning/overlap-observation (F-15/F-22), exit-crash uden diagnose (F-23).
@@ -60,8 +63,14 @@ export function canon(v) {
 }
 const safeCanon = (v) => { try { return canon(v); } catch { return null; } };
 const klasse = (r) => (r.ok ? "ok" : REJECT_SQLSTATES.includes(r.code) ? "afvist" : "uvedkommende");
-// et KALD-udfald er en komplet, gyldig observation: ok boolean · code streng|null · detail objekt|null (F-20: ufuldstændige udfald er protokol)
-const kaldGyldig = (x) => isPlain(x) && typeof own(x, "ok") === "boolean" && (own(x, "code") === null || own(x, "code") === undefined || typeof own(x, "code") === "string") && (own(x, "detail") === null || own(x, "detail") === undefined || isPlain(own(x, "detail")));
+// et KALD-udfald er en komplet, KONSISTENT observation (F-20/F-28): ok boolean · ok:true ⇒ code og detail null/udeladt ·
+// ok:false ⇒ code er en ikke-tom SQLSTATE-streng og detail objekt|null. {ok:true, code:'42601'} er selvmodsigende → protokol, aldrig et udfald
+const kaldGyldig = (x) => {
+  if (!isPlain(x) || typeof own(x, "ok") !== "boolean") return false;
+  const code = own(x, "code"), det = own(x, "detail"); const detOk = det === null || det === undefined || isPlain(det);
+  if (own(x, "ok") === true) return (code === null || code === undefined) && (det === null || det === undefined);
+  return typeof code === "string" && code.length > 0 && detOk;
+};
 const pidGyldig = (v) => Number.isInteger(v) && v > 0;
 
 // ---------- runner-kald (protokol-vagt) ----------
@@ -76,6 +85,8 @@ async function safeSql(runner, text, opts) {
   const code = own(r, "code"); const err = own(r, "error"); const rows = own(r, "rows"); const det = own(r, "detail");
   const detail = isPlain(det) ? { message: typeof own(det, "message") === "string" ? own(det, "message") : null, routine: typeof own(det, "routine") === "string" ? own(det, "routine") : null } : null;
   const rowsOk = isDense(rows, isPlain) && rows.every((row) => safeCanon(row) !== null);
+  if (okVal === true && typeof code === "string" && code.length) return dead(`runner leverede selvmodsigende udfald: ok:true m. fejlkode ${code} (F-28)`);
+  if (okVal === false && !(typeof code === "string" && code.length)) return dead(`runner leverede afvisning UDEN SQLSTATE (${typeof err === "string" ? err.slice(0, 120) : "ingen fejltekst"}) — ikke klassificerbar (F-28)`);
   return { protocolOk: true, ok: okVal, code: typeof code === "string" ? code : null, error: typeof err === "string" ? err : null, detail, rows: rowsOk ? rows : null };
 }
 const kald = (r) => ({ ok: r.ok, code: r.code, detail: r.detail });   // det der gemmes i observationerne
@@ -126,8 +137,11 @@ export function judgeObservations(form, obs) {
       for (const f of ["positive", "negative", "state_before", "state_after"]) if (hasOwn(obs, f)) return protokol(`exit-kanal m. SQL-observation '${f}' — blandet variant afvises`);
       const ex = own(obs, "exit"); if (!Number.isInteger(own(k, "exit_code")) || !isStr(own(k, "klasse")) || !isStr(own(k, "fase")) || !isStr(own(k, "aktoer"))) return protokol("exit-kontrakt mangler exit_code/klasse/fase/aktoer");
       if (!isPlain(ex) || !Number.isInteger(own(ex, "exit_code"))) return protokol("exit_code ikke observeret");
-      const code = own(ex, "exit_code"); const ko = own(ex, "klasse_observeret");
+      const code = own(ex, "exit_code"); const ko = own(ex, "klasse_observeret"); const kl = own(ex, "klasse_linjer");
       if (ko !== null && !isStr(ko)) return protokol("klasse_observeret skal være en streng (struktureret klasse-linje) eller null");
+      if (!Number.isInteger(kl) || kl < 0) return protokol("klasse_linjer (antal strukturerede klasse-linjer) ikke observeret");
+      if (kl > 1) return protokol(`${kl} klasse-linjer i kontrollens output — flertydig/modstridende diagnose er ikke en klassifikation (F-30)`);
+      if ((kl === 1) !== (ko !== null)) return protokol("klasse_linjer og klasse_observeret er inkonsistente");
       if (code !== 0 && code !== k.exit_code) return protokol(`kontrol-processen fungerer ikke (exit ${code} ∉ {0, ${k.exit_code}}) — uvedkommende, ikke et udfald`);   // F-15
       if (code === 0 && ko !== null) return protokol(`exit 0 men klasse-linje '${ko}' — inkonsistent diagnose, ikke et udfald`);
       if (code === k.exit_code && ko === null) return protokol(`exit ${code} == kontrakt men INGEN struktureret klasse-linje — crash/manglende diagnose er ikke en klassifikation (F-23)`);
@@ -210,9 +224,12 @@ export function brudtPaaFormensMaade(r) {
     case "MH": return a("handling-mulig-for-legitim-aktoer") === false || r.assertions.some((x) => x.id.startsWith("vidne:") && x.ok === false);
     case "SA": {   // F-15/F-22: racets FAKTISKE brud = to vidnede, overlappende forløb gik BEGGE igennem og committede, og invarianten brød —
       // aldrig et ugyldigt forløb (manglende overlap · samme pid · forkert afslutning · uvedkommende/ubundet afvisning · forkert aktør/fase)
-      const o = own(r, "observations"); const A_ = isPlain(o) ? own(o, "a") : null, B_ = isPlain(o) ? own(o, "b") : null;
+      // F-29: den COMMITTENDE session kan bryde invarianten mens den anden korrekt afvises (én bundet afvisning er tilladt) —
+      // kravet er et gyldigt forløb m. mindst én committet session og højst én (bundet) afvisning, ikke »begge committer«
+      const o = own(r, "observations"); const sess = [isPlain(o) ? own(o, "a") : null, isPlain(o) ? own(o, "b") : null].filter(isPlain);
+      const committed = sess.filter((x) => own(x, "ok") === true && own(x, "commit") === "commit").length; const rejected = sess.filter((x) => own(x, "ok") === false).length;
       return a("invariant-efter-commit") === false && ["to-sessions", "overlap-observeret", "aktoer-bundet", "fase-bundet", "afslutning-konsistent", "afvisninger-bundne"].every((id) => a(id) === true)
-        && isPlain(A_) && isPlain(B_) && own(A_, "ok") === true && own(B_, "ok") === true && own(A_, "commit") === "commit" && own(B_, "commit") === "commit";
+        && sess.length === 2 && committed >= 1 && rejected <= 1;
     }
     default: return false;
   }
@@ -258,9 +275,9 @@ export async function runCase(c, ctx, runner) {
       let r; try { r = await ex(own(check, "cmd")); } catch (e) { return protokol(`runner.exec kastede: ${e?.message}`); }
       const code = own(r, "exit_code"); const out = typeof own(r, "stdout") === "string" ? own(r, "stdout") : "";
       if (!Number.isInteger(code)) return protokol("runner.exec returnerede ikke exit_code");
-      const m = out.split(/\r?\n/).map((l) => l.match(/^klasse=([A-Za-z0-9._:-]+)$/)).find(Boolean);   // struktureret diagnose-linje, ikke fri tekst
+      const ms = out.split(/\r?\n/).map((l) => l.match(/^klasse=([A-Za-z0-9._:-]+)$/)).filter(Boolean).map((m) => m[1]);   // ALLE strukturerede diagnose-linjer (F-30: én er en klassifikation, flere er støj)
       obs.kontrakt = { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse, fase: rc.fase, aktoer: rc.aktoer }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;   // F-24
-      obs.exit = { exit_code: code, klasse_observeret: m ? m[1] : null };
+      obs.exit = { exit_code: code, klasse_observeret: ms.length === 1 ? ms[0] : null, klasse_linjer: ms.length };
       return finish();
     }
     const pos = own(c, "positive"); const negS = own(c, "negative"); const st = own(c, "state");

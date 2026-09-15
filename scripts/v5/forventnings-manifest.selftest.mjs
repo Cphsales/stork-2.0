@@ -12,7 +12,7 @@ const rc = (sqlstate, sted, fase = "wrapper", aktoer = "app_role", grund = "navn
 const fixture = () => ({
   schema_version: 1, pakke: "lokations-skabelon",
   bindings: { forventningsliste: { path: "plan-build/lokations-skabelon/forventningsliste-udkast.md", oid: OID("a") }, krav: { path: "docs/sandhed/krav/lokations-skabelon-krav.md", oid: OID("b") }, plan: { path: "plan-build/lokations-skabelon/plan.md", oid: OID("c") } },
-  guards: [{ id: "g.navn-blank", beskrivelse: "check i lokation_opret: navn må ikke være blank" }, { id: "g.min-en-stand", beskrivelse: "trigger: mindst én aktiv stand" }],
+  guards: [{ id: "g.navn-blank", beskrivelse: "check i lokation_opret: navn må ikke være blank", locus: { path: "supabase/migrations/0001.sql", pattern: "^\\s*create (or replace )?function f\\.lokation_opret\\(" } }, { id: "g.min-en-stand", beskrivelse: "trigger: mindst én aktiv stand" }],
   obligations: [
     { id: "K-1/ac-1", k_id: "K-1", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", effekt_bid: "2.2", kildeankre: ["K:22", "P:27", "T:N1"],
       negatives: [{ id: "K-1/ac-1/neg-1", beskrivelse: "blankt navn → 22023", reject_contract: rc("22023", "lokation_opret: navn_blank"), sole_guard_ref: "g.navn-blank" }] },
@@ -78,6 +78,11 @@ red("exit-kontrakt exit_code 0", (m) => (m.obligations[7].negatives[0].reject_co
 red("exit-kontrakt uden klasse", (m) => delete m.obligations[7].negatives[0].reject_contract.klasse, /navngiven klasse/);
 red("sole_guard_ref ukendt", (m) => (m.obligations[0].negatives[0].sole_guard_ref = "g.findes-ikke"), /ukendt guard/);
 red("dublet guard-id", (m) => m.guards.push({ ...m.guards[0] }), /dublet guard-id/);
+red("guard.locus uden pattern → rød (F-31)", (m) => (m.guards[0].locus = { path: "x.sql" }), /locus skal være \{path, pattern\}/);
+red("guard.locus.pattern ugyldigt regex → rød (F-31)", (m) => (m.guards[0].locus = { path: "x.sql", pattern: "(" }), /ikke et gyldigt regex/);
+red("guard.locus.path m. traversal → rød (F-31)", (m) => (m.guards[0].locus = { path: "../x.sql", pattern: "a" }), /uden traversal/);
+red("guard.locus.path absolut → rød (F-31)", (m) => (m.guards[0].locus = { path: "/etc/x.sql", pattern: "a" }), /uden traversal/);
+{ const e = expectedSet(fixture()); eq("expectedSet.guards er Map m. locus (F-31)", e.guards instanceof Map && e.guards.get("g.navn-blank")?.locus?.path === "supabase/migrations/0001.sql" && e.guards.get("g.min-en-stand")?.locus === null, true); }
 red("overdragelse uden overdragelse_ref", (m) => delete m.obligations[3].overdragelse_ref, /overdragelse kræver/);
 red("scope ukendt", (m) => (m.obligations[3].scope = "senere"), /scope skal være/);
 red("kildeankre tom", (m) => (m.obligations[1].kildeankre = []), /kildeankre/);

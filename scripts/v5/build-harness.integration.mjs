@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.3 (plan 2.C · C1 »integration mod container grøn«).
+// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.4 (plan 2.C · C1 »integration mod container grøn«).
 //
 // IKKE en del af v5:selftest (CI er container-fri). Kør manuelt mod en ISOLERET éngangs-container (ALDRIG repoets PROD-db):
 //   docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121
@@ -16,7 +16,10 @@
 //   Mutanter (én pr. værn): blank-check fjernet → UT-kill · grant fjernet → MH-kill · audit-insert fjernet → MH-kill (vidne) · dato
 //   ignoreret → FS-kill (checkpoint) · trigger-check fjernet → UT-kill · lås fjernet → SA-kill (begge igennem, overlap vidnet, invariant
 //   brudt) · insert-grant givet → UT-kill · lokations-filter fjernet → FS-kill (K-8) · »findes«-mutant (kommentar) → OVERLEVER.
-//   Transport (F-27): pr. sætning en tilfældig nonce-markør, matchet som HEL linje og krævet PRÆCIS én gang — data kan ikke afslutte rammen.
+//   Transport (F-27/F-32): data (stdout) og diagnostik (stderr) holdes ADSKILT; pr. sætning en tilfældig nonce-markør på BEGGE strømme
+//   (`\echo MARK :ERROR :SQLSTATE` på stdout — psql's egne statusvariable er dommen; `\warn MARK` på stderr rammer diagnostikken), matchet
+//   som HEL linje og krævet PRÆCIS én gang; produktdata der ligner »ERROR: …« er bare data. Query-transport (F-33): tomt/ikke-array-output
+//   er en FEJLET måling (rows null), aldrig et tomt rækkesæt; en fejlet invariant-måling gør racet til protokol-fejl.
 
 import { execFileSync, spawn } from "node:child_process";
 import { randomBytes, createHash } from "node:crypto";
@@ -52,10 +55,15 @@ function dockerPsql(sqlText, opts = {}) {
   const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
   try {
     const out = execFileSync("docker", PSQL, { input: `${prelude.join("\n")}\n${body}\n`, stdio: ["pipe", "pipe", "pipe"] }).toString();
-    if (isQuery) { const rows = JSON.parse(out.trim() || "[]"); return { ok: true, error: null, code: null, rows: Array.isArray(rows) ? rows : [] }; }
+    if (isQuery) {   // F-33: kun et parsebart JSON-ARRAY er et rækkesæt — tomt output / null / objekt er en FEJLET måling, ikke rows=[]
+      const t = out.trim(); if (!t) return { ok: false, error: "query-transport gav intet output (manglende måling)", code: null, detail: null, rows: null };
+      let rows; try { rows = JSON.parse(t); } catch { return { ok: false, error: "query-output er ikke JSON (manglende måling)", code: null, detail: null, rows: null }; }
+      if (!Array.isArray(rows)) return { ok: false, error: `query-output er ikke et rækkesæt (${typeof rows})`, code: null, detail: null, rows: null };
+      return { ok: true, error: null, code: null, rows };
+    }
     return { ok: true, error: null, code: null };
   } catch (e) {
-    return { ok: false, ...parseErr(String(e.stderr || e.message)), rows: isQuery ? [] : undefined };
+    return { ok: false, ...parseErr(String(e.stderr || e.message)), rows: isQuery ? null : undefined };
   }
 }
 // psql VERBOSITY verbose: »ERROR:  <SQLSTATE>: <message>« + »CONTEXT:  PL/pgSQL function <routine>(args) line N at RAISE« →
@@ -67,25 +75,30 @@ function parseErr(stderr) {
 const q1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-tAc", sqlText]).toString().trim();
 
 // ---------- rigtig race-runner: to interaktive psql-sessions, nonce-markør-synkroniseret (F-27) ----------
-export function session(name, spawnFn = () => spawn("docker", ["exec", "-i", CONTAINER, "sh", "-c", "exec psql -U postgres -v ON_ERROR_STOP=0 -q -tA 2>&1"], { stdio: ["pipe", "pipe", "pipe"] })) {
-  // C1-r2 F-17: ÉN ordnet strøm (stderr → stdout via 2>&1 i containeren), så ERROR-linjer altid står FØR markøren for samme sætning.
-  // C1-r3 F-27: markøren bærer en TILFÆLDIG nonce pr. session (ukendt for produktkoden), matches kun som HEL linje og skal forekomme
-  // PRÆCIS én gang i segmentet — returnerede data kan ikke afslutte rammen eller flytte en fejl til en anden sætning.
+export function session(name, spawnFn = () => spawn("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=0", "-q", "-tA"], { stdio: ["pipe", "pipe", "pipe"] })) {
+  // C1-r3 F-27 + C1-r4 F-32: DATA (stdout) og DIAGNOSTIK (stderr) holdes adskilt — produktdata kan ikke skrive til stderr, og dommen om
+  // ok/fejl kommer fra psql's egne statusvariable (:ERROR :SQLSTATE) på markørlinjen, ikke fra tekstgenkendelse i data. Pr. sætning:
+  // `\warn MARK` rammer diagnostikken på stderr, `\echo MARK :ERROR :SQLSTATE` rammer data på stdout. Markøren bærer en TILFÆLDIG nonce
+  // pr. session, matches kun som HEL linje og skal forekomme PRÆCIS én gang på hver strøm. Diagnostikkens SQLSTATE skal stemme med status.
   const p = spawnFn();
-  let out = "", n = 0; const nonce = randomBytes(12).toString("hex");
-  try { p.stdin.write("\\set VERBOSITY verbose\n"); } catch {}   // SQLSTATE i ERROR-linjen fra første sætning (psql udskriver intet for \set)
-  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));
+  let out = "", err = "", n = 0; const nonce = randomBytes(12).toString("hex");
+  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
+  try { p.stdin.write("\\set VERBOSITY verbose\n"); } catch {}   // SQLSTATE + CONTEXT i diagnostikken fra første sætning
   const run = (sql, timeoutMs = 15000) => new Promise((resolve, reject) => {
-    const mark = `MARK-${nonce}-${name}-${++n}`; const outStart = out.length;
-    p.stdin.write(`${sql}\n\\echo ${mark}\n`);
+    const mark = `MARK-${nonce}-${name}-${++n}`; const outStart = out.length, errStart = err.length;
+    p.stdin.write(`${sql}\n\\warn ${mark}\n\\echo ${mark} :ERROR :SQLSTATE\n`);
     const t0 = Date.now();
     const poll = () => {
-      const seg0 = out.slice(outStart); const re = new RegExp(`^${mark}$`, "m"); const m = re.exec(seg0);
-      if (m) {
-        const hits = (seg0.match(new RegExp(`^${mark}$`, "mg")) ?? []).length;
-        if (hits !== 1) return reject(new Error(`${name}: markøren forekom ${hits} gange — rammen er ikke entydig (F-27)`));
-        const seg = seg0.slice(0, m.index); const pe = parseErr(seg); const isErr = /^ERROR:/m.test(seg);
-        return resolve({ ok: !isErr, code: isErr ? pe.code : null, detail: isErr ? pe.detail : null, out: seg.split("\n").filter((l) => !/^(ERROR|CONTEXT|LOCATION|DETAIL|HINT):/.test(l)).join("\n").trim(), err: seg });
+      const so = out.slice(outStart), se = err.slice(errStart);
+      const mo = new RegExp(`^${mark} (true|false) ([0-9A-Z]{5})$`, "m").exec(so); const me = new RegExp(`^${mark}$`, "m").exec(se);
+      if (mo && me) {
+        const hitsO = (so.match(new RegExp(`^${mark}( |$)`, "mg")) ?? []).length, hitsE = (se.match(new RegExp(`^${mark}$`, "mg")) ?? []).length;
+        if (hitsO !== 1 || hitsE !== 1) return reject(new Error(`${name}: markøren forekom ${hitsO}/${hitsE} gange — rammen er ikke entydig (F-27)`));
+        const data = so.slice(0, mo.index); const diag = se.slice(0, me.index);
+        const isErr = mo[1] === "true"; const sqlstate = mo[2]; const pe = parseErr(diag);
+        if (isErr && pe.code !== sqlstate) return reject(new Error(`${name}: psql-status ${sqlstate} ≠ diagnostikkens SQLSTATE ${String(pe.code)} — inkonsistent fejlramme (F-32)`));
+        if (!isErr && /^ERROR:/m.test(diag)) return reject(new Error(`${name}: status ok men diagnostikken bærer ERROR — inkonsistent (F-32)`));
+        return resolve({ ok: !isErr, code: isErr ? sqlstate : null, detail: isErr ? pe.detail : null, out: data.trim(), err: diag });
       }
       if (Date.now() - t0 > timeoutMs) return reject(new Error(`${name}: timeout på '${sql.slice(0, 40)}'`));
       setTimeout(poll, 15);
@@ -135,6 +148,7 @@ async function race(s) {
     const rb = await bPromise;
     const cb = await B.run(rb.ok ? "commit;" : "rollback;");
     const inv = dockerPsql(s.invariant.observe.sql, {});
+    if (!inv.ok || !Array.isArray(inv.rows)) return { protocolOk: false, error: `invariant-måling fejlede (${inv.code ?? inv.error}) — en fejlet måling er hverken brud eller tomt svar (F-33)` };
     return { protocolOk: true,
       a: { pid: pa, ok: ra.ok, code: ra.code, detail: ra.detail, commit: ca.ok ? "commit" : "fejl" },
       b: { pid: pb, ok: rb.ok, code: rb.code, detail: rb.detail, commit: cb.ok ? (rb.ok ? "commit" : "rollback") : "fejl" },
@@ -144,7 +158,7 @@ async function race(s) {
 const runner = { sql: dockerPsql, race };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
-console.log(`build-harness INTEGRATION v2.3 mod '${CONTAINER}':`);
+console.log(`build-harness INTEGRATION v2.4 mod '${CONTAINER}':`);
 const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
 const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
 const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
@@ -184,7 +198,7 @@ git("add", "-A"); git("commit", "-qm", "filer"); const C0 = git("rev-parse", "HE
 const rc = (sqlstate, sted, grund, fase = "wrapper", aktoer = "app_role") => ({ kanal: "sqlstate", sqlstate, grund, afvisningssted: sted, fase, aktoer, observationskanal: "sqlstate", offentlig_signatur: "f.*" });
 const manifest = {
   schema_version: 1, pakke: "fixture", bindings: { forventningsliste: { path: "plan-build/fixture/forventningsliste.md", oid: oidAt("plan-build/fixture/forventningsliste.md") }, krav: { path: "docs/krav.md", oid: oidAt("docs/krav.md") }, plan: { path: "plan/plan.md", oid: oidAt("plan/plan.md") } },
-  guards: [{ id: "g.navn", beskrivelse: "blank-check i lokation_opret" }, { id: "g.grant", beskrivelse: "execute-grant til app_role" }, { id: "g.audit", beskrivelse: "audit-insert i lokation_opret" }, { id: "g.pris", beskrivelse: "dato-filter i pris_paa" }, { id: "g.min-check", beskrivelse: "min-én-stand-check" }, { id: "g.min-laas", beskrivelse: "række-lås på lokation (SA-overlap)" }, { id: "g.dml", beskrivelse: "ingen insert-grant på f.lokation" }, { id: "g.audit-filter", beskrivelse: "lokations-filter i audit_for (K-8: tom mængde er et svar)" }],
+  guards: [{ id: "g.navn", beskrivelse: "blank-check i lokation_opret", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.lokation_opret\\(" } }, { id: "g.grant", beskrivelse: "execute-grant til app_role" }, { id: "g.audit", beskrivelse: "audit-insert i lokation_opret" }, { id: "g.pris", beskrivelse: "dato-filter i pris_paa" }, { id: "g.min-check", beskrivelse: "min-én-stand-check", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.stand_deaktiver\\(" } }, { id: "g.min-laas", beskrivelse: "række-lås på lokation (SA-overlap)" }, { id: "g.dml", beskrivelse: "ingen insert-grant på f.lokation" }, { id: "g.audit-filter", beskrivelse: "lokations-filter i audit_for (K-8: tom mængde er et svar)", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.audit_for\\(" } }],
   obligations: [
     { id: "K-1/ac-1", k_id: "K-1", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:1"], assertions: [{ id: "audit-opret", form: "MH" }], negatives: [{ id: "K-1/ac-1/neg-1", beskrivelse: "blankt navn → 22023", reject_contract: rc("22023", "f.lokation_opret", "navn_blank"), sole_guard_ref: "g.navn" }, { id: "K-1/ac-1/neg-2", beskrivelse: "direkte insert som app_role → 42501 (ACL, ingen routine)", reject_contract: rc("42501", "-", "permission denied for table lokation", "direkte DML"), sole_guard_ref: "g.dml" }] },
     { id: "K-1/ac-3", k_id: "K-1", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:3"], assertions: [{ id: "hist-marts", form: "FS" }], negatives: [] },
@@ -247,18 +261,23 @@ for (const c of cases) {
 { reset(); const r = await runCase({ ...cases[0], negative: { sql: "select f.lokation_opret(3, 'Gyldigt navn');" } }, ctx, runner); eq("UT: forbudt handling TILLADT (ingen afvisning) → brudt, observationen viser negative.ok=true", r.status === STATUS.BRUDT && r.observations.negative.ok === true, true); }
 
 // ---------- transport (F-27): markøren kan ikke forveksles med data ----------
-console.log("\ntransport-ramme (F-27):");
+console.log("\ntransport-ramme (F-27/F-32/F-33):");
 { const s = session("T"); const r1 = await s.run("select 'MARK-x-T-1' as data;"); eq("data der LIGNER en markør (uden nonce) afslutter ikke rammen — svaret er dataen selv", r1.ok === true && r1.out === "MARK-x-T-1", true);
-  const r2 = await s.run("select 1/0;"); eq("fejl i sætning n står i sætning n's segment (22012), ikke i en anden", r2.ok === false && r2.code === "22012", true);
-  const r3 = await s.run("select 'ERROR:  falsk' as data;"); eq("data der begynder med 'ERROR:' som HEL linje tolkes som fejl-ramme kun når det ER en psql-fejl — her: data-linjen står alene, ingen SQLSTATE → ok:false m. code null er en synlig protokol-anomali, ikke en stille sejr", r3.ok === false && r3.code === null, true);
-  s.close(); }
-{ // kontrolleret strøm: en falsk proces der udskriver en markør-lignende linje FØR den rigtige — rammen må ikke afslutte på data (nonce ukendt for data)
-  const { PassThrough } = await import("node:stream"); const fakeOut = new PassThrough(); const fakeIn = new PassThrough(); let seen = "";
-  fakeIn.on("data", (d) => { seen += d; const m = seen.match(/\\echo (MARK-[0-9a-f]{24}-F-1)\n/); if (m) { fakeOut.write(`MARK-x-F-1\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\n${m[1]}\n`); seen = ""; } });
-  const s = session("F", () => ({ stdout: fakeOut, stderr: new PassThrough(), stdin: fakeIn, kill() {} }));
-  const r = await s.run("select 1;"); eq("kontrolleret strøm: markør-LIGNENDE data før den rigtige nonce-markør → fejlen tilskrives rigtigt (P0001), rammen afsluttes først ved den rigtige markør", r.ok === false && r.code === "P0001" && r.detail?.routine === "f.stand_deaktiver", true);
-  const s2 = session("G", () => { const o = new PassThrough(), i = new PassThrough(); let seen2 = ""; i.on("data", (d) => { seen2 += d; const m = seen2.match(/\\echo (MARK-[0-9a-f]{24}-G-1)\n/); if (m) { o.write(`${m[1]}\n${m[1]}\n`); seen2 = ""; } }); return { stdout: o, stderr: new PassThrough(), stdin: i, kill() {} }; });
-  let err = null; try { await s2.run("select 1;"); } catch (e) { err = e.message; } eq("kontrolleret strøm: den rigtige markør to gange → protokol-fejl (rammen er ikke entydig), aldrig et svar", /F-27/.test(err ?? ""), true); }
+  const r2 = await s.run("select 1/0;"); eq("fejl i sætning n står i sætning n's ramme: status true/22012 fra psql's variable, diagnostik fra stderr", r2.ok === false && r2.code === "22012", true);
+  const r3 = await s.run("select E'ERROR:  P0001: min_en_stand\\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE' as data;"); eq("produktdata der er en KOMPLET falsk ERROR/CONTEXT-blok → ok:true, det er data — ikke en afvisning (F-32)", r3.ok === true && r3.code === null && /P0001/.test(r3.out), true);
+  const r4 = await s.run("select E'ERROR:  P0001: min_en_stand' as d; select 1/0;"); eq("falsk fejl-data efterfulgt af en VIRKELIG fejl m. anden kode → den virkelige kode (22012) vinder, aldrig P0001 (F-32)", r4.ok === false && r4.code === "22012", true);
+  const r5 = await s.run("select f.lokation_opret(9, '   ');"); eq("virkelig 22023 fra routinen: kode fra psql-status, message/routine fra stderr-diagnostik", r5.ok === false && r5.code === "22023" && r5.detail?.message === "navn_blank" && r5.detail?.routine === "f.lokation_opret", true);
+  s.close(); reset(); }
+{ // kontrollerede strømme: en falsk proces m. ADSKILT stdout/stderr — rammen må hverken afsluttes af data eller acceptere inkonsistens
+  const { PassThrough } = await import("node:stream");
+  const fake = (nm, onMark) => session(nm, () => { const o = new PassThrough(), e = new PassThrough(), i = new PassThrough(); let seen = ""; i.on("data", (d) => { seen += d; const m = seen.match(new RegExp(`\\\\echo (MARK-[0-9a-f]{24}-${nm}-1) `)); if (m) { const r = onMark(m[1]); o.write(r.out); e.write(r.err); seen = ""; } }); return { stdout: o, stderr: e, stdin: i, kill() {} }; });
+  const r1 = await fake("F", (mk) => ({ out: `MARK-x-F-1 true 22012\nrække\n${mk} false 00000\n`, err: `${mk}\n` })).run("select 1;"); eq("kontrolleret strøm: markør-LIGNENDE statuslinje i data før den rigtige → ignoreret, svaret er data + status ok", r1.ok === true && /række/.test(r1.out), true);
+  let e2 = null; try { await fake("G", (mk) => ({ out: `${mk} false 00000\n${mk} false 00000\n`, err: `${mk}\n` })).run("select 1;"); } catch (e) { e2 = e.message; } eq("kontrolleret strøm: den rigtige markør to gange på stdout → protokol-fejl (F-27)", /F-27/.test(e2 ?? ""), true);
+  let e3 = null; try { await fake("H", (mk) => ({ out: `${mk} false 00000\n`, err: `ERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.x(int) line 1 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e3 = e.message; } eq("kontrolleret strøm: status ok men diagnostik bærer ERROR → inkonsistent → protokol-fejl (F-32)", /F-32/.test(e3 ?? ""), true);
+  let e4 = null; try { await fake("I", (mk) => ({ out: `${mk} true 22012\n`, err: `ERROR:  P0001: min_en_stand\n${mk}\n` })).run("select 1;"); } catch (e) { e4 = e.message; } eq("kontrolleret strøm: status 22012 men diagnostik siger P0001 → inkonsistent → protokol-fejl (F-32)", /F-32/.test(e4 ?? ""), true);
+  const r5 = await fake("J", (mk) => ({ out: `${mk} true P0001\n`, err: `ERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\n${mk}\n` })).run("select 1;"); eq("kontrolleret strøm: konsistent fejl (status P0001 + diagnostik P0001/routine) → ok:false m. bundet detail", r5.ok === false && r5.code === "P0001" && r5.detail?.routine === "f.stand_deaktiver", true); }
+{ const a = dockerPsql("select 1 as x where false;"); const b = dockerPsql("select 1 frm x;"); eq("query-transport: komplet tomt rækkesæt → ok:true rows=[]; syntaksfejl → ok:false rows=null (aldrig []) (F-33)", a.ok === true && Array.isArray(a.rows) && a.rows.length === 0 && b.ok === false && b.rows === null && b.code === "42601", true); }
+{ reset(); const r = await runCase({ ...cases[6], race: { ...cases[6].race, invariant: { observe: { sql: "select 1/0 as aktive;" }, expect: { kind: "scalar", value: 1 } } } }, ctx, runner); eq("SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)", r.status === STATUS.PROTOKOL && /F-33/.test(r.assertions[0].detail), true); }
 
 // ---------- mutanter: formbestemt kill mod virkeligheden ----------
 console.log("\nmutanter (én pr. værn) — formbestemt kill:");
@@ -295,9 +314,10 @@ const proof = {
 const snapshot = { commit_sha: COMMIT, artifact, bindings: { plan, manifest: manifestRef, angrebsspec: specRef }, proof_result: proof, verdicts: [], approval: null, predecessor: { gate_id: "plan", conclusion: "success", artifact_oid: plan.oid, bindings_oids: { manifest: manifestRef.oid } } };
 { const v = verifyBuildProof(proof, snapshot, { git }); eq("verifyBuildProof → grøn over det rigtige, ikke-redigerede bevis (alle 7 cases + 8 mutanter genudledt mod spec + manifest)", v.ok, true); if (!v.ok) console.error("      ", v.reasons.join(" | ").slice(0, 2000)); }
 { const p2 = JSON.parse(JSON.stringify(proof)); const c = p2.cases.find((x) => x.case_id === "c-tom-fs"); delete c.observations.setup; const v = verifyBuildProof(p2, { ...snapshot, proof_result: p2 }, { git }); eq("… og rød når det foreskrevne setup udelades af K-8-casen (F-20)", !v.ok && v.reasons.some((r) => /spec-afledte/.test(r)), true); }
-{ const p2 = JSON.parse(JSON.stringify(proof)); p2.claim_graph[0].source_anchor = mkEvidence(MIG, 2, 2); const v = verifyBuildProof(p2, { ...snapshot, proof_result: p2 }, { git }); eq("… og rød når K-1-claimets anker peger på en anden routine end den der afviser (F-25)", !v.ok && v.reasons.some((r) => /nævner ikke 'lokation_opret'/.test(r)), true); }
+{ const p2 = JSON.parse(JSON.stringify(proof)); p2.claim_graph[0].source_anchor = mkEvidence(MIG, 2, 2); const v = verifyBuildProof(p2, { ...snapshot, proof_result: p2 }, { git }); eq("… og rød når K-1-claimets anker peger på en anden routine end værnets låste locus (F-31)", !v.ok && v.reasons.some((r) => /locus-mønster/.test(r)), true); }
+{ const p2 = JSON.parse(JSON.stringify(proof)); p2.claim_graph[0].source_anchor = mkEvidence("plan/plan.md", 1, 1); const v = verifyBuildProof(p2, { ...snapshot, proof_result: p2 }, { git }); eq("… og rød når ankeret flyttes til en anden fil end værnets locus-sti (F-31)", !v.ok && v.reasons.some((r) => /locus-sti/.test(r)), true); }
 
 dockerPsql("drop schema if exists f cascade;", {});
 console.log("");
-if (failed > 0) { console.error(`build-harness INTEGRATION v2.3: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
-console.log(`build-harness INTEGRATION v2.3: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);
+if (failed > 0) { console.error(`build-harness INTEGRATION v2.4: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
+console.log(`build-harness INTEGRATION v2.4: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);
