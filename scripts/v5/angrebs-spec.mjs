@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// angrebs-spec.mjs — den MASKINLÆSBARE angrebs-/måle-spec (M-41 Trin C1/C2 · Codex C1-r2 F-13/F-16/F-18): HVAD der måles, HVORDAN,
+// angrebs-spec.mjs — den MASKINLÆSBARE angrebs-/måle-spec v2.3 (M-41 Trin C1/C2 · Codex C1-r2 F-13/F-16/F-18 · C1-r3 F-24/F-26): HVAD der måles, HVORDAN,
 // med hvilke orakler, kontroller og mutanter — låst FØR byg (plan 2.E attack-spec-state-machine · Fase 4 pkt. 1), path-bundet som
 // build-gate-binding (gates.mjs `angrebsspec`, layout plan-build/<pakke>/angrebs-spec.json). Bevisproducenten leverer kun
 // OBSERVATIONER; verifieren dømmer dem mod DENNE spec + manifestet — orakler, kontroller, mutationslocus og bid-graf kan ikke
@@ -14,7 +14,8 @@
 //     mutants: [{ mutant_id, guard_ref, target_case_id, target_assertion_id, controls: [case_id…] (≥1), apply, restore,
 //                 footprint: { observe: {sql} } }] }   // footprint = ejer-observation af det muterede objekt (attesterer mutation + restore)
 // validateAngrebsSpec(spec, manifest) → {ok, reasons}: form, krydsreferencer og KOMPLETHED mod manifestet (pr. form · negativ ·
-// navngivet delbevis · bid) og D10 (eneste-værn → mutant på UT-casen for netop det negativ) + K-gulv.
+// navngivet delbevis · bid) og D10 (eneste-værn → mutant på UT-casen for netop det negativ) + K-gulv. Fase + aktør bindes til
+// kontrakten i ALLE varianter (UT-sqlstate · UT-exit · SA, F-24). case_id og mutant_id deler ÉT entydigt id-rum (F-26).
 
 import { expectedSet, validateManifest, PROOF_FORMS } from "./forventnings-manifest.mjs";
 
@@ -104,6 +105,8 @@ export function validateAngrebsSpec(spec, manifest) {
         } else {
           if (!isPlain(own(c, "check")) || !isDense(own(own(c, "check"), "cmd"), isStr) || own(own(c, "check"), "cmd").length === 0) { fail(`${cid}: UT (exit) kræver check.cmd[]`); okc = false; }
           for (const k of ["positive", "negative", "state"]) if (hasOwn(c, k)) { fail(`${cid}: ${k} hører til sqlstate-kanalen — blandet variant afvises`); okc = false; }
+          if (own(c, "fase") !== rc.fase) { fail(`${cid}: fase '${String(own(c, "fase"))}' ≠ kontraktens '${rc.fase}' (exit-kanal, F-24)`); okc = false; }
+          if (isPlain(actor) && own(actor, "role") !== rc.aktoer) { fail(`${cid}: actor.role '${String(own(actor, "role"))}' ≠ kontraktens aktør '${rc.aktoer}' (exit-kanal, F-24)`); okc = false; }
         }
         if (okc) negCov.add(nid);
       }
@@ -112,7 +115,7 @@ export function validateAngrebsSpec(spec, manifest) {
       const cps = hasOwn(c, "checkpoints") ? own(c, "checkpoints") : []; if (!isDense(cps, isPlain)) { fail(`${cid}: checkpoints skal være tæt array`); okc = false; } else { const seen = new Set(); for (const cp of cps) { const id = own(cp, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(cp, "observe")) || !expectOk(own(cp, "expect"))) { fail(`${cid}: checkpoint ugyldigt/dublet`); okc = false; } else { seen.add(id); if (okc && ob) assertCov.add(`${oid}|FS|${id}`); } } } }
     if (form === "MH") { const w = own(c, "witnesses"); if (!sqlObj(own(c, "action")) || !isDense(w, isPlain) || w.length === 0) { fail(`${cid}: MH kræver action{sql} + ≥1 witnesses`); okc = false; } else { const seen = new Set(); for (const x of w) { const id = own(x, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(x, "observe")) || !expectOk(own(x, "expect"))) { fail(`${cid}: vidne ugyldigt/dublet`); okc = false; } else { seen.add(id); if (okc && ob) assertCov.add(`${oid}|MH|${id}`); } } } }
     if (form === "SA") { const r = own(c, "race"); if (!isPlain(r) || !isStr(own(r, "race_id")) || !ID_RE.test(own(r, "race_id")) || !sqlObj(own(r, "a")) || !sqlObj(own(r, "b")) || !isStr(own(r, "barrier")) || !isPlain(own(r, "invariant")) || !sqlObj(own(own(r, "invariant"), "observe")) || !expectOk(own(own(r, "invariant"), "expect"))) { fail(`${cid}: race ufuldstændig`); okc = false; }
-      else { const rn = F.negatives.get(own(r, "reject_negative_id")); if (!rn || rn.obligation_id !== oid || rn.reject_contract.kanal !== "sqlstate") { fail(`${cid}: race.reject_negative_id er ikke et sqlstate-negativ under ${oid}`); okc = false; } else if (isPlain(actor) && own(actor, "role") !== rn.reject_contract.aktoer) { fail(`${cid}: SA actor.role ≠ kontraktens aktør`); okc = false; } if (hasOwn(r, "setup") && !sqlObj(own(r, "setup"))) { fail(`${cid}: race.setup skal være {sql}`); okc = false; } if (okc && ob) assertCov.add(`${oid}|SA|${own(r, "race_id")}`); } }
+      else { const rn = F.negatives.get(own(r, "reject_negative_id")); if (!rn || rn.obligation_id !== oid || rn.reject_contract.kanal !== "sqlstate") { fail(`${cid}: race.reject_negative_id er ikke et sqlstate-negativ under ${oid}`); okc = false; } else { if (isPlain(actor) && own(actor, "role") !== rn.reject_contract.aktoer) { fail(`${cid}: SA actor.role ≠ kontraktens aktør`); okc = false; } if (own(c, "fase") !== rn.reject_contract.fase) { fail(`${cid}: SA fase '${String(own(c, "fase"))}' ≠ kontraktens '${rn.reject_contract.fase}' (F-24)`); okc = false; } } if (hasOwn(r, "setup") && !sqlObj(own(r, "setup"))) { fail(`${cid}: race.setup skal være {sql}`); okc = false; } if (okc && ob) assertCov.add(`${oid}|SA|${own(r, "race_id")}`); } }
     caseById.set(cid, { obligation_id: oid, form, k_id: ob?.k_id ?? null, ok: okc, negative_id: form === "UT" ? nid : null, bid_id: bid });
     if (okc) { if (!cov.has(oid)) cov.set(oid, new Set()); cov.get(oid).add(form); if (!casesByBid.has(bid)) casesByBid.set(bid, new Set()); casesByBid.get(bid).add(oid); }
   }
@@ -131,6 +134,7 @@ export function validateAngrebsSpec(spec, manifest) {
   else for (const m of mutants) {
     const mid = own(m, "mutant_id"); if (!isStr(mid) || !ID_RE.test(mid)) { fail(`mutant uden gyldigt mutant_id`); continue; }
     if (mutById.has(mid)) { fail(`dublet mutant_id ${mid}`); continue; }
+    if (caseById.has(mid)) { fail(`mutant_id '${mid}' kolliderer med et case_id — ét entydigt id-rum for alle delbeviser (F-26)`); continue; }
     const g = own(m, "guard_ref"); const t = caseById.get(own(m, "target_case_id")); const ta = own(m, "target_assertion_id"); const ctl = own(m, "controls"); let okm = true;
     if (!isStr(g) || !F.guards.has(g)) { fail(`${mid}: guard_ref '${String(g)}' ikke deklareret i manifestet`); okm = false; }
     if (!t || !t.ok) { fail(`${mid}: target_case_id ukendt/ugyldig`); okm = false; }

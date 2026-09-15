@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// build-harness.selftest.mjs — red-team af case-engine v2.1 (C1-r1 F-3..F-8): observationer er rå, dommen er ren (judgeObservations/
-// judgeKill), reject-kontraktens grund/sted/aktør håndhæves, uvedkommende fejl er protokol (aldrig brudt/kill), kills er målrettede.
+// build-harness.selftest.mjs — red-team af case-engine v2.3 (C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27): observationer er rå, dommen
+// er ren (judgeObservations/judgeKill), reject-kontraktens grund/sted/aktør/fase håndhæves i alle varianter, uvedkommende fejl og
+// manglende målinger er protokol (aldrig brudt/kill), kills er målrettede, SA-kill kræver et gyldigt, vidnet raceforløb.
 import { runCase, killCaseMutant, runBuildProofEngine, matchExpect, judgeObservations, judgeKill, brudtPaaFormensMaade, STATUS } from "./build-harness.mjs";
 import { expectedSet } from "./forventnings-manifest.mjs";
 
@@ -25,7 +26,7 @@ const ctx = { forventning: expectedSet(manifest) };
 const R = (ok, code = null, message = null, routine = null, rows) => ({ ok, error: ok ? null : message, code, detail: ok ? null : { message, routine }, ...(rows !== undefined ? { rows } : {}) });
 // --- mock-runner m. tilstand: knapper slås af/på af mutant-sql ---
 function mkRunner(over = {}) {
-  const st = { guardNavn: true, pris: 100, grant: true, audit: true, trg: true, laas: true, stateRows: [{ n: 1 }], ...over.state };
+  const st = { guardNavn: true, pris: 100, grant: true, audit: true, trg: true, laas: true, overlapObs: true, stateRows: [{ n: 1 }], ...over.state };
   const runner = {
     st,
     sql(text, opts) {
@@ -73,12 +74,13 @@ function mkRunner(over = {}) {
     },
     race(s) {
       if (over.race) return over.race(s, st);
+      st.lastRaceScenario = s;
       const rej = { pid: 202, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" };
       const okB = { pid: 202, ok: true, code: null, detail: null, commit: "commit" };
       const a = { pid: 101, ok: true, code: null, detail: null, commit: "commit" };
-      if (!st.laas) return { protocolOk: true, a, b: okB, barrier: { observed: false, blocked_pid: null, blocking_pid: null }, invariantRows: [{ aktive: 0 }] };
-      if (!st.trg) return { protocolOk: true, a, b: okB, barrier: { observed: true, blocked_pid: 202, blocking_pid: 101 }, invariantRows: [{ aktive: 0 }] };
-      return { protocolOk: true, a, b: rej, barrier: { observed: true, blocked_pid: 202, blocking_pid: 101 }, invariantRows: [{ aktive: 1 }] };
+      const overlap = { observed: st.overlapObs, witness_pid: 303, a_pid: 101, b_pid: 202 };   // uafhængigt vidne (tredje backend), uafhængigt af produktlåsen
+      if (!st.laas || !st.trg) return { protocolOk: true, a, b: okB, overlap, invariantRows: [{ aktive: 0 }] };   // værn væk: begge går igennem, overlap stadig vidnet, invariant brudt
+      return { protocolOk: true, a, b: rej, overlap, invariantRows: [{ aktive: 1 }] };
     },
     exec(cmd) { return over.exec ? over.exec(cmd) : { exit_code: 1, stdout: "fejl: klassifikation mangler\nklasse=klassifikation\n" }; },
   };
@@ -89,8 +91,8 @@ const C = {
   ut: { case_id: "c-ut", hard_effect: HE, bid_id: BID, obligation_id: "K-1/ac-1", negative_id: "K-1/ac-1/neg-1", proof_form: "UT", fase: "wrapper", entrypoint: ep, actor, positive: { sql: "POS" }, negative: { sql: "NEG" }, state: { sql: "STATE" } },
   fs: { case_id: "c-fs", hard_effect: HE, bid_id: BID, obligation_id: "K-1/ac-3", proof_form: "FS", entrypoint: ep, actor, action: { sql: "ACT" }, observe: { sql: "OBS" }, expect: { kind: "scalar", value: 100 }, checkpoints: [{ id: "hist", observe: { sql: "OBS_HIST" }, expect: { kind: "scalar", value: 80 } }] },
   mh: { case_id: "c-mh", hard_effect: HE, bid_id: BID, obligation_id: "K-1/ac-1", proof_form: "MH", entrypoint: ep, actor, action: { sql: "ACT_MH" }, witnesses: [{ id: "audit-row", observe: { sql: "AUDIT" }, expect: { kind: "count", value: 1 } }] },
-  sa: { case_id: "c-sa", hard_effect: HE, bid_id: BID, obligation_id: "K-2/ac-6", proof_form: "SA", entrypoint: ep, actor, race: { race_id: "r1", a: { sql: "A" }, b: { sql: "B" }, barrier: "row-lock", invariant: { observe: { sql: "INV" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
-  ci: { case_id: "c-ci", hard_effect: "state", bid_id: BID, obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "klassifikation.mjs"] } },
+  sa: { case_id: "c-sa", hard_effect: HE, bid_id: BID, obligation_id: "K-2/ac-6", proof_form: "SA", fase: "apply", entrypoint: ep, actor, race: { race_id: "r1", a: { sql: "A" }, b: { sql: "B" }, barrier: "row-lock", invariant: { observe: { sql: "INV" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
+  ci: { case_id: "c-ci", hard_effect: "state", bid_id: BID, obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", fase: "ci", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "klassifikation.mjs"] } },
 };
 const run = (c, r = mkRunner()) => runCase(c, ctx, r);
 const st = async (c, r) => (await run(c, r)).status;
@@ -131,10 +133,18 @@ eq("overdraget forpligtelse → protokol", await st(withCase(C.fs, (x) => (x.obl
 eq("setup (ejer) kørt før casen og noteret", (await run(withCase(C.ut, (x) => (x.setup = { sql: "SETUP" })))).observations.setup?.ok, true);
 eq("setup fejler → protokol", await st(withCase(C.ut, (x) => (x.setup = { sql: "SETUP_FAIL" }))), STATUS.PROTOKOL);
 eq("exit-kanal: exit 1 + struktureret klasse-linje → opfyldt", await st(C.ci), STATUS.OPFYLDT);
-eq("exit-kanal: exit 1 men ANDEN klasse (ENOENT) → brudt (F-4)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klasse=ENOENT\n" }) })), STATUS.BRUDT);
-eq("exit-kanal: klasse kun som fri tekst (ingen klasse=-linje) → brudt", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klassifikation mangler\n" }) })), STATUS.BRUDT);
-eq("exit-kanal: exit 0 → brudt", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "klasse=klassifikation\n" }) })), STATUS.BRUDT);
+eq("exit-kanal: exit 1 men ANDEN klasse (ENOENT) → protokol (ikke kontraktens udfald; anden klasse kræver låst udfaldskontrakt, F-23)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klasse=ENOENT\n" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: exit 1 UDEN struktureret klasse-linje (crash m. kontraktens rc) → protokol, ALDRIG brudt/kill (F-23)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "klassifikation mangler\n" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: exit 1 + tom stdout (throw i node) → protokol (F-23)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 1, stdout: "" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: exit 0 uden klasse-linje → brudt (afvisningen bortfaldt — det legitime brud)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "" }) })), STATUS.BRUDT);
+eq("exit-kanal: exit 0 MED klasse-linje → protokol (inkonsistent diagnose)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 0, stdout: "klasse=klassifikation\n" }) })), STATUS.PROTOKOL);
 eq("exit-kanal: exit 127 (processen fungerer ikke) → protokol-fejl, ikke brudt (F-15)", await st(C.ci, mkRunner({ exec: () => ({ exit_code: 127, stdout: "" }) })), STATUS.PROTOKOL);
+eq("exit-kanal: kontrollen kørte i anden fase end kontraktens → brudt (F-24)", await st(withCase(C.ci, (x) => (x.fase = "wrapper"))), STATUS.BRUDT);
+eq("exit-kanal: kontrollen kørte som anden aktør → brudt (F-24)", await st(withCase(C.ci, (x) => (x.actor = { role: "postgres" }))), STATUS.BRUDT);
+{ const r = await run(C.ci); eq("exit-observationer bærer kontrakt m. fase/aktør + aktoer + fase (F-24)", r.observations.kontrakt.fase === "ci" && r.observations.kontrakt.aktoer === "ci" && r.observations.aktoer === "ci" && r.observations.fase === "ci", true); }
+eq("setup-observation {ok:false} i beviset → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, setup: { ok: false } }).status, STATUS.PROTOKOL);
+eq("setup-observation uden ok → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, setup: {} }).status, STATUS.PROTOKOL);
+eq("positivt kald som ufuldstændigt udfald ({}) → protokol (F-20)", judgeObservations("UT", { ...(await run(C.ut)).observations, positive: {} }).status, STATUS.PROTOKOL);
 
 console.log("\nFS — forkert slutværdi:");
 eq("baseline → opfyldt (m. navngivet checkpoint)", await st(C.fs), STATUS.OPFYLDT);
@@ -146,6 +156,8 @@ eq("observations-kald AFVIST (42501, rows:[]) → protokol-fejl, aldrig opfyldt 
 eq("manglende rows → protokol", await st(withCase(C.fs, (x) => { x.observe.sql = "OBS_NOROWS"; x.expect = { kind: "empty" }; })), STATUS.PROTOKOL);
 eq("handling afvist m. anerkendt klasse → brudt", await st(C.fs, mkRunner({ sql: (t) => (t === "ACT" ? R(false, "42501", "denied", null) : undefined) })), STATUS.BRUDT);
 eq("handling fejler uvedkommende (syntax) → protokol", await st(C.fs, mkRunner({ sql: (t) => (t === "ACT" ? R(false, "42601", "syntax", null) : undefined) })), STATUS.PROTOKOL);
+eq("action-observation ufuldstændig ({}) → protokol (F-20)", judgeObservations("FS", { ...(await run(C.fs)).observations, action: {} }).status, STATUS.PROTOKOL);
+{ const o = (await run(C.fs)).observations; delete o.action; const j = judgeObservations("FS", o); eq("action udeladt af observationerne → dommen bærer INGEN handling-assertion (verifieren kræver den via spec-projektionen, F-20)", j.assertions.some((a) => a.id === "handling-lykkedes"), false); }
 
 console.log("\nMH — manglende handling:");
 eq("baseline → opfyldt", await st(C.mh), STATUS.OPFYLDT);
@@ -155,20 +167,39 @@ eq("vidne mangler (audit 0 rækker) → brudt", await st(C.mh, mkRunner({ state:
 eq("vidne-kald afvist → protokol (F-5)", await st(withCase(C.mh, (x) => (x.witnesses[0].observe.sql = "OBS_DENIED"))), STATUS.PROTOKOL);
 { const r = await run(C.mh); eq("vidnerækker gemmes rå i observationerne (F-3)", Array.isArray(r.observations.witnesses[0].rows), true); }
 
-console.log("\nSA — samtidighed (sessions · barriere · afslutning):");
+console.log("\nSA — samtidighed (sessions · uafhængigt overlap-vidne · afslutning · aktør/fase):");
+const OV = (a = 1, b = 2, w = 303, observed = true) => ({ observed, witness_pid: w, a_pid: a, b_pid: b });
+const REJ = (pid) => ({ pid, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" });
+const OKS = (pid) => ({ pid, ok: true, code: null, detail: null, commit: "commit" });
 eq("baseline → opfyldt", await st(C.sa), STATUS.OPFYLDT);
-eq("ingen barriere observeret → brudt", await st(C.sa, mkRunner({ state: { laas: false } })), STATUS.BRUDT);
+eq("intet overlap observeret (sekventiel kørsel) → brudt", await st(C.sa, mkRunner({ state: { overlapObs: false } })), STATUS.BRUDT);
+eq("lås fjernet: begge går igennem m. vidnet overlap + invariant brudt → brudt", await st(C.sa, mkRunner({ state: { laas: false } })), STATUS.BRUDT);
 eq("trigger fjernet: begge lykkes + invariant brudt → brudt", await st(C.sa, mkRunner({ state: { trg: false } })), STATUS.BRUDT);
-eq("samme pid for A og B → brudt (to-sessions, F-8)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 7, ok: true, commit: "commit" }, b: { pid: 7, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" }, barrier: { observed: true, blocked_pid: 7, blocking_pid: 7 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
-eq("pids mangler → protokol-fejl, ikke brudt (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { ok: true, commit: "commit" }, b: { ok: true, commit: "commit" }, barrier: { observed: false }, invariantRows: [{ aktive: 0 }] }) })), STATUS.PROTOKOL);
-eq("commit-udfald mangler → protokol-fejl (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" } }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
+eq("samme pid for A og B → brudt (to-sessions, F-8)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(7), b: REJ(7), overlap: OV(7, 7), invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("pids mangler → protokol-fejl, ikke brudt (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { ok: true, commit: "commit" }, b: { ok: true, commit: "commit" }, overlap: OV(), invariantRows: [{ aktive: 0 }] }) })), STATUS.PROTOKOL);
+eq("commit-udfald mangler → protokol-fejl (F-15)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" } }, overlap: OV(), invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
+eq("overlap.observed mangler (runner leverede intet) → protokol, IKKE normaliseret til false (F-22)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: OKS(2), overlap: { witness_pid: 303, a_pid: 1, b_pid: 2 }, invariantRows: [{ aktive: 0 }] }) })), STATUS.PROTOKOL);
+eq("overlap-objekt mangler helt → protokol (F-22)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: REJ(2), invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
 eq("SA kørt som anden aktør end kontraktens → brudt (F-14)", await st(withCase(C.sa, (x) => (x.actor = { role: "postgres" }))), STATUS.BRUDT);
-eq("SA-observationer bærer aktoer", (await run(C.sa)).observations.aktoer, "app_role");
-eq("barriere peger på forkerte pids → brudt", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true, commit: "commit" }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" }, barrier: { observed: true, blocked_pid: 1, blocking_pid: 2 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
-eq("afvist forløb ikke rullet tilbage → brudt (afslutning)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true, commit: "commit" }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "commit" }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
-eq("begge fejler UVEDKOMMENDE (42601) → protokol, ikke brudt (F-6)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: false, code: "42601", commit: "rollback" }, b: { pid: 2, ok: false, code: "42601", commit: "rollback" }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
-eq("afvisning m. rigtig kode men forkert grund → brudt", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: true, commit: "commit" }, b: { pid: 2, ok: false, code: "P0001", detail: { message: "andet", routine: "f.stand_deaktiver" }, commit: "rollback" }, barrier: { observed: true, blocked_pid: 2, blocking_pid: 1 }, invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("SA kørt i anden fase end kontraktens (wrapper ≠ apply) → brudt (F-24)", await st(withCase(C.sa, (x) => (x.fase = "wrapper"))), STATUS.BRUDT);
+{ const r = await run(C.sa); eq("SA-observationer bærer aktoer + fase + kontrakt.fase (F-14/F-24)", r.observations.aktoer === "app_role" && r.observations.fase === "apply" && r.observations.kontrakt.fase === "apply", true); }
+eq("overlap-vidne peger på forkerte pids → brudt", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: REJ(2), overlap: OV(2, 1), invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("overlap-vidne er A selv (ikke uafhængigt) → brudt (F-22)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: REJ(2), overlap: OV(1, 2, 1), invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("afvist forløb ikke rullet tilbage → brudt (afslutning)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: { ...REJ(2), commit: "commit" }, overlap: OV(), invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
+eq("begge fejler UVEDKOMMENDE (42601) → protokol, ikke brudt (F-6)", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: { pid: 1, ok: false, code: "42601", commit: "rollback" }, b: { pid: 2, ok: false, code: "42601", commit: "rollback" }, overlap: OV(), invariantRows: [{ aktive: 1 }] }) })), STATUS.PROTOKOL);
+eq("afvisning m. rigtig kode men forkert grund → brudt", await st(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: { ...REJ(2), detail: { message: "andet", routine: "f.stand_deaktiver" } }, overlap: OV(), invariantRows: [{ aktive: 1 }] }) })), STATUS.BRUDT);
 eq("race-runner protokol-fejl → protokol", await st(C.sa, mkRunner({ race: () => ({ protocolOk: false, error: "session 2 døde" }) })), STATUS.PROTOKOL);
+{ const r0 = mkRunner(); const r = await run(withCase(C.sa, (x) => (x.race.setup = { sql: "SETUP" })), r0); eq("race.setup udføres af motoren som ejer og observeres; runneren modtager scenariet UDEN setup (F-20)", r.observations.setup?.ok === true && r0.st.lastRaceScenario.setup === undefined && r.status === STATUS.OPFYLDT, true); }
+eq("race.setup fejler → protokol", await st(withCase(C.sa, (x) => (x.race.setup = { sql: "SETUP_FAIL" }))), STATUS.PROTOKOL);
+console.log("\nbrudtPaaFormensMaade (SA) — kun et GYLDIGT, vidnet forløb der brød invarianten er formens brud (F-22):");
+const saRes = (over) => run(C.sa, mkRunner({ race: () => ({ protocolOk: true, a: OKS(1), b: OKS(2), overlap: OV(), invariantRows: [{ aktive: 0 }], ...over }) }));
+eq("begge igennem · overlap vidnet · committet · invariant brudt → formens brud", brudtPaaFormensMaade(await saRes({})), true);
+eq("… men INTET overlap observeret → ikke formens brud", brudtPaaFormensMaade(await saRes({ overlap: OV(1, 2, 303, false) })), false);
+eq("… men samme pid for A og B → ikke formens brud", brudtPaaFormensMaade(await saRes({ a: OKS(5), b: OKS(5), overlap: OV(5, 5) })), false);
+eq("… men A lykkedes og »rullede tilbage« → ikke formens brud (afslutning inkonsistent)", brudtPaaFormensMaade(await saRes({ a: { ...OKS(1), commit: "rollback" } })), false);
+eq("… men B afvist m. FORKERT grund + invariant brudt → ikke formens brud (uvedkommende afvisning medregnes ikke)", brudtPaaFormensMaade(await saRes({ b: { ...REJ(2), detail: { message: "andet", routine: "f.stand_deaktiver" } } })), false);
+eq("… men B afvist m. RIGTIG grund + invariant brudt → ikke formens brud (inkonsistent billede: en afvist session kan ikke have brudt invarianten)", brudtPaaFormensMaade(await saRes({ b: REJ(2) })), false);
+eq("… men vidnet er B selv → ikke formens brud", brudtPaaFormensMaade(await saRes({ overlap: OV(1, 2, 2) })), false);
 
 console.log("\nkillCaseMutant — målrettet, formbestemt kill m. nødvendige kontroller:");
 const cases = [C.ut, C.fs, C.mh, C.sa];
@@ -185,11 +216,20 @@ const kill = (m, r = mkRunner()) => killCaseMutant(m, cases, ctx, r);
 { const r = await kill(M.fs); eq("FS-mutant → dræbt (FS)", r.killed && r.break_form === "FS", true); }
 { const r = await kill(M.mhGrant); eq("MH-mutant (grant fjernet → 42501) → dræbt (MH)", r.killed && r.break_form === "MH", true); }
 { const r = await kill(M.mhAudit); eq("MH-mutant (vidne udebliver) → dræbt (MH)", r.killed && r.break_form === "MH", true); }
-{ const r = await kill(M.sa); eq("SA-mutant (trigger fjernet → invariant brudt) → dræbt (SA)", r.killed && r.break_form === "SA", true); }
+{ const r = await kill(M.sa); eq("SA-mutant (trigger fjernet → invariant brudt, overlap vidnet) → dræbt (SA)", r.killed && r.break_form === "SA", true); }
+{ const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(1), b: st.trg ? REJ(2) : OKS(2), overlap: OV(1, 2, 303, st.trg), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: under mutanten INTET overlap observeret (sekventiel) → ikke dræbt (F-22)", r.killed === false && r.under?.status === STATUS.BRUDT, true); }
+{ const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(st.trg ? 1 : 9), b: st.trg ? REJ(2) : OKS(9), overlap: st.trg ? OV() : OV(9, 9), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: samme pid for A og B under mutanten → ikke dræbt (F-22)", r.killed, false); }
+{ const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: st.trg ? OKS(1) : { ...OKS(1), commit: "rollback" }, b: st.trg ? REJ(2) : OKS(2), overlap: OV(), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: A lykkedes men »rollback« under mutanten → ikke dræbt (F-22)", r.killed, false); }
+{ const r = await kill(M.sa, mkRunner({ race: (s, st) => ({ protocolOk: true, a: OKS(1), b: st.trg ? REJ(2) : { ...REJ(2), detail: { message: "andet", routine: "f.stand_deaktiver" } }, overlap: OV(), invariantRows: [{ aktive: st.trg ? 1 : 0 }] }) })); eq("SA-mutant: forkert afvisningsgrund + invariant brudt under mutanten → ikke dræbt (F-22)", r.killed, false); }
 { const r = await kill({ ...M.ut, target_assertion_id: "tilstand-uaendret" }); eq("mutanten bryder en ANDEN assertion end den målrettede → ikke dræbt (målrettet kill)", r.killed, false); }
 { const r = await kill({ ...M.ut, apply: "MUT_NOOP", restore: "MUT_NOOP" }); eq("»findes«-mutant → overlever", r.killed, false); }
 { const r = await kill({ ...M.ut, footprint: { observe: { sql: "FP_KONSTANT" } } }); eq("mutation uden aftryk i footprint → ikke attesteret → ikke dræbt (F-13)", r.killed === false && /mutation_attesteret=false/.test(r.detail), true); }
 { const r = await kill({ ...M.ut, footprint: undefined }); eq("mutant uden footprint → malformet", /footprint/.test(r.detail), true); }
+{ const r = await kill(M.ut, mkRunner({ sql: (t, o, s) => (t === "FP" && !s.guardNavn ? R(false, "42601", "syntax error", null) : undefined) })); eq("footprint-kaldet FEJLER under mutanten (42601) → footprint_under=null → IKKE attesteret mutation → ikke dræbt (F-21)", r.killed === false && r.footprint_under === null && /footprint_gyldigt=false/.test(r.detail) && /footprint-fejl: under/.test(r.detail), true); }
+{ const g = await kill(M.ut); eq("judgeKill: footprint_under=null erstattet i et ellers gyldigt resultat → ikke dræbt (F-21)", judgeKill({ ...g, footprint_under: null }).killed, false);
+  eq("judgeKill: footprint_under = {error} (objekt, ikke rækkesæt) → ikke dræbt (F-21)", judgeKill({ ...g, footprint_under: { error: "query failed" } }).killed, false);
+  eq("judgeKill: footprint_restored=null → restored=false (F-21)", judgeKill({ ...g, footprint_restored: null }).restored, false);
+  eq("judgeKill: footprint_baseline=null → hverken dræbt eller restored (F-21)", judgeKill({ ...g, footprint_baseline: null }).killed === false && judgeKill({ ...g, footprint_baseline: null }).restored === false, true); }
 { const r = await kill({ ...M.ut, restore: "MUT_NOOP" }); eq("restore der ikke gendanner aftrykket → restored=false (bevist ved footprint, ikke ved rc)", r.killed === true && r.restored === false, true); }
 { const r = await kill(M.ut); eq("resultatet bærer footprint_baseline/under/restored rå", Array.isArray(r.footprint_baseline) && Array.isArray(r.footprint_under) && Array.isArray(r.footprint_restored), true); }
 { const r = await kill({ ...M.ut, apply: "MUT_FAIL" }); eq("mutant-apply fejler → ikke dræbt", r.killed === false && /apply fejlede/.test(r.detail), true); }
@@ -214,6 +254,8 @@ eq("én overlevende mutant → allOk=false", (await runBuildProofEngine({ manife
 eq("protokol-fejl → allOk=false", (await runBuildProofEngine({ manifest, run_id: "r-4", cases: [withCase(C.fs, (x) => (x.observe.sql = "OBS_NOROWS"))], mutants: [] }, mkRunner())).allOk, false);
 eq("run_id mangler → dead", /run_id/.test((await runBuildProofEngine({ manifest, cases }, mkRunner())).error), true);
 eq("dublet case_id → dead", /dublet/.test((await runBuildProofEngine({ manifest, run_id: "r", cases: [C.ut, C.ut] }, mkRunner())).error), true);
+eq("mutant_id == case_id → dead (F-26: ét entydigt id-rum)", /kolliderer/.test((await runBuildProofEngine({ manifest, run_id: "r", cases, mutants: [{ ...M.ut, mutant_id: "c-fs" }] }, mkRunner())).error), true);
+eq("dublet mutant_id → dead (F-26)", /kolliderer/.test((await runBuildProofEngine({ manifest, run_id: "r", cases, mutants: [M.ut, M.ut] }, mkRunner())).error), true);
 { const arr = [C.ut]; Object.defineProperty(arr, 1, { enumerable: true, get: () => C.fs }); arr.length = 2; eq("cases m. accessor-index → dead", /cases/.test((await runBuildProofEngine({ manifest, run_id: "r", cases: arr }, mkRunner())).error), true); }
 { const c = Object.create({ proof_form: "UT" }); Object.assign(c, C.ut); delete c.proof_form; eq("arvet proof_form tæller ikke → protokol", (await run(c)).status, STATUS.PROTOKOL); }
 

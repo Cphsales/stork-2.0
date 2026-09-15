@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// angrebs-spec.selftest.mjs — red-team af måle-spec-validatoren (C1-r2 F-13/F-16/F-18): gyldig spec mod manifest → ok; hver
-// plantet indsnævring (udeladt case/negativ/delbevis · forkert bid · blandet kanal · fase/aktør ≠ kontrakt · mutant uden footprint/
-// controls · D10-hul · slettet forudsætning) → rød.
+// angrebs-spec.selftest.mjs — red-team af måle-spec-validatoren (C1-r2 F-13/F-16/F-18 · C1-r3 F-24/F-26): gyldig spec mod manifest → ok;
+// hver plantet indsnævring (udeladt case/negativ/delbevis · forkert bid · blandet kanal · fase/aktør ≠ kontrakt i ALLE varianter ·
+// mutant uden footprint/controls · D10-hul · id-kollision · slettet forudsætning) → rød.
 import { validateAngrebsSpec } from "./angrebs-spec.mjs";
 
 let pass = 0, fail = 0;
@@ -27,9 +27,9 @@ const spec = () => ({
     { case_id: "c-ut", obligation_id: "K-1/ac-1", negative_id: "K-1/ac-1/neg-1", proof_form: "UT", fase: "wrapper", bid_id: "bid-2", hard_effect: "db-row", entrypoint: EP, actor: A, setup: { sql: "S" }, positive: { sql: "P" }, negative: { sql: "N" }, state: { sql: "ST" } },
     { case_id: "c-mh", obligation_id: "K-1/ac-1", proof_form: "MH", bid_id: "bid-2", hard_effect: "db-row", entrypoint: EP, actor: A, action: { sql: "ACT" }, witnesses: [{ id: "audit-row", observe: { sql: "W" }, expect: { kind: "count", value: 1 } }] },
     { case_id: "c-fs", obligation_id: "K-1/ac-3", proof_form: "FS", bid_id: "bid-2", hard_effect: "state", entrypoint: EP, actor: A, observe: { sql: "O" }, expect: { kind: "scalar", value: 100 }, checkpoints: [{ id: "hist", observe: { sql: "OH" }, expect: { kind: "scalar", value: 80 } }] },
-    { case_id: "c-sa", obligation_id: "K-2/ac-6", proof_form: "SA", bid_id: "bid-2", hard_effect: "db-row", entrypoint: EP, actor: A, race: { race_id: "r1", a: { sql: "a" }, b: { sql: "b" }, barrier: "row-lock", invariant: { observe: { sql: "I" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
+    { case_id: "c-sa", obligation_id: "K-2/ac-6", proof_form: "SA", fase: "apply", bid_id: "bid-2", hard_effect: "db-row", entrypoint: EP, actor: A, race: { race_id: "r1", a: { sql: "a" }, b: { sql: "b" }, barrier: "row-lock", invariant: { observe: { sql: "I" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
     { case_id: "c-ut2", obligation_id: "K-2/ac-6", negative_id: "K-2/ac-6/neg-1", proof_form: "UT", fase: "apply", bid_id: "bid-2", hard_effect: "db-row", entrypoint: EP, actor: A, positive: { sql: "P2" }, negative: { sql: "N2" }, state: { sql: "ST2" } },
-    { case_id: "c-ci", obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", bid_id: "bid-2", hard_effect: "state", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "k.mjs"] } },
+    { case_id: "c-ci", obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", fase: "ci", bid_id: "bid-2", hard_effect: "state", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "k.mjs"] } },
   ],
   mutants: [
     { mutant_id: "m-navn", guard_ref: "g.navn", target_case_id: "c-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-fs"], apply: "A1", restore: "R1", footprint: { observe: { sql: "FP1" } } },
@@ -54,6 +54,11 @@ red("blandet kanal: exit-UT m. negative → rød (F-11)", (s) => (s.cases[5].neg
 red("fase ≠ kontraktens → rød (F-14)", (s) => (s.cases[0].fase = "apply"), /fase 'apply' ≠ kontraktens/);
 red("actor.role ≠ kontraktens aktør → rød (F-14)", (s) => (s.cases[0].actor = { role: "postgres" }), /≠ kontraktens aktør/);
 red("SA actor.role ≠ kontraktens aktør → rød", (s) => (s.cases[3].actor = { role: "postgres" }), /SA actor.role/);
+red("SA fase ≠ kontraktens (wrapper ≠ apply) → rød (F-24)", (s) => (s.cases[3].fase = "wrapper"), /SA fase 'wrapper' ≠ kontraktens 'apply'/);
+red("SA uden fase → rød (F-24)", (s) => delete s.cases[3].fase, /SA fase 'undefined' ≠/);
+red("exit-UT fase ≠ kontraktens (wrapper ≠ ci) → rød (F-24)", (s) => (s.cases[5].fase = "wrapper"), /≠ kontraktens 'ci' \(exit-kanal, F-24\)/);
+red("exit-UT actor.role ≠ kontraktens aktør (postgres ≠ ci) → rød (F-24)", (s) => (s.cases[5].actor = { role: "postgres" }), /≠ kontraktens aktør 'ci' \(exit-kanal, F-24\)/);
+red("mutant_id kolliderer med et case_id → rød (F-26)", (s) => (s.mutants[0].mutant_id = "c-ut"), /kolliderer med et case_id/);
 red("expect uden value (scalar) → rød", (s) => (s.cases[2].expect = { kind: "scalar" }), /gyldig expect/);
 red("negative_id på FS-case → rød", (s) => (s.cases[2].negative_id = "K-1/ac-1/neg-1"), /negative_id kun på UT/);
 red("mutant uden footprint → rød (F-13/F-16)", (s) => delete s.mutants[0].footprint, /footprint/);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier, v2.2 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19).
+// build-proof.mjs — v5's build-gate proof-verifier, v2.3 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27).
 //
 // Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run. Verifieren GENUDLEDER alt:
 //   - FORVENTNINGEN = manifestet (gate-binding `manifest`, kæde-bundet til plan-gaten) · MÅLINGEN = angrebs-/måle-spec'en
@@ -7,18 +7,21 @@
 //     @ pinned commit. Beviset leverer KUN observationer; orakler, kontroller, mutationer og bid-graf kan ikke vælges af buildet
 //     (F-13, F-16, F-18). validateAngrebsSpec beviser spec'ens komplethed mod manifestet.
 //   - hver spec-case har PRÆCIS ét delbevis i proofen; dets identitetsfelter og de spec-afledte dele af observationerne (kontrakt ·
-//     expect · checkpoint/vidne-id'er · race_id · invariant_expect · fase · aktør) skal være spec'ens/manifestets; status+assertions
-//     GENUDLEDES med judgeObservations (F-3, F-4, F-11, F-14)
+//     expect · checkpoint/vidne-id'er · race_id · invariant_expect · fase · aktør · TILSTEDEVÆRELSE af foreskrevet setup/handling, F-20)
+//     skal være spec'ens/manifestets; status+assertions GENUDLEDES med judgeObservations (F-3, F-4, F-11, F-14, F-23, F-24)
 //   - hver spec-mutant har PRÆCIS ét resultat; indlejrede delresultater bindes til case-identitet + run_id + form + kontrakt (F-12),
 //     kontrol-mængden er spec'ens i alle faser (F-16), kill GENUDLEDES (judgeKill) inkl. footprint-attesteret mutation og restore,
 //     og break_form skal være judgeKill's (F-12, F-15)
 //   - bids i proofen == spec'ens graf (F-18) · engine.summary genudledes · prover_result er et konsistent resumé (judgeTestSummary)
-//     der dækker alle cases+mutanter (F-19) · claim_graph binder case_ids/mutant_ids til samme K (F-19) · async-review PASS pr. bid
+//     hvis executed_ids er PRÆCIS mængden af alle case_ids+mutant_ids — uden dubletter eller fremmede id'er (F-19, F-26)
+//   - claim_graph: hvert claim binder ét VÆRN (guard_ref) → dets dræbte mutanter → deres target-cases (⊆ claim.case_ids) → den navngivne
+//     target-assertion opfyldt i topniveau-delbeviset (udført trace) → source_anchor git-verificeret OG dets uddrag nævner den routine/indgang
+//     casene rammer (F-25: samme K er ikke en forbindelse) · async-review PASS pr. bid
 //   ENFORCEMENT-RESIDUAL (R-CI-AUTENTICITET): at observationerne stammer fra en real store som ikke-bypass rolle attesteres af den
 //   betroede runner i CI's build-job; R-PREDECESSOR-WIRING: build-gate-run (frisk plan-dom → predecessor.bindings_oids) er C4.
 
 import { isOid } from "./gates.mjs";
-import { verifyEvidence } from "./verdikt.mjs";
+import { verifyEvidence, readBlobLines, excerptAt } from "./verdikt.mjs";
 import { validateManifest, expectedSet, PROOF_FORMS } from "./forventnings-manifest.mjs";
 import { validateAngrebsSpec } from "./angrebs-spec.mjs";
 import { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS, STATUS, judgeObservations, judgeKill, summarize, canon } from "./build-harness.mjs";
@@ -42,27 +45,38 @@ const safeCanon = (v) => { try { return canon(v); } catch { return null; } };
 const sameCanon = (a, b) => { const x = safeCanon(a), y = safeCanon(b); return x !== null && x === y; };
 export { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS };
 
-// spec-afledte observationsfelter pr. form (det beviset IKKE må vælge) — sammenlignes kanonisk med observationerne
+// spec-afledte observationsfelter pr. form (det beviset IKKE må vælge) — sammenlignes kanonisk med observationerne.
+// F-20: TILSTEDEVÆRELSEN af foreskrevet setup (case.setup / race.setup) og handling (FS action) er spec-afledt — udelades de af
+// observationerne, matcher projektionen ikke; er de til stede dømmer judgeObservations at de lykkedes.
 function specObs(c, F) {
-  const ob = F.obligations.get(c.obligation_id);
+  const hasSetup = hasOwn(c, "setup") || (c.proof_form === "SA" && hasOwn(c.race, "setup"));
   if (c.proof_form === "UT") {
     const rc = F.negatives.get(c.negative_id).reject_contract;
-    if (rc.kanal === "exit") return { kontrakt: { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse } };
-    return { kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase };
+    if (rc.kanal === "exit") return { has_setup: hasSetup, kontrakt: { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse, fase: rc.fase, aktoer: rc.aktoer }, aktoer: c.actor.role, fase: c.fase };   // F-24
+    return { has_setup: hasSetup, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase };
   }
-  if (c.proof_form === "FS") return { expect: c.expect, checkpoints: (c.checkpoints ?? []).map((cp) => ({ id: cp.id, expect: cp.expect })) };
-  if (c.proof_form === "MH") return { witnesses: c.witnesses.map((w) => ({ id: w.id, expect: w.expect })) };
-  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; return { race_id: c.race.race_id, invariant_expect: c.race.invariant.expect, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer }, aktoer: c.actor.role }; }
-  void ob; return {};
+  if (c.proof_form === "FS") return { has_setup: hasSetup, has_action: hasOwn(c, "action"), expect: c.expect, checkpoints: (c.checkpoints ?? []).map((cp) => ({ id: cp.id, expect: cp.expect })) };
+  if (c.proof_form === "MH") return { has_setup: hasSetup, witnesses: c.witnesses.map((w) => ({ id: w.id, expect: w.expect })) };
+  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; return { has_setup: hasSetup, race_id: c.race.race_id, invariant_expect: c.race.invariant.expect, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase }; }   // F-24
+  return {};
 }
 // projektion af observationerne på de spec-afledte felter (samme form som specObs)
 function obsProj(form, obs) {
   if (!isPlain(obs)) return null;
-  if (form === "UT") { const k = own(obs, "kontrakt"); return own(k, "kanal") === "exit" ? { kontrakt: k } : { kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") }; }
-  if (form === "FS") return { expect: own(obs, "expect"), checkpoints: (isDense(own(obs, "checkpoints"), isPlain) ? own(obs, "checkpoints") : []).map((cp) => ({ id: own(cp, "id"), expect: own(cp, "expect") })) };
-  if (form === "MH") return { witnesses: (isDense(own(obs, "witnesses"), isPlain) ? own(obs, "witnesses") : []).map((w) => ({ id: own(w, "id"), expect: own(w, "expect") })) };
-  if (form === "SA") return { race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer") };
+  const hasSetup = hasOwn(obs, "setup");
+  if (form === "UT") { const k = own(obs, "kontrakt"); return { has_setup: hasSetup, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") }; }
+  if (form === "FS") return { has_setup: hasSetup, has_action: hasOwn(obs, "action"), expect: own(obs, "expect"), checkpoints: (isDense(own(obs, "checkpoints"), isPlain) ? own(obs, "checkpoints") : []).map((cp) => ({ id: own(cp, "id"), expect: own(cp, "expect") })) };
+  if (form === "MH") return { has_setup: hasSetup, witnesses: (isDense(own(obs, "witnesses"), isPlain) ? own(obs, "witnesses") : []).map((w) => ({ id: own(w, "id"), expect: own(w, "expect") })) };
+  if (form === "SA") return { has_setup: hasSetup, race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer"), fase: own(obs, "fase") };
   return null;
+}
+// F-25: symbolet et claim SKAL kunne finde i sit source-anker — den routine der afviste (UT/SA sqlstate m. afvisningssted ≠ "-"), ellers den
+// offentlige indgang casen rammer; unqualified (sidste segment efter '.') så et migrations-uddrag »create function f.lokation_opret« matcher
+function caseSymbol(c, F) {
+  let sted = null;
+  if (c.proof_form === "UT") { const rc = F.negatives.get(c.negative_id).reject_contract; if (rc.kanal === "sqlstate" && rc.afvisningssted !== "-") sted = rc.afvisningssted; }
+  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; if (rc.afvisningssted !== "-") sted = rc.afvisningssted; }
+  const sym = String(sted ?? c.entrypoint.ref); const parts = sym.replace(/\(.*$/, "").split("."); return parts[parts.length - 1];
 }
 
 export function verifyBuildProof(proof, snapshot, { git } = {}) {
@@ -142,7 +156,7 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (own(r, "run_id") !== runId) { fail(`${label}: run_id ≠ kørslens`); ok = false; }
     const obs = own(r, "observations");
     if (!isPlain(obs)) { fail(`${label}: observations mangler`); return false; }
-    if (!sameCanon(obsProj(c.proof_form, obs), specObs(c, F))) { fail(`${label}: spec-afledte felter i observationerne (kontrakt/orakel/id'er/fase/aktør) ≠ spec'en/manifestet`); ok = false; }
+    if (!sameCanon(obsProj(c.proof_form, obs), specObs(c, F))) { fail(`${label}: spec-afledte felter i observationerne (kontrakt/orakel/id'er/fase/aktør/foreskrevet setup+handling) ≠ spec'en/manifestet (F-13/F-20/F-24)`); ok = false; }
     const j = judgeObservations(c.proof_form, obs);
     if (own(r, "status") !== j.status || !sameCanon(own(r, "assertions"), j.assertions)) { fail(`${label}: selvrapporteret status/assertions ≠ genudledt (${j.status})`); ok = false; }
     return ok ? j : false;
@@ -200,19 +214,37 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (!sameCanon(own(engine, "summary"), derived)) fail(`engine.summary ≠ genudledt (${safeCanon(derived)})`);
   }
 
-  // ---------- 6) claim_graph: K-bundet til opfyldte cases og dræbte mutanter + git-ankre (F-19) ----------
+  // ---------- 6) claim_graph: værn → dræbte mutanter → deres cases → udført target-assertion → source-anker m. symbol (F-19/F-25) ----------
   const cg = own(proof, "claim_graph");
   if (!isDense(cg, isPlain) || cg.length === 0) fail("claim_graph skal være et ikke-tomt, tæt array (den git-forankrede kerne må ikke droppes)");
   else for (let i = 0; i < cg.length; i++) {
-    const c = cg[i]; const kId = own(c, "k_id");
-    if (!isStr(kId) || !F.ks.has(kId)) fail(`claim_graph[${i}]: ukendt/manglende K`);
+    const c = cg[i]; const kId = own(c, "k_id"); const lab = `claim_graph[${i}] (${String(kId)})`;
+    if (!isStr(kId) || !F.ks.has(kId)) fail(`${lab}: ukendt/manglende K`);
+    const gref = own(c, "guard_ref");
+    if (!isStr(gref) || !F.guards.has(gref)) fail(`${lab}: guard_ref mangler/ikke deklareret i manifestet (F-25: et claim binder ét værn)`);
     const cids = own(c, "case_ids"); const mids = own(c, "mutant_ids");
-    if (!isDense(cids, isStr) || cids.length === 0 || !cids.every((x) => caseOk(x) && F.obligations.get(specCase.get(x)?.obligation_id)?.k_id === kId)) fail(`claim_graph[${i}] (${String(kId)}): case_ids skal være ≥1 opfyldte cases for netop dette K`);
-    if (!isDense(mids, isStr) || mids.length === 0 || !mids.every((x) => mutOk.has(x) && F.obligations.get(specCase.get(specMut.get(x)?.target_case_id)?.obligation_id)?.k_id === kId)) fail(`claim_graph[${i}] (${String(kId)}): mutant_ids skal være ≥1 dræbte mutanter for netop dette K`);
-    if (!ownTrue(c, "executed") || !ownTrue(c, "mutant_killed")) fail(`claim_graph[${i}] (${String(kId)}): executed/mutant_killed ikke eksplicit true (og skal stemme med case_ids/mutant_ids)`);
+    const cidsOk = isDense(cids, isStr) && cids.length === new Set(cids).size && cids.length > 0;
+    if (!cidsOk || !cids.every((x) => caseOk(x) && F.obligations.get(specCase.get(x)?.obligation_id)?.k_id === kId)) fail(`${lab}: case_ids skal være ≥1 distinkte, opfyldte cases for netop dette K`);
+    const midsOk = isDense(mids, isStr) && mids.length === new Set(mids).size && mids.length > 0;
+    if (!midsOk || !mids.every((x) => mutOk.has(x) && F.obligations.get(specCase.get(specMut.get(x)?.target_case_id)?.obligation_id)?.k_id === kId)) fail(`${lab}: mutant_ids skal være ≥1 distinkte, dræbte mutanter for netop dette K`);
+    const symbols = new Set();
+    if (midsOk && cidsOk && isStr(gref)) for (const mid of mids) {
+      const sm = specMut.get(mid); if (!sm) continue;
+      if (sm.guard_ref !== gref) fail(`${lab}: mutant ${mid} rammer værnet '${sm.guard_ref}' ≠ claimets '${gref}' (F-25)`);
+      if (!cids.includes(sm.target_case_id)) fail(`${lab}: mutant ${mid} rammer casen '${sm.target_case_id}' som ikke er blandt claimets case_ids (F-25: samme K er ikke en forbindelse)`);
+      const top = resById.get(sm.target_case_id)?.judged;   // udført trace: den navngivne target-assertion blev kørt og opfyldt i topniveau-delbeviset, og brød under mutanten (kill genudledt ovenfor)
+      if (!top || !isDense(top.assertions, isPlain) || !top.assertions.some((a) => a.id === sm.target_assertion_id && a.ok === true)) fail(`${lab}: target-assertion '${sm.target_assertion_id}' for ${mid} er ikke et udført, opfyldt delbevis i casen '${sm.target_case_id}'`);
+      const tc = specCase.get(sm.target_case_id); if (tc) symbols.add(caseSymbol(tc, F));
+    }
+    if (!ownTrue(c, "executed") || !ownTrue(c, "mutant_killed")) fail(`${lab}: executed/mutant_killed ikke eksplicit true (og skal stemme med case_ids/mutant_ids)`);
     const anchor = own(c, "source_anchor");
-    if (!isPlain(anchor)) { fail(`claim_graph[${i}] (${String(kId)}): source_anchor mangler`); continue; }
-    const ev = verifyEvidence(anchor, snapshot, { git }); if (!ev.ok) fail(`claim_graph[${i}] (${String(kId)}): source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`);
+    if (!isPlain(anchor)) { fail(`${lab}: source_anchor mangler`); continue; }
+    const ev = verifyEvidence(anchor, snapshot, { git }); if (!ev.ok) { fail(`${lab}: source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`); continue; }
+    if (symbols.size) {   // F-25: ankerets uddrag skal nævne det claimet handler om — routinen der afviser / indgangen casene rammer
+      const bl = readBlobLines(git, own(anchor, "blob_oid")); const excerpt = bl && !bl.error ? excerptAt(bl.lines, own(anchor, "line_span")) : null;
+      if (typeof excerpt !== "string") fail(`${lab}: ankerets uddrag kan ikke læses`);
+      else for (const sym of symbols) if (!excerpt.includes(sym)) fail(`${lab}: ankerets uddrag (${own(anchor, "path")} ${JSON.stringify(own(anchor, "line_span"))}) nævner ikke '${sym}' — source-ankeret er ikke forbundet til casen/mutanten (F-25)`);
+    }
   }
 
   // ---------- 7) async-reviews: PASS pr. bid @ base_oid ----------
@@ -236,8 +268,8 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (!js.ok) fail(`prover_result: ${js.reasons.join("; ")}`);
     const exp = specCase.size + specMut.size;
     if (own(pr, "total") !== exp) fail(`prover_result.total ${String(own(pr, "total"))} ≠ kørslens ${exp} delbeviser (cases + mutanter) — afstemning mod den komplette forventede liste`);
-    const ex = own(pr, "executed_ids");
-    if (!isDense(ex, isStr) || new Set(ex).size !== exp || ![...specCase.keys(), ...specMut.keys()].every((id) => ex.includes(id))) fail("prover_result.executed_ids skal være præcis alle case_ids + mutant_ids fra spec'en");
+    const ex = own(pr, "executed_ids"); const want = new Set([...specCase.keys(), ...specMut.keys()]);
+    if (!isDense(ex, isStr) || ex.length !== want.size || new Set(ex).size !== ex.length || !ex.every((id) => want.has(id))) fail(`prover_result.executed_ids skal være PRÆCIS mængden af alle case_ids + mutant_ids fra spec'en (${want.size}) — uden dubletter eller fremmede id'er (F-26)`);
   }
   return { ok: reasons.length === 0, reasons };
 }
