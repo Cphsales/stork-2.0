@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier, v2.4 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31).
+// build-proof.mjs — v5's build-gate proof-verifier, v2.5 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31 · vejnings-skæring 2026-09-15).
 //
 // Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run. Verifieren GENUDLEDER alt:
 //   - FORVENTNINGEN = manifestet (gate-binding `manifest`, kæde-bundet til plan-gaten) · MÅLINGEN = angrebs-/måle-spec'en
@@ -12,9 +12,14 @@
 //   - hver spec-mutant har PRÆCIS ét resultat; indlejrede delresultater bindes til case-identitet + run_id + form + kontrakt (F-12),
 //     kontrol-mængden er spec'ens i alle faser (F-16), kill GENUDLEDES (judgeKill) inkl. footprint-attesteret mutation og restore,
 //     og break_form skal være judgeKill's (F-12, F-15)
-//   - bids i proofen == spec'ens graf (F-18) · engine.summary genudledes · prover_result er et konsistent resumé (judgeTestSummary)
-//     hvis executed_ids er PRÆCIS mængden af alle case_ids+mutant_ids — uden dubletter eller fremmede id'er (F-19, F-26)
-//   - claim_graph: hvert claim binder ét VÆRN (guard_ref) → dets dræbte mutanter → deres target-cases (⊆ claim.case_ids) → den navngivne
+//   - bids i proofen == spec'ens graf (F-18) · engine.summary genudledes · prover_result er et konsistent, grønt resumé (judgeTestSummary)
+//     af de ØVRIGE committede tests — et UAFHÆNGIGT bevis ved siden af cases+mutanter. VEJNINGS-SKÆRING (Mathias 2026-09-15 »tjek at vi ikke
+//     over-tester«): id-bijektionen executed_ids ⇔ cases+mutanter (F-19/F-26) er fjernet — cases og mutanter ER beviset for sig selv, og
+//     bijektionen krævede tre ekstra C4-leverancer (testregister · friske udførelsesregistreringer · adapter) uden at lukke et falsk-grønt hul
+//     som case-/mutantbeviset ikke allerede lukker. Leveres executed_ids alligevel, valideres de stadig (ingen dubletter/fremmede id'er).
+//   - claim_graph er VALGFRI i pakke 1 (samme skæring): mutant-kill + footprint beviser allerede at værnet findes og testes; reviewerens
+//     ankre hører til i code-reviewerens verdikt (C3, R-C3-REVIEW). Leveres claim_graph, valideres den fuldt:
+//     hvert claim binder ét VÆRN (guard_ref) → dets dræbte mutanter → deres target-cases (⊆ claim.case_ids) → den navngivne
 //     target-assertion opfyldt i topniveau-delbeviset (udført trace) → source_anchor git-verificeret OG placeret på værnets LÅSTE locus fra
 //     manifestet (guards[].locus {path, pattern}: sti == locus.path, uddraget matcher mønstret — F-25/F-31: samme K er ikke en forbindelse,
 //     og producenten kan ikke vælge et andet uddrag/en kommentar; locus-indholdet er plan-gatens dom) · async-review PASS pr. bid
@@ -208,8 +213,8 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
 
   // ---------- 6) claim_graph: værn → dræbte mutanter → deres cases → udført target-assertion → source-anker m. symbol (F-19/F-25) ----------
   const cg = own(proof, "claim_graph");
-  if (!isDense(cg, isPlain) || cg.length === 0) fail("claim_graph skal være et ikke-tomt, tæt array (den git-forankrede kerne må ikke droppes)");
-  else for (let i = 0; i < cg.length; i++) {
+  if (hasOwn(proof, "claim_graph") && !isDense(cg, isPlain)) fail("claim_graph skal være et tæt array af objekter når det leveres (valgfrit i pakke 1 — vejnings-skæring 2026-09-15)");
+  else if (isDense(cg, isPlain)) for (let i = 0; i < cg.length; i++) {
     const c = cg[i]; const kId = own(c, "k_id"); const lab = `claim_graph[${i}] (${String(kId)})`;
     if (!isStr(kId) || !F.ks.has(kId)) fail(`${lab}: ukendt/manglende K`);
     const gref = own(c, "guard_ref");
@@ -262,10 +267,8 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     if (!ownTrue(pr, "ok")) fail("prover_result.ok ikke eksplicit true (prover ikke grøn)");
     const js = judgeTestSummary({ total: own(pr, "total"), passed: own(pr, "passed"), failed: own(pr, "failed"), skipped: own(pr, "skipped") });
     if (!js.ok) fail(`prover_result: ${js.reasons.join("; ")}`);
-    const exp = specCase.size + specMut.size;
-    if (own(pr, "total") !== exp) fail(`prover_result.total ${String(own(pr, "total"))} ≠ kørslens ${exp} delbeviser (cases + mutanter) — afstemning mod den komplette forventede liste`);
-    const ex = own(pr, "executed_ids"); const want = new Set([...specCase.keys(), ...specMut.keys()]);
-    if (!isDense(ex, isStr) || ex.length !== want.size || new Set(ex).size !== ex.length || !ex.every((id) => want.has(id))) fail(`prover_result.executed_ids skal være PRÆCIS mængden af alle case_ids + mutant_ids fra spec'en (${want.size}) — uden dubletter eller fremmede id'er (F-26)`);
+    // vejnings-skæring 2026-09-15: ingen id-bijektion mod cases+mutanter (se header). Leveres executed_ids, skal de være entydige spec-id'er.
+    if (hasOwn(pr, "executed_ids")) { const ex = own(pr, "executed_ids"); const want = new Set([...specCase.keys(), ...specMut.keys()]); if (!isDense(ex, isStr) || new Set(ex).size !== ex.length || !ex.every((id) => want.has(id))) fail("prover_result.executed_ids (valgfri) skal være entydige case_ids/mutant_ids fra spec'en — dubletter/fremmede id'er afvises (F-26)"); }
   }
   return { ok: reasons.length === 0, reasons };
 }

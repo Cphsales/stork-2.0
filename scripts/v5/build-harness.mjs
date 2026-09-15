@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.4 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30).
+// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.5 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30 · C1-r5 F-34/35).
 //
 // verifyBuildProof (build-proof.mjs) VALIDERER en build-proof; DETTE modul PRODUCERER beviset ved at KØRE cases mod en real
 // backing store som ikke-bypass rolle og dræbe mutanter formbestemt. Kernen i v2.1: hvert delbevis afleverer RÅ OBSERVATIONER,
@@ -72,6 +72,9 @@ const kaldGyldig = (x) => {
   return typeof code === "string" && code.length > 0 && detOk;
 };
 const pidGyldig = (v) => Number.isInteger(v) && v > 0;
+// et OBSERVATIONS-kald ({ok, code, rows}) er konsistent når ok:true ⇒ code null/udeladt og ok:false ⇒ code er SQLSTATE-streng (F-34: den rene
+// dommer må ikke ignorere en bevaret modstrid i proofens observationer — verifieren genbruger dommen)
+const obsKaldGyldig = (x) => { if (!isPlain(x) || typeof own(x, "ok") !== "boolean") return false; const code = own(x, "code"); return own(x, "ok") === true ? code === null || code === undefined : typeof code === "string" && code.length > 0; };
 
 // ---------- runner-kald (protokol-vagt) ----------
 async function safeSql(runner, text, opts) {
@@ -83,9 +86,16 @@ async function safeSql(runner, text, opts) {
   const okVal = own(r, "ok");
   if (!isPlain(r) || typeof okVal !== "boolean") return dead("runner returnerede ikke {ok:boolean} som eget data-felt (fail-closed)");
   const code = own(r, "code"); const err = own(r, "error"); const rows = own(r, "rows"); const det = own(r, "detail");
+  // F-34: RÅ typer valideres FØR normalisering — en numerisk kode, et ikke-objekt detail eller en fejl-detail på et ok-udfald er en
+  // protokolfejl i runnerens svar, ikke noget der »repareres« til succes
+  if (code !== null && code !== undefined && typeof code !== "string") return dead(`runner leverede code af forkert type (${typeof code}) — SQLSTATE skal være streng eller null (F-34)`);
+  if (det !== null && det !== undefined && !isPlain(det)) return dead("runner leverede detail af forkert type (skal være objekt eller null) (F-34)");
+  if (err !== null && err !== undefined && typeof err !== "string") return dead("runner leverede error af forkert type (skal være streng eller null) (F-34)");
+  if (rows !== null && rows !== undefined && !isDense(rows, isPlain)) return dead("runner leverede rows der ikke er et tæt rækkesæt (F-34)");
   const detail = isPlain(det) ? { message: typeof own(det, "message") === "string" ? own(det, "message") : null, routine: typeof own(det, "routine") === "string" ? own(det, "routine") : null } : null;
   const rowsOk = isDense(rows, isPlain) && rows.every((row) => safeCanon(row) !== null);
   if (okVal === true && typeof code === "string" && code.length) return dead(`runner leverede selvmodsigende udfald: ok:true m. fejlkode ${code} (F-28)`);
+  if (okVal === true && detail && (detail.message !== null || detail.routine !== null)) return dead(`runner leverede selvmodsigende udfald: ok:true m. fejl-detail '${String(detail.message ?? detail.routine)}' (F-34)`);
   if (okVal === false && !(typeof code === "string" && code.length)) return dead(`runner leverede afvisning UDEN SQLSTATE (${typeof err === "string" ? err.slice(0, 120) : "ingen fejltekst"}) — ikke klassificerbar (F-28)`);
   return { protocolOk: true, ok: okVal, code: typeof code === "string" ? code : null, error: typeof err === "string" ? err : null, detail, rows: rowsOk ? rows : null };
 }
@@ -171,11 +181,12 @@ export function judgeObservations(form, obs) {
   if (form === "FS") {
     const o = own(obs, "observe"), exp = own(obs, "expect");
     if (hasOwn(obs, "action")) { const a = own(obs, "action"); if (!kaldGyldig(a)) return protokol("action-observation ugyldig/ufuldstændig (F-20)"); if (klasse(a) === "uvedkommende") return protokol(`handling fejlede uvedkommende (${a.code})`); push("handling-lykkedes", a.ok === true, a.ok ? "ok" : `afvist ${a.code}`); }
-    if (!isPlain(o) || o.ok !== true) return protokol("observations-kaldet lykkedes ikke (afvist/manglende) — ingen observation");
+    if (!obsKaldGyldig(o)) return protokol("observations-kaldet er ugyldigt/selvmodsigende (ok/code inkonsistente) — ingen observation (F-34)");
+    if (o.ok !== true) return protokol("observations-kaldet lykkedes ikke (afvist/manglende) — ingen observation");
     const m = matchExpect(own(o, "rows"), exp); if (m.ok === null) return protokol(`observation: ${m.detail}`);
     push("vaerdi-matcher-orakel", m.ok, m.detail);
     const cps = own(obs, "checkpoints"); if (!isDense(cps, isPlain)) return protokol("checkpoints-observationer mangler (tomt array hvis ingen)");
-    for (const cp of cps) { if (!isStr(own(cp, "id")) || own(cp, "ok") !== true) return protokol(`checkpoint ${String(own(cp, "id"))}: observations-kaldet lykkedes ikke`); const mm = matchExpect(own(cp, "rows"), own(cp, "expect")); if (mm.ok === null) return protokol(`checkpoint ${cp.id}: ${mm.detail}`); push(`checkpoint:${cp.id}`, mm.ok, mm.detail); }
+    for (const cp of cps) { if (!isStr(own(cp, "id")) || !obsKaldGyldig(cp)) return protokol(`checkpoint ${String(own(cp, "id"))}: observations-kaldet ugyldigt/selvmodsigende (F-34)`); if (own(cp, "ok") !== true) return protokol(`checkpoint ${String(own(cp, "id"))}: observations-kaldet lykkedes ikke`); const mm = matchExpect(own(cp, "rows"), own(cp, "expect")); if (mm.ok === null) return protokol(`checkpoint ${cp.id}: ${mm.detail}`); push(`checkpoint:${cp.id}`, mm.ok, mm.detail); }
     return done();
   }
   if (form === "MH") {
@@ -183,7 +194,7 @@ export function judgeObservations(form, obs) {
     if (!kaldGyldig(a) || !isDense(w, isPlain) || w.length === 0) return protokol("MH-observationer ufuldstændige (action som gyldigt kald-udfald + ≥1 vidne)");
     if (klasse(a) === "uvedkommende") return protokol(`handling fejlede uvedkommende (${a.code}) — ikke »handling udebliver«`);
     push("handling-mulig-for-legitim-aktoer", a.ok === true, a.ok ? "lovlig handling gennemført" : `HANDLING UDEBLEV (afvist ${a.code})`);
-    for (const x of w) { if (!isStr(own(x, "id")) || own(x, "ok") !== true) return protokol(`vidne ${String(own(x, "id"))}: observations-kaldet lykkedes ikke`); const m = matchExpect(own(x, "rows"), own(x, "expect")); if (m.ok === null) return protokol(`vidne ${x.id}: ${m.detail}`); push(`vidne:${x.id}`, m.ok, m.detail); }
+    for (const x of w) { if (!isStr(own(x, "id")) || !obsKaldGyldig(x)) return protokol(`vidne ${String(own(x, "id"))}: observations-kaldet ugyldigt/selvmodsigende (F-34)`); if (own(x, "ok") !== true) return protokol(`vidne ${String(own(x, "id"))}: observations-kaldet lykkedes ikke`); const m = matchExpect(own(x, "rows"), own(x, "expect")); if (m.ok === null) return protokol(`vidne ${x.id}: ${m.detail}`); push(`vidne:${x.id}`, m.ok, m.detail); }
     return done();
   }
   if (form === "SA") {
@@ -273,9 +284,12 @@ export async function runCase(c, ctx, runner) {
       const check = own(c, "check"); const ex = isPlain(runner) ? own(runner, "exec") : null;
       if (!isPlain(check) || !isDense(own(check, "cmd"), isStr) || typeof ex !== "function") return protokol("exit-kanal kræver case.check.cmd[] og runner.exec");
       let r; try { r = await ex(own(check, "cmd")); } catch (e) { return protokol(`runner.exec kastede: ${e?.message}`); }
-      const code = own(r, "exit_code"); const out = typeof own(r, "stdout") === "string" ? own(r, "stdout") : "";
+      const code = own(r, "exit_code"); const out = own(r, "stdout");
       if (!Number.isInteger(code)) return protokol("runner.exec returnerede ikke exit_code");
-      const ms = out.split(/\r?\n/).map((l) => l.match(/^klasse=([A-Za-z0-9._:-]+)$/)).filter(Boolean).map((m) => m[1]);   // ALLE strukturerede diagnose-linjer (F-30: én er en klassifikation, flere er støj)
+      if (typeof out !== "string") return protokol("runner.exec leverede ikke stdout som streng — manglende indsamling er ikke »ingen diagnose« (F-35)");
+      const raa = out.split(/\r?\n/).filter((l) => /^klasse=/.test(l));   // ALLE linjer i det reserverede format (F-30/F-35)
+      const ms = raa.map((l) => l.match(/^klasse=([A-Za-z0-9._:-]+)$/)).filter(Boolean).map((m) => m[1]);
+      if (ms.length !== raa.length) return protokol(`${raa.length - ms.length} malformet klasse-linje i det reserverede format (fx efterstillet mellemrum) — ikke »ingen diagnose« (F-35)`);
       obs.kontrakt = { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse, fase: rc.fase, aktoer: rc.aktoer }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;   // F-24
       obs.exit = { exit_code: code, klasse_observeret: ms.length === 1 ? ms[0] : null, klasse_linjer: ms.length };
       return finish();

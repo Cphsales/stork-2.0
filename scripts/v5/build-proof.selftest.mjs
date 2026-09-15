@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-proof.selftest.mjs — red-team af verifyBuildProof v2.4 (C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31): manifest OG angrebs-spec er gate-bindinger;
+// build-proof.selftest.mjs — red-team af verifyBuildProof v2.5 (C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31 · vejnings-skæring 2026-09-15): manifest OG angrebs-spec er gate-bindinger;
 // det grønne bevis produceres af motoren mod spec'en (konsistent by construction); hver plantet falsk-grøn → rød; e2e via evaluateGate.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -169,11 +169,14 @@ expectRed("exit-case: aktør i observationerne ≠ kontraktens (postgres) → r�
 
 console.log("\nprover · claim_graph · reviews (F-19):");
 expectRed("prover_result uden konsistent resumé (failed 99 skjult) → rød", verify(mutated((p) => (p.prover_result = { ok: true, total: ALL_IDS.length, passed: ALL_IDS.length, failed: 99, skipped: 0, executed_ids: ALL_IDS }))), "prover_result");
-expectRed("prover executed_ids m. dublet (total uændret) → rød (F-26)", verify(mutated((p) => (p.prover_result.executed_ids = [...ALL_IDS.filter((x) => x !== "m-klass"), "m-navn"]))), "F-26");
-expectRed("prover executed_ids m. fantom-id i stedet for en mutant → rød (F-26)", verify(mutated((p) => (p.prover_result.executed_ids = [...ALL_IDS.filter((x) => x !== "m-klass"), "PHANTOM-TEST"]))), "F-26");
-expectRed("prover executed_ids m. ekstra fremmed id (total+1) → rød (F-26)", verify(mutated((p) => { p.prover_result.executed_ids = [...ALL_IDS, "PHANTOM"]; p.prover_result.total = ALL_IDS.length + 1; p.prover_result.passed = ALL_IDS.length + 1; })), "≠ kørslens|F-26");
-expectRed("prover_result.total ≠ cases+mutanter → rød", verify(mutated((p) => { p.prover_result.total = 1; p.prover_result.passed = 1; })), "≠ kørslens");
-expectRed("prover executed_ids mangler en mutant → rød", verify(mutated((p) => (p.prover_result.executed_ids = ALL_IDS.filter((x) => x !== "m-klass")))), "executed_ids");
+expectGreen("vejnings-skæring: prover_result som uafhængigt grønt resumé (total 1) uden id-bijektion → grøn", verify(mutated((p) => { p.prover_result = { ok: true, total: 1, passed: 1, failed: 0, skipped: 0 }; })));
+expectGreen("vejnings-skæring: prover_result uden executed_ids → grøn", verify(mutated((p) => delete p.prover_result.executed_ids)));
+expectRed("prover executed_ids (leveret) m. dublet → rød (F-26)", verify(mutated((p) => (p.prover_result.executed_ids = [...ALL_IDS.filter((x) => x !== "m-klass"), "m-navn"]))), "F-26");
+expectRed("prover executed_ids (leveret) m. fantom-id → rød (F-26)", verify(mutated((p) => (p.prover_result.executed_ids = [...ALL_IDS.filter((x) => x !== "m-klass"), "PHANTOM-TEST"]))), "F-26");
+expectRed("prover_result.ok false → rød", verify(mutated((p) => (p.prover_result.ok = false))), "prover ikke grøn");
+expectGreen("vejnings-skæring: claim_graph udeladt → grøn (mutant-kill + footprint bærer værnsbeviset; ankre hører til C3)", verify(mutated((p) => delete p.claim_graph)));
+expectGreen("vejnings-skæring: claim_graph tom → grøn", verify(mutated((p) => (p.claim_graph = []))));
+expectRed("claim_graph leveret som ikke-array → rød", verify(mutated((p) => (p.claim_graph = { k_id: "K-1" }))), "tæt array");
 expectRed("claim executed:false → rød", verify(mutated((p) => (p.claim_graph[0].executed = false))), "executed/mutant_killed");
 expectRed("claim m. mutant fra andet K → rød", verify(mutated((p) => (p.claim_graph[0].mutant_ids = ["m-min"]))), "for netop dette K");
 expectRed("claim m. case fra andet K → rød", verify(mutated((p) => (p.claim_graph[0].case_ids = ["c-k2-ut"]))), "for netop dette K");

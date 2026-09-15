@@ -7,6 +7,12 @@
 // haerdet-register.json med (a) pas_ref (Codex-P2-pas-commit) og (b) blob_oid
 // der matcher modulets NUVÆRENDE indhold. Ændret modul uden nyt pas → RØD i CI.
 // Blob-binding kræver ingen git-historik (CI depth-1-sikkert: hash-object).
+//
+// KANDIDAT-TILSTAND (fabrik-beslutning 2026-09-15, plan DEL VIII pkt. 36 + vejnings-skæring: »lokal = candidate, CI = autoritet«):
+// en entry kan være { status: "kandidat", blob_oid, pas_afventer, kandidat_siden } — modulet er blob-bundet og i kandidat-drift, men
+// har endnu ikke Codex-P2-pas. Med STORK_V5_KANDIDAT_OK=1 (lokal drift · CI's selftest-job) tæller den som ⚠ kandidat, ikke rød;
+// UDEN (autoritets-tilstand: CI's register-job · C4's gate-dommer) er den RØD. Ændret indhold er ALTID rødt, også for kandidater.
+// Grunden: registret må ikke blokere overdragelse af kandidat-mekanik i dagevis mens Codex' runder løber — autoriteten ligger i CI.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
@@ -23,9 +29,11 @@ const GATE_ENTRYPOINTS = ["recon-gate-run.mjs", "krav-gate-run.mjs", "plan-gate-
 // er det gaten dømmer på):
 const ARTEFAKT_PRODUCENTER = ["consolidate-recon.mjs", "verdikt-byg.mjs", "codex-run.sh"];
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, kandidater = 0;
 const ok = (n) => { pass++; console.log(`  ✓ ${n}`); };
 const bad = (n, r) => { fail++; console.error(`  ✗ ${n}: ${r}`); };
+const KANDIDAT_OK = process.env.STORK_V5_KANDIDAT_OK === "1";
+const kandidat = (n, r) => { kandidater++; if (KANDIDAT_OK) console.log(`  ⚠ ${n}: KANDIDAT — ${r}`); else bad(n, `KANDIDAT (${r}) — ikke autoritativ; autoritets-tilstand kræver Codex-pas`); };
 
 // transitiv import-closure (kun lokale ./x.mjs-imports)
 const closure = new Set(ARTEFAKT_PRODUCENTER);
@@ -53,8 +61,15 @@ console.log(`gate-afhængige moduler (${closure.size}): ${[...closure].sort().jo
 for (const f of [...closure].sort()) {
   const e = register[f];
   if (!e) { bad(f, "MANGLER i hærdet-registret (u-hærdet gate-afhængigt modul — CI rød)"); continue; }
-  if (!isHex40(e.pas_ref)) { bad(f, `pas_ref er ikke en commit-OID: ${String(e.pas_ref)}`); continue; }
   if (!existsSync(join(HERE, f))) { bad(f, "register-entry for fil der ikke findes"); continue; }
+  if (e.status === "kandidat") {
+    if (!isHex40(e.blob_oid) || typeof e.pas_afventer !== "string" || !e.pas_afventer || !/^\d{4}-\d{2}-\d{2}$/.test(String(e.kandidat_siden))) { bad(f, "kandidat-entry malformet (kræver blob_oid · pas_afventer · kandidat_siden YYYY-MM-DD)"); continue; }
+    const nuK = hashObject(f);
+    if (nuK !== e.blob_oid) { bad(f, `kandidat-entry ÆNDRET siden registrering: ${e.blob_oid.slice(0, 12)} ≠ nuværende ${nuK.slice(0, 12)} — også kandidater er blob-bundne`); continue; }
+    kandidat(f, `blob bundet (${e.blob_oid.slice(0, 12)}), pas afventer: ${e.pas_afventer} (siden ${e.kandidat_siden})`);
+    continue;
+  }
+  if (!isHex40(e.pas_ref)) { bad(f, `pas_ref er ikke en commit-OID: ${String(e.pas_ref)}`); continue; }
   const nu = hashObject(f);
   nu === e.blob_oid
     ? ok(`${f} — blob matcher pas (${e.pas_ref.slice(0, 7)})`)
@@ -67,7 +82,7 @@ for (const f of Object.keys(register))
 
 console.log("");
 if (fail > 0) {
-  console.error(`haerdet-register: ${fail} FEJLEDE`);
+  console.error(`haerdet-register: ${fail} FEJLEDE${kandidater && !KANDIDAT_OK ? ` (heraf ${kandidater} kandidat(er) — sæt STORK_V5_KANDIDAT_OK=1 for kandidat-drift; autoritet kræver Codex-pas)` : ""}`);
   process.exit(1);
 }
-console.log(`haerdet-register: alle ${pass} moduler pas-bundne`);
+console.log(kandidater ? `haerdet-register: ${pass} moduler pas-bundne · ${kandidater} KANDIDAT(ER) i drift uden pas (ikke autoritativt — CI's autoritets-job er rødt indtil Codex-pas)` : `haerdet-register: alle ${pass} moduler pas-bundne`);

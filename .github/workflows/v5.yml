@@ -3,7 +3,7 @@ name: v5 gate-dommer selftests
 # Kører hele v5-dommer-suiten (falsk-grøn-fri red-team) ved hvert push + PR.
 # Minimal-privilegeret (contents:read) — dette er IKKE gate-dommer-CI'en der
 # emitterer v5/gate/*-check-runs (den kræver checks:write + kommer senere).
-# Her håndhæves blot at selve fabrikkens dommere er grønne på GitHub.
+# Her håndhæves blot at selve fabrikkens dommere er grønne på GitHub. To jobs: selftests (kandidat-drift) og register-autoritet.
 
 on:
   push:
@@ -32,5 +32,21 @@ jobs:
           git config --global user.email "v5-ci@users.noreply.github.com"
       - name: corepack (pnpm fra packageManager)
         run: corepack enable
-      - name: v5:selftest
+      - name: v5:selftest (kandidat-drift — registrets kandidater tæller som ⚠, ikke rød)
         run: pnpm run v5:selftest
+        env:
+          STORK_V5_KANDIDAT_OK: "1"
+
+  # AUTORITET (plan DEL VIII pkt. 36, fabrik-beslutning 2026-09-15): dette job er rødt så længe gate-afhængige moduler kører som
+  # KANDIDATER uden Codex-P2-pas. Det er den ærlige tilstand — lokal drift = kandidat, CI = autoritet. Grønt = alle moduler pas-bundne.
+  v5-haerdet-register-autoritet:
+    name: hærdet-register (autoritet — rød = kandidat-drift uden Codex-pas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: hærdet-register (strengt)
+        run: node scripts/v5/haerdet-register.selftest.mjs
