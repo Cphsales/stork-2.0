@@ -306,7 +306,7 @@ Kald, blobs, workdir-diff og afvig står i `fold-ind-r4.provenance.txt`. Result-
 | `../forventnings-manifest.json` | leverancen + 2 udfyldninger | (blob `3ab9cf9be063a46b531147d09d2ccd9feae3d750`) | committet manifest, validator gyldigt (60 · 118 · 10) |
 | `fold-ind-r4.prompt.txt` | scratchpad `v32/prompt-v32.txt` | `9307547cd8cc764b92993b88fb57a6f743eca334a75d07ca9e99fa796bebc32b` | rolletekst + tre instruks-lag |
 | `fold-ind-r4.claude-result.json` | `v32/out/OUT-v32.json` | `b98b66e22b0fe0160f6249981e28199e1e13ce32a808a1bfcce900a073abb9a1` | CLI result-JSON (session 7e16a99a) |
-| `fold-ind-r4.slutbesked.md` | result-feltet | `` | slutbesked m. hashes, grep-selvkontrol, hovedgreb |
+| `fold-ind-r4.slutbesked.md` | result-feltet | `95cc6f68f457864e781aec770139f4120fd37a22c062e11bc29196bdbf340513` | slutbesked m. hashes, grep-selvkontrol, hovedgreb |
 | `fold-ind-r4.settings.json` | `v32/settings-v32.json` | `5ce0cac411c69f27eb6dc52b26418a2bcfbaacfa5d8fc8adee5e361851b071e1` | acceptEdits-permissions |
 | `fold-ind-r4.hjaelpescript-ubrugt.cjs` | skrevet af aktøren UDEN FOR workdir (afvig) | `aa7e4a0dc76d7b4c07b93ea5b7dac963f33397c8acd5d116f784ddd70a83f24f` | aldrig kørt; arkiveret for fuldstændighed |
 | `fold-ind-r4.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance |
