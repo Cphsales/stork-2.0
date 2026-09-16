@@ -400,3 +400,9 @@ Delta pr. fund forretnings-vurderet: intet krav bøjet (R4-1 gør D-11's løfte 
 ### Kilde 26: planner-code r7 — `fold-ind-rapport-r7.md` (blob `0beeec1c`)
 
 134 fund — RETTET M. BEVIS 116 · INDEN FOR MANDAT 16 · DRIVER 2 · KRÆVER MATHIAS 0 · ÅBNE 0 · HALT INGEN · ingen NF, ingen ordbogs-entries · §10 uændret. Delta v3.4 → v3.5 driver-verificeret: 11 c-hunks på plads (1 · 11 · 13 · 37 · 391 · 436 · 438 · 790 · 1004 · 1016 · 1022) + §11.6; §1 uden hunk; manifest kun linje 15 (plan-OID). A6-1: runner → `scripts/v5/lokations-skabelon/prover-run.mjs` (zonen verificeret i hooks.mjs @ 295e81a7, ikke kun Codex' probe); A6-2: `:235 · :599` føjet til R4-1-rækken. 5 rækker opdateret. Dømmes i B6 runde 4 (delta) @ P5.
+
+## Efter B6 runde 4 (DELTA-domme, sidste) @ P5 `4a91894` — modtaget 2026-09-16 14:56-14:59 — **PASS ×3**
+
+### Kilde 27-29: claude-ai D4 (`plan-verdikt-claude-ai.md`, PASS, 46 ture) · Codex A7 (`plan-angreb-r7.md`, PASS, receipt run_id 20260916T145111-2991921-29320) · code-reviewer C4 (`plan-slutlaesning-r6.md`, PASS)
+
+A6-1/A6-2 lukket ved kilden hos alle tre; 11 hunks + §11.6 henvist; §1/§10 byte-identiske m. v3.4; manifest kun plan-OID (gyldigt 60 · 127 · 12); ingen nye fund; ingen HALT. Gate-tællende verdikter: `verdikt-codex-plan.json` (transport-kvittering) · `verdikt-code-reviewer-plan.json` · `verdikt-claude-ai-plan.json` (selv-erklærede Claude-aktører, deklareret residual). Fremlæggelse v3.5 (`fremlaeggelse-plan.md`, blob `8afe2d7d`) → spørgsmåls-devil (én kørsel) → plan-kvittering.json (commit A) → Mathias. **ÅBNE 0 · KRÆVER MATHIAS 0.**
