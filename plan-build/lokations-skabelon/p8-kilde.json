@@ -1,46 +1,136 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "pakke": "lokations-skabelon",
+  "genereret_af": "plan-build/lokations-skabelon/p8-kilde-gen.mjs (deklarationen er kontrakten; sql/katalog/json er dens former)",
   "system": {
     "art": "supabase-postgres",
     "projekt_ref": "imtxvrymaqbgcvsarlib",
     "host_ref": "imtxvrymaqbgcvsarlib.supabase.co",
-    "database": "postgres"
+    "database": "postgres",
+    "note": "deklareret kildeidentitet fra repoets supabase/config.toml — kun ÉN eksisterende systemgrænse, ingen ny tenant-grænse (T:44); live-identitet attesteres af CI ved fetch"
   },
   "adgang": {
-    "rolle": "<read-only rolle — navngives af fabrik-armen/C4; CI-runneren honorerer; C4 håndhæver at rollen ingen write-grants har før fetch>",
+    "rolle": "<read-only rolle — navngives af fabrik-armen i C4; CI håndhæver at rollen ingen write-grants har før fetch>",
     "skriv": false,
-    "mathias_beslutning": "afventer — forelægges særskilt m. navngiven kilde, populationer og ønsket læseadgang (devil 10/9 F4); default = read-only mod dette projekt"
+    "default": "read-only-rolle mod dette projekt (læser eksisterende klient-/org-/medarbejderdata; ændrer intet)",
+    "mathias": "default deklareret som orientering i plan-fremlæggelsen (B7): siger han stop, seedes et dedikeret held-out-projekt fra kilden først (TIL-DRIVER 15/9 pkt. 4: PROD read-only = Mathias' bord, uændret)"
   },
   "maaltarget": {
     "beskrivelse": "isoleret CI-projekt/DB-identitet — aldrig runnerens project-ref-default (P-8 T:238)",
-    "identitet": "<udfyldes af fabrik-armen/C4 før Fase 5's fetch>"
+    "identitet": "<udfyldes af fabrik-armen i C4>",
+    "bindes": "af fabrik-armen (C4) FØR Fase 5's fetch — IKKE en plan-lås-forudsætning; plan-lås kræver felt 1-3 + 5 bundne og felt 4 deklareret åbent m. ejer + tidspunkt (denne linje)"
   },
   "scope": {
-    "skemaer": ["core_identity", "public", "core_compliance"],
-    "objekter": [
+    "udtraeksregel": "ALLE rækker i hver relation, ingen rækkefilter (P-8 §1.2); ingen top-N, ingen tavs timeout-afkortning; pakkens egne objekter er IKKE kilde",
+    "population": [
       "core_identity.clients",
-      "public.org_nodes",
-      "public.org_node_versions",
-      "public.client_node_placements",
-      "public.employees",
-      "public.employee_node_placements",
-      "referentiel lukning: roles · role_permissions/legacy-grants · permission area/page/tab/action · employee_active_config · core_compliance.data_field_definitions (inkl. inaktive) · pending-/undo-/anonymiseringsmetadata"
+      "core_identity.org_nodes",
+      "core_identity.org_node_versions",
+      "core_identity.client_node_placements",
+      "core_identity.employees",
+      "core_identity.employee_node_placements"
     ],
-    "udtraeksregel": "ALLE rækker, ingen rækkefilter (P-8 §1.2); pakkens egne objekter er IKKE kilde (skabes af produktet under slutprøven)",
+    "closure": [
+      "core_identity.roles",
+      "core_identity.role_permission_grants",
+      "core_identity.role_page_permissions",
+      "core_identity.permission_areas",
+      "core_identity.permission_pages",
+      "core_identity.permission_tabs",
+      "core_identity.permission_actions",
+      "core_identity.employee_active_config",
+      "core_identity.org_node_closure",
+      "core_identity.client_field_definitions",
+      "core_compliance.data_field_definitions",
+      "core_identity.pending_changes",
+      "core_identity.undo_settings",
+      "core_compliance.anonymization_mappings",
+      "core_compliance.anonymization_state",
+      "core_compliance.anonymization_strategies"
+    ],
+    "org_closure": "core_identity.org_node_closure indlæses som observeret afledning og kontrolleres mod org_node_versions (T:52)",
     "definition_fil": "plan-build/lokations-skabelon/p8-kilde-scope.sql"
   },
   "projektion": {
-    "beskrivelse": "deklarerede kolonner pr. tabel + navngivne udeladelser med før-build-begrundelse (auth-hemmeligheder · password-hashes · tokens · sessions · logo-binary; persondata-felter kun som til stede/tom) — p8-kilde-scope.sql del 1; mekanisk kolonnekontrol del 2",
-    "definition_fil": "plan-build/lokations-skabelon/p8-kilde-scope.sql"
+    "regler": {
+      "fuld": "hele værdien",
+      "tilstede": "kun null/ikke-null",
+      "tilstede+laengde": "null/ikke-null + octet_length",
+      "blank/udfyldt": "kun om tekst er blank",
+      "noeglesaet": "jsonb-nøgler sorteret, ingen værdier",
+      "pr-noegle-klassifikation": "fuld hvis nøglens pii_level = none i client_field_definitions, ellers tilstede/blank"
+    },
+    "udeladt_foer_build": [
+      {
+        "kolonne": "core_identity.clients.fields",
+        "projektion": "pr-noegle-klassifikation",
+        "begrundelse": "logo_bytes: binærindhold hentes ikke (T:56 — billedfladen er disponeret uden for kravet; tilstedeværelse + længde registreres). fields: nøgler hvis pii_level i client_field_definitions ≠ none (eller nøglen er udefineret) hentes kun som tilstede/blank — persondata der ikke behøves for kædens negativer (T:56); nøgler med pii_level = none hentes fuldt."
+      },
+      {
+        "kolonne": "core_identity.clients.logo_bytes",
+        "projektion": "tilstede+laengde",
+        "begrundelse": "logo_bytes: binærindhold hentes ikke (T:56 — billedfladen er disponeret uden for kravet; tilstedeværelse + længde registreres). fields: nøgler hvis pii_level i client_field_definitions ≠ none (eller nøglen er udefineret) hentes kun som tilstede/blank — persondata der ikke behøves for kædens negativer (T:56); nøgler med pii_level = none hentes fuldt."
+      },
+      {
+        "kolonne": "core_identity.employees.auth_user_id",
+        "projektion": "tilstede",
+        "begrundelse": "auth_user_id: kun login-mappingens tilstedeværelse behøves (T:52). first_name/last_name/email: persondata uden nødvendighed for kædens negativer — kun blank/udfyldt (T:56). Auth-hemmeligheder/tokens/sessions ligger i auth.* og er ikke i scope."
+      },
+      {
+        "kolonne": "core_identity.employees.first_name",
+        "projektion": "blank/udfyldt",
+        "begrundelse": "auth_user_id: kun login-mappingens tilstedeværelse behøves (T:52). first_name/last_name/email: persondata uden nødvendighed for kædens negativer — kun blank/udfyldt (T:56). Auth-hemmeligheder/tokens/sessions ligger i auth.* og er ikke i scope."
+      },
+      {
+        "kolonne": "core_identity.employees.last_name",
+        "projektion": "blank/udfyldt",
+        "begrundelse": "auth_user_id: kun login-mappingens tilstedeværelse behøves (T:52). first_name/last_name/email: persondata uden nødvendighed for kædens negativer — kun blank/udfyldt (T:56). Auth-hemmeligheder/tokens/sessions ligger i auth.* og er ikke i scope."
+      },
+      {
+        "kolonne": "core_identity.employees.email",
+        "projektion": "blank/udfyldt",
+        "begrundelse": "auth_user_id: kun login-mappingens tilstedeværelse behøves (T:52). first_name/last_name/email: persondata uden nødvendighed for kædens negativer — kun blank/udfyldt (T:56). Auth-hemmeligheder/tokens/sessions ligger i auth.* og er ikke i scope."
+      },
+      {
+        "kolonne": "core_identity.pending_changes.payload",
+        "projektion": "noeglesaet",
+        "begrundelse": "payload: kan bære persondata for employee-ændringer og behøves kun som metadata (nøglesæt + change_type + status) for kædens negativer — værdier udeladt før build (T:56)."
+      }
+    ],
+    "raekker_udelades": false
   },
-  "scope_definition_sha256": "f3347b82df20c528637e11473871072e61d4d8c00ac9678fee8627165c46fd9b",
-  "efter_build": ["snapshot_tidspunkt", "konkrete_raekker", "raw_source_digest", "anonymized_snapshot_digest", "run_id", "k_run"],
+  "katalogkontrol": {
+    "metode": "p8-kilde-scope.sql del 2 (EXCEPT begge veje, skal give 0 rækker) + del 3 (sha256 over kanonisk katalog-tekst, skal være lig forventet_katalog_digest); drift i kilden = rød",
+    "kanonisk_form": "skema.relation.kolonne<TAB>format_type, sorteret bytewise (collate C), LF-adskilt, ingen afsluttende LF",
+    "forventet_katalog_digest": "d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd",
+    "katalog_fil": "plan-build/lokations-skabelon/p8-kilde-katalog.txt",
+    "katalog_fil_sha256": "ea38431f90a9b7fec2bde690b08a50b6691be27170849ca91853d613a72e97b0",
+    "antal_relationer": 22,
+    "antal_kolonner": 193
+  },
+  "scope_definition_sha256": "67663a2af68cf90af5b757a7ef9d96c59fbd99573cf02052d9c5c199b3f26b1e",
+  "efter_build": [
+    "snapshot_tidspunkt",
+    "konkrete_raekker",
+    "raw_source_digest",
+    "anonymized_snapshot_digest",
+    "run_id",
+    "k_run"
+  ],
   "syntetiske_fixtures_held_out": false,
   "bindinger": {
-    "krav": { "path": "docs/sandhed/krav/lokations-skabelon-krav.md", "oid": "9402164d87a35fb939661058bea77c1a052493d0" },
-    "p8_spec": { "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md", "oid": "4af07ef4164882ca54643e79df3554c0bf22b0e4" },
-    "kildekontrakt": { "path": "plan-build/lokations-skabelon/p8-kildekontrakt.md", "oid": "ff0a09c24675afe9f3ce4da0284224bd83140a97" },
-    "plan": { "path": "plan-build/lokations-skabelon/plan.md", "oid": "c5f451f8a901c3fea23576de6aee1be0f2f51f5a" }
+    "krav": {
+      "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+      "oid": "9402164d87a35fb939661058bea77c1a052493d0"
+    },
+    "p8_spec": {
+      "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+      "oid": "4af07ef4164882ca54643e79df3554c0bf22b0e4"
+    },
+    "kildekontrakt": {
+      "path": "plan-build/lokations-skabelon/p8-kildekontrakt.md",
+      "oid": "5183dec1d39fcb327cb7ef477d1e5fb8f5fa2a34"
+    },
+    "note": "kontrakten binder IKKE planen — planen binder kontrakten (FA-5), ellers cirkulær reference"
   }
 }

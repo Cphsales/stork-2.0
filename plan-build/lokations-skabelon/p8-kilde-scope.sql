@@ -1,73 +1,310 @@
--- p8-kilde-scope.sql — lokations-skabelon · FA-5 held-out-kildekontrakt (A2-14 · P-8 §1.1-§1.2)
--- DETERMINISTISK definition af hvad der udgør kilden for slutprøvens held-out-fetch (Fase 5, EFTER build).
--- Ingen tidsstempler, ingen tilfældighed, fast sortering. sha256 af DENNE fil = p8-kilde.json.scope_definition_sha256.
--- Held-out-fetch (CI, C4) genlæser objekt-/kolonnemængden fra det navngivne system og sammenligner mod hashen;
--- afvigelse = rød (drift i KILDEN, ikke i buildet). Ingen credentials her; forbindelse fra CI-runnerens miljø.
--- Systemidentitet: supabase-postgres · projekt_ref imtxvrymaqbgcvsarlib · database postgres (se p8-kilde.json).
+-- p8-kilde-scope.sql — lokations-skabelon · FA-5 held-out-kildekontrakt (A2-14 → A3-1). GENERERET af p8-kilde-gen.mjs — ret generatoren, ikke denne fil.
+-- Deterministisk deklaration af KILDEN for slutprøvens held-out-fetch (Fase 5, EFTER build): population + referentiel lukning,
+-- projektion pr. kolonne, og en MEKANISK katalogkontrol. Ingen tidsstempler, ingen tilfældighed, fast sortering (collate "C").
+-- Systemidentitet: supabase-postgres · projekt_ref imtxvrymaqbgcvsarlib · database postgres (p8-kilde.json). Ingen credentials her.
+-- Pakkens EGNE objekter (lokationer · stande · grupper · koblinger · fravalg · historik · pending for dem) er IKKE kilde (P-8 §1.1 pkt. 2).
+-- Syntetiske bid-fixtures (Bid 1-5) er eksplicit IKKE held-out (canary/mutant-mærkede, T:36).
 --
--- SCOPE (P-8 §1.2 · plan v3 §0.1 FA-5 pkt. 2): hele kildens eksisterende population — ALLE rækker, ingen rækkefilter.
---   Bundet systemgrænse = det ene eksisterende projekt; ingen ny tenant-grænse opfindes (T:44).
--- PROJEKTION (P-8 §1.2 · FA-5 pkt. 3): deklarerede kolonner pr. tabel; navngivne udeladelser med før-build-begrundelse.
--- Pakkens EGNE objekter (lokationer · stande · grupper · koblinger · fravalg · historik · pending) er IKKE kilde —
---   de skabes af det byggede produkt under slutprøven (P-8 §1.1 pkt. 2) og er derfor ikke i scope her.
--- Syntetiske bid-fixtures (Bid 1-5's testdata) er eksplicit IKKE held-out (canary/mutant-mærkede pakkeobjekter, T:36).
-
--- 1) Population og projektion (skema-uafhængig deklaration; kolonnelisten er kontrakten)
---    Udtræksregel pr. tabel: ALLE rækker (også inaktive · lukkede · fremtidige · uden placering/rolle · anonymiserede).
-with scope(ordinal, relation, udtraeksregel, kolonner_inkluderet, kolonner_udeladt, begrundelse_udeladt) as (
+-- 1) DEKLARATION: population (P-8 §1.2 tabel) + closure (P-8 §1.2 »Afhængigheder«). Udtræksregel = ALLE rækker, ingen rækkefilter.
+--    kolonner_inkluderet: navn [projektion] — uden klammer = fuld værdi; [tilstede] = kun null/ikke-null; [tilstede+laengde] = null/ikke-null + octet_length;
+--    [blank/udfyldt] = kun om tekst er blank; [noeglesaet] = jsonb-nøgler sorteret, ingen værdier; [pr-noegle-klassifikation] = fuld hvis nøglens
+--    pii_level = none i client_field_definitions, ellers tilstede/blank. Rækker udelades ALDRIG; en udeladt kolonneværdi tælles stadig (T:56).
+with deklaration(ordinal, art, relation, udtraeksregel, kolonner_inkluderet, begrundelse_projektion, ddl_kilde) as (
   values
-  (1, 'core_identity.clients',
-      'alle rækker i det bundne scope, også inaktive og uden org-placering; ingen filtrering på navn, felt-gyldighed, logo, aktualitet eller tidligere testresultat',
-      'id, name, is_active, fields, org_node_id (hvis kolonnen findes), created_at, updated_at, anonymized_at (hvis kolonnen findes)',
-      'logo (binærindhold — kun tilstedeværelse/form registreres), kontaktfelter der ifølge data_field_definitions er persondata registreres kun som til stede/tom',
-      'P-8 §1.2: auth-hemmeligheder, password-hashes, tokens, sessions og logo-binary hentes ikke; billedfladen er disponeret uden for kravet'),
-  (2, 'public.org_nodes',
-      'alle identiteter, også lukkede og uden aktuel version/placering',
-      'id, node_type, created_at',
-      '-', '-'),
-  (3, 'public.org_node_versions',
-      'alle versioner, også lukkede, fremtidige og uden aktuel placering',
-      'id, node_id, parent_node_id, name, is_active, effective_from, effective_to, created_at',
-      '-', '-'),
-  (4, 'public.client_node_placements',
-      'alle historiske, aktuelle og fremtidige placeringer; ingen effective_to IS NULL-begrænsning',
-      'id, client_id, node_id, effective_from, effective_to, created_at',
-      '-', '-'),
-  (5, 'public.employees',
-      'alle employees og alle placeringer, også uden auth_user_id, uden rolle/placering, fratrådte og anonymiserede; intet filter gennem current_employee_id()',
-      'id, auth_user_id (kun tilstedeværelse: null/ikke-null), role_id, is_active, employed_from, employed_to, anonymized_at, created_at',
-      'email, name, telefon (persondata — registreres kun som til stede/tom), auth-relaterede felter ud over tilstedeværelse',
-      'P-8 §1.2: auth-hemmeligheder og persondata uden nødvendighed for kædens negativer udelades; udeladelsen er navngivet før build'),
-  (6, 'public.employee_node_placements',
-      'alle placeringer, også lukkede og fremtidige',
-      'id, employee_id, node_id, effective_from, effective_to, created_at',
-      '-', '-'),
-  (7, 'referentiel lukning (P-8 §1.2 »Afhængigheder«)',
-      'roller (roles), grants (role_permissions, legacy-grants), permission area/page/tab/action, employee_active_config, relevante klassifikationer og feltdefinitioner (core_compliance.data_field_definitions — også inaktive), nødvendige pending-/undo-/anonymiseringsmetadata; alle definitioner for indlæste felter',
-      'alle kolonner der kræves for at ingen indlæst reference bliver forældreløs',
-      'hemmeligheder/tokens i evt. konfigurationsrækker',
-      'P-8 §1.2: referentiel lukning uden forældreløse referencer; hemmeligheder aldrig')
+  (1, 'population', 'core_identity.clients', 'alle rækker, også inaktive og uden org-placering; ingen filtrering på navn, felt-gyldighed, logo, aktualitet eller tidligere testresultat', 'id, name, fields [pr-noegle-klassifikation], is_active, logo_bytes [tilstede+laengde], logo_content_type, logo_filename, created_at, updated_at', 'logo_bytes: binærindhold hentes ikke (T:56 — billedfladen er disponeret uden for kravet; tilstedeværelse + længde registreres). fields: nøgler hvis pii_level i client_field_definitions ≠ none (eller nøglen er udefineret) hentes kun som tilstede/blank — persondata der ikke behøves for kædens negativer (T:56); nøgler med pii_level = none hentes fuldt.', '20260521000001_t10_tables.sql:24'),
+  (2, 'population', 'core_identity.org_nodes', 'alle identiteter, også lukkede og uden aktuel version eller placering', 'id, created_at, updated_at', '-', '20260518000001_t9_org_nodes.sql:25'),
+  (3, 'population', 'core_identity.org_node_versions', 'alle versioner, også lukkede, fremtidige og uden aktuel placering; alle intervalgrænser', 'version_id, node_id, name, parent_id, node_type, is_active, effective_from, effective_to, applied_at, created_by_pending_change_id, created_at', '-', '20260518000001_t9_org_nodes.sql:45'),
+  (4, 'population', 'core_identity.client_node_placements', 'alle historiske, aktuelle og fremtidige placeringer; ingen effective_to IS NULL-begrænsning', 'id, client_id, node_id, effective_from, effective_to, applied_at, created_by_pending_change_id, created_at, updated_at', '-', '20260518000004_t9_client_node_placements.sql:13'),
+  (5, 'population', 'core_identity.employees', 'alle employees, også uden auth_user_id, uden rolle/placering, fratrådte og anonymiserede; intet filter gennem current_employee_id() eller »kan logge ind«', 'id, auth_user_id [tilstede], first_name [blank/udfyldt], last_name [blank/udfyldt], email [blank/udfyldt], hire_date, termination_date, anonymized_at, role_id, created_at, updated_at', 'auth_user_id: kun login-mappingens tilstedeværelse behøves (T:52). first_name/last_name/email: persondata uden nødvendighed for kædens negativer — kun blank/udfyldt (T:56). Auth-hemmeligheder/tokens/sessions ligger i auth.* og er ikke i scope.', '20260514120007_t1_bootstrap_admins.sql:16'),
+  (6, 'population', 'core_identity.employee_node_placements', 'alle placeringer, også lukkede og fremtidige', 'id, employee_id, node_id, effective_from, effective_to, applied_at, created_by_pending_change_id, created_at, updated_at', '-', '20260518000003_t9_employee_node_placements.sql:15'),
+  (7, 'closure', 'core_identity.roles', 'alle roller', 'id, name, description, created_at, updated_at', '-', '20260514120007_t1_bootstrap_admins.sql:50'),
+  (8, 'closure', 'core_identity.role_permission_grants', 'alle grants (area/page/tab/action-niveau), også for inaktive elementer — ingen vanskelig grant fjernes', 'id, role_id, area_id, page_id, tab_id, can_access, can_write, visibility, created_at, updated_at, action_id', '-', '20260518000006_t9_grants_and_helpers.sql:8 + 20260521100003:60 (action_id)'),
+  (9, 'closure', 'core_identity.role_page_permissions', 'alle legacy-grants (has_permission''s sidste opslagsniveau)', 'id, role_id, page_key, tab_key, can_view, can_edit, scope, created_at, updated_at', '-', '20260514120007_t1_bootstrap_admins.sql:78'),
+  (10, 'closure', 'core_identity.permission_areas', 'alle, også inaktive', 'id, name, is_active, sort_order, created_at, updated_at', '-', '20260518000005_t9_permission_elements.sql:8'),
+  (11, 'closure', 'core_identity.permission_pages', 'alle, også inaktive', 'id, area_id, name, is_active, sort_order, created_at, updated_at', '-', '20260518000005_t9_permission_elements.sql:32'),
+  (12, 'closure', 'core_identity.permission_tabs', 'alle, også inaktive', 'id, page_id, name, is_active, sort_order, created_at, updated_at', '-', '20260518000005_t9_permission_elements.sql:58'),
+  (13, 'closure', 'core_identity.permission_actions', 'alle, også inaktive', 'id, tab_id, name, is_active, sort_order, requires_second_approver, has_undo, second_approver_type, bypass_tab_write, created_at, updated_at', '-', '20260521100003_t9_supplement_2_permission_actions.sql:13'),
+  (14, 'closure', 'core_identity.employee_active_config', 'den ene konfigurationsrække (aktiv-reglens faktiske input)', 'id, post_termination_grace_days, treat_anonymized_as_active, created_at, updated_at', '-', '20260514180300_q1_employee_active_config.sql:31'),
+  (15, 'closure', 'core_identity.org_node_closure', 'alle rækker — indlæses som OBSERVERET AFLEDNING og kontrolleres mod org_node_versions (T:52); erstatter dem ikke', 'ancestor_id, descendant_id, depth', '-', '20260518000002_t9_org_node_closure.sql:14'),
+  (16, 'closure', 'core_identity.client_field_definitions', 'alle feltdefinitioner for clients.fields, også inaktive (styrer projektionen af clients.fields)', 'id, key, display_name, field_type, required, pii_level, display_order, is_active, created_at, updated_at', '-', '20260521000001_t10_tables.sql:90'),
+  (17, 'closure', 'core_compliance.data_field_definitions', 'alle klassifikationer, også udfasede PII-definitioner', 'id, table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose, created_at, updated_at', '-', '20260514120005_t1_data_field_definitions.sql:9'),
+  (18, 'closure', 'core_identity.pending_changes', 'alle pending-rækker (alle status), så placeringer/versioner m. created_by_pending_change_id ikke bliver forældreløse', 'id, change_type, target_id, payload [noeglesaet], effective_from, requested_by, requested_at, approved_by, approved_at, undo_deadline, applied_at, undone_at, status, created_at, updated_at, action_id', 'payload: kan bære persondata for employee-ændringer og behøves kun som metadata (nøglesæt + change_type + status) for kædens negativer — værdier udeladt før build (T:56).', '20260518000000_t9_pending_changes.sql:32 + 20260521100004:13 (action_id)'),
+  (19, 'closure', 'core_identity.undo_settings', 'alle', 'change_type, undo_period_seconds, updated_at, updated_by', '-', '20260518000000_t9_pending_changes.sql:97'),
+  (20, 'closure', 'core_compliance.anonymization_mappings', 'alle mappings (alle status), også inaktive', 'id, entity_type, table_schema, table_name, field_strategies, jsonb_field_strategies, strategy_version, is_active, created_at, updated_at, status, internal_rpc_anonymize, internal_rpc_apply', '-', '20260514140000_t6_anonymization_tables.sql:19 + p2:26 (status) + c002:37 (internal_rpc_*)'),
+  (21, 'closure', 'core_compliance.anonymization_state', 'alle (metadata for allerede anonymiserede kilderækker)', 'id, entity_type, table_schema, table_name, entity_id, anonymized_at, anonymization_reason, strategy_version, field_mapping_snapshot, jsonb_field_mapping_snapshot, audit_reference, created_by', '-', '20260514140000_t6_anonymization_tables.sql:76'),
+  (22, 'closure', 'core_compliance.anonymization_strategies', 'alle (også ikke-aktive)', 'id, strategy_name, function_schema, function_name, status, description, created_at, updated_at, activated_at, activated_by', '-', '20260515110100_p1a_anonymization_strategies.sql:22')
 )
-select ordinal, relation, udtraeksregel, kolonner_inkluderet, kolonner_udeladt, begrundelse_udeladt
-from scope
-order by ordinal;
+select * from deklaration order by ordinal;
 
--- 2) Mekanisk kontrol ved fetch (CI kører denne mod kilden med read-only-rollen og sammenligner mod
---    p8-kilde.json.scope_definition_sha256 + den observerede kolonnemængde; fast sortering).
-select n.nspname as skema, c.relname as relation, a.attname as kolonne, format_type(a.atttypid, a.atttypmod) as type
-from pg_catalog.pg_class c
-join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
-where c.relkind in ('r', 'p')
-  and (n.nspname, c.relname) in (
+-- 2) MEKANISK KATALOGKONTROL ved fetch (CI, read-only-rollen): den observerede kolonnemængde for de 22 relationer sammenholdes med den
+--    FORVENTEDE (nedenfor) i begge retninger — begge mængder skal være tomme. Drift i kilden (ny/fjernet/omtypet kolonne) = RØD, aldrig tavs.
+with forventet(skema, relation, kolonne, type) as (
+  values
+  ('core_compliance', 'anonymization_mappings', 'created_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_mappings', 'entity_type', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'field_strategies', 'jsonb'),
+  ('core_compliance', 'anonymization_mappings', 'id', 'uuid'),
+  ('core_compliance', 'anonymization_mappings', 'internal_rpc_anonymize', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'internal_rpc_apply', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'is_active', 'boolean'),
+  ('core_compliance', 'anonymization_mappings', 'jsonb_field_strategies', 'jsonb'),
+  ('core_compliance', 'anonymization_mappings', 'status', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'strategy_version', 'integer'),
+  ('core_compliance', 'anonymization_mappings', 'table_name', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'table_schema', 'text'),
+  ('core_compliance', 'anonymization_mappings', 'updated_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_state', 'anonymization_reason', 'text'),
+  ('core_compliance', 'anonymization_state', 'anonymized_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_state', 'audit_reference', 'uuid'),
+  ('core_compliance', 'anonymization_state', 'created_by', 'uuid'),
+  ('core_compliance', 'anonymization_state', 'entity_id', 'uuid'),
+  ('core_compliance', 'anonymization_state', 'entity_type', 'text'),
+  ('core_compliance', 'anonymization_state', 'field_mapping_snapshot', 'jsonb'),
+  ('core_compliance', 'anonymization_state', 'id', 'uuid'),
+  ('core_compliance', 'anonymization_state', 'jsonb_field_mapping_snapshot', 'jsonb'),
+  ('core_compliance', 'anonymization_state', 'strategy_version', 'integer'),
+  ('core_compliance', 'anonymization_state', 'table_name', 'text'),
+  ('core_compliance', 'anonymization_state', 'table_schema', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'activated_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_strategies', 'activated_by', 'uuid'),
+  ('core_compliance', 'anonymization_strategies', 'created_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_strategies', 'description', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'function_name', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'function_schema', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'id', 'uuid'),
+  ('core_compliance', 'anonymization_strategies', 'status', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'strategy_name', 'text'),
+  ('core_compliance', 'anonymization_strategies', 'updated_at', 'timestamp with time zone'),
+  ('core_compliance', 'data_field_definitions', 'category', 'text'),
+  ('core_compliance', 'data_field_definitions', 'column_name', 'text'),
+  ('core_compliance', 'data_field_definitions', 'created_at', 'timestamp with time zone'),
+  ('core_compliance', 'data_field_definitions', 'id', 'uuid'),
+  ('core_compliance', 'data_field_definitions', 'match_role', 'text'),
+  ('core_compliance', 'data_field_definitions', 'pii_level', 'text'),
+  ('core_compliance', 'data_field_definitions', 'purpose', 'text'),
+  ('core_compliance', 'data_field_definitions', 'retention_type', 'text'),
+  ('core_compliance', 'data_field_definitions', 'retention_value', 'jsonb'),
+  ('core_compliance', 'data_field_definitions', 'table_name', 'text'),
+  ('core_compliance', 'data_field_definitions', 'table_schema', 'text'),
+  ('core_compliance', 'data_field_definitions', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'client_field_definitions', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'client_field_definitions', 'display_name', 'text'),
+  ('core_identity', 'client_field_definitions', 'display_order', 'integer'),
+  ('core_identity', 'client_field_definitions', 'field_type', 'text'),
+  ('core_identity', 'client_field_definitions', 'id', 'uuid'),
+  ('core_identity', 'client_field_definitions', 'is_active', 'boolean'),
+  ('core_identity', 'client_field_definitions', 'key', 'text'),
+  ('core_identity', 'client_field_definitions', 'pii_level', 'text'),
+  ('core_identity', 'client_field_definitions', 'required', 'boolean'),
+  ('core_identity', 'client_field_definitions', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'client_node_placements', 'applied_at', 'timestamp with time zone'),
+  ('core_identity', 'client_node_placements', 'client_id', 'uuid'),
+  ('core_identity', 'client_node_placements', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'client_node_placements', 'created_by_pending_change_id', 'uuid'),
+  ('core_identity', 'client_node_placements', 'effective_from', 'date'),
+  ('core_identity', 'client_node_placements', 'effective_to', 'date'),
+  ('core_identity', 'client_node_placements', 'id', 'uuid'),
+  ('core_identity', 'client_node_placements', 'node_id', 'uuid'),
+  ('core_identity', 'client_node_placements', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'clients', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'clients', 'fields', 'jsonb'),
+  ('core_identity', 'clients', 'id', 'uuid'),
+  ('core_identity', 'clients', 'is_active', 'boolean'),
+  ('core_identity', 'clients', 'logo_bytes', 'bytea'),
+  ('core_identity', 'clients', 'logo_content_type', 'text'),
+  ('core_identity', 'clients', 'logo_filename', 'text'),
+  ('core_identity', 'clients', 'name', 'text'),
+  ('core_identity', 'clients', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'employee_active_config', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'employee_active_config', 'id', 'smallint'),
+  ('core_identity', 'employee_active_config', 'post_termination_grace_days', 'integer'),
+  ('core_identity', 'employee_active_config', 'treat_anonymized_as_active', 'boolean'),
+  ('core_identity', 'employee_active_config', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'employee_node_placements', 'applied_at', 'timestamp with time zone'),
+  ('core_identity', 'employee_node_placements', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'employee_node_placements', 'created_by_pending_change_id', 'uuid'),
+  ('core_identity', 'employee_node_placements', 'effective_from', 'date'),
+  ('core_identity', 'employee_node_placements', 'effective_to', 'date'),
+  ('core_identity', 'employee_node_placements', 'employee_id', 'uuid'),
+  ('core_identity', 'employee_node_placements', 'id', 'uuid'),
+  ('core_identity', 'employee_node_placements', 'node_id', 'uuid'),
+  ('core_identity', 'employee_node_placements', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'employees', 'anonymized_at', 'timestamp with time zone'),
+  ('core_identity', 'employees', 'auth_user_id', 'uuid'),
+  ('core_identity', 'employees', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'employees', 'email', 'text'),
+  ('core_identity', 'employees', 'first_name', 'text'),
+  ('core_identity', 'employees', 'hire_date', 'date'),
+  ('core_identity', 'employees', 'id', 'uuid'),
+  ('core_identity', 'employees', 'last_name', 'text'),
+  ('core_identity', 'employees', 'role_id', 'uuid'),
+  ('core_identity', 'employees', 'termination_date', 'date'),
+  ('core_identity', 'employees', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'org_node_closure', 'ancestor_id', 'uuid'),
+  ('core_identity', 'org_node_closure', 'depth', 'integer'),
+  ('core_identity', 'org_node_closure', 'descendant_id', 'uuid'),
+  ('core_identity', 'org_node_versions', 'applied_at', 'timestamp with time zone'),
+  ('core_identity', 'org_node_versions', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'org_node_versions', 'created_by_pending_change_id', 'uuid'),
+  ('core_identity', 'org_node_versions', 'effective_from', 'date'),
+  ('core_identity', 'org_node_versions', 'effective_to', 'date'),
+  ('core_identity', 'org_node_versions', 'is_active', 'boolean'),
+  ('core_identity', 'org_node_versions', 'name', 'text'),
+  ('core_identity', 'org_node_versions', 'node_id', 'uuid'),
+  ('core_identity', 'org_node_versions', 'node_type', 'text'),
+  ('core_identity', 'org_node_versions', 'parent_id', 'uuid'),
+  ('core_identity', 'org_node_versions', 'version_id', 'uuid'),
+  ('core_identity', 'org_nodes', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'org_nodes', 'id', 'uuid'),
+  ('core_identity', 'org_nodes', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'action_id', 'uuid'),
+  ('core_identity', 'pending_changes', 'applied_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'approved_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'approved_by', 'uuid'),
+  ('core_identity', 'pending_changes', 'change_type', 'text'),
+  ('core_identity', 'pending_changes', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'effective_from', 'date'),
+  ('core_identity', 'pending_changes', 'id', 'uuid'),
+  ('core_identity', 'pending_changes', 'payload', 'jsonb'),
+  ('core_identity', 'pending_changes', 'requested_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'requested_by', 'uuid'),
+  ('core_identity', 'pending_changes', 'status', 'text'),
+  ('core_identity', 'pending_changes', 'target_id', 'uuid'),
+  ('core_identity', 'pending_changes', 'undo_deadline', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'undone_at', 'timestamp with time zone'),
+  ('core_identity', 'pending_changes', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_actions', 'bypass_tab_write', 'boolean'),
+  ('core_identity', 'permission_actions', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_actions', 'has_undo', 'boolean'),
+  ('core_identity', 'permission_actions', 'id', 'uuid'),
+  ('core_identity', 'permission_actions', 'is_active', 'boolean'),
+  ('core_identity', 'permission_actions', 'name', 'text'),
+  ('core_identity', 'permission_actions', 'requires_second_approver', 'boolean'),
+  ('core_identity', 'permission_actions', 'second_approver_type', 'text'),
+  ('core_identity', 'permission_actions', 'sort_order', 'integer'),
+  ('core_identity', 'permission_actions', 'tab_id', 'uuid'),
+  ('core_identity', 'permission_actions', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_areas', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_areas', 'id', 'uuid'),
+  ('core_identity', 'permission_areas', 'is_active', 'boolean'),
+  ('core_identity', 'permission_areas', 'name', 'text'),
+  ('core_identity', 'permission_areas', 'sort_order', 'integer'),
+  ('core_identity', 'permission_areas', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_pages', 'area_id', 'uuid'),
+  ('core_identity', 'permission_pages', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_pages', 'id', 'uuid'),
+  ('core_identity', 'permission_pages', 'is_active', 'boolean'),
+  ('core_identity', 'permission_pages', 'name', 'text'),
+  ('core_identity', 'permission_pages', 'sort_order', 'integer'),
+  ('core_identity', 'permission_pages', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_tabs', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'permission_tabs', 'id', 'uuid'),
+  ('core_identity', 'permission_tabs', 'is_active', 'boolean'),
+  ('core_identity', 'permission_tabs', 'name', 'text'),
+  ('core_identity', 'permission_tabs', 'page_id', 'uuid'),
+  ('core_identity', 'permission_tabs', 'sort_order', 'integer'),
+  ('core_identity', 'permission_tabs', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'role_page_permissions', 'can_edit', 'boolean'),
+  ('core_identity', 'role_page_permissions', 'can_view', 'boolean'),
+  ('core_identity', 'role_page_permissions', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'role_page_permissions', 'id', 'uuid'),
+  ('core_identity', 'role_page_permissions', 'page_key', 'text'),
+  ('core_identity', 'role_page_permissions', 'role_id', 'uuid'),
+  ('core_identity', 'role_page_permissions', 'scope', 'text'),
+  ('core_identity', 'role_page_permissions', 'tab_key', 'text'),
+  ('core_identity', 'role_page_permissions', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'role_permission_grants', 'action_id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'area_id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'can_access', 'boolean'),
+  ('core_identity', 'role_permission_grants', 'can_write', 'boolean'),
+  ('core_identity', 'role_permission_grants', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'role_permission_grants', 'id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'page_id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'role_id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'tab_id', 'uuid'),
+  ('core_identity', 'role_permission_grants', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'role_permission_grants', 'visibility', 'text'),
+  ('core_identity', 'roles', 'created_at', 'timestamp with time zone'),
+  ('core_identity', 'roles', 'description', 'text'),
+  ('core_identity', 'roles', 'id', 'uuid'),
+  ('core_identity', 'roles', 'name', 'text'),
+  ('core_identity', 'roles', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'undo_settings', 'change_type', 'text'),
+  ('core_identity', 'undo_settings', 'undo_period_seconds', 'integer'),
+  ('core_identity', 'undo_settings', 'updated_at', 'timestamp with time zone'),
+  ('core_identity', 'undo_settings', 'updated_by', 'uuid')
+),
+observeret as (
+  select n.nspname::text as skema, c.relname::text as relation, a.attname::text as kolonne, format_type(a.atttypid, a.atttypmod) as type
+  from pg_catalog.pg_class c
+  join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+  join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+  where c.relkind in ('r', 'p')
+    and (n.nspname, c.relname) in (
     ('core_identity', 'clients'),
-    ('public', 'org_nodes'),
-    ('public', 'org_node_versions'),
-    ('public', 'client_node_placements'),
-    ('public', 'employees'),
-    ('public', 'employee_node_placements')
-  )
-order by n.nspname, c.relname, a.attnum;
+    ('core_identity', 'org_nodes'),
+    ('core_identity', 'org_node_versions'),
+    ('core_identity', 'client_node_placements'),
+    ('core_identity', 'employees'),
+    ('core_identity', 'employee_node_placements'),
+    ('core_identity', 'roles'),
+    ('core_identity', 'role_permission_grants'),
+    ('core_identity', 'role_page_permissions'),
+    ('core_identity', 'permission_areas'),
+    ('core_identity', 'permission_pages'),
+    ('core_identity', 'permission_tabs'),
+    ('core_identity', 'permission_actions'),
+    ('core_identity', 'employee_active_config'),
+    ('core_identity', 'org_node_closure'),
+    ('core_identity', 'client_field_definitions'),
+    ('core_compliance', 'data_field_definitions'),
+    ('core_identity', 'pending_changes'),
+    ('core_identity', 'undo_settings'),
+    ('core_compliance', 'anonymization_mappings'),
+    ('core_compliance', 'anonymization_state'),
+    ('core_compliance', 'anonymization_strategies')
+    )
+)
+select 'MANGLER I KILDEN' as afvigelse, * from (select * from forventet except select * from observeret) f
+union all
+select 'UVENTET I KILDEN' as afvigelse, * from (select * from observeret except select * from forventet) o
+order by 1, 2, 3, 4;
 
--- 3) Isoleret måltarget (FA-5 pkt. 4) og efter-build-bindinger (FA-5 pkt. 5) står i p8-kilde.json; snapshot-tidspunkt,
---    konkrete rækker, raw_source_digest, anonymized_snapshot_digest og run_id/k_run bindes EFTER build af CI (P-8 §1.3).
+-- 3) KATALOG-DIGEST (samme mængde som 2, kanonisk form: "skema.relation.kolonne<TAB>type", sorteret bytewise, linjer adskilt af LF, ingen afsluttende LF).
+--    Skal være lig p8-kilde.json.forventet_katalog_digest = d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd
+--    (identisk værdi beregnet af generatoren over p8-kilde-katalog.txt uden afsluttende LF).
+select encode(sha256(convert_to(string_agg(linje, E'\n' order by linje collate "C"), 'utf8')), 'hex') as observeret_katalog_digest
+from (
+  select n.nspname || '.' || c.relname || '.' || a.attname || E'\t' || format_type(a.atttypid, a.atttypmod) as linje
+  from pg_catalog.pg_class c
+  join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+  join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+  where c.relkind in ('r', 'p')
+    and (n.nspname, c.relname) in (
+    ('core_identity', 'clients'),
+    ('core_identity', 'org_nodes'),
+    ('core_identity', 'org_node_versions'),
+    ('core_identity', 'client_node_placements'),
+    ('core_identity', 'employees'),
+    ('core_identity', 'employee_node_placements'),
+    ('core_identity', 'roles'),
+    ('core_identity', 'role_permission_grants'),
+    ('core_identity', 'role_page_permissions'),
+    ('core_identity', 'permission_areas'),
+    ('core_identity', 'permission_pages'),
+    ('core_identity', 'permission_tabs'),
+    ('core_identity', 'permission_actions'),
+    ('core_identity', 'employee_active_config'),
+    ('core_identity', 'org_node_closure'),
+    ('core_identity', 'client_field_definitions'),
+    ('core_compliance', 'data_field_definitions'),
+    ('core_identity', 'pending_changes'),
+    ('core_identity', 'undo_settings'),
+    ('core_compliance', 'anonymization_mappings'),
+    ('core_compliance', 'anonymization_state'),
+    ('core_compliance', 'anonymization_strategies')
+    )
+) k;
+
+-- 4) Isoleret måltarget (FA-5 felt 4) og efter-build-bindinger (felt 5) står i p8-kilde.json; snapshot-tidspunkt, konkrete rækker,
+--    raw_source_digest, anonymized_snapshot_digest og run_id/k_run bindes EFTER build af CI (P-8 §1.3).
