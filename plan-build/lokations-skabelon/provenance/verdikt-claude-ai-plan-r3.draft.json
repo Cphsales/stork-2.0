@@ -1,0 +1,176 @@
+{
+ "aktor": "claude-ai",
+ "conclusion": "PASS",
+ "negative_cases": [
+  "K-1 ac 1 × plan.md:147 — butik uden navn afvises, også for superadmin, ingen halv butik/stand efterlades → afbildet (uændret v3.3→v3.4, D' præmis)",
+  "K-1 ac 4 × plan.md:150 — butik kan ikke blive økonomi-/attributionsdimension; tre uafhængige leverance-kontroller over 9 tabeller og 43 funktioner → afbildet (uændret)",
+  "K-2 ac 1/ac 6 × plan.md:160,165 — under-stand og stand uden butik afvises; sidste aktive stand kan ikke deaktiveres, også for SA, to-sessions-bevis blokerende → afbildet (uændret)",
+  "K-2 ac 5 × plan.md:164 — nedlæggelse sletter ingen stande; genåbning finder dem → afbildet (uændret)",
+  "K-3 ac 1/2/3 × plan.md:174-176 — butik uden gruppe, fritekst-gruppe og gruppe uden navn afvises → afbildet (uændret)",
+  "K-3 ac 5 × plan.md:178 — gruppe med butikker kan ikke slettes; effektive retter består efter udfasning; A5-2 flytter KUN effekt-step 4.2→4.3 inden for Bid 4, samme negativer neg-1..4, bid-sum 60 uændret (plan.md:278) → afbildet, HVAD uændret",
+  "K-4 ac 6/ac 8/ac 9 × plan.md:192-195 — til-/fravalg i dvale afvises IKKE; til-valg på nedlagt afvises uden SA-bypass; nedlagt butik har ingen klienter med ret, gruppens kobling/stande/historik består → afbildet (uændret)",
+  "K-5 ac 1/ac 2/ac 5 × plan.md:203-207 — ingen book-alligevel, SA får samme false; stop uden rettighed afvises; ingen automatisk hvile uden valgt antal dage → afbildet (uændret)",
+  "K-6 ac 4/ac 10 × plan.md:225 — godkendt ophævelse af fravalg afvises ved gennemførelsen når klienten i mellemtiden er koblet fra gruppen → afbildet (uændret, = K:120)",
+  "K-7 ac 4 (d) × plan.md:237,328 — R4-2: redigering af navn/type/pris på anonymiseret butik uden adresse LYKKES (NULL = uændret); rydning af adressen på anonymiseret butik afvises efter neg-5's kontrakt, ingen ny klasse → HVAD uændret (K:141 rækken består; §11:201)",
+  "K-7 ac 4 (f) × plan.md:237 — senere persondata-valg anonymiseres også på allerede anonymiserede butikker og dækkes ved genskabelse; vinduet klassifikation→strategi afviser i stedet for at aktivere tavst → afbildet (uændret, = K:143)",
+  "K-7 S × plan.md:238,315,107 — R4-1/A5-3: NY neg-8 lokationer.type→direct afvises ved markeringen (P0001, gren (4) kolonne-allowlist, også for SA; type forbliver none, registry/store uændrede); neg-6 (gruppens navn) og neg-7 (talfelt) står; søsterkontrol adresse→direct→anonymisering FAKTISK → STÆRKERE afbildning af K:143, K:137 ubøjet, M-42 (ledger:96) overholdt; §11:194 forretningsdata≠persondata bærer valget",
+  "K-8 ac 1/ac 3/ac 4 × plan.md:246,248,249 — direkte skrivning afvises uanset rettigheder; audit/historik uændrelig; view-only får fremmed anmodnings indhold afvist → afbildet (uændret)",
+  "K-9 ac 3 × plan.md:261 — strukturelt forbud (blankt navn, nedlagt til-valg, pii-nedgradering, blank årsag) kan ikke slås fra efter konfig-omgåelse, heller ikke af SA → afbildet (uændret)",
+  "§10 D-11 × plan.md:829 — bord-test NEJ: type-listen ordret K:19/K:26; gruppens grænse = forretningsforståelse §11:201; F-2-tillæg indarbejdet ordret; stop-konsekvens deklareret for gruppens navn OG typen; ingen Mathias-ord klassificerer butikkens felter (K:134) → bestået",
+  "§10 S-3 × plan.md:814 — kun kildehenvisning v3 9da12d2d → v4 33dd3509; Mathias-tekst byte-identisk; scope-SQL/katalog samme blobs (22 relationer · 197 kolonner; medarbejderes navn/e-mail og klientfelters personværdier udeladt) → uændret",
+  "§11.5 × plan.md:1010-1027 — diff mod provenance/plan-v33.md kørt selv: 45 c-linjer + 1008a1009,1027, ingen d-hunks, præcis §11.5's liste; manifest-diff = rapport-r6 §4's linjer; bindings.plan.oid = 71479b11 → §1-§3 byte-identiske uden for hunks, D' præmis gyldig"
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    143,
+    262
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    266,
+    278
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    107,
+    107
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    315,
+    315
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    328,
+    328
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    612,
+    690
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    784,
+    798
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    802,
+    833
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    1010,
+    1027
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    17,
+    31
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    52,
+    67
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    132,
+    145
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    179,
+    181
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "line_span": [
+    13,
+    29
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "line_span": [
+    950,
+    950
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "line_span": [
+    3175,
+    3189
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/ordbog.md",
+   "line_span": [
+    25,
+    34
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "line_span": [
+    28,
+    56
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "line_span": [
+    226,
+    234
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/recon2.md",
+   "line_span": [
+    344,
+    359
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/recon2.md",
+   "line_span": [
+    657,
+    671
+   ]
+  }
+ ],
+ "raw_output_sha256": "5ed910cdac1107456031f32a27c2565172575873ac039a6520a53a7ffca4d006",
+ "effort": "xhigh",
+ "run_id": "b6-claude-ai-plan-r3-8b7b07a2"
+}
