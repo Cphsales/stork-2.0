@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { doemBuild, producerBevis, doemBevis, hashObjectBytes, BUILD_NAAETHED } from "./ci-build-dom.mjs";
+import { doemBuild, producerBevis, doemBevis, hashObjectBytes, raaTilTekst, BUILD_NAAETHED } from "./ci-build-dom.mjs";
 import { makeGit, resolveRef } from "./git.mjs";
 
 let pass = 0, fail = 0;
@@ -105,6 +105,13 @@ console.log("\nto tillidszoner (Codex F-C4b-1): måling m. renset miljø → byt
 { const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.pakke = "anden"; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: bevis for en ANDEN pakke → rød", d.result.open === false && /pakken/.test(d.result.reasons[0]), true); }
 { const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.cases[0].status = "opfyldt"; b.cases[0].observations.negative = { ok: true, code: null, detail: null }; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: manipulerede bytes (forbudt tilladt, status pyntet) → verifieren genudleder → rød", d.result.open === false && /genudledt/.test(d.result.reasons.join(" ")), true); }
 { const d = await doemBevis(base({ proofBytes: "ikke json" })); eq("doemBevis: bytes er ikke JSON → rød", d.result.open === false && /ikke JSON/.test(d.result.reasons[0]), true); }
+console.log("\nrå bytes (Codex F-C4b-3): hash over det tredjeparten kan downloade, ingen tabsfuld afkodning:");
+{ const p = await producerBevis(base()); const buf = Buffer.from(p.proofBytes, "utf8"); const d = await doemBevis(base({ proofBytes: buf })); eq("doemBevis fra Buffer (som fra fil) → ÅBEN og oid == hash-object(rå bytes) == hash-object(producentens streng)", d.result.open === true && d.artifactOid === hashObjectBytes(buf, ROOT) && d.artifactOid === hashObjectBytes(p.proofBytes, ROOT), true);
+  const korrupt = Buffer.concat([Buffer.from(p.proofBytes.replace(/"pakke": "pk"/, '"pakke": "pk", "x": "'), "utf8").subarray(0, -0), Buffer.from([0xff]), Buffer.from('"' + p.proofBytes.slice(p.proofBytes.indexOf('"pakke": "pk"') + '"pakke": "pk"'.length), "utf8")]);
+  const d2 = await doemBevis(base({ proofBytes: korrupt })); eq("Codex' modprøve: ekstra strengfelt m. byte 0xff (ugyldig UTF-8) → RØD (ikke gyldig UTF-8), aldrig success m. afvigende oid", d2.result.open === false && /ikke gyldig UTF-8/.test(d2.result.reasons[0]), true);
+  eq("raaTilTekst: gyldig UTF-8 (æøå) → tekst; 0xff → null", raaTilTekst(Buffer.from("æøå", "utf8")) === "æøå" && raaTilTekst(Buffer.from([0x61, 0xff])) === null, true);
+  const lossy = Buffer.from(korrupt.toString("utf8"), "utf8"); eq("den tabsfuldt afkodede streng hasher ANDERLEDES end de rå bytes (det var hullet)", hashObjectBytes(lossy, ROOT) !== hashObjectBytes(korrupt, ROOT), true); }
+{ process.env.GITHUB_TOKEN = "ghs_forældre"; let seen = "x"; await producerBevis(base({ prover: async () => { seen = process.env.GITHUB_TOKEN ?? ""; return { ok: true, summary: { total: 1, passed: 1, failed: 0, skipped: 0 } }; } })); const efter = process.env.GITHUB_TOKEN; delete process.env.GITHUB_TOKEN; eq("prover-kaldet: forælderens credential er fjernet fra process.env under kaldet (runProver merger process.env) og genoprettet efter", seen === "" && efter === "ghs_forældre", true); }
 { const d = await doemBevis(base({ proofBytes: null, fejl: ["migration supabase/migrations/0001_a.sql fejlede: 42601 syntax"], store: { anvendt: 0 } })); eq("doemBevis: målingen meldte fejl (migration STOP) → rød m. målingens grund", d.result.open === false && /migration .* fejlede/.test(d.result.reasons[0]), true); }
 { const d = await doemBevis(base({ proofBytes: null })); eq("doemBevis: intet bevis fra målingen → rød (fail-closed)", d.result.open === false && /proofBytes mangler/.test(d.result.reasons[0]), true); }
 { const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.engine.allOk = true; b.cases[1].status = "brudt"; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: engine.allOk pyntet til true m. brudt case → rød (genudledning + summary)", d.result.open === false, true); }

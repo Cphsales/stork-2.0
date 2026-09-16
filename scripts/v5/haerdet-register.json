@@ -101,16 +101,14 @@
  },
  "ci-build-dom.mjs": {
   "status": "kandidat",
-  "blob_oid": "5641cd28e7c781af7ca151ce24d61d38d8c35eb6",
-  "pas_afventer": "Codex C4b-runde 2 (F-C4b-1 to tillidszoner + renset miljø · F-C4b-2 aktørens settings i race) FØR autoritativ ibrugtagning",
+  "blob_oid": "4deb70bb5bd3be8c85ff8d18d303f53334959c02",
+  "pas_afventer": "Codex C4b-runde 3 (F-C4b-3: rå bytes hashes, ugyldig UTF-8 afvises før dom)",
   "kandidat_siden": "2026-09-16",
-  "note": "C4b: producerBevis (måling, renset miljø, ingen dom) + doemBevis (dom fra bytes, ingen produktkode) + doemBuild (lokalt begge). Runde 1 FAIL F-C4b-1 (produktkode kunne nå emissions-tokenet) — lukket ved job-/proces-split + producentMiljoe + scriptets egne forbud (--emit i --produce · GITHUB_TOKEN i måle-jobbet). Selvtest 33."
+  "note": "C4b build-dommer: producerBevis (måling, renset miljø) + doemBevis (dom fra RÅ bytes: fatal UTF-8-afkodning, oid over rå bytes, commit/pakke-binding, forgænger frisk, evaluateGate) + CLI --produce/--judge. Runde 2 FAIL F-C4b-3 (utf8-afkodning før hash) — lukket. Selvtest 38."
  },
  "pg-runner.mjs": {
-  "status": "kandidat",
+  "pas_ref": "2de7499300558fba421279778c6123fe7cfaf8fe",
   "blob_oid": "c43c57bcfdb193e0d8044a06f64d96ea4ebc0547",
-  "pas_afventer": "Codex C4b-runde 2 (F-C4b-1 to tillidszoner + renset miljø · F-C4b-2 aktørens settings i race) FØR autoritativ ibrugtagning",
-  "kandidat_siden": "2026-09-16",
-  "note": "Rigtig Postgres-runner v2: env-isolation (producentMiljoe default, credential i env afvises) · aktørens settings anvendes og VERIFICERES i begge race-sessions (F-C4b-2), validerede nøgler · sql() samme kontrakt. Integration 79 grønne (v2.9)."
+  "note": "Rigtig Postgres-runner v2 (struktureret diagnostik via psql-variable · flertydighed = protokol · F-40 · uafhængigt overlap-vidne · exit m. stdout som streng · env-isolation (producentMiljoe, credential i env afvises) · aktørens settings anvendt+verificeret i begge race-sessions). Codex C4b-runde 2 (2026-09-16, run_id 20260916T125157-2874685-17901, regel_commit 2de7499): PASS som hærdet transport. Integration 79 grønne mod rigtig Postgres (v2.9)."
  }
 }

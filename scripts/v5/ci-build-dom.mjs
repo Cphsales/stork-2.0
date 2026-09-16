@@ -59,12 +59,16 @@ export const BUILD_NAAETHED = Object.freeze(["plan-build/<pakke>/plan-approval.j
 import { producentMiljoe, CREDENTIAL_ENV_RE } from "./pg-runner.mjs";
 void CREDENTIAL_ENV_RE;
 
-// hashObjectBytes(bytes) → git blob-OID af bytes (samme som hvis filen var committet) — default via `git hash-object --stdin`
+// hashObjectBytes(bytes) → git blob-OID af de RÅ bytes (samme som hvis filen var committet) — default via `git hash-object --stdin`.
+// F-C4b-3: bytes gives som Buffer (rå) eller streng (producentens egen serialisering, UTF-8) — aldrig en tabsfuldt afkodet streng af en fil.
 export function hashObjectBytes(bytes, root = repoRoot) {
-  const r = spawnSync("git", ["-C", root, "hash-object", "--stdin"], { input: bytes, encoding: "utf8" });
+  const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(String(bytes), "utf8");
+  const r = spawnSync("git", ["-C", root, "hash-object", "--stdin"], { input: buf, encoding: "utf8" });
   if (r.status !== 0 || !isOid(String(r.stdout).trim())) throw new Error(`git hash-object fejlede: ${String(r.stderr).slice(0, 200)}`);
   return String(r.stdout).trim();
 }
+// raaTilTekst(buf) → streng KUN hvis bytes er gyldig UTF-8 (fatal decoder) — ellers null (F-C4b-3: ingen tabsfuld erstatning før dom/hash)
+export function raaTilTekst(buf) { try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch { return null; } }
 
 // fælles kontekst: git-læsere + pakke @ commit
 function ctxFor({ commitSha, root, git, exists, readJson, readText, hashObject }) {
@@ -127,7 +131,12 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
   else {
     let pj = null; try { pj = json(proverPath); } catch (e) { pj = null; }
     if (!pj || !Array.isArray(pj.cmd) || typeof pj.resultRelPath !== "string") prover_result = { ok: false, total: 0, passed: 0, failed: 0, skipped: 0, reason: "prover.json malformet ({cmd[], resultRelPath} kræves)" };
-    else { const pr = prover ? await prover(pj, env) : runProver({ repoRoot: root, commitSha, cmd: pj.cmd, resultRelPath: pj.resultRelPath, git: g, env }); const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
+    else {
+      // runProver merger {...process.env, ...env} (prover.mjs:145, Codex C4b r2) — så credentials i FORÆLDERENS miljø ville komme med igen.
+      // Job A har intet token (scriptet afviser --produce m. GITHUB_TOKEN), men vi scrubber alligevel forælderens miljø for varigheden af kaldet.
+      const gemt = {}; for (const k of Object.keys(process.env)) if (CREDENTIAL_ENV_RE.test(k)) { gemt[k] = process.env[k]; delete process.env[k]; }
+      let pr; try { pr = prover ? await prover(pj, env) : runProver({ repoRoot: root, commitSha, cmd: pj.cmd, resultRelPath: pj.resultRelPath, git: g, env }); } finally { for (const [k, v] of Object.entries(gemt)) process.env[k] = v; }
+      const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
   }
   const body = { schema_version: 1, pakke: pk, commit_sha: commitSha, run_id: rid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk: eng.allOk === true }, cases: eng.cases, mutants: eng.mutants, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
   const proofBytes = JSON.stringify(body, null, 1) + "\n";
@@ -135,15 +144,18 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
 }
 
 // doemBevis(deps) → { naaet, result, checkRun, artifactOid, envelope, forgaenger } — JOB B (dom): KUN betroet måle-lag mod git + bevis-bytes.
-// Ingen produktkode kører her; dette job må have checks:write. Bytes'ne er artefaktet: oid = hash-object(bytes), body = JSON.parse(bytes).
+// Ingen produktkode kører her; dette job må have checks:write. Bytes'ne er artefaktet: oid = hash-object over de RÅ bytes (Buffer fra fil
+// eller producentens UTF-8-streng), body = JSON.parse af den TABSFRIT afkodede tekst — ugyldig UTF-8 er rød, aldrig erstattet (F-C4b-3).
 export async function doemBevis({ commitSha, root = repoRoot, git = null, exists = null, readJson = null, readText = null, hashObject = null, planDom = null, proofBytes, fejl = null, store = null } = {}) {
   const { g, json, hashObj, pk } = ctxFor({ commitSha, root, git, exists, readJson, readText, hashObject }); void json;
   if (Array.isArray(fejl) && fejl.length) return failRes(fejl, { store });   // målingen meldte fejl (migration/input/motor) — dømmes rød m. dens grund
-  if (typeof proofBytes !== "string" || !proofBytes.length) return failRes(["intet bevis fra målingen (proofBytes mangler) — fail-closed"], { store });
-  let body; try { body = JSON.parse(proofBytes); } catch { return failRes(["bevis-bytes er ikke JSON"], { store }); }
+  const raw = Buffer.isBuffer(proofBytes) ? proofBytes : typeof proofBytes === "string" && proofBytes.length ? Buffer.from(proofBytes, "utf8") : null;
+  if (!raw || raw.length === 0) return failRes(["intet bevis fra målingen (proofBytes mangler) — fail-closed"], { store });
+  const tekst = raaTilTekst(raw); if (tekst === null) return failRes(["bevis-bytes er ikke gyldig UTF-8 — artefaktet kan ikke dømmes tabsfrit (F-C4b-3)"], { store });
+  let body; try { body = JSON.parse(tekst); } catch { return failRes(["bevis-bytes er ikke JSON"], { store }); }
   if (body?.commit_sha !== commitSha) return failRes([`beviset er produceret for commit ${String(body?.commit_sha).slice(0, 7)} ≠ den dømte ${commitSha.slice(0, 7)}`], { store });
   if (body?.pakke !== pk) return failRes([`beviset er produceret for pakken '${String(body?.pakke)}' ≠ '${pk}'`], { store });
-  const artifactOid = hashObj(proofBytes);
+  const artifactOid = hashObj(raw);   // over de RÅ bytes — det er dét tredjeparten hasher i det downloadede artefakt
 
   // forgænger: plan-gaten frisk (pinned + identitet) m. evidens @ commit
   let forgaenger;
@@ -180,7 +192,7 @@ if (erMain()) {
     if (judge && !produce) {   // JOB B: kun betroet dom + emission — ingen produktkode, ingen runner
       const meta = metaIn ? JSON.parse(readFileSync(metaIn, "utf8")) : {};
       if (meta.naaet === false) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${meta.fil}) — intet check-run (ikke nået = ikke grøn)`); return; }
-      const proofBytes = inn ? readFileSync(inn, "utf8") : null;
+      const proofBytes = inn ? readFileSync(inn) : null;   // RÅ Buffer — ingen afkodning før hash/dom (F-C4b-3)
       const d = await doemBevis({ commitSha, proofBytes, fejl: meta.fejl ?? null, store: meta.store ?? null });
       let emitted = null;
       if (emit) emitted = await emitCheckRuns({ repo: process.env.GITHUB_REPOSITORY, headSha: commitSha, domme: [{ gate: "build", naaet: true, checkRun: d.checkRun }], token: process.env.GITHUB_TOKEN });
