@@ -267,3 +267,29 @@ Mathias-tur (D-9 · D-10 · SM-1..4). Alle kopier byte-identiske (`cmp`).
 | `plan-audit-fresh-eyes-r3.claude-result.json` | `…/b4r3/out-b/OUT-audit-r3.json` | `e6aec04c7d8d80ac2d603606d82f1fe210fd4353ec854168c27ab9f84f03fd9b` | CLI result-JSON (session b5104e5e) |
 | `plan-audit-fresh-eyes-r3.settings.json` | job-tmp `settings-readonly-c.json` | `eaf8641cf96649bbcf2c224bc7cc19b57ff88f48da0db939a77e31df2854c3b0` | read-only permissions v2 |
 | `plan-audit-fresh-eyes-r3.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance inkl. værtsdvale-afvig |
+
+## B4 ekstra runde — A' codex-angreb delta pr. henvisning + frit helheds-pas på plan v3 (Codex via wrapper, read-only, IKKE gate-verdikt) — kørt 10/9 20:12 → 11/9 11:24, arkiveret 2026-09-16 af ny driver mathias-5f (forgængeren døde uden at arkivere)
+
+Wrapper-kvittering `plan-angreb-r3.receipt.json` (schema 2, `status: success`, run_id `20260910T201232-1717260-6470`, regel_commit 4716507, lock 023e5176, skill f6e64979, gpt-6-astra/xhigh, sandbox read-only m. netværk FRA, `gate_input: null`, attempt 1 rc 0, 28 603 B). Dom: **»Rest-status: 8 åbne«** — §1 22/77 fund ikke båret · §2 9/21 kill-list-dispositioner ikke virksomme · §3 A3-1..A3-8 (5 BLOKER · 2 RET · 1 afstemning) · §4 frit pas · §5 alle 21 input-blobs + 14 kildeblobs hash-verificeret af aktøren. Værtsdvale 10/9 ~20:13 → 11/9 ~09:47 frøs processen; `varighed_mono_s` = 54 729 = vægur (observation til fabrik-armen). Alle kopier byte-identiske (`cmp`).
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan-angreb-r3.md` | `$OUT` (job-tmp `b4r3/out-a/OUT-angreb-r3.md`) | `452594bcd353c2882a6fdcbc46ecac8bd31e68aecbbf38587b41a0b047ecc9f0` (blob `1dad9636fb510b82b266bfb546c2afed82ee703a`) | leverancen: rest-status · 77-tabel · 21-tabel · A3-1..8 · frit pas · bindinger |
+| `plan-angreb-r3.prompt.txt` | job-tmp `b4r3/prompt-a3.txt` | `e540f33736a4ccfc2a7d28ec903b48bb918b6d0180b3590b7129b4291b4a4560` | opgave-prompten (wrapperen satte rolleteksten @ f6e64979 foran; receipt.prompt_sha256 dækker den sammensatte prompt) |
+| `plan-angreb-r3.receipt.json` | `$OUT.receipt.json` | `475d2efbbf6aa59d4988866d781656261bb350290535466a8ac8d1f8d8829f5a` | transport-kvittering v2 |
+| `plan-angreb-r3.provenance.txt` | `$OUT.provenance` | (wrapper-skrevet) | start/attempt-linjer |
+| `plan-angreb-r3.codex-banner.txt` | de første 14 linjer af `$OUT.stderr.log` (6 926 linjer, 1,07 MB — ikke arkiveret) | (denne commit) | Codex-banner (session 01a08c85-82bd-78a1-9b59-3f61d31747ec) |
+
+## B4 ekstra runde — v3.1 planner-code (KUN manifest, produktion, IKKE gate-verdikt) — kørt 10/9 20:12 → 11/9 11:24, arkiveret 2026-09-16 af ny driver mathias-5f
+
+Kald, blobs, workdir-diff og afvig står i `manifest-v31.provenance.txt`. Result-JSON = kvittering (selv-erklæret): 83 ture · 23,3 min API · 16,70 USD · `is_error: false`. Leverancen (`manifest-v31.leverance.json`, blob `bc6a8062a8aeedf2ecdec0777314c8c46590dee4`) er skema v2-gyldig mod validator-kopien f43796cf; committet `../forventnings-manifest.json` (blob `ce191381b919fb4c2a9e5242eb00189762dc7a17`) = leverancen minus 10 `locus`-strenge (driver-udfyldning, F-31), validator 64ea01e0 gyldigt. Slutbeskedens »MANGLER KILDE«-liste → fund-log Kilde 13 (V31-1..11).
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `manifest-v31.leverance.json` | workdir `wd-v31/plan-build/lokations-skabelon/forventnings-manifest.json` | `d273b3ce1443afd271a451f2103b38e2be1ad71387deaf69bdf86cf029c54a28` | rå leverance (m. locus-strenge) |
+| `../forventnings-manifest.json` | leverancen minus locus | `d5a0ddae529c86c51a4c2e686b8e05ebc0a6c891bfec258c614700d4edc14eb2` | committet manifest (gate-binding) |
+| `manifest-v31.prompt.txt` | job-tmp `b4r3/prompt-v31.txt` | `fd6654242348448b66c9576c3aca3d5abda78917044a8f1e1e6833926754fc12` | planner-code.md @ eb190c08 + Opgave v3.1 m. endeligt skema |
+| `manifest-v31.claude-result.json` | `b4r3/out-v31/OUT-v31.json` | `e387f8ea8131427642d1f38500405287b8a3557239d6322a27b52eb8aa340143` | CLI result-JSON (session 999a675f) |
+| `manifest-v31.slutbesked.md` | result-feltet | `5c1cf8a56cd445f9fc63e3a5243fcd38261e2121b59521c9dff69771df170666` | validator-output · ændringer · MANGLER KILDE · binding |
+| `manifest-v31.settings.json` | job-tmp `settings-planner-v3.json` (afledt) | `3d3de0a755452bedfc1bac05e25a014364c44346c435b7c6c54bf910c70dcbb0` | acceptEdits-permissions (= fold-ind-r3) |
+| `manifest-v31.provenance.txt` | skrevet af ny driver | (denne commit) | rekonstrueret provenance m. deklarerede afledninger |
