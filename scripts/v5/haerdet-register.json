@@ -100,11 +100,9 @@
   "note": "C4 check-run-payload-mapper (fail-closed: kun eksplicit eget-data open===true m. tomme reasons → success; gate_id-mismatch/malformet → failure; ukendt gate → v5/gate/invalid). Codex P-1 transport-red-team (2026-09-15, run_id 20260915T142022-2377447-1654, regel_commit cdddf64): PASS — 20 mappercases + 7 dræbte transportmutanter. Leverance: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c4-p1/."
  },
  "ci-build-dom.mjs": {
-  "status": "kandidat",
+  "pas_ref": "445999332cdc66f8c99cb5860cd36ee857eaaba3",
   "blob_oid": "4deb70bb5bd3be8c85ff8d18d303f53334959c02",
-  "pas_afventer": "Codex C4b-runde 3 (F-C4b-3: rå bytes hashes, ugyldig UTF-8 afvises før dom)",
-  "kandidat_siden": "2026-09-16",
-  "note": "C4b build-dommer: producerBevis (måling, renset miljø) + doemBevis (dom fra RÅ bytes: fatal UTF-8-afkodning, oid over rå bytes, commit/pakke-binding, forgænger frisk, evaluateGate) + CLI --produce/--judge. Runde 2 FAIL F-C4b-3 (utf8-afkodning før hash) — lukket. Selvtest 38."
+  "note": "C4b build-dommer: producerBevis (måling i renset miljø, ingen dom/emission) + doemBevis (dom fra RÅ bytes: fatal UTF-8, oid over rå bytes, commit/pakke-binding, forgænger frisk, evaluateGate) + CLI --produce/--judge m. egne forbud. Codex C4b-runde 1-3 (2026-09-16): r1 F-C4b-1 (isolation) · r2 F-C4b-3 (tabsfuld afkodning) · r3 PASS som hærdet transport (run_id 20260916T130619-2902298-29361, regel_commit 4459993). Selvtest 38. Autoritet afventer C4c + admin (R-CI-AUTENTICITET · C3 · C4c). Leverancer: p2-c4b/ · p2-c4b-r2/ · p2-c4b-r3/."
  },
  "pg-runner.mjs": {
   "pas_ref": "2de7499300558fba421279778c6123fe7cfaf8fe",
