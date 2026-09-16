@@ -96,7 +96,12 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     return true;
   };
   const readJson = (ref, label) => { try { return JSON.parse(String(git("show", `${commitSha}:${own(ref, "path")}`))); } catch (e) { fail(`${label} kan ikke læses/parses fra git: ${e?.message ?? e}`); return null; } };
-  pathBind(own(snapshot, "artifact"), "snapshot.artifact");
+  { // C4b: artefaktet er enten en committet blob (git-sti-bundet) eller CI-PRODUCERET (type ci-produced; oid = hash af bevis-bytes,
+    // filen uploades af CI) — kernen binder proof.artifact_oid === artifact.oid; her kræves blot en gyldig ref
+    const art = own(snapshot, "artifact");
+    if (isPlain(art) && own(art, "type") === "ci-produced") { if (!isStr(own(art, "path")) || !isOid(own(art, "oid"))) fail("snapshot.artifact (ci-produced): path/oid mangler/ugyldig"); }
+    else pathBind(art, "snapshot.artifact");
+  }
   const sB = own(snapshot, "bindings");
   const planRef = isPlain(sB) ? own(sB, "plan") : null;
   if (!planRef) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)"); else pathBind(planRef, "plan-binding");

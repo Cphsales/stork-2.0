@@ -16,7 +16,8 @@
 //      IDENTITET (Codex P-1 F-C4-1): gatens artefakt og ALLE bindinger skal have samme blob-OID ved pinned og ved pushed, og launch.pakke
 //      skal være den samme — en gammel åben dom må ikke blive grøn for ændret indhold. Nyere evidens-commits (approval/verdikter) er tilladt;
 //      ændret artefakt/binding/pakke → FAILURE m. hvad der ændrede sig. recon dømmes ved den pushede commit selv (ingen approval).
-//      build/slut: udfør-siden er ikke bygget endnu → FAILURE med grund (fail-closed), ikke succes og ikke tavshed.
+//      build: dømmes af SIT EGET workflow (v5-build-dom.yml → ci-build-dom.mjs, kræver Postgres-service) — denne dommer emitterer INTET
+//      for build (to emittere på samme check-navn ville give modstridende domme); slut: udfør-side ikke bygget → FAILURE m. grund.
 //   3. EMISSION: resultatet mappes til check-run-payload (checkrun.mjs, fail-closed) og publiceres som `v5/gate/<id>` på head_sha via
 //      GitHub REST (workflow-tokenets checks:write). Emission der fejler → exit ≠ 0 (aldrig stille).
 //   Runner der kaster → conclusion failure (fail-closed). Jobbet er grønt når DOMMEREN KØRTE OG EMITTEREDE — gaternes udfald står i
@@ -49,6 +50,8 @@ export const NAAETHED = Object.freeze({
 });
 // pinned commit pr. gate: recon = den pushede commit; krav/plan = kandidat-resultatets commit_sha; build/slut = proofens snapshot (C4b)
 export const PINNED_KILDE = Object.freeze({ recon: null, krav: "plan-build/<pakke>/krav-gate-resultat.json", plan: "plan-build/<pakke>/plan-gate-resultat.json", build: null, slut: null });
+// gates der dømmes og emitteres af et ANDET workflow (eget job m. store): denne dommer emitterer intet for dem — én emitter pr. check-navn
+export const DELEGERET = Object.freeze({ build: "v5-build-dom.yml (ci-build-dom.mjs)" });
 
 // standard-runnere: udfør-siderne, dynamisk importeret (så selvtesten kan injicere sine egne uden git)
 async function defaultRunners() {
@@ -89,6 +92,7 @@ export async function doemGates({ commitSha, root = repoRoot, git = null, runner
     if (!GATE_IDS.includes(gate)) throw new Error(`ukendt gate '${gate}'`);
     const fil = NAAETHED[gate].replace("<pakke>", pk);
     if (!findes(fil)) { out.push({ gate, naaet: false, fil, pinned: null, result: null, checkRun: null }); continue; }
+    if (DELEGERET[gate]) { out.push({ gate, naaet: true, fil, pinned: null, result: null, checkRun: null, delegeret: DELEGERET[gate] }); continue; }
     // pinned commit: kandidat-resultatets commit_sha (krav/plan) — SKAL være OID og forfader til/lig den pushede commit
     let pinned = commitSha; let result = null;
     const kilde = PINNED_KILDE[gate] ? PINNED_KILDE[gate].replace("<pakke>", pk) : null;
@@ -138,7 +142,7 @@ export async function emitCheckRuns({ repo, headSha, domme, token, fetchFn = glo
 
 export function resume(domme, emitted = null) {
   const lines = [`# v5 gate-dommer (CI = autoritet)`, ``, `| gate | nået | dom | check-run |`, `|---|---|---|---|`];
-  for (const d of domme) lines.push(`| ${d.gate} | ${d.naaet ? `ja (pinned ${String(d.pinned).slice(0, 7)})` : `nej (${d.fil} findes ikke)`} | ${d.naaet ? (d.result?.open === true ? "ÅBEN" : "LUKKET") : "—"} | ${d.checkRun ? `${d.checkRun.name} → ${d.checkRun.conclusion}${emitted ? (emitted.find((e) => e.name === d.checkRun.name) ? " (emitteret)" : " (IKKE emitteret)") : " (tør kørsel)"}` : "ingen (ikke nået = ikke grøn)"} |`);
+  for (const d of domme) lines.push(`| ${d.gate} | ${d.naaet ? (d.delegeret ? "ja" : `ja (pinned ${String(d.pinned).slice(0, 7)})`) : `nej (${d.fil} findes ikke)`} | ${d.delegeret ? `dømmes af ${d.delegeret}` : d.naaet ? (d.result?.open === true ? "ÅBEN" : "LUKKET") : "—"} | ${d.checkRun ? `${d.checkRun.name} → ${d.checkRun.conclusion}${emitted ? (emitted.find((e) => e.name === d.checkRun.name) ? " (emitteret)" : " (IKKE emitteret)") : " (tør kørsel)"}` : "ingen (ikke nået = ikke grøn)"} |`);
   for (const d of domme) if (d.naaet && d.result?.open !== true) lines.push(``, `**${d.gate} lukket:** ${(d.result?.reasons ?? []).slice(0, 12).map((r) => `- ${r}`).join("\n")}`);
   return lines.join("\n");
 }

@@ -109,6 +109,10 @@ export const GATE_REGISTRY = deepFreeze([
     // predecessor.bindings_oids.manifest === bindings.manifest.oid (indholds-bundet kæde for manifestet).
     predecessorBindings: ["manifest"],
     artifact: "build-proof",
+    // C4b (2026-09-16): build-beviset PRODUCERES af CI's egen runner i jobbet (contents:read — det committes aldrig, plan 2.A/DEL V);
+    // artefaktet er derfor »ci-produceret«: ref {path (layout), oid = git hash-object af bevis-bytes, type: "ci-produced"}, og CI
+    // uploader filen som workflow-artefakt så enhver kan genverificere. Kun maskinbevis-gates må have det; bindinger er altid blobs.
+    artifactCiProduced: true,
     // C1-r2 F-13/F-18: den maskinlæsbare angrebs-/måle-spec (cases · orakler · kontroller · mutanter · bid-graf) er gate-input
     // (layout-sti, pinned commit) — bevisproducenten leverer kun observationer mod den. Provenance (Codex-skrevet FØR byg via
     // attack-spec-state-machine, hooks.mjs) er hooks'/CI's ansvar (R-PREDECESSOR-WIRING).
@@ -126,6 +130,7 @@ export const GATE_REGISTRY = deepFreeze([
     predecessor: "build",
     predecessorBinding: "build",
     artifact: "chain-proof",
+    artifactCiProduced: true, // chain-proof produceres ligeledes i CI (Fase 5)
     bindings: ["plan", "krav", "build"],
     proofKind: "chain-proof",
     expectedActors: [],
@@ -187,6 +192,15 @@ const isRef = (r) =>
   hasOwn(r, "path") && isNonEmptyString(r.path) &&
   hasOwn(r, "oid") && isOid(r.oid) &&
   hasOwn(r, "type") && r.type === "blob";
+// C4b: et ARTEFAKT må være ci-produceret (type "ci-produced", oid = hash af bevis-bytes) KUN for gates m. artifactCiProduced;
+// bindinger er altid blobs (isRef). Alt andet om ref'en er uændret (egne felter, path, OID).
+const isArtifactRef = (r, gate) =>
+  isRef(r) ||
+  (gate?.artifactCiProduced === true &&
+    isPlainObj(r) &&
+    hasOwn(r, "path") && isNonEmptyString(r.path) &&
+    hasOwn(r, "oid") && isOid(r.oid) &&
+    hasOwn(r, "type") && r.type === "ci-produced");
 
 const bindingsOidMap = (snapshotBindings, keys) => {
   const out = {};
@@ -248,7 +262,7 @@ function evaluateGateInner(gateId, snapshot, deps = {}) {
   // commit_sha SKAL være en pinned OID — en mutable ref (HEAD/branch/tag) ville
   // lade gaten binde til flytbart indhold (falsk-grøn: pin brydes mekanisk).
   if (!hasOwn(snapshot, "commit_sha") || !isOid(snapshot.commit_sha)) fail("commit_sha mangler/ikke en pinned OID (mutable ref som HEAD forbudt)");
-  if (!hasOwn(snapshot, "artifact") || !isRef(snapshot.artifact)) fail("artifact-ref mangler/ugyldig (path+oid+type kræves)");
+  if (!hasOwn(snapshot, "artifact") || !isArtifactRef(snapshot.artifact, gate)) fail(`artifact-ref mangler/ugyldig (path+oid+type kræves; type blob${gate.artifactCiProduced ? " eller ci-produced" : ""})`);
   const bindings = hasOwn(snapshot, "bindings") && isPlainObj(snapshot.bindings) ? snapshot.bindings : null;
   if (!bindings) fail("bindings mangler/ugyldig (eget plain object kræves)");
   const bindingKeys = bindings ? Object.keys(bindings) : [];

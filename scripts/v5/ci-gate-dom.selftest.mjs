@@ -49,7 +49,9 @@ console.log("\nF-C4-1 — identitetsbinding pinned ↔ pushed:");
 { const d = await D({ runners: mkRunners({ krav: () => ({ open: true, gate_id: "krav", reasons: ["men…"] }) }), exists: existsFor(["plan-build/pk/krav-approval.json"]) });
   eq("open:true m. ikke-tomme reasons → failure (kernen: tvivl = rød)", d[1].checkRun.conclusion, "failure"); }
 { const d = await D({ runners: mkRunners(), exists: existsFor(["plan-build/pk/build-proof.json"]) });
-  eq("build nået men udfør-side ikke bygget → failure m. grund (ikke succes, ikke tavs)", d[3].checkRun.conclusion === "failure" && /ikke bygget/.test(d[3].result.reasons[0]), true); }
+  eq("build nået → DELEGERET til v5-build-dom (intet check-run herfra — én emitter pr. check-navn); ingen runner kaldt", d[3].naaet === true && d[3].checkRun === null && /v5-build-dom/.test(d[3].delegeret) && d[3].result === null, true); }
+{ const d = await D({ runners: mkRunners(), exists: existsFor(["plan-build/pk/chain-proof.json"]) });
+  eq("slut nået men udfør-side ikke bygget → failure m. grund (ikke succes, ikke tavs)", d[4].checkRun.conclusion === "failure" && /ikke bygget/.test(d[4].result.reasons[0]), true); }
 { let e = null; try { await doemGates({ commitSha: "HEAD", git: gitStub, runners: mkRunners(), exists: () => true }); } catch (x) { e = x.message; } eq("mutable ref (HEAD) som commit → kast", /pinned/.test(e ?? ""), true); }
 { let e = null; try { await doemGates({ commitSha: SHA, git: { bytes: () => { throw new Error("nope"); } }, runners: mkRunners(), exists: () => true }); } catch (x) { e = x.message; } eq("launch.json ulæselig → kast (ingen pakke = ingen dom)", /launch/.test(e ?? ""), true); }
 { let e = null; try { await D({ runners: mkRunners(), exists: () => true, gates: ["krav", "x"] }); } catch (x) { e = x.message; } eq("ukendt gate → kast", /ukendt gate/.test(e ?? ""), true); }

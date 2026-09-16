@@ -16,6 +16,7 @@
 import { GATE_REGISTRY, isOid } from "./gates.mjs";
 import { posix } from "node:path";
 import { resolveRef } from "./git.mjs";
+const hasOwnProp = (o, k) => o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k);
 
 // node-navn → sti-skabelon (<pakke> substitueres). Dækker alle artefakter +
 // bindinger i registryet. EKSPLICIT (ikke skjult antagelse) + injicerbart.
@@ -72,7 +73,15 @@ export function buildSnapshot(gateId, opts) {
   const stier = noder.map((n) => posix.normalize(nodePath(n, pakke, layout)));
   if (new Set(stier).size !== stier.length)
     throw new Error(`gate-eval: sammenfaldende input-stier for gate '${gateId}' (${stier.join(" · ")})`);
-  const artifact = resolveRef(git, commitSha, nodePath(gate.artifact, pakke, layout));
+  // C4b: ci-produceret artefakt injiceres af kalderen (CI's build-job) for gates m. artifactCiProduced — ref'en SKAL bære layout-stien,
+  // en OID og type "ci-produced"; for alle andre gates (og uden override) resolves artefaktet fra git som før.
+  let artifact;
+  if (hasOwnProp(opts, "artifact") && opts.artifact !== undefined) {
+    const a = opts.artifact;
+    if (gate.artifactCiProduced !== true) throw new Error(`gate-eval: gate '${gateId}' tillader ikke et injiceret artefakt (kun maskinbevis-gates m. ci-produceret artefakt)`);
+    if (a === null || typeof a !== "object" || a.type !== "ci-produced" || !isOid(a.oid) || a.path !== nodePath(gate.artifact, pakke, layout)) throw new Error("gate-eval: injiceret artefakt skal være {path: layout-stien, oid: OID, type: 'ci-produced'}");
+    artifact = { path: a.path, oid: a.oid, type: "ci-produced" };
+  } else artifact = resolveRef(git, commitSha, nodePath(gate.artifact, pakke, layout));
   const bindings = {};
   for (const b of gate.bindings) bindings[b] = resolveRef(git, commitSha, nodePath(b, pakke, layout));
 

@@ -134,6 +134,15 @@ console.log("buildSnapshot — git-resolution af artefakt + bindinger:");
     : bad("build-bindinger", JSON.stringify(Object.keys(snap.bindings)));
 }
 {
+  // C4b: ci-produceret artefakt injiceres for build (layout-sti + OID + type) — afvises for plan og ved forkert sti/type
+  const oid = "d".repeat(40); const path = `plan-build/${PAKKE}/build-proof.json`;
+  const snap = buildSnapshot("build", { git, commitSha: COMMIT, pakke: PAKKE, artifact: { path, oid, type: "ci-produced" } });
+  snap.artifact.type === "ci-produced" && snap.artifact.oid === oid && snap.artifact.path === path && snap.bindings.plan?.type === "blob" ? ok("build: injiceret ci-produceret artefakt bæres i snapshottet; bindinger resolves stadig fra git") : bad("ci-produced snapshot", JSON.stringify(snap.artifact));
+  let e1 = null; try { buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE, artifact: { path: `plan-build/${PAKKE}/plan.md`, oid, type: "ci-produced" } }); } catch (e) { e1 = e.message; } /tillader ikke et injiceret artefakt/.test(e1 ?? "") ? ok("plan: injiceret artefakt afvises (kaster)") : bad("ci-produced plan", e1);
+  let e2 = null; try { buildSnapshot("build", { git, commitSha: COMMIT, pakke: PAKKE, artifact: { path: "andet/sted.json", oid, type: "ci-produced" } }); } catch (e) { e2 = e.message; } /layout-stien/.test(e2 ?? "") ? ok("build: injiceret artefakt m. forkert sti afvises") : bad("ci-produced sti", e2);
+  let e3 = null; try { buildSnapshot("build", { git, commitSha: COMMIT, pakke: PAKKE, artifact: { path, oid, type: "blob" } }); } catch (e) { e3 = e.message; } /ci-produced/.test(e3 ?? "") ? ok("build: injiceret artefakt m. type blob afvises (kun ci-produced kan injiceres)") : bad("ci-produced type", e3);
+}
+{
   // P2-gates F-2: layout-alias (killlist → recon2-stien) må kaste, aldrig resolve fem nøgler til fire filer
   let threw = null;
   try { buildSnapshot("plan", { git, commitSha: COMMIT, pakke: PAKKE, layout: { ...DEFAULT_LAYOUT, killlist: DEFAULT_LAYOUT.recon2 } }); } catch (e) { threw = e.message; }

@@ -909,6 +909,21 @@ GATE_REGISTRY.every((g) => g.predecessor === null || g.bindings.includes(g.prede
 const schemaProbe = validateVerdiktSchema({});
 !schemaProbe.ok ? ok("tomt verdikt afvises af schema") : bad("schema", "tomt verdikt passerede");
 
+// C4b: CI-PRODUCERET artefakt (type "ci-produced") — kun for maskinbevis-gates m. artifactCiProduced (build/slut); bindinger altid blobs
+console.log("C4b — ci-produceret artefakt:");
+{
+  const { snapshot, deps } = greenBuild();
+  const ci = { ...snapshot, artifact: { path: snapshot.artifact.path, oid: "c".repeat(40), type: "ci-produced" }, proof_result: { ...snapshot.proof_result, artifact_oid: "c".repeat(40) } };
+  const r = evaluateGate("build", ci, deps); r.open ? ok("build: ci-produceret artefakt (oid = hash af bevis-bytes) m. matchende proof.artifact_oid → gaten KAN åbne") : bad("ci-produced build", r.reasons.join(" | "));
+  const r2 = evaluateGate("build", { ...ci, proof_result: { ...ci.proof_result, artifact_oid: snapshot.artifact.oid } }, deps); !r2.open && r2.reasons.some((x) => /artifact_oid-binding/.test(x)) ? ok("build: ci-produceret artefakt men proof.artifact_oid ≠ artefakt-oid → lukket (generisk bevis åbner intet)") : bad("ci-produced mismatch", r2.reasons.join(" | "));
+  const r3 = evaluateGate("build", { ...ci, bindings: { ...ci.bindings, plan: { ...ci.bindings.plan, type: "ci-produced" } } }, deps); !r3.open && r3.reasons.some((x) => /binding 'plan'/.test(x)) ? ok("build: en BINDING m. type ci-produced → lukket (bindinger er altid blobs)") : bad("ci-produced binding", r3.reasons.join(" | "));
+  const r4 = evaluateGate("build", { ...ci, artifact: { ...ci.artifact, type: "ci-made" } }, deps); !r4.open && r4.reasons.some((x) => /artifact-ref/.test(x)) ? ok("build: ukendt artefakt-type → lukket") : bad("ci-produced type", r4.reasons.join(" | "));
+}
+{
+  const { snapshot, deps } = greenPlan();
+  const r = evaluateGate("plan", { ...snapshot, artifact: { ...snapshot.artifact, type: "ci-produced" } }, deps); !r.open && r.reasons.some((x) => /artifact-ref/.test(x)) ? ok("plan: ci-produceret artefakt afvises (kun maskinbevis-gates må have det)") : bad("ci-produced plan", r.reasons.join(" | "));
+}
+
 console.log("");
 if (failed > 0) {
   console.error(`gate-kerne red-team: ${failed} FEJLEDE`);

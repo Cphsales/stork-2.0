@@ -1,0 +1,69 @@
+name: v5 build-dommer (CI producerer build-beviset)
+
+# C4b (plan 2.A/2.C/2.E · DEL V · DEL VIII pkt. 36/38): CI's EGEN produktionsrunner bygger den friske store (produktets migrationer @ commit)
+# i en Postgres-service, måler mod den gate-bundne angrebs-spec + manifest (sandheds-motoren), producerer build-beviset IN-MEMORY
+# (artefakt-type ci-produced; uploades som workflow-artefakt) og dømmer build-gaten frisk → check-run v5/gate/build.
+# Nået = plan-approval.json + angrebs-spec.json findes i commit'en; ellers intet check (ikke nået = ikke grøn).
+# contents:read (beviset committes aldrig) · checks:write. Jobbet er grønt når dommeren kørte og emitterede; gate-udfaldet står i check-run'et.
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: v5-build-dom-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-dom:
+    name: build-dommer (frisk store + måling → check-run v5/gate/build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: public.ecr.aws/supabase/postgres:17.6.1.121
+        env:
+          POSTGRES_PASSWORD: v5-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: v5-ci
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: psql-klient
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+      - name: git-identitet
+        run: |
+          git config --global user.name "v5-ci"
+          git config --global user.email "v5-ci@users.noreply.github.com"
+      - name: dømmer-selvtest (fail-closed før dom)
+        run: node scripts/v5/ci-build-dom.selftest.mjs
+      - name: frisk store + måling + build-dom + emission
+        run: node scripts/v5/ci-build-dom.mjs --commit "$GITHUB_SHA" --pg env --emit --proof-out build-proof.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: bevis-artefakt (ci-produced — genverificerbart)
+        if: ${{ hashFiles('build-proof.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-proof-${{ github.sha }}
+          path: build-proof.json
+          retention-days: 90

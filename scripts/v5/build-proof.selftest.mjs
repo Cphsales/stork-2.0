@@ -195,6 +195,11 @@ expectRed("source_anchor forkert → rød", verify(mutated((p) => (p.claim_graph
 expectRed("manglende review → rød", verify(mutated((p) => (p.async_reviews = p.async_reviews.filter((r) => r.bid_id !== "bid-1")))), "mangler et PASS async-review");
 expectRed("base_oid orphan → rød", verify(mutated((p) => { p.bid_bindings[1].base_oid = ORPHAN; p.async_reviews[1].base_oid = ORPHAN; })), "ikke en ancestor");
 
+console.log("\nC4b — ci-produceret artefakt (beviset committes ikke):");
+{ const p = greenProof(); const s = snap(p); const ci = { ...s, artifact: { path: s.artifact.path, oid: "c".repeat(40), type: "ci-produced" } }; expectGreen("verifier: snapshot m. ci-produceret artefakt (ingen git-sti-binding for artefaktet) → grøn", verifyBuildProof(p, ci, { git })); }
+{ const p = greenProof(); const s = snap(p); const ci = { ...s, artifact: { path: s.artifact.path, oid: "ikke-en-oid", type: "ci-produced" } }; expectRed("verifier: ci-produceret artefakt m. ugyldig oid → rød", verifyBuildProof(p, ci, { git }), "ci-produced"); }
+{ const p = greenProof(); const s = snap(p); const ci = { ...s, artifact: { path: s.artifact.path, oid: "c".repeat(40), type: "ci-produced" }, proof_result: { ...p, artifact_oid: "c".repeat(40) } }; const r = evaluateGate("build", ci, { verifyProof: makeProofVerifier({ git }) }); r.open ? ok("e2e: build-gaten ÅBNER m. ci-produceret artefakt når proof.artifact_oid = artefakt-oid") : bad("e2e ci-produced", r.reasons.join(" | ")); }
+
 console.log("\nfail-closed + e2e gennem evaluateGate:");
 expectRed("git-dep mangler", verifyBuildProof(greenProof(), snap(greenProof()), {}), "git-dep mangler");
 { const p = mutated((x) => Object.defineProperty(mut(x, "m-navn"), "killed", { enumerable: true, get: () => true })); expectRed("killed som getter → rød", verify(p), "kill-flag"); }

@@ -31,8 +31,9 @@
 //   fordi fejlens egen MESSAGE/DETAIL/SCHEMA-tekst indlejrer linjer der ligner psql-felter — giver code null (»ikke klassificerbar«),
 //   aldrig et valg mellem kandidaterne. En builder kan gøre sin fejl uklassificerbar (rød), men ikke få den til at ligne kontraktens.
 
-import { execFileSync, spawnSync, spawn } from "node:child_process";
-import { randomBytes, createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { makePgRunner, parseErr } from "./pg-runner.mjs";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -55,153 +56,10 @@ if (!containerUp()) {
   console.error(`✗ container '${CONTAINER}' kører ikke — integrations-bevis kan ikke føres (fail-closed).`); process.exit(1);
 }
 
-// ---------- rigtig runner: ÉN psql-session pr. kald (set role + settings + sætning); observe-queries pakkes i json_agg ----------
-// F-33/F-39: ON_ERROR_STOP=0 så status-rammen altid udskrives; en fejl ses på (a) stderr's ERROR-linje(r) og (b) psql's egne variable —
-// SQLSTATE + HELE primærmeddelelsen læses fra :LAST_ERROR_SQLSTATE/:LAST_ERROR_MESSAGE mellem nonce-markører på stdout (strukturelt, ikke
-// tekstparsing); CONTEXT (afvisningssted) fra stderr kun når blokken er entydig. Data (json_agg) = stdout FØR status-markøren.
-function dockerPsql(sqlText, opts = {}) {
-  const isQuery = /^\s*(select|with|table)\b/i.test(sqlText);
-  const nonce = randomBytes(8).toString("hex"); const S = `V5S-${nonce}`, M = `V5M-${nonce}`, E = `V5E-${nonce}`;
-  const prelude = ["\\set VERBOSITY verbose"];
-  if (opts.role) prelude.push(`set role ${opts.role};`);
-  if (opts.settings) for (const [k, v] of Object.entries(opts.settings)) prelude.push(`set ${k} = '${String(v)}';`);
-  const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
-  const input = `${prelude.join("\n")}\n${body}\n\\echo ${S} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${M}\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${E}\n`;
-  const r = spawnSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=0", "-q", "-tA"], { input, encoding: "utf8" });
-  const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined });
-  if (r.error || r.status !== 0) return dead(`psql-transport fejlede (rc ${r.status ?? r.error?.message}): ${String(r.stderr ?? "").slice(0, 200)}`);
-  const fr = frame(String(r.stdout ?? ""), String(r.stderr ?? ""), S, M, E);
-  if (fr.protokol) return dead(fr.protokol);
-  if (!fr.ok) return { ok: false, error: `${fr.code}: ${fr.message}`.slice(0, 200), code: fr.code, detail: { message: fr.message, routine: fr.routine }, rows: isQuery ? null : undefined };
-  if (isQuery) {   // F-33: kun et parsebart JSON-ARRAY er et rækkesæt — tomt output / null / objekt er en FEJLET måling, ikke rows=[]
-    const t = fr.data.trim(); if (!t) return dead("query-transport gav intet output (manglende måling)");
-    let rows; try { rows = JSON.parse(t); } catch { return dead("query-output er ikke JSON (manglende måling)"); }
-    if (!Array.isArray(rows)) return dead(`query-output er ikke et rækkesæt (${typeof rows})`);
-    return { ok: true, error: null, code: null, rows };
-  }
-  return { ok: true, error: null, code: null };
-}
-// frame(stdout, stderr, S, M, E) → {ok, code, message, routine, data} | {protokol}
-// Rammen: stdout = data · `S <ERROR> <SQLSTATE> <LAST_ERROR_SQLSTATE>` · `M` · primærmeddelelse (0..n linjer) · `E`. Hver markør PRÆCIS én gang.
-// Fejl ⟺ stderr har ≥1 ERROR-linje ELLER status-ERROR er true. En KLASSIFICERBAR fejl kræver status-ERROR=true (den aktuelle sætning
-// fejlede): præcis ÉN ERROR-linje (ellers flertydig), SQLSTATE == LAST_ERROR_SQLSTATE == stderr-linjens (ellers inkonsistent), meddelelsen =
-// :LAST_ERROR_MESSAGE (hel, F-39), routine = den ENESTE CONTEXT-linje efter ERROR (≤1, ellers flertydig). status=false m. ERROR-linje(r) =
-// protokol (F-40): gamle :LAST_ERROR_* er en TIDLIGERE sætnings fejl og må aldrig blive denne sætnings afvisning.
-export function frame(stdout, stderr, S, M, E) {
-  const lines = String(stdout).split("\n");
-  const idxS = lines.findIndex((l) => l.startsWith(`${S} `)), idxM = lines.indexOf(M), idxE = lines.indexOf(E);
-  const cnt = (pred) => lines.filter(pred).length;
-  if (idxS < 0 || idxM < 0 || idxE < 0) return { protokol: "status-rammen (S/M/E-markører) mangler i stdout — sætningen/psql afsluttede ikke normalt" };
-  if (cnt((l) => l.startsWith(`${S} `)) !== 1 || cnt((l) => l === M) !== 1 || cnt((l) => l === E) !== 1 || !(idxS < idxM && idxM < idxE)) return { protokol: "status-rammen er ikke entydig/ordnet (F-27)" };
-  const st = lines[idxS].match(new RegExp(`^${S} (true|false) ([0-9A-Z]{5}) ([0-9A-Z]{5})$`)); if (!st) return { protokol: `status-linjen er malformet: ${lines[idxS].slice(0, 80)}` };
-  const statusErr = st[1] === "true"; const sqlstate = st[2]; const lastErr = st[3];
-  const message = lines.slice(idxM + 1, idxE).join("\n");
-  const data = lines.slice(0, idxS).join("\n");
-  const pe = parseErr(String(stderr));
-  if (pe.errLines === 0 && !statusErr) return { ok: true, code: null, message: null, routine: null, data };
-  if (pe.flertydig) return { protokol: `flertydig diagnostik (${pe.flertydig}) — ikke klassificerbar (F-38)` };
-  if (pe.errLines === 0 && statusErr) return { protokol: `psql-status siger fejl (${sqlstate}) men stderr har ingen ERROR-linje — inkonsistent (F-32)` };
-  if (!statusErr) return { protokol: `stderr har ${pe.errLines} ERROR-linje(r) men psql-status siger succes for den aktuelle sætning — enten fejlede en tidligere sætning i scriptet eller diagnostikken er forfalsket; gamle fejlvariable (${lastErr}) bruges aldrig som denne sætnings afvisning (F-40)` };
-  if (sqlstate !== lastErr) return { protokol: `psql-status ${sqlstate} ≠ LAST_ERROR_SQLSTATE ${lastErr} — inkonsistent (F-32)` };
-  if (pe.code !== sqlstate) return { protokol: `psql-variabel ${sqlstate} ≠ stderr-diagnostikkens SQLSTATE ${String(pe.code)} — inkonsistent fejlramme (F-32)` };
-  return { ok: false, code: sqlstate, message, routine: pe.routine, data };
-}
-// F-36/F-38/F-39: stderr bruges KUN til (a) at tælle ERROR-linjer, (b) krydstjekke SQLSTATE og (c) læse afvisningsstedet (CONTEXT).
-// Primærmeddelelsen kommer fra psql's variabel (frame), ALDRIG herfra — tekstparsing kan ikke skelne en indlejret »HINT:«-linje i
-// meddelelsen fra et rigtigt felt (F-39). Flere ERROR-linjer, flere CONTEXT-linjer eller CONTEXT FØR ERROR-linjen = flertydig (F-38).
-export function parseErr(stderr) {
-  const lines = String(stderr).split(/\r?\n/);
-  const errIdx = lines.map((l, i) => (/^ERROR:\s+[0-9A-Z]{5}:/.test(l) ? i : -1)).filter((i) => i >= 0);
-  const ctxIdx = lines.map((l, i) => (/^CONTEXT:\s/.test(l) ? i : -1)).filter((i) => i >= 0);
-  const base = { error: String(stderr).slice(0, 200), errLines: errIdx.length, ctxLines: ctxIdx.length, code: null, routine: null, flertydig: false };
-  if (errIdx.length === 0) return ctxIdx.length ? { ...base, flertydig: `0 ERROR-linjer · ${ctxIdx.length} CONTEXT-linjer` } : base;
-  if (errIdx.length > 1 || ctxIdx.length > 1 || ctxIdx.some((i) => i < errIdx[0])) return { ...base, flertydig: `${errIdx.length} ERROR-linjer · ${ctxIdx.length} CONTEXT-linjer${ctxIdx.some((i) => i < errIdx[0]) ? " (CONTEXT før ERROR)" : ""}` };
-  const m = lines[errIdx[0]].match(/^ERROR:\s+([0-9A-Z]{5}):/); const c = ctxIdx.length ? lines[ctxIdx[0]].match(/^CONTEXT:\s+PL\/pgSQL function ([^(\s]+)\(/) : null;
-  return { ...base, code: m[1], routine: c ? c[1] : null };
-}
-const q1 = (sqlText) => execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-tAc", sqlText]).toString().trim();
-
-// ---------- rigtig race-runner: to interaktive psql-sessions, nonce-markør-synkroniseret (F-27) ----------
-export function session(name, spawnFn = () => spawn("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=0", "-q", "-tA"], { stdio: ["pipe", "pipe", "pipe"] })) {
-  // C1-r3 F-27 + C1-r4 F-32: DATA (stdout) og DIAGNOSTIK (stderr) holdes adskilt — produktdata kan ikke skrive til stderr, og dommen om
-  // ok/fejl kommer fra psql's egne statusvariable (:ERROR :SQLSTATE) på markørlinjen, ikke fra tekstgenkendelse i data. Pr. sætning:
-  // `\warn MARK` rammer diagnostikken på stderr, `\echo MARK :ERROR :SQLSTATE` rammer data på stdout. Markøren bærer en TILFÆLDIG nonce
-  // pr. session, matches kun som HEL linje og skal forekomme PRÆCIS én gang på hver strøm. Diagnostikkens SQLSTATE skal stemme med status.
-  const p = spawnFn();
-  let out = "", err = "", n = 0; const nonce = randomBytes(12).toString("hex");
-  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
-  try { p.stdin.write("\\set VERBOSITY verbose\n"); } catch {}   // SQLSTATE + CONTEXT i diagnostikken fra første sætning
-  const run = (sql, timeoutMs = 15000) => new Promise((resolve, reject) => {
-    const mark = `MARK-${nonce}-${name}-${++n}`; const outStart = out.length, errStart = err.length;
-    p.stdin.write(`${sql}\n\\warn ${mark}\n\\echo ${mark} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${mark}-MSG\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${mark}-END\n`);
-    const t0 = Date.now();
-    const poll = () => {
-      const so = out.slice(outStart), se = err.slice(errStart);
-      const me = new RegExp(`^${mark}$`, "m").exec(se); const endHit = new RegExp(`^${mark}-END$`, "m").exec(so);
-      if (me && endHit) {
-        const hitsE = (se.match(new RegExp(`^${mark}$`, "mg")) ?? []).length;
-        if (hitsE !== 1) return reject(new Error(`${name}: stderr-markøren forekom ${hitsE} gange — rammen er ikke entydig (F-27)`));
-        const diag = se.slice(0, me.index);
-        const fr = frame(so, diag, mark, `${mark}-MSG`, `${mark}-END`);   // samme ramme-dommer som enkeltkaldstransporten (F-39)
-        if (fr.protokol) return reject(new Error(`${name}: ${fr.protokol}`));
-        return resolve({ ok: fr.ok, code: fr.ok ? null : fr.code, detail: fr.ok ? null : { message: fr.message, routine: fr.routine }, out: fr.data.trim(), err: diag });
-      }
-      if (Date.now() - t0 > timeoutMs) return reject(new Error(`${name}: timeout på '${sql.slice(0, 40)}'`));
-      setTimeout(poll, 15);
-    };
-    poll();
-  });
-  const startAsync = (sql, timeoutMs = 20000) => run(sql, timeoutMs);   // returnerer promise der løser når sætningen er FÆRDIG (kan blokere på lås)
-  const close = () => { try { p.stdin.end(); } catch {} p.kill(); };
-  return { run, startAsync, close };
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// F-22: UAFHÆNGIGT overlap-vidne — en TREDJE backend (frisk psql) ser A og B inde i deres skrivende transaktion samtidigt
-// (xact_start sat OG (backend_xid tildelt ELLER ventende på Lock)) FØR nogen commit. Forudsætter IKKE produktlåsen: fjernes låsen,
-// står begge stadig i åben skrivende transaktion samtidigt — og invarianten kan så brydes.
-async function witnessOverlap(pa, pb, timeoutMs = 8000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeoutMs) {
-    const w = q1(`select pg_backend_pid()::text || ':' || (select count(*) from pg_stat_activity where pid in (${pa}, ${pb}) and xact_start is not null and (backend_xid is not null or wait_event_type = 'Lock'))::text;`);
-    const [wp, cnt] = w.split(":");
-    if (cnt === "2") return { observed: true, witness_pid: Number(wp), a_pid: pa, b_pid: pb };
-    await sleep(20);
-  }
-  return { observed: false, witness_pid: null, a_pid: pa, b_pid: pb };
-}
-// produkt-observation (dømmes IKKE af motoren): er B lige nu blokeret af A (pg_blocking_pids)?
-const blockedBy = (bpid, apid) => q1(`select ${apid} = any(pg_blocking_pids(${bpid}));`) === "t";
-// race(scenario): A starter og holder (BEGIN + a.sql uden commit) · B starter · overlap vidnes af tredje backend · A committer ·
-// B færdiggør · begge afslutter · invarianten læses. actor = {role, settings}. setup er MOTORENS (F-20) — runneren afviser den.
-async function race(s) {
-  const A = session("A"), B = session("B");
-  try {
-    if (s.setup) return { protocolOk: false, error: "race.setup skal udføres af motoren som ejer (F-20) — runneren modtager ikke setup" };
-    const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};` : ""}`;
-    const pa0 = await A.run(pre("v5race_A")); const pb0 = await B.run(pre("v5race_B"));
-    if (!pa0.ok || !pb0.ok) return { protocolOk: false, error: `rolle-/sessionsopsætning fejlede (A ok=${pa0.ok}, B ok=${pb0.ok})` };   // F-17
-    const ra0 = await A.run("select current_user;"); const rb0 = await B.run("select current_user;");
-    if (s.actor?.role && (ra0.out !== s.actor.role || rb0.out !== s.actor.role)) return { protocolOk: false, error: `faktisk rolle ≠ ønsket (${ra0.out}/${rb0.out} vs ${s.actor.role})` };
-    const pa = Number((await A.run("select pg_backend_pid();")).out); const pb = Number((await B.run("select pg_backend_pid();")).out);
-    if (!Number.isInteger(pa) || !Number.isInteger(pb)) return { protocolOk: false, error: "kunne ikke læse backend-pids" };
-    const ra1 = await A.run("begin;"); const rb1 = await B.run("begin;");
-    if (!ra1.ok || !rb1.ok) return { protocolOk: false, error: "begin fejlede" };
-    const ra = await A.run(s.a.sql);                              // A holder (ingen commit endnu)
-    const bPromise = B.startAsync(s.b.sql);                       // B starter — blokerer KUN hvis produktlåsen findes
-    const overlap = await witnessOverlap(pa, pb);                 // uafhængigt vidne (F-22)
-    const blocking = { observed: blockedBy(pb, pa), blocked_pid: pb, blocking_pid: pa };   // produkt-observation, ikke dom
-    const ca = await A.run("commit;");
-    const rb = await bPromise;
-    const cb = await B.run(rb.ok ? "commit;" : "rollback;");
-    const inv = dockerPsql(s.invariant.observe.sql, {});
-    if (!inv.ok || !Array.isArray(inv.rows)) return { protocolOk: false, error: `invariant-måling fejlede (${inv.code ?? inv.error}) — en fejlet måling er hverken brud eller tomt svar (F-33)` };
-    return { protocolOk: true,
-      a: { pid: pa, ok: ra.ok, code: ra.code, detail: ra.detail, commit: ca.ok ? "commit" : "fejl" },
-      b: { pid: pb, ok: rb.ok, code: rb.code, detail: rb.detail, commit: cb.ok ? (rb.ok ? "commit" : "rollback") : "fejl" },
-      overlap, blocking, invariantRows: inv.rows ?? null };
-  } catch (e) { return { protocolOk: false, error: e.message }; } finally { A.close(); B.close(); }
-}
-const runner = { sql: dockerPsql, race };
+// ---------- rigtig runner: pg-runner.mjs (C4b — samme runner som CI's produktionsjob), her mod docker-containeren ----------
+const PG = makePgRunner({ argv: ["docker", "exec", "-i", CONTAINER, "psql", "-U", "postgres"] });
+const dockerPsql = PG.sql; const race = PG.race; const session = PG.session; const q1 = PG.q1;
+const runner = { sql: dockerPsql, race, exec: PG.exec };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
 console.log(`build-harness INTEGRATION v2.8 mod '${CONTAINER}':`);
