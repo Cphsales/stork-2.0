@@ -310,3 +310,19 @@ Kald, blobs, workdir-diff og afvig står i `fold-ind-r4.provenance.txt`. Result-
 | `fold-ind-r4.settings.json` | `v32/settings-v32.json` | `5ce0cac411c69f27eb6dc52b26418a2bcfbaacfa5d8fc8adee5e361851b071e1` | acceptEdits-permissions |
 | `fold-ind-r4.hjaelpescript-ubrugt.cjs` | skrevet af aktøren UDEN FOR workdir (afvig) | `aa7e4a0dc76d7b4c07b93ea5b7dac963f33397c8acd5d116f784ddd70a83f24f` | aldrig kørt; arkiveret for fuldstændighed |
 | `fold-ind-r4.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance |
+
+## B6-mellemrunde — planner v3.3 (fold-ind r5: plan v3.2 → v3.3 + rapport-r5 + manifest v3.3; MEKANISK rettelsesrunde efter B6 runde 1) — kørt 2026-09-16 12:32 → 13:14 af driver mathias-5f
+
+Kald, blobs, workdir-diff står i `fold-ind-r5.provenance.txt`. 255 ture · 40,4 min · 35,45 USD · `is_error: false` · validatoren kørt af aktøren (Bash(node:*) tilladt). Leverancer byte-identiske; manifestet committet m. plan-OID indsat (eneste udfyldning). Dom: **KRÆVER MATHIAS 0 · ÅBNE 0 · HALT INGEN** — R3-1..4 + A4-2..6 rettet m. bevis; A4-6 planlagt i pakken (S-46 direct-uden-vej urepræsenterbar ved markering · S-47 delta-apply + replay-dækning); ny §10-post D-11; pkt. 39-leverancer (prover.json · bids/ · reviews/) i alle fem bids' done; FA-5 → kontrakt v3.
+
+| fil | kilde | sha256 | indhold |
+| --- | --- | --- | --- |
+| `../plan.md` | workdir (byte-identisk) | `cf71cb2b31a505b66011d1c64f7eb07045f09a7b91fd4317cd1a050469b35551` (blob `414b0ce89621ccfd66464801b6304692c061a040`) | plan v3.3, 1009 linjer, §11.4 |
+| `../fold-ind-rapport-r5.md` | workdir (byte-identisk) | `e9f913c11e55bb03d6921dd818d4522b94c93c3cb2b0db9ad8e5ccf61edb01b0` (blob `5b57369c08445d6c0c8aac0c88d25d43865aac08`) | delta-rapport §1-§8 |
+| `manifest-v33.leverance.json` | workdir (RÅ) | `76e8778a4279673400d9c938bf0af1fb9003e4ebbf1f7eefb95b1d46ad2d560e` (blob `494fa626102d9037a03fa039a1caa4110d47596f`) | rå leverance m. `<udfyldes af driveren>` |
+| `../forventnings-manifest.json` | leverancen + plan-OID | (blob `cbce5c0dc1b038408e6c767d6d570c4189b02029`) | committet manifest v3.3 (60 · 126 · 12) |
+| `fold-ind-r5.prompt.txt` | `v33/prompt-v33.txt` | `e781df3bc7e13e373e2cf0474d9aa9772101e4ca6eb0b72d7cc4c9924b741191` | rolletekst + fire instruks-lag |
+| `fold-ind-r5.claude-result.json` | `v33/out/OUT-v33.json` | `e188b3803c0c158595e8269354e8a746a92f3d4c911c04a5053b8d541f8981a5` | CLI result-JSON (session 62cac6e1) |
+| `fold-ind-r5.slutbesked.md` | result-feltet | `cff0921dbc908ef2bfb153128befc6db1d410c3fca6e0416b1b938f9c9fc8b3f` | slutbesked |
+| `fold-ind-r5.settings.json` | `v33/settings-v33.json` | `3b0101ca3b3db896e608f88c4894531e611efc0d1bc982124525d220f3f94cda` | acceptEdits + Bash(node:*) |
+| `fold-ind-r5.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance |
