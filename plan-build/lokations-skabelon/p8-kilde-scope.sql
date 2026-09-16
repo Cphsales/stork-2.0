@@ -30,7 +30,7 @@ with deklaration(ordinal, art, relation, udtraeksregel, kolonner_inkluderet, beg
   (17, 'closure', 'core_compliance.data_field_definitions', 'alle klassifikationer, også udfasede PII-definitioner', 'id, table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose, created_at, updated_at', '-', '20260514120005_t1_data_field_definitions.sql:9'),
   (18, 'closure', 'core_identity.pending_changes', 'alle pending-rækker (alle status), så placeringer/versioner m. created_by_pending_change_id ikke bliver forældreløse', 'id, change_type, target_id, payload [noeglesaet], effective_from, requested_by, requested_at, approved_by, approved_at, undo_deadline, applied_at, undone_at, status, created_at, updated_at, action_id', 'payload: kan bære persondata for employee-ændringer og behøves kun som metadata (nøglesæt + change_type + status) for kædens negativer — værdier udeladt før build (T:56).', '20260518000000_t9_pending_changes.sql:32 + 20260521100004:13 (action_id)'),
   (19, 'closure', 'core_identity.undo_settings', 'alle', 'change_type, undo_period_seconds, updated_at, updated_by', '-', '20260518000000_t9_pending_changes.sql:97'),
-  (20, 'closure', 'core_compliance.anonymization_mappings', 'alle mappings (alle status), også inaktive', 'id, entity_type, table_schema, table_name, field_strategies, jsonb_field_strategies, strategy_version, is_active, created_at, updated_at, status, internal_rpc_anonymize, internal_rpc_apply', '-', '20260514140000_t6_anonymization_tables.sql:19 + p2:26 (status) + c002:37 (internal_rpc_*)'),
+  (20, 'closure', 'core_compliance.anonymization_mappings', 'alle mappings (alle status), også inaktive', 'id, entity_type, table_schema, table_name, field_strategies, jsonb_field_strategies, strategy_version, is_active, created_at, updated_at, status, internal_rpc_anonymize, internal_rpc_apply, anonymized_check_column, retention_event_column, activated_at, activated_by', '-', '20260514140000_t6_anonymization_tables.sql:19 + c002:37-41 (internal_rpc_anonymize · internal_rpc_apply · anonymized_check_column · retention_event_column) + p2:26-30 (status · activated_at · activated_by)'),
   (21, 'closure', 'core_compliance.anonymization_state', 'alle (metadata for allerede anonymiserede kilderækker)', 'id, entity_type, table_schema, table_name, entity_id, anonymized_at, anonymization_reason, strategy_version, field_mapping_snapshot, jsonb_field_mapping_snapshot, audit_reference, created_by', '-', '20260514140000_t6_anonymization_tables.sql:76'),
   (22, 'closure', 'core_compliance.anonymization_strategies', 'alle (også ikke-aktive)', 'id, strategy_name, function_schema, function_name, status, description, created_at, updated_at, activated_at, activated_by', '-', '20260515110100_p1a_anonymization_strategies.sql:22')
 )
@@ -40,6 +40,9 @@ select * from deklaration order by ordinal;
 --    FORVENTEDE (nedenfor) i begge retninger — begge mængder skal være tomme. Drift i kilden (ny/fjernet/omtypet kolonne) = RØD, aldrig tavs.
 with forventet(skema, relation, kolonne, type) as (
   values
+  ('core_compliance', 'anonymization_mappings', 'activated_at', 'timestamp with time zone'),
+  ('core_compliance', 'anonymization_mappings', 'activated_by', 'uuid'),
+  ('core_compliance', 'anonymization_mappings', 'anonymized_check_column', 'text'),
   ('core_compliance', 'anonymization_mappings', 'created_at', 'timestamp with time zone'),
   ('core_compliance', 'anonymization_mappings', 'entity_type', 'text'),
   ('core_compliance', 'anonymization_mappings', 'field_strategies', 'jsonb'),
@@ -48,6 +51,7 @@ with forventet(skema, relation, kolonne, type) as (
   ('core_compliance', 'anonymization_mappings', 'internal_rpc_apply', 'text'),
   ('core_compliance', 'anonymization_mappings', 'is_active', 'boolean'),
   ('core_compliance', 'anonymization_mappings', 'jsonb_field_strategies', 'jsonb'),
+  ('core_compliance', 'anonymization_mappings', 'retention_event_column', 'text'),
   ('core_compliance', 'anonymization_mappings', 'status', 'text'),
   ('core_compliance', 'anonymization_mappings', 'strategy_version', 'integer'),
   ('core_compliance', 'anonymization_mappings', 'table_name', 'text'),
@@ -271,7 +275,7 @@ select 'UVENTET I KILDEN' as afvigelse, * from (select * from observeret except 
 order by 1, 2, 3, 4;
 
 -- 3) KATALOG-DIGEST (samme mængde som 2, kanonisk form: "skema.relation.kolonne<TAB>type", sorteret bytewise, linjer adskilt af LF, ingen afsluttende LF).
---    Skal være lig p8-kilde.json.forventet_katalog_digest = d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd
+--    Skal være lig p8-kilde.json.forventet_katalog_digest = 7cdc1939a7b11394d93291840b2f74f1affca983cd8246a7876908ea2c9900e3
 --    (identisk værdi beregnet af generatoren over p8-kilde-katalog.txt uden afsluttende LF).
 select encode(sha256(convert_to(string_agg(linje, E'\n' order by linje collate "C"), 'utf8')), 'hex') as observeret_katalog_digest
 from (

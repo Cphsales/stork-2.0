@@ -1,3 +1,6 @@
+core_compliance.anonymization_mappings.activated_at	timestamp with time zone
+core_compliance.anonymization_mappings.activated_by	uuid
+core_compliance.anonymization_mappings.anonymized_check_column	text
 core_compliance.anonymization_mappings.created_at	timestamp with time zone
 core_compliance.anonymization_mappings.entity_type	text
 core_compliance.anonymization_mappings.field_strategies	jsonb
@@ -6,6 +9,7 @@ core_compliance.anonymization_mappings.internal_rpc_anonymize	text
 core_compliance.anonymization_mappings.internal_rpc_apply	text
 core_compliance.anonymization_mappings.is_active	boolean
 core_compliance.anonymization_mappings.jsonb_field_strategies	jsonb
+core_compliance.anonymization_mappings.retention_event_column	text
 core_compliance.anonymization_mappings.status	text
 core_compliance.anonymization_mappings.strategy_version	integer
 core_compliance.anonymization_mappings.table_name	text

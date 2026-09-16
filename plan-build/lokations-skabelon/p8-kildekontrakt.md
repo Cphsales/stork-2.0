@@ -8,7 +8,7 @@ skriver `p8-kilde-scope.sql` (deklaration + mekanisk katalogkontrol), `p8-kilde-
 i nogen af filerne; forbindelsen kommer fra CI-runnerens miljø (C4). v1 skrevet 2026-09-10 af driver-10b; **v2 2026-09-16 af
 driver mathias-5f** efter Codex' A3-1 (v1 pegede på `public.org_nodes`/`public.employees`, som t1 droppede — koden har dem i
 `core_identity`; v1's kolonner på `org_node_versions` var forkerte; closure var ubunden; »hash af SQL-filen« attesterede ikke
-resultatmængden; måltargetets bindingstidspunkt var modstridende).
+resultatmængden; måltargetets bindingstidspunkt var modstridende). **v3 2026-09-16 (samme dag) efter Codex A4-1 (B6 runde 1):** v2 manglede fire kolonner på `core_compliance.anonymization_mappings` (`anonymized_check_column` · `retention_event_column` — c002:40-41; `activated_at` · `activated_by` — p2:29-30), fordi ADD COLUMN på fortsættelseslinjer blev overset; generatoren læser nu ALLE ADD COLUMN (sweep over alle migrationer), 197 kolonner, ny katalog-digest.
 
 ## (1) Systemidentitet for driftskilden — BUNDET
 
@@ -33,7 +33,7 @@ grupper · koblinger · fravalg · deres historik og pending-rækker) er IKKE ki
 
 ## (3) Projektion — deklarerede kolonner + navngivne udeladelser med før-build-begrundelse — BUNDET
 
-Alle kolonner i de 22 relationer er deklareret (193 kolonner, `p8-kilde-katalog.txt`). Projektionen er `fuld` medmindre
+Alle kolonner i de 22 relationer er deklareret (197 kolonner, `p8-kilde-katalog.txt`). Projektionen er `fuld` medmindre
 andet står i klammer: `[tilstede]` kun null/ikke-null · `[tilstede+laengde]` + `octet_length` · `[blank/udfyldt]` kun om tekst er
 blank · `[noeglesaet]` jsonb-nøgler sorteret, ingen værdier · `[pr-noegle-klassifikation]` fuld hvis nøglens `pii_level = none` i
 `client_field_definitions`, ellers tilstede/blank. Udeladt før build (T:56): logo-binærindhold · medarbejdernes navn/e-mail
@@ -63,7 +63,7 @@ stadig** (»følsom« fjerner ikke en problemrække).
 | 17 | closure | `core_compliance.data_field_definitions` | alle klassifikationer, også udfasede PII-definitioner | id, table_schema, table_name, column_name, category, pii_level, retention_type, retention_value, match_role, purpose, created_at, updated_at | - | `20260514120005_t1_data_field_definitions.sql:9` |
 | 18 | closure | `core_identity.pending_changes` | alle pending-rækker (alle status), så placeringer/versioner m. created_by_pending_change_id ikke bliver forældreløse | id, change_type, target_id, payload [noeglesaet], effective_from, requested_by, requested_at, approved_by, approved_at, undo_deadline, applied_at, undone_at, status, created_at, updated_at, action_id | payload: kan bære persondata for employee-ændringer og behøves kun som metadata (nøglesæt + change_type + status) for kædens negativer — værdier udeladt før build (T:56). | `20260518000000_t9_pending_changes.sql:32 + 20260521100004:13 (action_id)` |
 | 19 | closure | `core_identity.undo_settings` | alle | change_type, undo_period_seconds, updated_at, updated_by | - | `20260518000000_t9_pending_changes.sql:97` |
-| 20 | closure | `core_compliance.anonymization_mappings` | alle mappings (alle status), også inaktive | id, entity_type, table_schema, table_name, field_strategies, jsonb_field_strategies, strategy_version, is_active, created_at, updated_at, status, internal_rpc_anonymize, internal_rpc_apply | - | `20260514140000_t6_anonymization_tables.sql:19 + p2:26 (status) + c002:37 (internal_rpc_*)` |
+| 20 | closure | `core_compliance.anonymization_mappings` | alle mappings (alle status), også inaktive | id, entity_type, table_schema, table_name, field_strategies, jsonb_field_strategies, strategy_version, is_active, created_at, updated_at, status, internal_rpc_anonymize, internal_rpc_apply, anonymized_check_column, retention_event_column, activated_at, activated_by | - | `20260514140000_t6_anonymization_tables.sql:19 + c002:37-41 (internal_rpc_anonymize · internal_rpc_apply · anonymized_check_column · retention_event_column) + p2:26-30 (status · activated_at · activated_by)` |
 | 21 | closure | `core_compliance.anonymization_state` | alle (metadata for allerede anonymiserede kilderækker) | id, entity_type, table_schema, table_name, entity_id, anonymized_at, anonymization_reason, strategy_version, field_mapping_snapshot, jsonb_field_mapping_snapshot, audit_reference, created_by | - | `20260514140000_t6_anonymization_tables.sql:76` |
 | 22 | closure | `core_compliance.anonymization_strategies` | alle (også ikke-aktive) | id, strategy_name, function_schema, function_name, status, description, created_at, updated_at, activated_at, activated_by | - | `20260515110100_p1a_anonymization_strategies.sql:22` |
 <!-- /GEN:tabel -->

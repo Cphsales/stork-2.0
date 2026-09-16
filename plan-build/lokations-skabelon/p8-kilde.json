@@ -102,13 +102,13 @@
   "katalogkontrol": {
     "metode": "p8-kilde-scope.sql del 2 (EXCEPT begge veje, skal give 0 rækker) + del 3 (sha256 over kanonisk katalog-tekst, skal være lig forventet_katalog_digest); drift i kilden = rød",
     "kanonisk_form": "skema.relation.kolonne<TAB>format_type, sorteret bytewise (collate C), LF-adskilt, ingen afsluttende LF",
-    "forventet_katalog_digest": "d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd",
+    "forventet_katalog_digest": "7cdc1939a7b11394d93291840b2f74f1affca983cd8246a7876908ea2c9900e3",
     "katalog_fil": "plan-build/lokations-skabelon/p8-kilde-katalog.txt",
-    "katalog_fil_sha256": "ea38431f90a9b7fec2bde690b08a50b6691be27170849ca91853d613a72e97b0",
+    "katalog_fil_sha256": "3a893b4748e05af2f004935c500519a6455bb618ae1b74526144cc9cde80c64b",
     "antal_relationer": 22,
-    "antal_kolonner": 193
+    "antal_kolonner": 197
   },
-  "scope_definition_sha256": "67663a2af68cf90af5b757a7ef9d96c59fbd99573cf02052d9c5c199b3f26b1e",
+  "scope_definition_sha256": "9b66cae72fb97d49cd7584e88bc164beb2ac2e00c76693f63ac037a925806ac3",
   "efter_build": [
     "snapshot_tidspunkt",
     "konkrete_raekker",
@@ -129,7 +129,7 @@
     },
     "kildekontrakt": {
       "path": "plan-build/lokations-skabelon/p8-kildekontrakt.md",
-      "oid": "5183dec1d39fcb327cb7ef477d1e5fb8f5fa2a34"
+      "oid": "9da12d2db1c201b1ae923d72bd612e1100b7ede9"
     },
     "note": "kontrakten binder IKKE planen — planen binder kontrakten (FA-5), ellers cirkulær reference"
   }
