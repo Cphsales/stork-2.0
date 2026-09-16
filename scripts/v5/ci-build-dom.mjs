@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 // ci-build-dom.mjs — C4b: CI'S PRODUKTIONSRUNNER + BUILD-GATE-DOM (plan 2.A »Autoritet = CI's friske evaluateGate« · 2.C sandheds-motoren ·
-// 2.E · DEL V · DEL VIII pkt. 36/38 · GRUNDPLAN-v2 C4). Kør i CI-jobbet m. Postgres-service (contents:read · checks:write):
-//   node scripts/v5/ci-build-dom.mjs --commit <sha> --pg env|'<json-argv>' [--emit] [--proof-out <sti>] [--skip-migrations]
+// 2.E · DEL V · DEL VIII pkt. 36/38/39 · GRUNDPLAN-v2 C4 · Codex C4b-runde F-C4b-1: ISOLATION).
+//
+// TO JOBS, TO TILLIDSZONER (F-C4b-1 — produktkode må aldrig nå dommerens emissions-token):
+//   MÅLING (job A, contents:read, ingen checks:write, checkout uden persist-credentials, Postgres-service):
+//     node scripts/v5/ci-build-dom.mjs --produce --commit <sha> --pg env|'<json-argv>' --proof-out build-proof.json --meta-out build-dom-meta.json
+//     → kører PRODUKTKODE (migrationer · motorens kald · prover-cmd · exit-kontroller) m. et RENSET miljø (producentMiljoe: ingen tokens) og
+//       skriver bevis-body (bytes) + meta (nåethed · store · run_id). Ingen dom, ingen emission, intet token i jobbet.
+//   DOM (job B, checks:write, INGEN produktkode — kun betroet måle-lag mod git + bevis-bytes):
+//     node scripts/v5/ci-build-dom.mjs --judge --commit <sha> --proof-in build-proof.json --meta-in build-dom-meta.json [--emit]
+//     → oid = hash-object(bytes) · forgænger (plan) frisk · snapshot m. ci-produceret artefakt · evaluateGate(build) · emission v5/gate/build.
+//   Lokalt (begge trin i én proces, ingen emission): node scripts/v5/ci-build-dom.mjs --commit <sha> --pg '<json-argv>' [--proof-out …]
 //
 // Forløbet (fail-closed i hvert led — ingen tavshed, ingen succes uden bevis):
 //   1. NÅETHED: plan-approval.json OG angrebs-spec.json findes i commit'en (Fase 4 pkt. 1 er leveret) — ellers intet check-run.
@@ -47,6 +56,8 @@ const lay = (k, pk) => DEFAULT_LAYOUT[k].replaceAll("<pakke>", pk);
 void GATE_IDS;
 
 export const BUILD_NAAETHED = Object.freeze(["plan-build/<pakke>/plan-approval.json", "plan-build/<pakke>/angrebs-spec.json"]);
+import { producentMiljoe, CREDENTIAL_ENV_RE } from "./pg-runner.mjs";
+void CREDENTIAL_ENV_RE;
 
 // hashObjectBytes(bytes) → git blob-OID af bytes (samme som hvis filen var committet) — default via `git hash-object --stdin`
 export function hashObjectBytes(bytes, root = repoRoot) {
@@ -55,53 +66,55 @@ export function hashObjectBytes(bytes, root = repoRoot) {
   return String(r.stdout).trim();
 }
 
-// doemBuild(deps) → { naaet, fil?, result, checkRun, proofBytes?, artifactOid?, envelope?, store, forgaenger }
-export async function doemBuild({ commitSha, root = repoRoot, git = null, runner, exists = null, readJson = null, readText = null, listMigrations = null, prover = null, planDom = null, hashObject = null, runId = null, skipMigrations = false } = {}) {
+// fælles kontekst: git-læsere + pakke @ commit
+function ctxFor({ commitSha, root, git, exists, readJson, readText, hashObject }) {
   if (!isOid(commitSha)) throw new Error("commitSha skal være en fuld 40-hex commit-OID (pinned)");
-  if (!runner || typeof runner.sql !== "function") throw new Error("runner (pg-runner) kræves");
   const g = git ?? makeGit(root);
   const findes = exists ?? ((p) => { try { g("cat-file", "-e", `${commitSha}:${p}`); return true; } catch { return false; } });
   const tekst = readText ?? ((p) => g.bytes("show", `${commitSha}:${p}`).toString("utf8"));
   const json = readJson ?? ((p) => JSON.parse(tekst(p)));
   const hashObj = hashObject ?? ((bytes) => hashObjectBytes(bytes, root));
   const pk = json("launch/launch.json").pakke; if (typeof pk !== "string" || !pk) throw new Error("launch.pakke mangler");
-  const fail = (reasons, extra = {}) => { const result = { open: false, gate_id: "build", reasons }; return { naaet: true, result, checkRun: checkRunFromGateResult("build", result), ...extra }; };
+  return { g, findes, tekst, json, hashObj, pk };
+}
+const failRes = (reasons, extra = {}) => { const result = { open: false, gate_id: "build", reasons }; return { naaet: true, result, checkRun: checkRunFromGateResult("build", result), ...extra }; };
+
+// producerBevis(deps) → { naaet, fil? } | { naaet, fejl: reasons, store } | { naaet, proofBytes, body, store, runId }
+// JOB A (måling): kører produktkode m. RENSET miljø; ingen dom, ingen emission, intet token.
+export async function producerBevis({ commitSha, root = repoRoot, git = null, runner, exists = null, readJson = null, readText = null, listMigrations = null, prover = null, runId = null, skipMigrations = false, env = producentMiljoe(process.env) } = {}) {
+  if (!runner || typeof runner.sql !== "function") throw new Error("runner (pg-runner) kræves");
+  for (const k of Object.keys(env ?? {})) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`producerBevis: miljøet til produktkode indeholder credential '${k}' (F-C4b-1)`);
+  const { g, findes, tekst, json, pk } = ctxFor({ commitSha, root, git, exists, readJson, readText });
+  const fejl = (reasons, store) => ({ naaet: true, fejl: reasons, store });
 
   // 1) nåethed
-  for (const f of BUILD_NAAETHED) { const fil = f.replace("<pakke>", pk); if (!findes(fil)) return { naaet: false, fil, result: null, checkRun: null }; }
+  for (const f of BUILD_NAAETHED) { const fil = f.replace("<pakke>", pk); if (!findes(fil)) return { naaet: false, fil }; }
 
   // 2) input
   let manifest, spec;
-  try { manifest = json(lay("manifest", pk)); } catch (e) { return fail([`manifest kan ikke læses @ commit: ${e?.message ?? e}`]); }
-  try { spec = json(lay("angrebsspec", pk)); } catch (e) { return fail([`angrebs-spec kan ikke læses @ commit: ${e?.message ?? e}`]); }
-  const vm = validateManifest(manifest); if (!vm.ok) return fail([`manifest ugyldigt: ${vm.reasons.slice(0, 8).join("; ")}`]);
-  const vs = validateAngrebsSpec(spec, manifest); if (!vs.ok) return fail([`angrebs-spec ugyldig/ukomplet mod manifestet: ${vs.reasons.slice(0, 8).join("; ")}`]);
+  try { manifest = json(lay("manifest", pk)); } catch (e) { return fejl([`manifest kan ikke læses @ commit: ${e?.message ?? e}`]); }
+  try { spec = json(lay("angrebsspec", pk)); } catch (e) { return fejl([`angrebs-spec kan ikke læses @ commit: ${e?.message ?? e}`]); }
+  const vm = validateManifest(manifest); if (!vm.ok) return fejl([`manifest ugyldigt: ${vm.reasons.slice(0, 8).join("; ")}`]);
+  const vs = validateAngrebsSpec(spec, manifest); if (!vs.ok) return fejl([`angrebs-spec ugyldig/ukomplet mod manifestet: ${vs.reasons.slice(0, 8).join("; ")}`]);
 
   // 3) store: migrationer @ commit, i rækkefølge, som ejer — første fejl er STOP
   let store = { anvendt: 0, skipped: skipMigrations };
   if (!skipMigrations) {
     const migs = (listMigrations ?? (() => g("ls-tree", "--name-only", `${commitSha}:supabase/migrations`).split("\n").filter((f) => /\.sql$/.test(f)).sort().map((f) => `supabase/migrations/${f}`)))();
-    if (!Array.isArray(migs) || migs.length === 0) return fail(["ingen migrationer fundet @ commit (supabase/migrations/*.sql) — ingen store at måle mod"], { store });
+    if (!Array.isArray(migs) || migs.length === 0) return fejl(["ingen migrationer fundet @ commit (supabase/migrations/*.sql) — ingen store at måle mod"], store);
     for (const m of migs) {
-      let r; try { r = await runner.sql(tekst(m), {}); } catch (e) { return fail([`migration ${m} kastede: ${e?.message ?? e}`], { store }); }
-      if (!r || r.ok !== true) return fail([`migration ${m} fejlede: ${r?.code ?? ""} ${r?.error ?? r?.detail?.message ?? ""}`.trim()], { store });
+      let r; try { r = await runner.sql(tekst(m), {}); } catch (e) { return fejl([`migration ${m} kastede: ${e?.message ?? e}`], store); }
+      if (!r || r.ok !== true) return fejl([`migration ${m} fejlede: ${r?.code ?? ""} ${r?.error ?? r?.detail?.message ?? ""}`.trim()], store);
       store.anvendt++;
     }
   }
 
-  // 4) forgænger: plan-gaten frisk (pinned + identitet) m. evidens @ commit
-  let forgaenger;
-  try { forgaenger = planDom ? await planDom(commitSha) : (await doemGates({ commitSha, root, git: g, gates: ["plan"], pakke: pk }))[0]; } catch (e) { return fail([`plan-gaten kan ikke dømmes: ${e?.message ?? e}`], { store }); }
-  const planSnap = buildSnapshot("plan", { git: g, commitSha, pakke: pk });
-  const predecessor = { gate_id: "plan", conclusion: forgaenger?.result?.open === true ? "success" : "failure", artifact_oid: planSnap.artifact?.oid ?? null, bindings_oids: { manifest: planSnap.bindings?.manifest?.oid ?? null } };
-  if (predecessor.conclusion !== "success") return fail([`forgængeren (plan-gaten) er ikke åben @ ${String(forgaenger?.pinned ?? "?").slice(0, 7)}: ${(forgaenger?.result?.reasons ?? ["ikke nået"]).slice(0, 4).join("; ")}`], { store, forgaenger });
-
-  // 5) måling
+  // 4) måling
   const rid = runId ?? `ci-${process.env.GITHUB_RUN_ID ?? "lokal"}-${process.env.GITHUB_RUN_ATTEMPT ?? "1"}-${commitSha.slice(0, 12)}`;
   const eng = await runBuildProofEngine({ manifest, run_id: rid, angrebsSpec: spec }, runner);
-  if (eng.error) return fail([`motoren afviste kørslen: ${eng.error}`], { store, forgaenger });
+  if (eng.error) return fejl([`motoren afviste kørslen: ${eng.error}`], store);
 
-  // 6) bevis (artefakt)
+  // 5) bevis-body (artefaktet)
   const reviews = []; const bidBase = {};
   for (const b of spec.bids) {
     const bp = `plan-build/${pk}/bids/${b.bid_id}.json`; bidBase[b.bid_id] = commitSha;
@@ -114,35 +127,80 @@ export async function doemBuild({ commitSha, root = repoRoot, git = null, runner
   else {
     let pj = null; try { pj = json(proverPath); } catch (e) { pj = null; }
     if (!pj || !Array.isArray(pj.cmd) || typeof pj.resultRelPath !== "string") prover_result = { ok: false, total: 0, passed: 0, failed: 0, skipped: 0, reason: "prover.json malformet ({cmd[], resultRelPath} kræves)" };
-    else { const pr = prover ? await prover(pj) : runProver({ repoRoot: root, commitSha, cmd: pj.cmd, resultRelPath: pj.resultRelPath, git: g, env: process.env }); const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
+    else { const pr = prover ? await prover(pj, env) : runProver({ repoRoot: root, commitSha, cmd: pj.cmd, resultRelPath: pj.resultRelPath, git: g, env }); const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
   }
-  const body = { schema_version: 1, pakke: pk, commit_sha: commitSha, run_id: rid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary }, cases: eng.cases, mutants: eng.mutants, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
-  const proofBytes = JSON.stringify(body, null, 1) + "\n"; const artifactOid = hashObj(proofBytes);
-  const buildLay = lay("build", pk);
-  const snapshot = buildSnapshot("build", { git: g, commitSha, pakke: pk, artifact: { path: buildLay, oid: artifactOid, type: "ci-produced" } });
-  const envelope = { ...body, ok: eng.allOk === true, gate_id: "build", proof_kind: "build-proof", artifact_oid: artifactOid, bindings_oids: Object.fromEntries(Object.entries(snapshot.bindings).map(([k, v]) => [k, v?.oid ?? null])) };
-  const snap = { ...snapshot, proof_result: envelope, verdicts: [], approval: null, predecessor };
+  const body = { schema_version: 1, pakke: pk, commit_sha: commitSha, run_id: rid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk: eng.allOk === true }, cases: eng.cases, mutants: eng.mutants, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
+  const proofBytes = JSON.stringify(body, null, 1) + "\n";
+  return { naaet: true, proofBytes, body, store, runId: rid, engine: eng };
+}
 
-  // 7) dom
+// doemBevis(deps) → { naaet, result, checkRun, artifactOid, envelope, forgaenger } — JOB B (dom): KUN betroet måle-lag mod git + bevis-bytes.
+// Ingen produktkode kører her; dette job må have checks:write. Bytes'ne er artefaktet: oid = hash-object(bytes), body = JSON.parse(bytes).
+export async function doemBevis({ commitSha, root = repoRoot, git = null, exists = null, readJson = null, readText = null, hashObject = null, planDom = null, proofBytes, fejl = null, store = null } = {}) {
+  const { g, json, hashObj, pk } = ctxFor({ commitSha, root, git, exists, readJson, readText, hashObject }); void json;
+  if (Array.isArray(fejl) && fejl.length) return failRes(fejl, { store });   // målingen meldte fejl (migration/input/motor) — dømmes rød m. dens grund
+  if (typeof proofBytes !== "string" || !proofBytes.length) return failRes(["intet bevis fra målingen (proofBytes mangler) — fail-closed"], { store });
+  let body; try { body = JSON.parse(proofBytes); } catch { return failRes(["bevis-bytes er ikke JSON"], { store }); }
+  if (body?.commit_sha !== commitSha) return failRes([`beviset er produceret for commit ${String(body?.commit_sha).slice(0, 7)} ≠ den dømte ${commitSha.slice(0, 7)}`], { store });
+  if (body?.pakke !== pk) return failRes([`beviset er produceret for pakken '${String(body?.pakke)}' ≠ '${pk}'`], { store });
+  const artifactOid = hashObj(proofBytes);
+
+  // forgænger: plan-gaten frisk (pinned + identitet) m. evidens @ commit
+  let forgaenger;
+  try { forgaenger = planDom ? await planDom(commitSha) : (await doemGates({ commitSha, root, git: g, gates: ["plan"], pakke: pk }))[0]; } catch (e) { return failRes([`plan-gaten kan ikke dømmes: ${e?.message ?? e}`], { store }); }
+  const planSnap = buildSnapshot("plan", { git: g, commitSha, pakke: pk });
+  const predecessor = { gate_id: "plan", conclusion: forgaenger?.result?.open === true ? "success" : "failure", artifact_oid: planSnap.artifact?.oid ?? null, bindings_oids: { manifest: planSnap.bindings?.manifest?.oid ?? null } };
+  if (predecessor.conclusion !== "success") return failRes([`forgængeren (plan-gaten) er ikke åben @ ${String(forgaenger?.pinned ?? "?").slice(0, 7)}: ${(forgaenger?.result?.reasons ?? ["ikke nået"]).slice(0, 4).join("; ")}`], { store, forgaenger });
+
+  const snapshot = buildSnapshot("build", { git: g, commitSha, pakke: pk, artifact: { path: lay("build", pk), oid: artifactOid, type: "ci-produced" } });
+  const envelope = { ...body, ok: body?.engine?.allOk === true, gate_id: "build", proof_kind: "build-proof", artifact_oid: artifactOid, bindings_oids: Object.fromEntries(Object.entries(snapshot.bindings).map(([k, v]) => [k, v?.oid ?? null])) };
+  const snap = { ...snapshot, proof_result: envelope, verdicts: [], approval: null, predecessor };
   const result = evaluateGate("build", snap, { verifyProof: makeProofVerifier({ git: g }) });
   const checkRun = checkRunFromGateResult("build", result);
-  if (checkRun?.output) checkRun.output.summary = `bevis-artefakt (ci-produced) ${artifactOid.slice(0, 12)} · run_id ${rid} · store: ${store.anvendt} migrationer${skipMigrations ? " (SKIPPED)" : ""} · motor: ${JSON.stringify(eng.summary)}\n${checkRun.output.summary}`;
-  return { naaet: true, result, checkRun, proofBytes, artifactOid, envelope, store, forgaenger, engine: eng };
+  const st = body?.store ?? {};
+  if (checkRun?.output) checkRun.output.summary = `bevis-artefakt (ci-produced) ${artifactOid} · run_id ${String(body?.run_id)} · store: ${st.migrationer_anvendt ?? "?"} migrationer${st.skipped_migrations ? " (SKIPPED)" : ""} · motor: ${JSON.stringify(body?.engine?.summary ?? null)}\n${checkRun.output.summary}`;
+  return { naaet: true, result, checkRun, artifactOid, envelope, forgaenger, store: store ?? st };
+}
+
+// doemBuild(deps) → produkt + dom i én proces (lokal brug / selvtest) — samme to trin som CI's to jobs
+export async function doemBuild(deps = {}) {
+  const p = await producerBevis(deps);
+  if (!p.naaet) return { naaet: false, fil: p.fil, result: null, checkRun: null };
+  const d = await doemBevis({ ...deps, proofBytes: p.proofBytes, fejl: p.fejl ?? null, store: p.store ?? null });
+  return { ...d, proofBytes: p.proofBytes, engine: p.engine, store: p.store ?? d.store };
 }
 
 function erMain() { if (!process.argv[1] || process.argv[1] === "-") return false; try { if (import.meta.url === pathToFileURL(process.argv[1]).href) return true; return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; } catch { return false; } }
 if (erMain()) {
   const arg = (k) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : undefined; };
-  const commitSha = arg("--commit"); const pg = arg("--pg") ?? "env"; const emit = process.argv.includes("--emit"); const out = arg("--proof-out"); const skip = process.argv.includes("--skip-migrations");
-  const argv = pg === "env" ? ["psql"] : JSON.parse(pg);
+  const commitSha = arg("--commit"); const pg = arg("--pg") ?? "env"; const emit = process.argv.includes("--emit"); const out = arg("--proof-out"); const metaOut = arg("--meta-out"); const inn = arg("--proof-in"); const metaIn = arg("--meta-in"); const skip = process.argv.includes("--skip-migrations");
+  const produce = process.argv.includes("--produce"), judge = process.argv.includes("--judge");
+  const skrivMd = (d, emitted) => { const md = `# v5/gate/build @ ${commitSha.slice(0, 12)}\n\n**${d.result.open ? "ÅBEN" : "LUKKET"}** → ${d.checkRun.name} = ${d.checkRun.conclusion}${emitted ? " (emitteret)" : " (tør kørsel)"}\n\n${d.checkRun.output.summary}\n\n${d.result.open ? "" : (d.result.reasons ?? []).slice(0, 15).map((r) => `- ${r}`).join("\n")}`; console.log(md); if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n"); };
   (async () => {
+    if (judge && !produce) {   // JOB B: kun betroet dom + emission — ingen produktkode, ingen runner
+      const meta = metaIn ? JSON.parse(readFileSync(metaIn, "utf8")) : {};
+      if (meta.naaet === false) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${meta.fil}) — intet check-run (ikke nået = ikke grøn)`); return; }
+      const proofBytes = inn ? readFileSync(inn, "utf8") : null;
+      const d = await doemBevis({ commitSha, proofBytes, fejl: meta.fejl ?? null, store: meta.store ?? null });
+      let emitted = null;
+      if (emit) emitted = await emitCheckRuns({ repo: process.env.GITHUB_REPOSITORY, headSha: commitSha, domme: [{ gate: "build", naaet: true, checkRun: d.checkRun }], token: process.env.GITHUB_TOKEN });
+      skrivMd(d, emitted); return;
+    }
+    if (emit && produce) throw new Error("--emit er forbudt i --produce (produktkode og emissions-token må aldrig dele job/proces — F-C4b-1)");
+    if (process.env.GITHUB_TOKEN && produce) throw new Error("GITHUB_TOKEN er sat i måle-jobbet — produktkode må ikke kunne nå det (F-C4b-1); fjern tokenet fra jobbet");
+    const argv = pg === "env" ? ["psql"] : JSON.parse(pg);
     const runner = makePgRunner({ argv });
-    const d = await doemBuild({ commitSha, runner, skipMigrations: skip });
+    if (produce) {   // JOB A: måling m. renset miljø
+      const p = await producerBevis({ commitSha, runner, skipMigrations: skip });
+      const meta = { naaet: p.naaet, fil: p.fil ?? null, fejl: p.fejl ?? null, store: p.store ?? null, run_id: p.runId ?? null, commit_sha: commitSha };
+      if (metaOut) writeFileSync(metaOut, JSON.stringify(meta, null, 1) + "\n");
+      if (!p.naaet) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${p.fil} findes ikke) — intet bevis produceret`); return; }
+      if (p.fejl) { console.log(`måling fejlede (dommen bliver rød m. grund): ${p.fejl.join("; ")}`); return; }
+      if (out) writeFileSync(out, p.proofBytes); console.log(`bevis produceret: ${out ?? "(ikke skrevet)"} · run_id ${p.runId} · store ${p.store.anvendt} migrationer · motor ${JSON.stringify(p.engine.summary)}`); return;
+    }
+    const d = await doemBuild({ commitSha, runner, skipMigrations: skip });   // lokalt: begge trin, ingen emission
     if (!d.naaet) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${d.fil} findes ikke) — intet check-run (ikke nået = ikke grøn)`); return; }
     if (out && d.proofBytes) { writeFileSync(out, d.proofBytes); console.log(`bevis skrevet: ${out} (artefakt-oid ${d.artifactOid})`); }
-    let emitted = null;
-    if (emit) emitted = await emitCheckRuns({ repo: process.env.GITHUB_REPOSITORY, headSha: commitSha, domme: [{ gate: "build", naaet: true, checkRun: d.checkRun }], token: process.env.GITHUB_TOKEN });
-    const md = `# v5/gate/build @ ${commitSha.slice(0, 12)}\n\n**${d.result.open ? "ÅBEN" : "LUKKET"}** → ${d.checkRun.name} = ${d.checkRun.conclusion}${emitted ? " (emitteret)" : " (tør kørsel)"}\n\n${d.checkRun.output.summary}\n\n${d.result.open ? "" : (d.result.reasons ?? []).slice(0, 15).map((r) => `- ${r}`).join("\n")}`;
-    console.log(md); if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
+    skrivMd(d, null);
   })().catch((e) => { console.error(`✗ ci-build-dom: ${e?.message ?? e}`); process.exit(1); });
 }

@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-// pg-runner.mjs — v5's RIGTIGE Postgres-runner for sandheds-motoren (build-harness.mjs's runner-kontrakt), v1 (C4b · plan 2.C/2.E ·
-// udtrukket af build-harness.integration.mjs v2.8 efter Codex C1-runde 1-8: F-17 · F-27 · F-32 · F-33 · F-36 · F-38 · F-39 · F-40).
+// pg-runner.mjs — v5's RIGTIGE Postgres-runner for sandheds-motoren (build-harness.mjs's runner-kontrakt), v2 (C4b · plan 2.C/2.E ·
+// udtrukket af build-harness.integration.mjs v2.8 efter Codex C1-runde 1-8: F-17 · F-27 · F-32 · F-33 · F-36 · F-38 · F-39 · F-40 ·
+// Codex C4b-runde: F-C4b-1 (miljø-isolation) · F-C4b-2 (aktørens settings i race)).
 //
-// makePgRunner({ argv }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql) }
+// makePgRunner({ argv, env? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql) }
 //   argv = kommandopræfiks der starter psql m. stdin (fx ["docker","exec","-i",CONTAINER,"psql","-U","postgres"] lokalt, eller
 //   ["psql"] i CI m. PGHOST/PGUSER/PGPASSWORD/PGDATABASE i miljøet). Alle kald er ÉN psql-proces (sql/q1) eller én interaktiv
 //   session (race: to sessions + et tredje vidne).
+//   env = det MILJØ alle underprocesser (psql · exit-kontroller) får — default `producentMiljoe(process.env)`: process.env UDEN
+//   credentials (GITHUB_TOKEN · GH_TOKEN · ACTIONS_* · INPUT_* · RUNNER_TOKEN · NODE_AUTH_TOKEN). Produktkode (migrationer, exit-kommandoer,
+//   psql-værtskommandoer) må ALDRIG kunne nå dommerens emissions-token (F-C4b-1) — emissionen sker i et andet job uden produktkode.
+//   race(scenario) anvender aktørens {role, settings} i BEGGE sessions før handlingerne (F-C4b-2): en forkert tenant-kontekst ville ellers
+//   bevise den forkerte tenant; fejlet opsætning lukker forløbet (protocolOk:false).
 //
 // KONTRAKT (koden er sandheden — se build-harness.mjs header):
 //   sql(text, {role, settings}) → {ok, error, code, detail:{message, routine}, rows?}   — observe-queries (select/with/table) pakkes i json_agg
@@ -62,8 +68,18 @@ export function frame(stdout, stderr, S, M, E) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function makePgRunner({ argv } = {}) {
+// producentMiljoe(env) → kopi uden credentials/CI-tokens (F-C4b-1). Fail-closed: mønstrene er brede — hellere for lidt miljø end et token.
+export const CREDENTIAL_ENV_RE = /^(GITHUB_TOKEN|GH_TOKEN|GITHUB_PAT|ACTIONS_[A-Z0-9_]*|INPUT_[A-Z0-9_]*|RUNNER_TOKEN|NODE_AUTH_TOKEN|NPM_TOKEN|AWS_[A-Z0-9_]*|AZURE_[A-Z0-9_]*|GOOGLE_APPLICATION_CREDENTIALS|SUPABASE_ACCESS_TOKEN|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY)$/;
+export function producentMiljoe(env = process.env) {
+  const out = {}; for (const [k, v] of Object.entries(env)) if (!CREDENTIAL_ENV_RE.test(k) && typeof v === "string") out[k] = v; return out;
+}
+const settingsGyldige = (settings) => settings === undefined || settings === null || (settings !== null && typeof settings === "object" && !Array.isArray(settings) && Object.keys(settings).every((k) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i.test(k)));
+const setSql = (settings) => Object.entries(settings ?? {}).map(([k, v]) => `set ${k} = '${String(v).replace(/'/g, "''")}';`).join("\n");
+
+export function makePgRunner({ argv, env = producentMiljoe(process.env) } = {}) {
   if (!Array.isArray(argv) || argv.length === 0 || !argv.every((a) => typeof a === "string")) throw new Error("makePgRunner: argv (psql-kommandopræfiks) kræves");
+  if (env === null || typeof env !== "object") throw new Error("makePgRunner: env skal være et objekt");
+  for (const k of Object.keys(env)) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`makePgRunner: env indeholder credential '${k}' — produktkode må ikke få den (F-C4b-1)`);
   const PSQL = [...argv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"];
 
   function sql(sqlText, opts = {}) {
@@ -71,10 +87,11 @@ export function makePgRunner({ argv } = {}) {
     const nonce = randomBytes(8).toString("hex"); const S = `V5S-${nonce}`, M = `V5M-${nonce}`, E = `V5E-${nonce}`;
     const prelude = ["\\set VERBOSITY verbose"];
     if (opts.role) prelude.push(`set role ${opts.role};`);
-    if (opts.settings) for (const [k, v] of Object.entries(opts.settings)) prelude.push(`set ${k} = '${String(v)}';`);
+    if (!settingsGyldige(opts.settings)) return { ok: false, error: "aktør-settings har ugyldige nøgler (kun identifier.identifier)", code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined };
+    if (opts.settings) prelude.push(setSql(opts.settings));
     const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
     const input = `${prelude.join("\n")}\n${body}\n\\echo ${S} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${M}\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${E}\n`;
-    const r = spawnSync(PSQL[0], PSQL.slice(1), { input, encoding: "utf8" });
+    const r = spawnSync(PSQL[0], PSQL.slice(1), { input, encoding: "utf8", env });
     const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined });
     if (r.error || r.status !== 0) return dead(`psql-transport fejlede (rc ${r.status ?? r.error?.message}): ${String(r.stderr ?? "").slice(0, 200)}`);
     const fr = frame(String(r.stdout ?? ""), String(r.stderr ?? ""), S, M, E);
@@ -89,10 +106,10 @@ export function makePgRunner({ argv } = {}) {
     return { ok: true, error: null, code: null };
   }
 
-  const q1 = (sqlText) => { const r = spawnSync(argv[0], [...argv.slice(1), "-tAc", sqlText], { encoding: "utf8" }); if (r.error || r.status !== 0) throw new Error(`q1 fejlede: ${String(r.stderr ?? r.error?.message).slice(0, 200)}`); return String(r.stdout).trim(); };
+  const q1 = (sqlText) => { const r = spawnSync(argv[0], [...argv.slice(1), "-tAc", sqlText], { encoding: "utf8", env }); if (r.error || r.status !== 0) throw new Error(`q1 fejlede: ${String(r.stderr ?? r.error?.message).slice(0, 200)}`); return String(r.stdout).trim(); };
 
   // session(name, spawnFn?) — én interaktiv psql; stdout (data) og stderr (diagnostik) adskilt; pr. sætning nonce-markør på begge strømme
-  function session(name, spawnFn = () => spawn(PSQL[0], PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"] })) {
+  function session(name, spawnFn = () => spawn(PSQL[0], PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env })) {
     const p = spawnFn();
     let out = "", err = "", n = 0; const nonce = randomBytes(12).toString("hex");
     p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
@@ -138,9 +155,15 @@ export function makePgRunner({ argv } = {}) {
     const A = session("A"), B = session("B");
     try {
       if (s.setup) return { protocolOk: false, error: "race.setup skal udføres af motoren som ejer (F-20) — runneren modtager ikke setup" };
-      const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};` : ""}`;
+      if (!settingsGyldige(s.actor?.settings)) return { protocolOk: false, error: "aktør-settings har ugyldige nøgler (kun identifier.identifier)" };
+      // F-C4b-2: aktørens KONTEKST (rolle + settings) anvendes i BEGGE sessions før handlingerne — ellers måles den forkerte tenant
+      const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};\n` : ""}${setSql(s.actor?.settings)}`;
       const pa0 = await A.run(pre("v5race_A")); const pb0 = await B.run(pre("v5race_B"));
-      if (!pa0.ok || !pb0.ok) return { protocolOk: false, error: `rolle-/sessionsopsætning fejlede (A ok=${pa0.ok}, B ok=${pb0.ok})` };
+      if (!pa0.ok || !pb0.ok) return { protocolOk: false, error: `rolle-/sessions-/settings-opsætning fejlede (A ok=${pa0.ok} ${pa0.code ?? ""}, B ok=${pb0.ok} ${pb0.code ?? ""})` };
+      if (s.actor?.settings) for (const [k, v] of Object.entries(s.actor.settings)) {   // verificér at konteksten FAKTISK står i begge sessions
+        const qa = await A.run(`select current_setting('${k}', true);`); const qb = await B.run(`select current_setting('${k}', true);`);
+        if (!qa.ok || !qb.ok || qa.out !== String(v) || qb.out !== String(v)) return { protocolOk: false, error: `aktør-setting ${k} står ikke som foreskrevet i begge sessions (A='${qa.out}', B='${qb.out}', foreskrevet '${String(v)}')` };
+      }
       const ra0 = await A.run("select current_user;"); const rb0 = await B.run("select current_user;");
       if (s.actor?.role && (ra0.out !== s.actor.role || rb0.out !== s.actor.role)) return { protocolOk: false, error: `faktisk rolle ≠ ønsket (${ra0.out}/${rb0.out} vs ${s.actor.role})` };
       const pa = Number((await A.run("select pg_backend_pid();")).out); const pb = Number((await B.run("select pg_backend_pid();")).out);
@@ -166,7 +189,7 @@ export function makePgRunner({ argv } = {}) {
   // exit-kanalens kontrol: kør cmd[] og aflever rc + stdout (altid streng). Manglende binær/spawn-fejl → 127 (processen fungerer ikke).
   function exec(cmd) {
     if (!Array.isArray(cmd) || cmd.length === 0 || !cmd.every((c) => typeof c === "string")) return { exit_code: 127, stdout: "" };
-    const r = spawnSync(cmd[0], cmd.slice(1), { encoding: "utf8", timeout: 120000 });
+    const r = spawnSync(cmd[0], cmd.slice(1), { encoding: "utf8", timeout: 120000, env });
     if (r.error) return { exit_code: 127, stdout: "" };
     return { exit_code: typeof r.status === "number" ? r.status : 128, stdout: typeof r.stdout === "string" ? r.stdout : "" };
   }

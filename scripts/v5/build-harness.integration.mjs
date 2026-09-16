@@ -33,7 +33,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { makePgRunner, parseErr } from "./pg-runner.mjs";
+import { makePgRunner, parseErr, producentMiljoe } from "./pg-runner.mjs";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -62,7 +62,7 @@ const dockerPsql = PG.sql; const race = PG.race; const session = PG.session; con
 const runner = { sql: dockerPsql, race, exec: PG.exec };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
-console.log(`build-harness INTEGRATION v2.8 mod '${CONTAINER}':`);
+console.log(`build-harness INTEGRATION v2.9 mod '${CONTAINER}':`);
 const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
 const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
 const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
@@ -209,6 +209,16 @@ console.log("\ntransport-ramme (F-27/F-32/F-33):");
 { const a = dockerPsql("select 1 as x where false;"); const b = dockerPsql("select 1 frm x;"); eq("query-transport: komplet tomt rækkesæt → ok:true rows=[]; syntaksfejl → ok:false rows=null (aldrig []) (F-33)", a.ok === true && Array.isArray(a.rows) && a.rows.length === 0 && b.ok === false && b.rows === null && b.code === "42601", true); }
 { reset(); const r = await runCase({ ...cases[6], race: { ...cases[6].race, invariant: { observe: { sql: "select 1/0 as aktive;" }, expect: { kind: "scalar", value: 1 } } } }, ctx, runner); eq("SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)", r.status === STATUS.PROTOKOL && /F-33/.test(r.assertions[0].detail), true); }
 
+console.log("\naktør-kontekst i race (Codex F-C4b-2) og miljø-isolation (F-C4b-1):");
+{ reset(); const sc = { actor: { role: "app_role", settings: { "app.tenant": "tenant-b" } }, a: { sql: "select f.lokation_opret(21, current_setting('app.tenant'));" }, b: { sql: "select f.lokation_opret(22, current_setting('app.tenant'));" }, invariant: { observe: { sql: "select navn from f.lokation where id in (21,22) order by id;" }, expect: { kind: "rows", value: [] } } };
+  const r = await race(sc); eq("race: aktørens settings ANVENDES i begge sessions — begge rækker bærer den foreskrevne tenant (F-C4b-2)", r.protocolOk === true && JSON.stringify(r.invariantRows) === JSON.stringify([{ navn: "tenant-b" }, { navn: "tenant-b" }]), true); if (!r.protocolOk) console.error("      ", r.error);
+  reset(); const r2 = await race({ ...sc, actor: { role: "app_role" } }); eq("race uden settings: current_setting('app.tenant') er ukendt GUC (42704) i begge → ingen rækker (kontrast: konteksten ændrer udfaldet)", r2.protocolOk === true && r2.a.code === "42704" && r2.b.code === "42704" && r2.invariantRows.length === 0, true);
+  reset(); const r3 = await race({ ...sc, actor: { role: "app_role", settings: { "app.tenant; drop table f.lokation; --": "x" } } }); eq("race: ugyldig settings-nøgle (injektion) → protokol-fejl før nogen handling", r3.protocolOk === false && /ugyldige nøgler/.test(r3.error), true); }
+{ const r = dockerPsql("select f.lokation_opret(23, current_setting('app.tenant'));", { role: "app_role", settings: { "app.tenant": "tenant-c" } }); const v = dockerPsql("select navn from f.lokation where id = 23;", {}); eq("sql(): aktørens settings anvendes i enkeltkald (samme kontrakt som race)", r.ok === true && JSON.stringify(v.rows) === JSON.stringify([{ navn: "tenant-c" }]), true); reset(); }
+{ const env = producentMiljoe({ PATH: "/usr/bin", GITHUB_TOKEN: "ghs_x", ACTIONS_RUNTIME_TOKEN: "y", INPUT_FOO: "z", PGHOST: "h", HOME: "/h" }); eq("producentMiljoe fjerner tokens/CI-credentials og beholder resten", Object.keys(env).sort().join(","), "HOME,PATH,PGHOST", true); }
+{ process.env.GITHUB_TOKEN = "ghs_lækket"; const PG2 = makePgRunner({ argv: ["docker", "exec", "-i", CONTAINER, "psql", "-U", "postgres"] }); const e = PG2.exec(["node", "-e", "process.stdout.write(String(process.env.GITHUB_TOKEN ?? ''))"]); delete process.env.GITHUB_TOKEN; eq("exec(): produktkommandoen ser IKKE GITHUB_TOKEN (renset miljø som default, F-C4b-1)", e.exit_code === 0 && e.stdout === "", true);
+  let thrown = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (x) { thrown = x.message; } eq("makePgRunner afviser et miljø m. credential (fail-closed)", /F-C4b-1/.test(thrown ?? ""), true); }
+
 // ---------- mutanter: formbestemt kill mod virkeligheden ----------
 console.log("\nmutanter (én pr. værn) — formbestemt kill:");
 reset();
@@ -249,5 +259,5 @@ const snapshot = { commit_sha: COMMIT, artifact, bindings: { plan, manifest: man
 
 dockerPsql("drop schema if exists f cascade;", {});
 console.log("");
-if (failed > 0) { console.error(`build-harness INTEGRATION v2.8: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
-console.log(`build-harness INTEGRATION v2.8: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);
+if (failed > 0) { console.error(`build-harness INTEGRATION v2.9: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
+console.log(`build-harness INTEGRATION v2.9: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);

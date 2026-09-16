@@ -1,10 +1,8 @@
 {
  "gates.mjs": {
-  "status": "kandidat",
+  "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
   "blob_oid": "1a4369b713b6a6a929f6d4fa75a62848febe5aea",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
-  "kandidat_siden": "2026-09-16",
-  "note": "artifactCiProduced (build/slut) + isArtifactRef: artefakt må være type ci-produced KUN for maskinbevis-gates; bindinger altid blobs. · Forrige pas: M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); plan-gate m. manifest-binding · build-gate m. plan+manifest+angrebsspec + predecessorBindings — PASS i runde 3, 4 og 5 (byte-identisk); tidligere Trin A-pas 8a5755f PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow"
+  "note": "Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — artifactCiProduced (build/slut) + isArtifactRef, bindinger altid blobs. Mutanter dræbt (ci-produced overalt · som binding · fortsæt efter migration · ignorer forgænger · git-sti-binding sprunget over · delegation fjernet). artifactCiProduced (build/slut) + isArtifactRef: artefakt må være type ci-produced KUN for maskinbevis-gates; bindinger altid blobs. · Forrige pas: M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); plan-gate m. manifest-binding · build-gate m. plan+manifest+angrebsspec + predecessorBindings — PASS i runde 3, 4 og 5 (byte-identisk); tidligere Trin A-pas 8a5755f PASS i runde 5 (run_id 20260915T130432-2142146-20533, "
  },
  "verdikt.mjs": {
   "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
@@ -17,18 +15,14 @@
   "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "build-proof.mjs": {
-  "status": "kandidat",
+  "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
   "blob_oid": "756627cb11cb4af4b2d23a994ee7041d8dd8c1e9",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
-  "kandidat_siden": "2026-09-16",
-  "note": "snapshot.artifact type ci-produced springer git-sti-binding over (kernen binder proof.artifact_oid === artefakt-oid); ellers uændret v2.5. · Forrige pas: M-41 Trin C1 (sandheds-motoren): build-proof-verifier v2.5 (manifest + angrebs-spec som gate-bindinger · genudledning · locus-bundne claims · vejnings-skæring: prover-bijektion fjernet, claim_graph valgfri) — Codex-P2 C1-runde 1-6 (2026-09-10..15); PASS i runde 6 (run_id 20260915T133506-2226167-20356, regel_commit a7a9fcf) på netop denne blob. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning"
+  "note": "Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — ci-produceret artefakt uden git-sti-binding (kernen binder artifact_oid); v2.5-verifieren ellers uændret. Mutanter dræbt (ci-produced overalt · som binding · fortsæt efter migration · ignorer forgænger · git-sti-binding sprunget over · delegation fjernet). snapshot.artifact type ci-produced springer git-sti-binding over (kernen binder proof.artifact_oid === artefakt-oid); ellers uændret v2.5. · Forrige pas: M-41 Trin C1 (sandheds-motoren): build-proof-verifier v2.5 (manifest + angrebs-spec som gate-bindinger · genudledning · locus-bundne claims · vejnings-skæring: prover-bijektion fjernet, claim_graph valgfri) — Codex-P2 C1-runde 1-6 (2026-09-10..15); PASS i runde 6 (run_id 20260915T133506-2226167-20356, regel_commit a7a9fcf) på netop denne blob. "
  },
  "gate-eval.mjs": {
-  "status": "kandidat",
+  "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
   "blob_oid": "7110053ac597a6b3f3ab99f6449323f208c6e005",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
-  "kandidat_siden": "2026-09-16",
-  "note": "buildSnapshot: injiceret ci-produceret artefakt (layout-sti + OID + type) kun for gates m. artifactCiProduced; alt andet fra git som før. · Forrige pas: M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); layout m. manifest + angrebs-spec — PASS i runde 3, 4 og 5 (byte-identisk); tidligere Trin A-pas 8a5755f PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r5."
+  "note": "Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — injiceret ci-produceret artefakt kun for maskinbevis-gates på layout-stien. Mutanter dræbt (ci-produced overalt · som binding · fortsæt efter migration · ignorer forgænger · git-sti-binding sprunget over · delegation fjernet). buildSnapshot: injiceret ci-produceret artefakt (layout-sti + OID + type) kun for gates m. artifactCiProduced; alt andet fra git som før. · Forrige pas: M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); layout m. manifest + angrebs-spec — PASS i runde 3, 4 og 5 (byte-identisk); tidligere Trin A-pas 8a5755f PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow-faerdi"
  },
  "coverage.mjs": {
   "pas_ref": "aa6ba0b6025e06be9a5f4efd591fb1a91133ae02",
@@ -96,11 +90,9 @@
   "note": "M-41 Trin C1 (sandheds-motoren): case-engine v2.6 (fire bevisformer · rå observationer + ren dom · footprint-attesteret mutation · SA m. uafhængigt overlap-vidne · exit-protokol · rå kald-udfald valideret i helhed) — Codex-P2 C1-runde 1-7 (2026-09-10..15); PASS i runde 7 (run_id 20260915T135701-2286740-30181, regel_commit 2fdfd7d) på netop denne blob, 166 selvtests + 97 målrettede dataprøver + 5 dræbte kodemutanter. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r7."
  },
  "ci-gate-dom.mjs": {
-  "status": "kandidat",
+  "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
   "blob_oid": "dc59d796e6c86df5194fe2367e2df3cef9e08520",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
-  "kandidat_siden": "2026-09-16",
-  "note": "build-gaten DELEGERET til v5-build-dom (intet check-run herfra — én emitter pr. check-navn); ellers uændret (P-1 r2 PASS). · Forrige pas: C4 CI-dommer-entrypoint (nåethed pr. gate · pinned commit fra kandidat-resultatet m. forfader- OG identitetsbinding (artefakt/bindinger/pakke ens ved pinned og pushed, F-C4-1) · frisk udfør-side m. evidens @ pushed · checkrun-mapper · emission v5/gate/<id> via GitHub REST). Codex P-1 runde 1 (FAIL F-C4-1/F-C4-2) → runde 2 (2026-09-15, run_id 20260915T143657-2427309-31628, regel_commit 8e371c5): PA"
+  "note": "Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — build delegeret til v5-build-dom; hærdet transport (P-1 r2 + C4b). Mutanter dræbt (ci-produced overalt · som binding · fortsæt efter migration · ignorer forgænger · git-sti-binding sprunget over · delegation fjernet). build-gaten DELEGERET til v5-build-dom (intet check-run herfra — én emitter pr. check-navn); ellers uændret (P-1 r2 PASS). · Forrige pas: C4 CI-dommer-entrypoint (nåethed pr. gate · pinned commit fra kandidat-resultatet m. forfader- OG identitetsbinding (artefakt/bindinger/pakke ens ved pinned og pushed, F-C4-1) · frisk udfør-side m. evidens @ pushed · checkrun-mapper · emission v5/gate/<id> via GitHub REST). Codex P-1 runde 1 (FAIL F-C4-1/F-C4-2) → runde 2 (2026-09-15, run_id 20260915T143657-24"
  },
  "checkrun.mjs": {
   "pas_ref": "cdddf64d6a6b130bebc6112b4155c279e80af610",
@@ -109,16 +101,16 @@
  },
  "ci-build-dom.mjs": {
   "status": "kandidat",
-  "blob_oid": "a6a32091fe1ae9160847c89a7b472e3d20b74369",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
+  "blob_oid": "5641cd28e7c781af7ca151ce24d61d38d8c35eb6",
+  "pas_afventer": "Codex C4b-runde 2 (F-C4b-1 to tillidszoner + renset miljø · F-C4b-2 aktørens settings i race) FØR autoritativ ibrugtagning",
   "kandidat_siden": "2026-09-16",
-  "note": "C4b: CI's produktionsrunner + build-dommer (nåethed · manifest/spec-validering · migrationer @ commit som ejer m. STOP · forgænger plan frisk · sandheds-motoren via pg-runner · bevis in-memory → ci-produceret artefakt (hash-object) → evaluateGate build → v5/gate/build). Selvtest 21."
+  "note": "C4b: producerBevis (måling, renset miljø, ingen dom) + doemBevis (dom fra bytes, ingen produktkode) + doemBuild (lokalt begge). Runde 1 FAIL F-C4b-1 (produktkode kunne nå emissions-tokenet) — lukket ved job-/proces-split + producentMiljoe + scriptets egne forbud (--emit i --produce · GITHUB_TOKEN i måle-jobbet). Selvtest 33."
  },
  "pg-runner.mjs": {
   "status": "kandidat",
-  "blob_oid": "61b48a9eb56662c535e70b6b747a4fafd856be51",
-  "pas_afventer": "Codex C4b-runde (P-1/C1 på CI's produktionsrunner + ci-produceret artefakt) FØR autoritativ ibrugtagning",
+  "blob_oid": "c43c57bcfdb193e0d8044a06f64d96ea4ebc0547",
+  "pas_afventer": "Codex C4b-runde 2 (F-C4b-1 to tillidszoner + renset miljø · F-C4b-2 aktørens settings i race) FØR autoritativ ibrugtagning",
   "kandidat_siden": "2026-09-16",
-  "note": "Rigtig Postgres-runner (udtrukket af integrationen v2.8: struktureret diagnostik via psql-variable · flertydighed = protokol · F-40 · overlap-vidne · exit). Integration 72 grønne mod rigtig Postgres via dette modul."
+  "note": "Rigtig Postgres-runner v2: env-isolation (producentMiljoe default, credential i env afvises) · aktørens settings anvendes og VERIFICERES i begge race-sessions (F-C4b-2), validerede nøgler · sql() samme kontrakt. Integration 79 grønne (v2.9)."
  }
 }

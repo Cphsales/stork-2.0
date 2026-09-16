@@ -1,28 +1,28 @@
 name: v5 build-dommer (CI producerer build-beviset)
 
-# C4b (plan 2.A/2.C/2.E · DEL V · DEL VIII pkt. 36/38): CI's EGEN produktionsrunner bygger den friske store (produktets migrationer @ commit)
-# i en Postgres-service, måler mod den gate-bundne angrebs-spec + manifest (sandheds-motoren), producerer build-beviset IN-MEMORY
-# (artefakt-type ci-produced; uploades som workflow-artefakt) og dømmer build-gaten frisk → check-run v5/gate/build.
+# C4b (plan 2.A/2.C/2.E · DEL V · DEL VIII pkt. 36/38/39 · Codex C4b-runde F-C4b-1): TO JOBS, TO TILLIDSZONER.
+#   maaling: kører PRODUKTKODE (migrationer @ commit · motorens kald · prover-cmd · exit-kontroller) mod en frisk Postgres-service.
+#            contents:read, INGEN checks:write, checkout UDEN persist-credentials, intet token i miljøet, renset miljø til underprocesser.
+#            Output = bevis-body (bytes) + meta som workflow-artefakt. Ingen dom, ingen emission.
+#   dom:     kører KUN det betroede måle-lag mod git + bevis-bytes (ingen produktkode, ingen Postgres): oid = hash-object(bytes),
+#            forgænger (plan) frisk, evaluateGate(build), emission v5/gate/build. checks:write lever kun her.
 # Nået = plan-approval.json + angrebs-spec.json findes i commit'en; ellers intet check (ikke nået = ikke grøn).
-# contents:read (beviset committes aldrig) · checks:write. Jobbet er grønt når dommeren kørte og emitterede; gate-udfaldet står i check-run'et.
 
 on:
   push:
   workflow_dispatch:
-
-permissions:
-  contents: read
-  checks: write
 
 concurrency:
   group: v5-build-dom-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-dom:
-    name: build-dommer (frisk store + måling → check-run v5/gate/build)
+  maaling:
+    name: måling (produktkode i renset miljø — ingen check-rettigheder)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     services:
       postgres:
         image: public.ecr.aws/supabase/postgres:17.6.1.121
@@ -45,6 +45,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false # F-C4b-1: intet token i .git/config hvor produktkode kunne læse det
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -54,16 +55,49 @@ jobs:
         run: |
           git config --global user.name "v5-ci"
           git config --global user.email "v5-ci@users.noreply.github.com"
-      - name: dømmer-selvtest (fail-closed før dom)
+      - name: dømmer-selvtest (fail-closed før måling)
         run: node scripts/v5/ci-build-dom.selftest.mjs
-      - name: frisk store + måling + build-dom + emission
-        run: node scripts/v5/ci-build-dom.mjs --commit "$GITHUB_SHA" --pg env --emit --proof-out build-proof.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: bevis-artefakt (ci-produced — genverificerbart)
-        if: ${{ hashFiles('build-proof.json') != '' }}
+      - name: måling → bevis-body + meta (renset miljø, intet token)
+        run: node scripts/v5/ci-build-dom.mjs --produce --commit "$GITHUB_SHA" --pg env --proof-out build-proof.json --meta-out build-dom-meta.json
+      - name: måle-output til dom-jobbet
         uses: actions/upload-artifact@v4
         with:
-          name: build-proof-${{ github.sha }}
-          path: build-proof.json
+          name: build-dom-${{ github.sha }}
+          path: |
+            build-proof.json
+            build-dom-meta.json
+          if-no-files-found: warn
           retention-days: 90
+
+  dom:
+    name: dom (betroet måle-lag → check-run v5/gate/build)
+    needs: maaling
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: git-identitet
+        run: |
+          git config --global user.name "v5-ci"
+          git config --global user.email "v5-ci@users.noreply.github.com"
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-dom-${{ github.sha }}
+          path: maaling
+        continue-on-error: true # ingen artefakt = ikke nået/målingen skrev intet; dommeren håndterer det fail-closed
+      - name: dom + emission (ingen produktkode i dette job)
+        run: |
+          META=maaling/build-dom-meta.json; PROOF=maaling/build-proof.json
+          if [ ! -f "$META" ]; then echo '{"naaet":false,"fil":"(måle-jobbet skrev intet meta)"}' > /tmp/meta.json; META=/tmp/meta.json; fi
+          [ -f "$PROOF" ] && P="--proof-in $PROOF" || P=""
+          node scripts/v5/ci-build-dom.mjs --judge --commit "$GITHUB_SHA" --meta-in "$META" $P --emit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

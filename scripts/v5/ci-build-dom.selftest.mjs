@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { doemBuild, hashObjectBytes, BUILD_NAAETHED } from "./ci-build-dom.mjs";
+import { doemBuild, producerBevis, doemBevis, hashObjectBytes, BUILD_NAAETHED } from "./ci-build-dom.mjs";
 import { makeGit, resolveRef } from "./git.mjs";
 
 let pass = 0, fail = 0;
@@ -93,6 +93,21 @@ console.log("\nbevis → ci-produceret artefakt → frisk dom:");
 { const d = await doemBuild(base()); eq("bid_bindings bærer bid'ets basis-commit fra bids/<bid>.json (= reviewets), og basis er forfader til den gatede commit", d.envelope.bid_bindings.every((b) => b.base_oid === COMMIT), true); }
 { const d = await doemBuild(base({ runner: mkRunner({ audit: false }) })); eq("motor: vidne udebliver (audit tom) → case brudt → LUKKET, ok:false i envelope", d.result.open === false && d.envelope.ok === false, true); }
 { let e = null; try { await doemBuild(base({ commitSha: "HEAD" })); } catch (x) { e = x.message; } eq("mutable ref som commit → kast", /pinned/.test(e ?? ""), true); }
+
+console.log("\nto tillidszoner (Codex F-C4b-1): måling m. renset miljø → bytes → dom uden produktkode:");
+{ process.env.GITHUB_TOKEN = "ghs_hemmelig"; let setEnv = null; const p = await producerBevis(base({ prover: async (pj, env) => { setEnv = env; return { ok: true, summary: { total: 3, passed: 3, failed: 0, skipped: 0 } }; } })); delete process.env.GITHUB_TOKEN;
+  eq("producerBevis: prover-cmd får et RENSET miljø — GITHUB_TOKEN er væk, PATH er der", setEnv !== null && !("GITHUB_TOKEN" in setEnv) && "PATH" in setEnv, true);
+  eq("producerBevis leverer bytes + body + store + run_id, ingen dom", typeof p.proofBytes === "string" && p.body.run_id === "ci-test-1" && p.store.anvendt === 2 && p.result === undefined, true);
+  const d = await doemBevis(base({ proofBytes: p.proofBytes, store: p.store })); eq("doemBevis fra bytes → samme dom (ÅBEN) og oid = hash-object(bytes)", d.result.open === true && d.artifactOid === hashObjectBytes(p.proofBytes, ROOT), true);
+  eq("check-run-summary bærer FULD artefakt-oid (40 hex) — tredjepart kan sammenligne uden præfiks", new RegExp(d.artifactOid).test(d.checkRun.output.summary), true); }
+{ let e = null; try { await producerBevis(base({ env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } })); } catch (x) { e = x.message; } eq("producerBevis afviser et miljø m. credential (fail-closed, F-C4b-1)", /F-C4b-1/.test(e ?? ""), true); }
+{ const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.commit_sha = "b".repeat(40); const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: bevis for en ANDEN commit → rød", d.result.open === false && /produceret for commit/.test(d.result.reasons[0]), true); }
+{ const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.pakke = "anden"; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: bevis for en ANDEN pakke → rød", d.result.open === false && /pakken/.test(d.result.reasons[0]), true); }
+{ const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.cases[0].status = "opfyldt"; b.cases[0].observations.negative = { ok: true, code: null, detail: null }; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: manipulerede bytes (forbudt tilladt, status pyntet) → verifieren genudleder → rød", d.result.open === false && /genudledt/.test(d.result.reasons.join(" ")), true); }
+{ const d = await doemBevis(base({ proofBytes: "ikke json" })); eq("doemBevis: bytes er ikke JSON → rød", d.result.open === false && /ikke JSON/.test(d.result.reasons[0]), true); }
+{ const d = await doemBevis(base({ proofBytes: null, fejl: ["migration supabase/migrations/0001_a.sql fejlede: 42601 syntax"], store: { anvendt: 0 } })); eq("doemBevis: målingen meldte fejl (migration STOP) → rød m. målingens grund", d.result.open === false && /migration .* fejlede/.test(d.result.reasons[0]), true); }
+{ const d = await doemBevis(base({ proofBytes: null })); eq("doemBevis: intet bevis fra målingen → rød (fail-closed)", d.result.open === false && /proofBytes mangler/.test(d.result.reasons[0]), true); }
+{ const p = await producerBevis(base()); const b = JSON.parse(p.proofBytes); b.engine.allOk = true; b.cases[1].status = "brudt"; const d = await doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n" })); eq("doemBevis: engine.allOk pyntet til true m. brudt case → rød (genudledning + summary)", d.result.open === false, true); }
 { let e = null; try { await doemBuild(base({ runner: null })); } catch (x) { e = x.message; } eq("uden runner → kast (ingen måling uden store)", /runner/.test(e ?? ""), true); }
 
 console.log("");

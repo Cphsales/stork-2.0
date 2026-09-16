@@ -1,4 +1,4 @@
-build-harness INTEGRATION v2.8 mod 'v5-buildproof-pg':
+build-harness INTEGRATION v2.9 mod 'v5-buildproof-pg':
   ✓ fixture opsat
   ✓ angrebs-spec (den faktiske måle-spec) er komplet mod manifestet
 
@@ -55,6 +55,15 @@ transport-ramme (F-27/F-32/F-33):
   ✓ query-transport: komplet tomt rækkesæt → ok:true rows=[]; syntaksfejl → ok:false rows=null (aldrig []) (F-33)
   ✓ SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)
 
+aktør-kontekst i race (Codex F-C4b-2) og miljø-isolation (F-C4b-1):
+  ✓ race: aktørens settings ANVENDES i begge sessions — begge rækker bærer den foreskrevne tenant (F-C4b-2)
+  ✓ race uden settings: current_setting('app.tenant') er ukendt GUC (42704) i begge → ingen rækker (kontrast: konteksten ændrer udfaldet)
+  ✓ race: ugyldig settings-nøgle (injektion) → protokol-fejl før nogen handling
+  ✓ sql(): aktørens settings anvendes i enkeltkald (samme kontrakt som race)
+  ✓ producentMiljoe fjerner tokens/CI-credentials og beholder resten
+  ✓ exec(): produktkommandoen ser IKKE GITHUB_TOKEN (renset miljø som default, F-C4b-1)
+  ✓ makePgRunner afviser et miljø m. credential (fail-closed)
+
 mutanter (én pr. værn) — formbestemt kill:
   ✓ engine: alle cases opfyldt
   ✓ m-navn (g.navn) → dræbt som UT · restored · ren
@@ -80,4 +89,4 @@ verifyBuildProof over det faktisk producerede bevis (manifest + angrebs-spec som
   ✓ … og rød når K-1-claimets anker peger på en anden routine end værnets låste locus (F-31)
   ✓ … og rød når ankeret flyttes til en anden fil end værnets locus-sti (F-31)
 
-build-harness INTEGRATION v2.8: alle 72 cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)
+build-harness INTEGRATION v2.9: alle 79 cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)
