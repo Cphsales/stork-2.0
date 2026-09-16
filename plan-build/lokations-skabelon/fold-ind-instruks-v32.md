@@ -29,7 +29,7 @@ arkiv @ `<PIN>` uden `.git`, uden for `~/.claude`. Blobs verificeres med `git ha
 - **Mathias' ord (BINDENDE, ledger `mathias-ord.md` @ `5f4425d135e9cf56b9bf137a6a45f6bf96591c11`, M-1..M-43):** M-42 (15/9): »nu får jeg en masse spørgsmål? plan er
   kode og krav er forretningsgange - derudover s-2 spørgsmålet modsiger mine sandhedsdokumenter: svaret på spørgsmålet er at de
   styres i ui« · M-43 (15/9): »det er ikke mit bord« / »altså så længe det kun er kode logikker«. Implplan DEL VIII pkt. 37 +
-  Fase 3 pkt. 4 (implplan @ `efcd8570061303daeaa6f2a6730dce40d08602ec` — RE-PIN planens implplan-reference hertil; v3 pinnede 0fdd5b1e).
+  Fase 3 pkt. 4 (implplan @ `11fb22087c7fa57776d2e04dd70826db626392b6` — RE-PIN planens implplan-reference hertil; v3 pinnede 0fdd5b1e).
 - **Driverens rettede kildekontrakt (A3-1 — LÆS, ret ikke):** `p8-kildekontrakt.md` @ `5183dec1d39fcb327cb7ef477d1e5fb8f5fa2a34` · `p8-kilde.json` @ `0b253117263ab55553a12bba78f213b25f5b633d`
   · `p8-kilde-scope.sql` @ `2353d3924dabfb8b5371dbb9c4f41d2352d2de34` (sha256 `67663a2af68cf90af5b757a7ef9d96c59fbd99573cf02052d9c5c199b3f26b1e`) · `p8-kilde-katalog.txt` @ `12f6babacc84ffe3db9d5f76cf26e51d6bc4bc62` (forventet_katalog_digest
   `d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd`) · `p8-kilde-gen.mjs` @ `e64e7c2027cf28343b484f7f3342f0a86fba92f4`. Planens FA-5-reference skal pege på DISSE blobs (pkt. 31).
@@ -149,7 +149,7 @@ valg). INGEN `locus` på guards (udelades). Kør validatoren til »✓ manifest 
 ## Pkt. 34 — Ændringslog, rapport-r4, disciplin
 
 - `plan.md` v3.2: status UDKAST; hoved m. `angreb_r3_oid` · `audit_r3_oid` · `manifest_v31_oid` · `kildekontrakt_oid` · `ledger` M-1..M-43 ·
-  implplan @ `efcd8570061303daeaa6f2a6730dce40d08602ec`; **§11.3 ændringslog v3 → v3.2 PR. FUND-ID m. `plan.md:<linje>`** (A'' dømmer delta pr. henvisning —
+  implplan @ `11fb22087c7fa57776d2e04dd70826db626392b6`; **§11.3 ændringslog v3 → v3.2 PR. FUND-ID m. `plan.md:<linje>`** (A'' dømmer delta pr. henvisning —
   hver linje i §11.3 er en henvisning den følger).
 - `fold-ind-rapport-r4.md`: KUN delta — tabel m. alle fund-id'er der har ændret tilstand/linje siden r3 (A3-1..8 · V31-1..10 ·
   FUND3-1..4 · 22 A'-Nej-rækker · 9 dispositioner · S-1/S-2/B-5/D-6/FUND2-4-omklassificeringer) + FULD optælling pr. tilstand over
