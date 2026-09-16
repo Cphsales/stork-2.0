@@ -1,0 +1,186 @@
+{
+ "schema_version": 1,
+ "gate_id": "plan",
+ "aktor": "codex",
+ "artifact_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+ "bindings_oids": {
+  "krav": "9402164d87a35fb939661058bea77c1a052493d0",
+  "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
+  "manifest": "cbce5c0dc1b038408e6c767d6d570c4189b02029"
+ },
+ "input_oids_read": [
+  "414b0ce89621ccfd66464801b6304692c061a040",
+  "9402164d87a35fb939661058bea77c1a052493d0",
+  "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "13b783927f4fed107caa0e849e65499fd3291b61",
+  "cbce5c0dc1b038408e6c767d6d570c4189b02029"
+ ],
+ "conclusion": "FAIL",
+ "negative_cases": [
+  "K-1 × plan.md:150 — Tre økonominegativer har hver sin klasse og sit afvisningssted; planrettelsen er tekstligt båret.",
+  "K-2 × plan.md:165 — Sidste stand kræver to sessioner, barriere og committed bestand; effektform og targeted mutant er båret.",
+  "K-3 × plan.md:178 — Bevarede effektive retter kræver R13 fra 4.3, men obligationen og manifestet siger 4.2; D12-rest.",
+  "K-4 × plan.md:192 — Dvale-handlingens Ret-observation er flyttet til 4.3; nedlagt-afvisning og apply-genvalidering er bevaret.",
+  "K-5 × plan.md:204 — Uautoriseret stop skal afvises uden statusændring; lovligt stop kræver faktisk aktiv-effekt, ikke blot audit.",
+  "K-6 × plan.md:225 — Request efterfulgt af gruppefrakobling har eget I4-negativ og T6.16; ISO-transporten er konsistent med §3.",
+  "K-7 × plan.md:237 — T7.8 rammer tested, men ikke aktiv mappings tab af telefon-strategi. Tilladt type→direct støder desuden mod CHECK; D10 og dækning fejler.",
+  "K-8 × plan.md:249 — Fremmed pending-payload har selvstændig R17-mutant T8.11 og requester/A+-kontroller; tidlig 42501 kan ikke krediteres.",
+  "K-9 × plan.md:261 — Blank årsag efter konfigurationsforsøg er nu neg-5; den samlede UI-kæde fejler fortsat på det tilladte persondatavalg i D-11."
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    35,
+    41
+   ],
+   "excerpt_sha": "57f9e07d2cd4d5d5163e92d5b7dfc9cf9500e0f7a878c364e4b6ec54f0366eba"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    147,
+    181
+   ],
+   "excerpt_sha": "09456b5fa8dcfb91c7b4c21917929e374a29816ffbb5749fe8c6fdf62866116f"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    234,
+    253
+   ],
+   "excerpt_sha": "d35202640109d7e30c18c3c09f52a3e386812b9b742bd67bac5365808adbdc26"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    315,
+    317
+   ],
+   "excerpt_sha": "c69bf2e9d4554a1f3f0c08d61f5d258ff8fa0b287a7afea949ac668c3325c883"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    448,
+    454
+   ],
+   "excerpt_sha": "6ef93e2ba62f8399697f6c586c6e7c04f0b9209c9cd4411b8ac6ea3359084bb6"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    586,
+    608
+   ],
+   "excerpt_sha": "c969e5757cbc4ef4ce36c5a5e458cf07e63f69643b980e62f9fa9f9ae883ecbf"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    802,
+    832
+   ],
+   "excerpt_sha": "415d4a1d80bf276aed1fe4e047a95dc28cea2e7f2b09f2950e10f67daf28eedf"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    132,
+    181
+   ],
+   "excerpt_sha": "d5af1b6593c41d8154d0598986eb36aa563eeddd20a4222b07449ed938adceb5"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/kill-list-udkast.md",
+   "blob_oid": "13b783927f4fed107caa0e849e65499fd3291b61",
+   "line_span": [
+    159,
+    170
+   ],
+   "excerpt_sha": "430790f434ee1aa088ee8ea9c07d08b377e3810d16c07f951200532f077938be"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "blob_oid": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+   "line_span": [
+    42,
+    56
+   ],
+   "excerpt_sha": "ab5d77ed7711cfc5711787e244c86880ce0954f56f8fd8d20badd51a2a04de78"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "cbce5c0dc1b038408e6c767d6d570c4189b02029",
+   "line_span": [
+    942,
+    965
+   ],
+   "excerpt_sha": "376840f139fd6f89231d5c967de0e95d9f56853c0fb875473db0063f801c5bb9"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "cbce5c0dc1b038408e6c767d6d570c4189b02029",
+   "line_span": [
+    2981,
+    2993
+   ],
+   "excerpt_sha": "570e6fc704661b66f89e21abe84396b3f9022c7b88c931ca459eb47ce74170b7"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "cbce5c0dc1b038408e6c767d6d570c4189b02029",
+   "line_span": [
+    3124,
+    3151
+   ],
+   "excerpt_sha": "3b08d7b122f28c36eb71d79b8c4f9c7d2131a9ef7ad8cdd1514d5899fcd9cb80"
+  },
+  {
+   "commit_sha": "1cabc26438d34f6c7c2372d1684e95e813ff5f8a",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "414b0ce89621ccfd66464801b6304692c061a040",
+   "line_span": [
+    391,
+    438
+   ],
+   "excerpt_sha": "cc7f02502d49508e77b3575e76cf54656521f7e6499be3db19d4a466872dab6c"
+  }
+ ],
+ "run": {
+  "run_id": "20260916T131831-2929228-17864",
+  "run_attempt": 1,
+  "raw_output_sha256": "0b0d9ea052b7bf9bbfcd968b287fd301a0b85bd1c868f7e1a654e823fba65620",
+  "actor_server_id": "local-driver-spawn via codex-run.sh v4 (kvittering 20260916T131831-2929228-17864; usigneret = residual til CI actor-runner, DEL I: lokal = candidate)",
+  "effort": "xhigh",
+  "receipt_sha256": "60f2d921407d323a330bd06556b90439ef878fd4ef499d1d5715c30f34b0765d"
+ }
+}

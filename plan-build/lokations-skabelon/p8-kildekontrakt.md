@@ -71,8 +71,8 @@ stadig** (»følsom« fjerner ikke en problemrække).
 **Mekanisk kontrol ved fetch (erstatter v1's »hash af SQL-filen«):** `p8-kilde-scope.sql` del 2 sammenholder den observerede
 kolonnemængde (pg_catalog, `format_type`) for de 22 relationer med den FORVENTEDE i begge retninger — 0 rækker = OK;
 del 3 beregner sha256 over den kanoniske katalog-tekst (`skema.relation.kolonne<TAB>type`, sorteret bytewise, LF-adskilt, ingen
-afsluttende LF) og skal give `forventet_katalog_digest` = `d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd`. Enhver afvigelse = RØD (drift i KILDEN, ikke i
-buildet) — aldrig tavs tilpasning. `scope_definition_sha256` (`67663a2af68cf90af5b757a7ef9d96c59fbd99573cf02052d9c5c199b3f26b1e`) er kontraktens VERSIONS-identitet (ændres filen, er
+afsluttende LF) og skal give `forventet_katalog_digest` = `7cdc1939a7b11394d93291840b2f74f1affca983cd8246a7876908ea2c9900e3`. Enhver afvigelse = RØD (drift i KILDEN, ikke i
+buildet) — aldrig tavs tilpasning. `scope_definition_sha256` (`9b66cae72fb97d49cd7584e88bc164beb2ac2e00c76693f63ac037a925806ac3`) er kontraktens VERSIONS-identitet (ændres filen, er
 kontrakten ny), ikke en attest af resultatmængden.
 
 ## (4) Isoleret måltarget — DEKLARERET ÅBENT m. ejer + tidspunkt
@@ -95,8 +95,8 @@ data. Kildens inaktive klientregler gøres ikke ved analogi til K-regler (T:54) 
 
 ## Bindinger
 
-- `p8-kilde-gen.mjs` (kilden) → `p8-kilde-scope.sql` sha256 `67663a2af68cf90af5b757a7ef9d96c59fbd99573cf02052d9c5c199b3f26b1e` · `p8-kilde-katalog.txt` sha256 `ea38431f90a9b7fec2bde690b08a50b6691be27170849ca91853d613a72e97b0`
-  (`forventet_katalog_digest` = `d701ec56628bc7ebcd2624973e37691985964c4fdee9e8d49ee399449880ccfd`) · `p8-kilde.json` (schema_version 2; bærer denne fils blob-OID).
+- `p8-kilde-gen.mjs` (kilden) → `p8-kilde-scope.sql` sha256 `9b66cae72fb97d49cd7584e88bc164beb2ac2e00c76693f63ac037a925806ac3` · `p8-kilde-katalog.txt` sha256 `3a893b4748e05af2f004935c500519a6455bb618ae1b74526144cc9cde80c64b`
+  (`forventet_katalog_digest` = `7cdc1939a7b11394d93291840b2f74f1affca983cd8246a7876908ea2c9900e3`) · `p8-kilde.json` (schema_version 2; bærer denne fils blob-OID).
 - krav `docs/sandhed/krav/lokations-skabelon-krav.md` @ `9402164d87a35fb939661058bea77c1a052493d0` · P-8 `p8-slutproeve-spec.md` @
   `4af07ef4164882ca54643e79df3554c0bf22b0e4`.
 - Kontrakten binder IKKE planen — planen binder kontrakten (FA-5), ellers cirkulær reference. Manifestet kan senere path-binde

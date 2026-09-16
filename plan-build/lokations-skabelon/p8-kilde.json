@@ -129,7 +129,7 @@
     },
     "kildekontrakt": {
       "path": "plan-build/lokations-skabelon/p8-kildekontrakt.md",
-      "oid": "9da12d2db1c201b1ae923d72bd612e1100b7ede9"
+      "oid": "33dd3509c17a8fa176f91b9d6072c0c1cd1f001a"
     },
     "note": "kontrakten binder IKKE planen — planen binder kontrakten (FA-5), ellers cirkulær reference"
   }

@@ -181,7 +181,17 @@ if (existsSync(mdPath)) {
   const start = md.indexOf("<!-- GEN:tabel -->"), end = md.indexOf("<!-- /GEN:tabel -->");
   if (start >= 0 && end > start) {
     const ny = md.slice(0, start) + "<!-- GEN:tabel -->\n" + mdTable + "\n" + md.slice(end);
-    writeFileSync(mdPath, ny.split("@@KATALOG_DIGEST@@").join(katalogDigest).split("@@SQL_SHA@@").join(sqlSha).split("@@KATALOG_SHA@@").join(katalogSha).split("@@ANTAL_REL@@").join(String(TABELLER.length)).split("@@ANTAL_KOL@@").join(String(kanon.length)));
+    // A5-1 (Codex, B6 r2): allerede indsatte værdier SKAL også opdateres — ellers bærer kontrakten to forskellige kontrolresultater.
+    let m = ny.split("@@KATALOG_DIGEST@@").join(katalogDigest).split("@@SQL_SHA@@").join(sqlSha).split("@@KATALOG_SHA@@").join(katalogSha).split("@@ANTAL_REL@@").join(String(TABELLER.length)).split("@@ANTAL_KOL@@").join(String(kanon.length));
+    m = m.replace(/(forventet_katalog_digest\` = \`)[0-9a-f]{64}(\`)/g, `$1${katalogDigest}$2`)
+         .replace(/(\`scope_definition_sha256\` \(\`)[0-9a-f]{64}(\`\))/g, `$1${sqlSha}$2`)
+         .replace(/(p8-kilde-scope\.sql\` sha256 \`)[0-9a-f]{64}(\`)/g, `$1${sqlSha}$2`)
+         .replace(/(p8-kilde-katalog\.txt\` sha256 \`)[0-9a-f]{64}(\`)/g, `$1${katalogSha}$2`)
+         .replace(/\((19[0-9]|2[0-9][0-9]) kolonner,/g, `(${kanon.length} kolonner,`)
+         .replace(/for de (\d+) relationer med den FORVENTEDE/g, `for de ${TABELLER.length} relationer med den FORVENTEDE`);
+    const gamleDigests = [...m.matchAll(/[0-9a-f]{64}/g)].map((x) => x[0]).filter((d) => ![katalogDigest, sqlSha, katalogSha].includes(d));
+    if (gamleDigests.length) throw new Error("forældede 64-hex-værdier i kontrakten: " + [...new Set(gamleDigests)].map((d) => d.slice(0, 8)).join(","));
+    writeFileSync(mdPath, m);
   }
 }
 console.log(`relationer=${TABELLER.length} kolonner=${kanon.length} katalog_digest=${katalogDigest} sql_sha256=${sqlSha} katalog_sha256=${katalogSha} kildekontrakt_oid=${mdOid}`);
