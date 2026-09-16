@@ -287,3 +287,11 @@ Dybde · troskab · kill-list-tilstrækkelighed · manifest-validator: BESTÅET.
 | R3-2 | RET (a) | K-1/S | effekt_bid 2.1 i plan:150 + manifest:332, men positivet (C2/C3 via W5/W6; pg_get_functiondef) er først nåbart i 2.2 — modsiger plan:41's regel (som V31-10 rettede for K-2/S og K-7/S) | plan:150 · manifest:332 | modtaget → v3.3 | — | — |
 | R3-3 | RET (a) | K-9/ac-3 | Gen-kørslen N1/N2/N6 efter konfig-omgåelse (plan:259) mangler blank-årsags-canary — K:173 navngiver fire forbud inkl. »manglende årsag«, kill-list:209 kræver »angivet årsag« i gentagelsen; forventningslisten har samme udeladelse → planen udvider | plan:259 · K:173 · kill-list:209 | modtaget → v3.3 | — | — |
 | R3-4 | mindre (a) | K-7/S/neg-4 | Beskrivelsen siger »BEFORE UPDATE-gren, rækken findes som none«, men i Bid 1 findes registry-rækken for lokationer.adresse ikke (fødes i Bid 2) → upsert tager INSERT-grenen; udfaldet (P0001, samme grund/sted) er identisk — grenbeskrivelsen skal dække begge | plan:236 · manifest:3048-3064 | modtaget → v3.3 | — | — |
+
+### Kilde 16: claude-ai D — `plan-verdikt-claude-ai-r1.md` (frisk claude -p-instans, read-only; provenance/verdikt-claude-ai-plan-r1.\*; verdikt PASS @ P2)
+
+Forretnings-troskab plan⊨krav⊨vision bekræftet pr. K; 21 §10-defaults bord-testet; citater ordrette. **Ingen fund mod planen.** Fremlæggelses-udkast leveret (`fremlaeggelse-plan-r1-udkast.md`).
+
+| fund-id | alvor | kort (driverens resumé — kilden er autoritet) | berører | status | rettelses-OID | bevis |
+| --- | --- | --- | --- | --- | --- | --- |
+| F-1 | form (driver) | Driverens fremlæggelses-brief skrev »klient-, butiks- og medarbejderdata« om slutprøvens kildedata; kildekontrakt §(2)/plan:806/P-8 T:32 siger klient-, organisations- og medarbejderdata (ingen butiksdata findes). Fremlæggelsen følger kilden | brief-mathias-df/prompt-d pkt. 3 | rettet (fremlæggelsen bruger kildens ord; briefen rettes i r2-prompten) | — | plan-verdikt-claude-ai-r1.md §A »Fund« |
