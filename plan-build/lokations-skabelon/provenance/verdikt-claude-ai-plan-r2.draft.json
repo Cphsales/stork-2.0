@@ -1,0 +1,133 @@
+{
+ "aktor": "claude-ai",
+ "conclusion": "PASS",
+ "negative_cases": [
+  "K-1 ac 1 × plan.md:147 — butik uden navn afvises, også for superadmin, ingen halv butik/stand efterlades → afbildet (AK-NAVN, T1.1)",
+  "K-1 ac 4 × plan.md:150 — butik kan ikke blive økonomi-/attributionsdimension; tre uafhængige leverance-kontroller over 9 tabeller og 43 funktioner (R3-1) → afbildet, stærkere end v3.2",
+  "K-2 ac 1/ac 6 × plan.md:160,165 — under-stand og stand uden butik afvises eksplicit; sidste aktive stand kan ikke deaktiveres, også for SA, to-sessions-bevis blokerende → afbildet",
+  "K-2 ac 5 × plan.md:164 — nedlæggelse sletter ingen stande; mutant der tager stande ud af brug ved nedlæggelse gør genåbnings-asserten rød → afbildet",
+  "K-3 ac 1/2/3 × plan.md:174-176 — butik uden gruppe, fritekst-gruppe og gruppe uden navn afvises → afbildet",
+  "K-3 ac 4/ac 6 × plan.md:177,179 — klient uden for gruppen kan hverken til- eller fravælges; fravalg rammer kun én butik (søster-vidne) → afbildet",
+  "K-4 ac 6 × plan.md:192 — til-/fravalg i dvale afvises IKKE; for stramt værn dømmes som kravbrud (T4.5) → afbildet",
+  "K-4 ac 8/ac 9 × plan.md:194-195 — til-valg på nedlagt afvises uden SA-bypass; nedlagt butik har ingen klienter med ret, gruppens kobling, stande og historik består, genåbning arver da gældende → afbildet",
+  "K-5 ac 1/ac 2/ac 5 × plan.md:203-207 — ingen book-alligevel/override-flade, SA får samme false; stop før tid uden rettighed afvises; ingen automatisk hvile uden valgt antal dage → afbildet",
+  "K-6 ac 2/ac 3/ac 8 × plan.md:217-218,223 — dobbelt kobling afvises også i race; kobling uden slutdato afvises IKKE; flere klienter samtidig afvises IKKE → afbildet",
+  "K-6 ac 4/ac 10 × plan.md:225 — ny neg-11: godkendt ophævelse af fravalg afvises ved gennemførelsen når klienten i mellemtiden er koblet fra gruppen; fravalget forbliver åbent (A4-4 iii) → afbildet, = K:120",
+  "K-7 ac 4 × plan.md:237 — persondata-valg EFTER første anonymisering anonymiseres på allerede anonymiserede butikker og dækkes ved genskabelse; vinduet klassifikation→strategi afviser i stedet for at aktivere tavst (S-47, neg-7) → afbildet, = K:143",
+  "K-7 S × plan.md:238 — nedgradering, »indirekte uden vej« (INSERT- og UPDATE-gren), gruppens navn→persondata og talfelt→persondata afvises, også for SA (S-2-B = M-42 + K:143; S-46) → afbildet; §11:197 ikke modsagt (fundamentets niveau bevares)",
+  "K-8 ac 1/ac 3/ac 4 × plan.md:246,248,249 — direkte tabel-skrivning afvises uanset rettigheder og selvsatte variabler; audit/historik kan ikke ændres; view-only får fremmed anmodnings indhold afvist med eget værn (A4-5) → afbildet",
+  "K-9 ac 3 × plan.md:261 — strukturelt forbud (blankt navn, nedlagt til-valg, pii-nedgradering, nu også blank årsag) kan ikke slås fra efter konfig-omgåelse, heller ikke af SA (R3-3 = K:173) → afbildet",
+  "§10 × plan.md:812-832 — 21 defaults bord-testet: ingen ændrer et krav eller sandhedsdokument; D-11 (ny) inden for K:134/K:137/K:143 + §11:201 med stop-konsekvens; Dit ord-citater M-36 (ledger:85), M-42 (ledger:96), M-30.2 (ledger:56) ordret → bestået"
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    143,
+    262
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    266,
+    278
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    612,
+    690
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    784,
+    798
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    802,
+    833
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "line_span": [
+    983,
+    1008
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    17,
+    177
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    179,
+    181
+   ]
+  },
+  {
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "line_span": [
+    409,
+    418
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/ordbog.md",
+   "line_span": [
+    25,
+    34
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "line_span": [
+    28,
+    56
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "line_span": [
+    226,
+    234
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/recon2.md",
+   "line_span": [
+    344,
+    359
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/recon2.md",
+   "line_span": [
+    657,
+    671
+   ]
+  },
+  {
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "line_span": [
+    1,
+    16
+   ]
+  }
+ ],
+ "raw_output_sha256": "5d4b6c5eea5b234949641325dd37359e6d3723a5eba9a9049472864c96375079",
+ "effort": "xhigh",
+ "run_id": "b6-claude-ai-plan-r2-d71fcd30"
+}
