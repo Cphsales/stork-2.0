@@ -326,3 +326,7 @@ Kald, blobs, workdir-diff står i `fold-ind-r5.provenance.txt`. 255 ture · 40,4
 | `fold-ind-r5.slutbesked.md` | result-feltet | `cff0921dbc908ef2bfb153128befc6db1d410c3fca6e0416b1b938f9c9fc8b3f` | slutbesked |
 | `fold-ind-r5.settings.json` | `v33/settings-v33.json` | `3b0101ca3b3db896e608f88c4894531e611efc0d1bc982124525d220f3f94cda` | acceptEdits + Bash(node:*) |
 | `fold-ind-r5.provenance.txt` | skrevet af driveren | (denne commit) | fuld driver-provenance |
+
+## B6 runde 2 — verdikter (r2-evidens @ P3 1cabc26) + planner v3.4 (mini, fold-ind r6) — 2026-09-16 13:18-14:17, driver mathias-5f
+
+Runde 2 (P3): `verdikt-claude-ai-plan-r2.*` (PASS, 73 ture/9 min/7,3 USD; fremlæggelses-udkast r2) · `verdikt-code-reviewer-plan-r2.*` (FAIL mekanisk: R4-1 K:143-hul type · R4-2 W6 NULL · R4-3 pin; 109 ture/13 min/9,6 USD) · `verdikt-codex-plan-r2.*` (FAIL 7: A5-1..A5-7; receipt success run_id 20260916T131831-2929228-17864, 1411 s). M-44 → mini-runde: planner v3.4 (`fold-ind-r6.*`, 193 ture/30 min/20,7 USD, validator kørt af aktøren): 45 linjer ændret på plads + §11.5; R4-1..3 + A5-2/3/4/5/7 rettet m. bevis; A5-1 (kontrakt v4 — generatoren opdaterer nu alle digest-forekomster) og A5-6 (`plan-v32.md`/`plan-v33.md` + `manifest-v32/v33.committet.json` byte-identiske her) lukket af driveren. Provenance-detaljer i de respektive `*.provenance.txt`.
