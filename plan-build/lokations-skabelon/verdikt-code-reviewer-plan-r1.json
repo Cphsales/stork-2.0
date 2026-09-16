@@ -1,0 +1,222 @@
+{
+ "schema_version": 1,
+ "gate_id": "plan",
+ "aktor": "code-reviewer",
+ "artifact_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+ "bindings_oids": {
+  "krav": "9402164d87a35fb939661058bea77c1a052493d0",
+  "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
+  "manifest": "3ab9cf9be063a46b531147d09d2ccd9feae3d750"
+ },
+ "input_oids_read": [
+  "fea69661d135a726b09eea7db588b29c78e46b8b",
+  "9402164d87a35fb939661058bea77c1a052493d0",
+  "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "13b783927f4fed107caa0e849e65499fd3291b61",
+  "3ab9cf9be063a46b531147d09d2ccd9feae3d750"
+ ],
+ "conclusion": "FAIL",
+ "negative_cases": [
+  "K-1 × plan.md:145 — T1.1 default-navn ved NULL/blank gennem lokation_opret som R+/SA; 0-nye-raekker-assert goer neg-1/2 roed; udfald: gyldigt kill",
+  "K-1 × plan.md:147 — T1.3 pris-trigger uden UPDATE-gren: lokation_dagspris_paa(L,D2)=P1 → FS roed; kraever FA-3 (blokerende); udfald: gyldigt kill",
+  "K-2 × plan.md:163 — T2.6 fjern FOR UPDATE paa lokationer i stand_saet_aktiv: SA-1 to sessions ender med 0 aktive stande; normal: taber faar AK-SIDSTE-STAND via READ COMMITTED-genlaesning; udfald: gyldigt kill",
+  "K-3 × plan.md:177 — T3.5 I4 uden lokation_id-praedikat lukker soesterfravalget paa L2: Ret(C1,L2,D4)=true → lokalitets-FS roed; udfald: gyldigt kill",
+  "K-4 × plan.md:192 — T4.7 tilfoej is_admin-bypass til nedlagt-guard: SA-tilvalg paa nedlagt lykkes → neg-2 roed; strukturvagt uden bypass; udfald: gyldigt kill",
+  "K-5 × plan.md:202 — T5.3 stop skriver audit men udelader aktiv-event: bookbar forbliver false → MH/FS roed; udfald: gyldigt kill",
+  "K-6 × plan.md:215 — T6.2 fjern gruppe-laas i I1: dublet rammer 23505 i stedet for 22023 → SA-1 bundet udfald roed; udfald: gyldigt kill",
+  "K-6 × plan.md:223 — DATO-TRANSPORT ::text under DMY-request/MDY-apply: invalid_payload eller AK-DATO-DRIFT paa lovlig kaede → FS roed; udfald: gyldigt kill",
+  "K-7 × plan.md:236 — T7.10 fjern indirect-gren i _pii_klassifikation_guard: adresse=indirect lykkes uden anonymiseringsvej → K-7/S/neg-4 roed; guard naabar via upsert INSERT ON CONFLICT (b9f97633:38-52 verificeret); udfald: gyldigt kill",
+  "K-8 × plan.md:244 — T8.1 grant update to authenticated + selvsat GUC: direkte UPDATE lykkes → neg-1 roed; revoken baerer alene; udfald: gyldigt kill",
+  "K-9 × plan.md:257 — T9.1 effektiv revoke execute paa lokation_opret: positiv API-kaede roed (default-privilege c6fb84d2:39-41 verificeret); udfald: gyldigt MH-kill",
+  "K-1 × plan.md:148 — K-1/ac-4 neg-1..3 kollapset til ét manifest-negativ med disjunktiv beskrivelse (manifest:262-291): D10-brud, falsk-groen-vej for output-kontrakten; udfald: FUND R3-1 (a)",
+  "K-9 × plan.md:259 — K-9/ac-3 gen-koersel N1/N2/N6 efter konfig-omgaaelse mangler aarsags-canary mod K:173 og kill-list:209; udfald: FUND R3-3 (a)"
+ ],
+ "claim_graph_refs": [
+  "plan-build/lokations-skabelon/plan.md:145-147 → K-1 · T1.1 T1.2 T1.3 T1.4",
+  "plan-build/lokations-skabelon/plan.md:158-163 → K-2 · T2.4 T2.5 T2.6 T2.7 T2.8 T2.9 T2.10",
+  "plan-build/lokations-skabelon/plan.md:172-177 → K-3 · T3.2 T3.3 T3.4 T3.5 T3.6 T6.3",
+  "plan-build/lokations-skabelon/plan.md:185-193 → K-4 · T4.1 T4.2 T4.4 T4.5 T4.6 T4.7 T4.8 T4.9 T6.8-a",
+  "plan-build/lokations-skabelon/plan.md:201-205 → K-5 · T5.2 T5.3 T5.4 T5.5 T5.6",
+  "plan-build/lokations-skabelon/plan.md:214-223 → K-6 · T6.1 T6.2 T6.4 T6.5 T6.6 T6.7 T6.8-b T6.9 T6.10 T6.11 T6.12 T6.13 T6.14 T6.15 T6.16 T6.17 T9.4",
+  "plan-build/lokations-skabelon/plan.md:232-236 → K-7 · T7.1 T7.2 T7.3 T7.4 T7.5 T7.6 T7.7 T7.8 T7.9 T7.10 T7.12 T7.13 T7.14",
+  "plan-build/lokations-skabelon/plan.md:244-249 → K-8 · T8.1 T8.2 T8.5 T8.6 T8.7 T8.8 T8.9",
+  "plan-build/lokations-skabelon/plan.md:257-259 → K-9 · T9.1 T9.3",
+  "plan-build/lokations-skabelon/plan.md:268-276 → K-1..K-9 · D12-bijektion",
+  "plan-build/lokations-skabelon/plan.md:110-133 → K-8/ac-2 · T8.6",
+  "plan-build/lokations-skabelon/plan.md:600-600 → K-7/ac-4 · T7.7 T7.8"
+ ],
+ "evidence": [
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    145,
+    148
+   ],
+   "excerpt_sha": "dd1a97bac13bf97dea20c335534681c8d29e6eddb62a20c906351e9beb5366e1"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    268,
+    276
+   ],
+   "excerpt_sha": "4d84702a25002b6e6c55332e45c01a46b6ba7784a119d54715579254559d6525"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    110,
+    133
+   ],
+   "excerpt_sha": "1a9a9b46abcc6beb6e30b45a789e6c0314cec24d722f388f285d728d7782e833"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    214,
+    224
+   ],
+   "excerpt_sha": "2a0fcb0e6d18d5ae025d1dfdd8e3795f5d1e7d3f72899939eba8f1696ad63688"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    232,
+    236
+   ],
+   "excerpt_sha": "a2105d91f5c38555fcd2d7bffcedc4227433cacd3887870379cfb2da1699cf12"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    257,
+    260
+   ],
+   "excerpt_sha": "c56f1f9462d06b179bf65caf073deb65b21f2268ecde14df85998842e1f746c3"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    600,
+    600
+   ],
+   "excerpt_sha": "df48f451eb5473f54cdd274a38cac05be6d3d58d55d624b5a0bbabc5918571a2"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "fea69661d135a726b09eea7db588b29c78e46b8b",
+   "line_span": [
+    794,
+    825
+   ],
+   "excerpt_sha": "19808df4ebb4a9802569c6776cf79cd3f79ff4a07a1200f424d2d943132f2e78"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    170,
+    177
+   ],
+   "excerpt_sha": "f4638d340c1b2607c00e737e755fbb7da53110732f1350d4c646bb48b6786628"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/kill-list-udkast.md",
+   "blob_oid": "13b783927f4fed107caa0e849e65499fd3291b61",
+   "line_span": [
+    9,
+    9
+   ],
+   "excerpt_sha": "956d4410f63142d378c74915215028452ceaed701c08388a514ef9b41acab7ce"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/kill-list-udkast.md",
+   "blob_oid": "13b783927f4fed107caa0e849e65499fd3291b61",
+   "line_span": [
+    200,
+    215
+   ],
+   "excerpt_sha": "0351b207ea2272da3fa244746a6fade1dc2b8c686a27fa93c616d52c20028ece"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "3ab9cf9be063a46b531147d09d2ccd9feae3d750",
+   "line_span": [
+    262,
+    291
+   ],
+   "excerpt_sha": "2701385d6bce9e321f1afc65f98fac6ee7b916e412cfa08346462a9635380bad"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "3ab9cf9be063a46b531147d09d2ccd9feae3d750",
+   "line_span": [
+    3574,
+    3636
+   ],
+   "excerpt_sha": "f9aafa57fedde31729fb8af1cce49054c9117e1dd44e84f4248d24d9356043de"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/p8-slutproeve-spec.md",
+   "blob_oid": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+   "line_span": [
+    195,
+    204
+   ],
+   "excerpt_sha": "a4995b35f6240874fbd18217f377c6c9f9e0fd30743ed446962d11b1d2c7cf74"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/recon2.md",
+   "blob_oid": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+   "line_span": [
+    302,
+    317
+   ],
+   "excerpt_sha": "90986df3000ff179aae4e7a3d49c3cde3988819d448a5dac18f4a40f00c8724f"
+  },
+  {
+   "commit_sha": "9d94278885d4ccdba1a4e5824714ede617764f21",
+   "path": "plan-build/lokations-skabelon/ordbog.md",
+   "blob_oid": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+   "line_span": [
+    25,
+    34
+   ],
+   "excerpt_sha": "e34c726d3c885a7b91feac0e6d8c5160f0e8523732d305a3940b6805ebc1f752"
+  }
+ ],
+ "run": {
+  "run_id": "b6-code-reviewer-plan-r1-5ba908bf",
+  "run_attempt": 1,
+  "raw_output_sha256": "cc43fc0879f5ae0d8520ab4fd263d8f3238dfc3b48d24a6b68490d5e04779f14",
+  "actor_server_id": "local-driver-spawn (SELV-ERKLÆRET run/effort — ingen transport-kvittering; kun tilladt for Claude-Agent-aktører; server-provenance = residual til CI actor-runner)",
+  "effort": "xhigh"
+ }
+}
