@@ -138,7 +138,8 @@ expectRed("kun én af to targets fejlede → rød (alle targets skal fejle)", ve
 expectRed("targets ≠ indeksets target_test_ids → rød", verify(mutated((p) => (mut(p, "m-min").targets = [mut(p, "m-min").targets[0]]))), "targets ≠ indeksets");
 expectRed("controls ≠ indeksets → rød", verify(mutated((p) => mut(p, "m-min").controls.push({ id: "t-k1-fs", ok: true }))), "controls ≠ indeksets");
 expectRed("restored ≠ targets+controls → rød", verify(mutated((p) => mut(p, "m-min").restored.pop())), "restored ≠");
-expectRed("guard_ref ≠ indeksets → rød", verify(mutated((p) => (mut(p, "m-min").guard_ref = "g.navn"))), "guard_ref ≠ indeksets");
+expectRed("guard_ref ≠ indeksets → rød", verify(mutated((p) => (mut(p, "m-min").guard_ref = "g.navn"))), "guard_ref/locus_ref ≠ indeksets");
+expectRed("locus_ref smuglet ind i rapporten → rød", verify(mutated((p) => (mut(p, "m-min").locus_ref = "plan:x"))), "guard_ref/locus_ref ≠ indeksets");
 expectRed("mutant udeladt → rød", verify(mutated((p) => (p.mutants = p.mutants.filter((m) => m.mutant_id !== "m-min")))), "mutant 'm-min' fra indekset har intet resultat");
 expectRed("rogue mutant → rød", verify(mutated((p) => p.mutants.push({ ...clone(mut(p, "m-min")), mutant_id: "m-egen" }))), "rogue");
 expectRed("killed som getter → rød", verify(mutated((p) => { const m = mut(p, "m-navn"); delete m.killed; Object.defineProperty(m, "killed", { enumerable: true, get: () => true }); })), "selvrapporteret");
