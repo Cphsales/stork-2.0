@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "pakke": "lokations-skabelon",
+  "bindings": {
+    "manifest": {
+      "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+      "oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+    },
+    "plan": {
+      "path": "plan-build/lokations-skabelon/plan.md",
+      "oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29"
+    }
+  },
+  "bids": [
+    {
+      "bid_id": "1.1",
+      "kind": "forudsaetning",
+      "depends_on": [],
+      "covers": []
+    },
+    {
+      "bid_id": "1.2",
+      "kind": "effekt",
+      "depends_on": [
+        "1.1"
+      ],
+      "covers": [
+        "K-3/ac-3"
+      ]
+    },
+    {
+      "bid_id": "1.3",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "1.2"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "1.4",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "1.3"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "2.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.3",
+        "1.4"
+      ],
+      "covers": [
+        "K-7/S"
+      ]
+    },
+    {
+      "bid_id": "2.2",
+      "kind": "effekt",
+      "depends_on": [
+        "2.1"
+      ],
+      "covers": [
+        "K-1/ac-1",
+        "K-1/ac-2",
+        "K-1/ac-3",
+        "K-1/S",
+        "K-2/ac-1",
+        "K-2/ac-2",
+        "K-2/ac-4",
+        "K-2/ac-6",
+        "K-2/S",
+        "K-3/ac-1",
+        "K-3/ac-2"
+      ]
+    },
+    {
+      "bid_id": "2.3",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "2.2"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "3.1",
+      "kind": "effekt",
+      "depends_on": [
+        "2.3"
+      ],
+      "covers": [
+        "K-2/ac-3",
+        "K-2/ac-5",
+        "K-4/ac-1",
+        "K-4/ac-2",
+        "K-4/ac-3",
+        "K-4/ac-4",
+        "K-4/ac-5",
+        "K-4/ac-7",
+        "K-5/ac-1",
+        "K-5/ac-2",
+        "K-5/ac-3",
+        "K-5/ac-5",
+        "K-5/S"
+      ]
+    },
+    {
+      "bid_id": "4.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.4",
+        "2.3",
+        "3.1"
+      ],
+      "covers": [
+        "K-7/ac-1",
+        "K-7/ac-3",
+        "K-8/ac-3"
+      ]
+    },
+    {
+      "bid_id": "4.2",
+      "kind": "effekt",
+      "depends_on": [
+        "4.1"
+      ],
+      "covers": [
+        "K-4/ac-8",
+        "K-6/ac-1",
+        "K-6/ac-2",
+        "K-8/ac-5"
+      ]
+    },
+    {
+      "bid_id": "4.3",
+      "kind": "effekt",
+      "depends_on": [
+        "4.2"
+      ],
+      "covers": [
+        "K-3/ac-4",
+        "K-3/ac-5",
+        "K-3/ac-6",
+        "K-4/ac-6",
+        "K-4/ac-9",
+        "K-6/ac-3",
+        "K-6/ac-4",
+        "K-6/ac-5",
+        "K-6/ac-6",
+        "K-6/ac-7",
+        "K-6/ac-8",
+        "K-6/ac-9",
+        "K-6/ac-10",
+        "K-6/S",
+        "K-8/ac-4"
+      ]
+    },
+    {
+      "bid_id": "5.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.4",
+        "2.3",
+        "4.3"
+      ],
+      "covers": [
+        "K-1/ac-4",
+        "K-7/ac-2",
+        "K-7/ac-4",
+        "K-8/ac-1",
+        "K-8/ac-2",
+        "K-8/S",
+        "K-9/ac-3",
+        "K-9/S"
+      ]
+    },
+    {
+      "bid_id": "5.2",
+      "kind": "effekt",
+      "depends_on": [
+        "4.3",
+        "5.1"
+      ],
+      "covers": [
+        "K-1/ac-5",
+        "K-5/ac-4",
+        "K-9/ac-1",
+        "K-9/ac-2"
+      ]
+    }
+  ],
+  "cases": [],
+  "mutants": []
+}
