@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "pakke": "lokations-skabelon",
+  "bindings": {
+    "manifest": {
+      "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+      "oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+    },
+    "plan": {
+      "path": "plan-build/lokations-skabelon/plan.md",
+      "oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29"
+    }
+  },
+  "production_status": "HALT",
+  "halt": [
+    {
+      "id": "h1.api-proof-form",
+      "obligations": ["K-1/ac-5", "K-5/ac-4", "K-9/ac-1", "K-9/ac-2"],
+      "sources": [
+        "plan-build/lokations-skabelon/plan.md:259",
+        "plan-build/lokations-skabelon/plan.md:260",
+        "plan-build/lokations-skabelon/plan.md:606",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:3589",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:3606",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:3623",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:3657",
+        "scripts/v5/angrebs-spec.mjs:101",
+        "scripts/v5/angrebs-spec.mjs:116",
+        "scripts/v5/build-harness.mjs:294",
+        "scripts/v5/build-harness.mjs:330"
+      ],
+      "missing": "Planen og manifestet kraever MH gennem PostgREST-API med navngivne vidner; runneren har kun action.sql for MH. check.cmd forbruges kun for UT med reject_contract.kanal=exit. K-9/ac-1/neg-1 er selv bundet til sqlstate, saa API-negativet kan heller ikke flyttes til exit uden kontraktaendring. Den bindende opgave siger API/ui-flow via check.cmd og ingen HTTP-adapter endnu. Der mangler en autoriseret, eksekverbar adapter/skema-kontrakt for disse bevisformer; SQL som authenticated beviser ikke API-eksponering.",
+      "resolution": "HALT til driver/fabrik-arm: afstem API-kanalen med de laaste MH/UT/FS-forpligtelser og lever den noedvendige runner-understoettelse. Ingen aendring af plan, manifest eller framework er tilladt i denne opgave."
+    },
+    {
+      "id": "h2.uuid-substitution",
+      "obligations": ["K-7/ac-2"],
+      "negative_id": "K-7/ac-2/neg-2",
+      "sources": [
+        "plan-build/lokations-skabelon/plan.md:47",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:2771",
+        "plan-build/lokations-skabelon/forventnings-manifest.json:2776",
+        "scripts/v5/build-harness.mjs:184",
+        "scripts/v5/build-harness.mjs:310",
+        "scripts/v5/pg-runner.mjs:99",
+        "supabase/migrations/20260515140000_r7h_anonymize_generic_apply_state_insert_fix.sql:108"
+      ],
+      "missing": "Planens substitutionsregel B kraever at motoren erstatter {id} med casens p_kontakt_id. Manifestets grund indeholder bogstaveligt {id}. runCase kopierer rc.grund uaendret, og judgeObservations sammenligner det.message === k.grund. Produktets arvede raise skriver den konkrete UUID. Der findes ingen substitutionsbinding i den tilladte case-kontrakt; korrekt produktafvisning kan derfor ikke opfylde negativ-afvist-bundet.",
+      "resolution": "HALT til driver/fabrik-arm: realiser og bind planens substitutionsregel i motor/verifier. Produktfejlen maa ikke omskrives i testen, og manifestet maa ikke aendres her."
+    }
+  ],
+  "incomplete_reason": "Produktionsstop foer frysning. De tomme arrays er bevidst ugyldige hos validateAngrebsSpec; dette er en HALT-post, ikke en leveret eller eksekverbar angrebs-spec. Ingen cases, mutanter eller daekning krediteres.",
+  "bids": [],
+  "cases": [],
+  "mutants": []
+}
