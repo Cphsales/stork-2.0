@@ -1,83 +1,35 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier, v2.6 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31 · vejnings-skæring 2026-09-15 · Fase 4 pkt. 1 H1/H2: via + subst er spec-afledte).
+// build-proof.mjs — v5's build-gate proof-verifier, v3 (HURTIGT SPOR 2026-09-21 — Mathias: »hele workflowet er overkill«; plan DEL VIII pkt. 42).
 //
-// Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run. Verifieren GENUDLEDER alt:
-//   - FORVENTNINGEN = manifestet (gate-binding `manifest`, kæde-bundet til plan-gaten) · MÅLINGEN = angrebs-/måle-spec'en
-//     (gate-binding `angrebsspec`: cases m. orakler/kontrakter, mutanter m. locus/kontroller/footprint, bid-graf) — begge path-bundne
-//     @ pinned commit. Beviset leverer KUN observationer; orakler, kontroller, mutationer og bid-graf kan ikke vælges af buildet
-//     (F-13, F-16, F-18). validateAngrebsSpec beviser spec'ens komplethed mod manifestet.
-//   - hver spec-case har PRÆCIS ét delbevis i proofen; dets identitetsfelter og de spec-afledte dele af observationerne (kontrakt ·
-//     expect · checkpoint/vidne-id'er · race_id · invariant_expect · fase · aktør · TILSTEDEVÆRELSE af foreskrevet setup/handling, F-20)
-//     skal være spec'ens/manifestets; status+assertions GENUDLEDES med judgeObservations (F-3, F-4, F-11, F-14, F-23, F-24)
-//   - hver spec-mutant har PRÆCIS ét resultat; indlejrede delresultater bindes til case-identitet + run_id + form + kontrakt (F-12),
-//     kontrol-mængden er spec'ens i alle faser (F-16), kill GENUDLEDES (judgeKill) inkl. footprint-attesteret mutation og restore,
-//     og break_form skal være judgeKill's (F-12, F-15)
-//   - bids i proofen == spec'ens graf (F-18) · engine.summary genudledes · prover_result er et konsistent, grønt resumé (judgeTestSummary)
-//     af de ØVRIGE committede tests — et UAFHÆNGIGT bevis ved siden af cases+mutanter. VEJNINGS-SKÆRING (Mathias 2026-09-15 »tjek at vi ikke
-//     over-tester«): id-bijektionen executed_ids ⇔ cases+mutanter (F-19/F-26) er fjernet — cases og mutanter ER beviset for sig selv, og
-//     bijektionen krævede tre ekstra C4-leverancer (testregister · friske udførelsesregistreringer · adapter) uden at lukke et falsk-grønt hul
-//     som case-/mutantbeviset ikke allerede lukker. Leveres executed_ids alligevel, valideres de stadig (ingen dubletter/fremmede id'er).
-//   - claim_graph er VALGFRI i pakke 1 (samme skæring): mutant-kill + footprint beviser allerede at værnet findes og testes; reviewerens
-//     ankre hører til i code-reviewerens verdikt (C3, R-C3-REVIEW). Leveres claim_graph, valideres den fuldt:
-//     hvert claim binder ét VÆRN (guard_ref) → dets dræbte mutanter → deres target-cases (⊆ claim.case_ids) → den navngivne
-//     target-assertion opfyldt i topniveau-delbeviset (udført trace) → source_anchor git-verificeret OG placeret på værnets LÅSTE locus fra
-//     manifestet (guards[].locus {path, pattern}: sti == locus.path, uddraget matcher mønstret — F-25/F-31: samme K er ikke en forbindelse,
-//     og producenten kan ikke vælge et andet uddrag/en kommentar; locus-indholdet er plan-gatens dom) · async-review PASS pr. bid
-//   ENFORCEMENT-RESIDUAL (R-CI-AUTENTICITET): at observationerne stammer fra en real store som ikke-bypass rolle attesteres af den
-//   betroede runner i CI's build-job; R-PREDECESSOR-WIRING: build-gate-run (frisk plan-dom → predecessor.bindings_oids) er C4.
+// Beviset er en TESTRAPPORT (test-runner.mjs) produceret af CI's eget måle-job fra Codex' testfiler — ikke en DSL af rå observationer som
+// verifieren skal genudlede (v2.x — i git-historikken ≤ eb90600; angrebs-spec.mjs/build-harness.mjs bliver som biblioteker). Beskyttelsen mod falsk-grøn er PROCESSEN: der måler ≠ der bygger (hooks) ·
+// CI kører testene · mutant-kill · CI = autoritet (pkt. 36). Verifieren tjekker derfor STRUKTUR og BINDING, ikke semantik:
+//   - manifest (gate-binding, kæde-bundet til plan-gaten) + angrebs-INDEKS (gate-binding `angrebsspec`, skema 2) læses fra den pinnede commit;
+//     indekset valideres for komplethed mod manifestet (angrebs-indeks.mjs) — så forventningen er plan-gatens, ikke bevisets
+//   - rapporten bærer index_oid == indeks-bindingen · pakke · run_id; PRÆCIS indeksets tests (samme id-mængde, hver ok:true, covers ==
+//     indeksets); PRÆCIS indeksets mutanter (hver killed:true m. kill-protokollen: applied · alle targets fejlede · controls ok · restore ok ·
+//     alle grønne igen); summary genudledes
+//   - bid_bindings == indeksets bid-graf · async_reviews PASS pr. bid @ bid'ets base_oid · prover_result konsistent + grøn
+//   - artefaktet er ci-produceret (type ci-produced) eller committet blob; kernen binder proof.artifact_oid
+//   Residualer (navngivet, pkt. 36/38/42): R-CI-AUTENTICITET (rapporten er CI's) · R-C3-REVIEW (reviewer-identitet) · R-SPEC-LEGITIMITET
+//   (indekset er Codex' og frosset før byg — hooks) · testenes semantiske dybde er Codex' + reviewets ansvar, ikke verifierens.
 
 import { isOid } from "./gates.mjs";
-import { verifyEvidence, readBlobLines, excerptAt } from "./verdikt.mjs";
-import { validateManifest, expectedSet, PROOF_FORMS } from "./forventnings-manifest.mjs";
-import { validateAngrebsSpec } from "./angrebs-spec.mjs";
-import { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS, STATUS, judgeObservations, judgeKill, summarize, canon } from "./build-harness.mjs";
+import { validateManifest } from "./forventnings-manifest.mjs";
+import { validateAngrebsIndeks } from "./angrebs-indeks.mjs";
 import { judgeTestSummary } from "./prover.mjs";
+import { summarizeReport } from "./test-runner.mjs";
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const own = (o, k) => { if (o === null || typeof o !== "object") return undefined; const d = Object.getOwnPropertyDescriptor(o, k); return d && typeof d.get !== "function" && typeof d.set !== "function" ? d.value : undefined; };
 const ownTrue = (o, k) => own(o, k) === true;
 const isStr = (v) => typeof v === "string" && v.length > 0;
 const isPlain = (v) => { if (v === null || typeof v !== "object" || Array.isArray(v)) return false; const p = Object.getPrototypeOf(v); return p === Object.prototype || p === null; };
-const isDense = (a, pred) => {
-  if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype) return false;
-  const len = a.length;
-  for (const k of Reflect.ownKeys(a)) { if (typeof k === "symbol") return false; if (k === "length") continue; const idx = Number(k); if (!Number.isInteger(idx) || idx < 0 || idx >= len || String(idx) !== k) return false; const d = Object.getOwnPropertyDescriptor(a, k); if (!d || typeof d.get === "function" || typeof d.set === "function" || !d.enumerable) return false; }
-  for (let i = 0; i < len; i++) if (!hasOwn(a, i) || !pred(a[i])) return false;
-  return true;
-};
+const isDense = (a, pred) => { if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype) return false; for (let i = 0; i < a.length; i++) if (!hasOwn(a, i) || !pred(a[i])) return false; return true; };
 const gitObjectType = (git, oid) => { try { return String(git("cat-file", "-t", oid)).trim(); } catch { return null; } };
 const isAncestor = (git, anc, desc) => { try { git("merge-base", "--is-ancestor", anc, desc); return true; } catch { return false; } };
-const safeCanon = (v) => { try { return canon(v); } catch { return null; } };
-const sameCanon = (a, b) => { const x = safeCanon(a), y = safeCanon(b); return x !== null && x === y; };
-export { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS };
+const canon = (v) => JSON.stringify(v, Object.keys(v ?? {}).sort());
 
-// spec-afledte observationsfelter pr. form (det beviset IKKE må vælge) — sammenlignes kanonisk med observationerne.
-// F-20: TILSTEDEVÆRELSEN af foreskrevet setup (case.setup / race.setup) og handling (FS action) er spec-afledt — udelades de af
-// observationerne, matcher projektionen ikke; er de til stede dømmer judgeObservations at de lykkedes.
-function specObs(c, F) {
-  const hasSetup = hasOwn(c, "setup") || (c.proof_form === "SA" && hasOwn(c.race, "setup"));
-  const via = c.entrypoint.kind === "api" ? "api" : "sql";                       // H1: transporten er spec'ens
-  const subst = hasOwn(c, "subst") ? c.subst : null;                             // H2: substitutionen er spec'ens
-  if (c.proof_form === "UT") {
-    const rc = F.negatives.get(c.negative_id).reject_contract;
-    if (rc.kanal === "exit") return { has_setup: hasSetup, kontrakt: { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse, fase: rc.fase, aktoer: rc.aktoer }, aktoer: c.actor.role, fase: c.fase };   // F-24
-    return { has_setup: hasSetup, via, subst, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase };
-  }
-  if (c.proof_form === "FS") return { has_setup: hasSetup, via, has_action: hasOwn(c, "action"), expect: c.expect, checkpoints: (c.checkpoints ?? []).map((cp) => ({ id: cp.id, expect: cp.expect })) };
-  if (c.proof_form === "MH") return { has_setup: hasSetup, via, witnesses: c.witnesses.map((w) => ({ id: w.id, expect: w.expect })) };
-  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; return { has_setup: hasSetup, subst, race_id: c.race.race_id, invariant_expect: c.race.invariant.expect, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase }; }   // F-24
-  return {};
-}
-// projektion af observationerne på de spec-afledte felter (samme form som specObs)
-function obsProj(form, obs) {
-  if (!isPlain(obs)) return null;
-  const hasSetup = hasOwn(obs, "setup"); const via = own(obs, "via"); const subst = hasOwn(obs, "subst") ? own(obs, "subst") : null;
-  if (form === "UT") { const k = own(obs, "kontrakt"); return own(k, "kanal") === "exit" ? { has_setup: hasSetup, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") } : { has_setup: hasSetup, via, subst, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") }; }
-  if (form === "FS") return { has_setup: hasSetup, via, has_action: hasOwn(obs, "action"), expect: own(obs, "expect"), checkpoints: (isDense(own(obs, "checkpoints"), isPlain) ? own(obs, "checkpoints") : []).map((cp) => ({ id: own(cp, "id"), expect: own(cp, "expect") })) };
-  if (form === "MH") return { has_setup: hasSetup, via, witnesses: (isDense(own(obs, "witnesses"), isPlain) ? own(obs, "witnesses") : []).map((w) => ({ id: own(w, "id"), expect: own(w, "expect") })) };
-  if (form === "SA") return { has_setup: hasSetup, subst, race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer"), fase: own(obs, "fase") };
-  return null;
-}
 export function verifyBuildProof(proof, snapshot, { git } = {}) {
   const reasons = []; const fail = (r) => reasons.push(r);
   if (typeof git !== "function") return { ok: false, reasons: ["git-dep mangler (fail-closed)"] };
@@ -94,188 +46,85 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
     let atPath = null; try { atPath = git("rev-parse", `${commitSha}:${path}`); } catch { atPath = null; }
     if (atPath === null) { fail(`${label}: sti '${path}' findes ikke i den gatede commit`); return false; }
     if (String(atPath).trim() !== oid) { fail(`${label}: oid matcher ikke stien i commit (citeret ${oid}, reel ${String(atPath).trim()}) — stale/orphan`); return false; }
-    if (gitObjectType(git, oid) !== "blob") { fail(`${label}: oid er ikke en blob (fil forventet)`); return false; }
+    if (gitObjectType(git, oid) !== "blob") { fail(`${label}: oid er ikke en blob`); return false; }
     return true;
   };
   const readJson = (ref, label) => { try { return JSON.parse(String(git("show", `${commitSha}:${own(ref, "path")}`))); } catch (e) { fail(`${label} kan ikke læses/parses fra git: ${e?.message ?? e}`); return null; } };
-  { // C4b: artefaktet er enten en committet blob (git-sti-bundet) eller CI-PRODUCERET (type ci-produced; oid = hash af bevis-bytes,
-    // filen uploades af CI) — kernen binder proof.artifact_oid === artifact.oid; her kræves blot en gyldig ref
-    const art = own(snapshot, "artifact");
-    if (isPlain(art) && own(art, "type") === "ci-produced") { if (!isStr(own(art, "path")) || !isOid(own(art, "oid"))) fail("snapshot.artifact (ci-produced): path/oid mangler/ugyldig"); }
-    else pathBind(art, "snapshot.artifact");
-  }
+  { const art = own(snapshot, "artifact"); if (isPlain(art) && own(art, "type") === "ci-produced") { if (!isStr(own(art, "path")) || !isOid(own(art, "oid"))) fail("snapshot.artifact (ci-produced): path/oid mangler/ugyldig"); } else pathBind(art, "snapshot.artifact"); }
   const sB = own(snapshot, "bindings");
   const planRef = isPlain(sB) ? own(sB, "plan") : null;
   if (!planRef) fail("build-gatens plan-binding mangler/ugyldig i snapshot (fail-closed)"); else pathBind(planRef, "plan-binding");
 
   // ---------- 0) run_id · engine · forbudte kilder ----------
-  const runId = own(proof, "run_id"); if (!isStr(runId)) fail("run_id mangler (alle delbeviser skal stamme fra én kørsel)");
-  const engine = own(proof, "engine");
-  if (!isPlain(engine)) fail("engine mangler (kørsels-metadata fra build-harness)");
-  else { if (own(engine, "run_id") !== runId) fail("engine.run_id ≠ proof.run_id"); if (own(engine, "store") !== "real") fail('engine.store ikke "real" (fixture/mock ≠ real backing store)'); }
-  for (const k of ["ks", "manifest_ref", "spec_ref", "bids", "cases_spec"]) if (hasOwn(proof, k)) fail(`proof.${k} er ikke en kilde — forventning og måling kommer fra gate-bindingerne (manifest · angrebsspec), ikke fra beviset`);
+  const runId = own(proof, "run_id"); if (!isStr(runId)) fail("run_id mangler");
+  for (const k of ["ks", "manifest_ref", "spec_ref", "bids", "cases_spec", "cases", "mutants_spec"]) if (hasOwn(proof, k)) fail(`proof.${k} er ikke en kilde — forventning og måling kommer fra gate-bindingerne (manifest · angrebsspec)`);
 
-  // ---------- 1) FORVENTNING (manifest) + MÅLING (angrebs-spec) som GATE-BINDINGER ----------
-  let F = null, manifest = null, spec = null;
+  // ---------- 1) FORVENTNING (manifest) + MÅLING (indeks) som GATE-BINDINGER ----------
+  let manifest = null, idx = null;
   const mref = isPlain(sB) ? own(sB, "manifest") : null;
   if (!mref) fail("build-gatens manifest-binding mangler i snapshot"); else if (pathBind(mref, "manifest-binding")) {
     manifest = readJson(mref, "manifest");
-    if (manifest !== null) { const v = validateManifest(manifest); if (!v.ok) { fail(`manifest ugyldigt: ${v.reasons.join("; ")}`); manifest = null; } else { for (const k of ["forventningsliste", "krav", "plan"]) pathBind(manifest.bindings[k], `manifest.bindings.${k}`); if (planRef && isOid(own(planRef, "oid")) && manifest.bindings.plan.oid !== own(planRef, "oid")) fail("manifest.bindings.plan ≠ gatens plan-binding"); F = expectedSet(manifest); } }
+    if (manifest !== null) { const v = validateManifest(manifest); if (!v.ok) { fail(`manifest ugyldigt: ${v.reasons.join("; ")}`); manifest = null; } else { for (const k of ["forventningsliste", "krav", "plan"]) pathBind(manifest.bindings[k], `manifest.bindings.${k}`); if (planRef && isOid(own(planRef, "oid")) && manifest.bindings.plan.oid !== own(planRef, "oid")) fail("manifest.bindings.plan ≠ gatens plan-binding"); } }
   }
   const aref = isPlain(sB) ? own(sB, "angrebsspec") : null;
-  if (!aref) fail("build-gatens angrebsspec-binding mangler i snapshot (måle-spec er gate-input)"); else if (pathBind(aref, "angrebsspec-binding") && manifest) {
-    spec = readJson(aref, "angrebs-spec");
-    if (spec !== null) { const v = validateAngrebsSpec(spec, manifest); if (!v.ok) { fail(`angrebs-spec ugyldig/ukomplet mod manifestet: ${v.reasons.join("; ")}`); spec = null; } else if (spec.bindings.manifest.oid !== own(mref, "oid")) { fail("angrebs-spec.bindings.manifest ≠ gatens manifest-binding (spec'en er skrevet mod et andet manifest)"); spec = null; } }
+  if (!aref) fail("build-gatens angrebsspec-binding mangler i snapshot (test-indekset er gate-input)"); else if (pathBind(aref, "angrebsspec-binding") && manifest) {
+    idx = readJson(aref, "angrebs-indeks");
+    if (idx !== null) { const v = validateAngrebsIndeks(idx, manifest); if (!v.ok) { fail(`angrebs-indeks ugyldigt/ukomplet mod manifestet: ${v.reasons.slice(0, 12).join("; ")}`); idx = null; } else if (idx.bindings.manifest.oid !== own(mref, "oid")) { fail("angrebs-indeks.bindings.manifest ≠ gatens manifest-binding"); idx = null; } }
   }
-  if (!F || !spec) return { ok: false, reasons };
-  const specCase = new Map(spec.cases.map((c) => [c.case_id, c]));
-  const specMut = new Map(spec.mutants.map((m) => [m.mutant_id, m]));
-  const specBid = new Map(spec.bids.map((b) => [b.bid_id, b]));
-  const coveringBid = new Map(); for (const b of spec.bids) if (b.kind === "effekt") for (const o of b.covers) coveringBid.set(o, b.bid_id);
+  if (!manifest || !idx) return { ok: false, reasons };
 
-  // ---------- 2) bids i proofen == spec'ens graf (F-18) + angrebs-spec/base-bindinger pr. bid ----------
-  const pb = own(proof, "bid_bindings"); const bidBase = new Map();
-  if (!isDense(pb, isPlain)) fail("bid_bindings skal være et tæt array [{bid_id, base_oid}] (angrebs-spec'en er gate-bundet — pr. bid bindes kun base_oid)");
+  // ---------- 2) rapporten: binding + præcis indeksets tests og mutanter ----------
+  if (own(proof, "schema_version") !== 3) fail("bevisets schema_version ≠ 3 (testrapport)");
+  if (own(proof, "pakke") !== idx.pakke) fail(`bevisets pakke '${String(own(proof, "pakke"))}' ≠ indeksets '${idx.pakke}'`);
+  if (own(proof, "index_oid") !== own(aref, "oid")) fail(`rapportens index_oid ${String(own(proof, "index_oid")).slice(0, 12)} ≠ gate-bindingens ${String(own(aref, "oid")).slice(0, 12)} — rapporten stammer ikke fra det frosne indeks`);
+  const tests = own(proof, "tests"); const idxTests = new Map(idx.tests.map((t) => [t.id, t]));
+  if (!isDense(tests, isPlain)) fail("tests skal være et tæt array");
   else {
     const seen = new Set();
-    for (const b of pb) {
-      const id = own(b, "bid_id"); if (!isStr(id) || !specBid.has(id)) { fail(`bid_bindings: '${String(id)}' er ikke et bid i spec'en`); continue; }
-      if (seen.has(id)) { fail(`bid_bindings: dublet ${id}`); continue; } seen.add(id);
-      const base = own(b, "base_oid");
-      if (!isOid(base)) fail(`${id}: base_oid mangler/ugyldig`);
-      else if (gitObjectType(git, base) !== "commit") fail(`${id}: base_oid er ikke en eksisterende commit`);
-      else if (isOid(commitSha) && !isAncestor(git, base, commitSha)) fail(`${id}: base_oid er ikke en ancestor af den gatede commit`);
-      bidBase.set(id, base);
+    for (const t of tests) {
+      const id = own(t, "id"); if (!isStr(id) || !idxTests.has(id)) { fail(`test '${String(id)}' findes ikke i indekset (rogue)`); continue; }
+      if (seen.has(id)) { fail(`dublet test-resultat ${id}`); continue; } seen.add(id);
+      const it = idxTests.get(id);
+      if (own(t, "file") !== it.file) fail(`test ${id}: file ≠ indeksets`);
+      if ([...(own(t, "covers") ?? [])].sort().join("|") !== [...it.covers].sort().join("|")) fail(`test ${id}: covers ≠ indeksets`);
+      if (!ownTrue(t, "ok")) fail(`test ${id} FEJLEDE: ${String(own(t, "detail") ?? "")}`.slice(0, 300));
     }
-    for (const id of specBid.keys()) if (!seen.has(id)) fail(`bid '${id}' fra spec'en mangler i proofen (F-18: den låste graf kan ikke beskæres)`);
+    for (const id of idxTests.keys()) if (!seen.has(id)) fail(`test '${id}' fra indekset har intet resultat (udeladelse)`);
   }
-
-  // ---------- 3) cases: præcis ét delbevis pr. spec-case; identitet + spec-afledte felter + genudledning ----------
-  const cases = own(proof, "cases"); const resById = new Map();
-  const bindCase = (r, c, label) => {   // identitetsfelter der SKAL være spec'ens
-    let ok = true;
-    const want = { obligation_id: c.obligation_id, proof_form: c.proof_form, negative_id: c.proof_form === "UT" ? c.negative_id : null, bid_id: c.bid_id, hard_effect: c.hard_effect, actor_role: c.actor.role };
-    for (const [k, v] of Object.entries(want)) if ((own(r, k) ?? null) !== (v ?? null)) { fail(`${label}: ${k} '${String(own(r, k))}' ≠ spec'ens '${String(v)}'`); ok = false; }
-    const ep = own(r, "entrypoint"); if (!isPlain(ep) || own(ep, "kind") !== c.entrypoint.kind || own(ep, "ref") !== c.entrypoint.ref) { fail(`${label}: entrypoint ≠ spec'ens`); ok = false; }
-    if (own(r, "run_id") !== runId) { fail(`${label}: run_id ≠ kørslens`); ok = false; }
-    const obs = own(r, "observations");
-    if (!isPlain(obs)) { fail(`${label}: observations mangler`); return false; }
-    if (!sameCanon(obsProj(c.proof_form, obs), specObs(c, F))) { fail(`${label}: spec-afledte felter i observationerne (kontrakt/orakel/id'er/fase/aktør/foreskrevet setup+handling) ≠ spec'en/manifestet (F-13/F-20/F-24)`); ok = false; }
-    const j = judgeObservations(c.proof_form, obs);
-    if (own(r, "status") !== j.status || !sameCanon(own(r, "assertions"), j.assertions)) { fail(`${label}: selvrapporteret status/assertions ≠ genudledt (${j.status})`); ok = false; }
-    return ok ? j : false;
-  };
-  if (!isDense(cases, isPlain)) fail("cases skal være et tæt array");
-  else {
-    for (const r of cases) {
-      const cid = own(r, "case_id");
-      if (!isStr(cid) || !specCase.has(cid)) { fail(`case '${String(cid)}' findes ikke i spec'en (rogue)`); continue; }
-      if (resById.has(cid)) { fail(`dublet case-resultat ${cid}`); continue; }
-      const j = bindCase(r, specCase.get(cid), `case ${cid}`);
-      resById.set(cid, { ok: j !== false && j.status === STATUS.OPFYLDT, judged: j });
-      if (j !== false && j.status !== STATUS.OPFYLDT) fail(`case ${cid}: genudledt status '${j.status}' ≠ opfyldt (${j.assertions.filter((a) => !a.ok).map((a) => a.id + ": " + a.detail).join("; ")})`);
-    }
-    for (const cid of specCase.keys()) if (!resById.has(cid)) fail(`case '${cid}' fra spec'en har intet delbevis (udeladelse)`);
-  }
-  const caseOk = (cid) => resById.get(cid)?.ok === true;
-
-  // ---------- 4) mutanter: præcis ét resultat pr. spec-mutant; indlejrede delresultater bundet; genudledt kill ----------
-  const mutants = own(proof, "mutants"); const mutOk = new Set();
+  const mutants = own(proof, "mutants"); const idxMut = new Map(idx.mutants.map((m) => [m.mutant_id, m]));
   if (!isDense(mutants, isPlain)) fail("mutants skal være et tæt array");
   else {
     const seen = new Set();
     for (const m of mutants) {
-      const mid = own(m, "mutant_id");
-      if (!isStr(mid) || !specMut.has(mid)) { fail(`mutant '${String(mid)}' findes ikke i spec'en (rogue)`); continue; }
+      const mid = own(m, "mutant_id"); if (!isStr(mid) || !idxMut.has(mid)) { fail(`mutant '${String(mid)}' findes ikke i indekset (rogue)`); continue; }
       if (seen.has(mid)) { fail(`dublet mutant-resultat ${mid}`); continue; } seen.add(mid);
-      const sm = specMut.get(mid); const tc = specCase.get(sm.target_case_id); let okm = true;
-      for (const [k, v] of [["guard_ref", sm.guard_ref], ["target_case_id", sm.target_case_id], ["target_assertion_id", sm.target_assertion_id]]) if (own(m, k) !== v) { fail(`${mid}: ${k} ≠ spec'ens`); okm = false; }
-      if (own(m, "run_id") !== runId) { fail(`${mid}: run_id ≠ kørslens`); okm = false; }
-      if (!caseOk(sm.target_case_id)) { fail(`${mid}: målets topniveau-delbevis er ikke opfyldt`); okm = false; }
-      // indlejrede delresultater: mål (baseline/under/clean.target) bundet til target-casen; kontroller = spec'ens mængde i ALLE faser (F-12, F-16)
-      const emb = (r, c, label) => { const j = bindCase(r, c, label); if (j === false) okm = false; if (isPlain(r) && own(r, "case_id") !== c.case_id) { fail(`${label}: case_id ≠ ${c.case_id}`); okm = false; } return j; };
-      const clean = own(m, "clean");
-      emb(own(m, "baseline"), tc, `${mid}.baseline`); emb(own(m, "under"), tc, `${mid}.under`); if (!isPlain(clean)) { fail(`${mid}: clean mangler`); okm = false; } else emb(own(clean, "target"), tc, `${mid}.clean.target`);
-      const wantCtl = [...sm.controls].sort().join(",");
-      for (const [lab, arr] of [["controls_baseline", own(m, "controls_baseline")], ["controls_under", own(m, "controls_under")], ["clean.controls", isPlain(clean) ? own(clean, "controls") : null]]) {
-        if (!isDense(arr, isPlain)) { fail(`${mid}: ${lab} mangler`); okm = false; continue; }
-        const got = arr.map((r) => own(r, "case_id")).sort().join(",");
-        if (got !== wantCtl) { fail(`${mid}: ${lab} = [${got}] ≠ spec'ens kontroller [${wantCtl}] (F-16: samme nødvendige kontrolmængde i alle faser)`); okm = false; }
-        for (const r of arr) { const c = specCase.get(own(r, "case_id")); if (c) emb(r, c, `${mid}.${lab}.${c.case_id}`); }
-      }
-      if (!okm) continue;
-      const j = judgeKill(m);
-      if (!j.killed || !j.restored || !j.cleanAfter) { fail(`${mid}: genudledt kill fejler — ${j.why}${j.restored ? "" : " · restore ikke attesteret (footprint)"}${j.cleanAfter ? "" : " · ikke ren efter"}`); continue; }
-      if (!ownTrue(m, "killed") || !ownTrue(m, "restored") || !ownTrue(m, "cleanAfter") || own(m, "break_form") !== j.break_form || j.break_form !== tc.proof_form) { fail(`${mid}: selvrapporterede kill-flag/break_form ≠ genudledt (${j.break_form})`); continue; }
-      mutOk.add(mid);
+      const im = idxMut.get(mid);
+      if (own(m, "guard_ref") !== im.guard_ref) fail(`${mid}: guard_ref ≠ indeksets`);
+      const tg = own(m, "targets"), ct = own(m, "controls"), rs = own(m, "restored");
+      const ids = (a) => (isDense(a, isPlain) ? a.map((x) => own(x, "id")).sort().join("|") : null);
+      if (ids(tg) !== [...im.target_test_ids].sort().join("|")) fail(`${mid}: targets ≠ indeksets target_test_ids`);
+      if (ids(ct) !== [...im.control_test_ids].sort().join("|")) fail(`${mid}: controls ≠ indeksets control_test_ids`);
+      if (ids(rs) !== [...im.target_test_ids, ...im.control_test_ids].sort().join("|")) fail(`${mid}: restored ≠ targets+controls`);
+      // kill genudledes fra protokollen — ikke fra flaget
+      const killed = ownTrue(m, "applied_ok") && isDense(tg, isPlain) && tg.length > 0 && tg.every((x) => own(x, "failed") === true) && isDense(ct, isPlain) && ct.every((x) => ownTrue(x, "ok")) && ownTrue(m, "restore_ok") && isDense(rs, isPlain) && rs.every((x) => ownTrue(x, "ok"));
+      if (!killed) fail(`${mid}: IKKE dræbt (applied=${own(m, "applied_ok")} · targets fejlede=${isDense(tg, isPlain) ? tg.filter((x) => own(x, "failed") === true).length + "/" + tg.length : "?"} · controls ok=${isDense(ct, isPlain) ? ct.every((x) => ownTrue(x, "ok")) : "?"} · restore=${own(m, "restore_ok")})`);
+      if (own(m, "killed") !== killed) fail(`${mid}: selvrapporteret killed ≠ genudledt`);
     }
-    for (const mid of specMut.keys()) if (!seen.has(mid)) fail(`mutant '${mid}' fra spec'en har intet resultat (udeladelse)`);
+    for (const mid of idxMut.keys()) if (!seen.has(mid)) fail(`mutant '${mid}' fra indekset har intet resultat (udeladelse)`);
   }
+  if (isDense(tests, isPlain) && isDense(mutants, isPlain)) { const s = summarizeReport({ tests, mutants }); if (canon(own(proof, "summary")) !== canon(s)) fail(`summary ≠ genudledt (${JSON.stringify(s)})`); }
 
-  // ---------- 5) engine.summary genudledes ----------
-  if (isPlain(engine) && isDense(cases ?? [], isPlain) && isDense(mutants ?? [], isPlain)) {
-    const derived = summarize(cases, mutants);
-    if (!sameCanon(own(engine, "summary"), derived)) fail(`engine.summary ≠ genudledt (${safeCanon(derived)})`);
-  }
-
-  // ---------- 6) claim_graph: værn → dræbte mutanter → deres cases → udført target-assertion → source-anker m. symbol (F-19/F-25) ----------
-  const cg = own(proof, "claim_graph");
-  if (hasOwn(proof, "claim_graph") && !isDense(cg, isPlain)) fail("claim_graph skal være et tæt array af objekter når det leveres (valgfrit i pakke 1 — vejnings-skæring 2026-09-15)");
-  else if (isDense(cg, isPlain)) for (let i = 0; i < cg.length; i++) {
-    const c = cg[i]; const kId = own(c, "k_id"); const lab = `claim_graph[${i}] (${String(kId)})`;
-    if (!isStr(kId) || !F.ks.has(kId)) fail(`${lab}: ukendt/manglende K`);
-    const gref = own(c, "guard_ref");
-    if (!isStr(gref) || !F.guards.has(gref)) fail(`${lab}: guard_ref mangler/ikke deklareret i manifestet (F-25: et claim binder ét værn)`);
-    const cids = own(c, "case_ids"); const mids = own(c, "mutant_ids");
-    const cidsOk = isDense(cids, isStr) && cids.length === new Set(cids).size && cids.length > 0;
-    if (!cidsOk || !cids.every((x) => caseOk(x) && F.obligations.get(specCase.get(x)?.obligation_id)?.k_id === kId)) fail(`${lab}: case_ids skal være ≥1 distinkte, opfyldte cases for netop dette K`);
-    const midsOk = isDense(mids, isStr) && mids.length === new Set(mids).size && mids.length > 0;
-    if (!midsOk || !mids.every((x) => mutOk.has(x) && F.obligations.get(specCase.get(specMut.get(x)?.target_case_id)?.obligation_id)?.k_id === kId)) fail(`${lab}: mutant_ids skal være ≥1 distinkte, dræbte mutanter for netop dette K`);
-    const guard = isStr(gref) ? F.guards.get(gref) : null; const locus = guard ? guard.locus : null;
-    if (guard && !locus) fail(`${lab}: værnet '${gref}' har intet låst locus i manifestet (guards[].locus {path, pattern}) — et claim kræver et plan-bundet anker-locus (F-31)`);
-    if (midsOk && cidsOk && isStr(gref)) for (const mid of mids) {
-      const sm = specMut.get(mid); if (!sm) continue;
-      if (sm.guard_ref !== gref) fail(`${lab}: mutant ${mid} rammer værnet '${sm.guard_ref}' ≠ claimets '${gref}' (F-25)`);
-      if (!cids.includes(sm.target_case_id)) fail(`${lab}: mutant ${mid} rammer casen '${sm.target_case_id}' som ikke er blandt claimets case_ids (F-25: samme K er ikke en forbindelse)`);
-      const top = resById.get(sm.target_case_id)?.judged;   // udført trace: den navngivne target-assertion blev kørt og opfyldt i topniveau-delbeviset, og brød under mutanten (kill genudledt ovenfor)
-      if (!top || !isDense(top.assertions, isPlain) || !top.assertions.some((a) => a.id === sm.target_assertion_id && a.ok === true)) fail(`${lab}: target-assertion '${sm.target_assertion_id}' for ${mid} er ikke et udført, opfyldt delbevis i casen '${sm.target_case_id}'`);
-    }
-    if (!ownTrue(c, "executed") || !ownTrue(c, "mutant_killed")) fail(`${lab}: executed/mutant_killed ikke eksplicit true (og skal stemme med case_ids/mutant_ids)`);
-    const anchor = own(c, "source_anchor");
-    if (!isPlain(anchor)) { fail(`${lab}: source_anchor mangler`); continue; }
-    const ev = verifyEvidence(anchor, snapshot, { git }); if (!ev.ok) { fail(`${lab}: source-anker ikke git-verificeret — ${ev.reasons.join("; ")}`); continue; }
-    if (locus) {   // F-31: ankeret SKAL ligge på værnets låste locus (sti fra manifestet) og uddraget skal matche det låste mønster — en kommentar
-      // eller et andet objekts uddrag matcher ikke; hvad mønstret dækker, er plan-gatens dom over manifestet (R-PLAN-SEMANTIK)
-      if (own(anchor, "path") !== locus.path) fail(`${lab}: source_anchor.path '${String(own(anchor, "path"))}' ≠ værnets låste locus-sti '${locus.path}' (F-31)`);
-      else {
-        const bl = readBlobLines(git, own(anchor, "blob_oid")); const excerpt = bl && !bl.error ? excerptAt(bl.lines, own(anchor, "line_span")) : null;
-        if (typeof excerpt !== "string") fail(`${lab}: ankerets uddrag kan ikke læses`);
-        else { let re = null; try { re = new RegExp(locus.pattern, "m"); } catch { re = null; } if (!re || !re.test(excerpt)) fail(`${lab}: ankerets uddrag (${locus.path} ${JSON.stringify(own(anchor, "line_span"))}) matcher ikke værnets låste locus-mønster — en kommentar eller et andet objekt er ikke værnets definition (F-31)`); }
-      }
-    }
-  }
-
-  // ---------- 7) async-reviews: PASS pr. bid @ base_oid ----------
+  // ---------- 3) bids == indeksets graf · reviews · prover ----------
+  const specBid = new Map(idx.bids.map((b) => [b.bid_id, b]));
+  const pb = own(proof, "bid_bindings"); const bidBase = new Map();
+  if (!isDense(pb, isPlain)) fail("bid_bindings skal være et tæt array [{bid_id, base_oid}]");
+  else { const seen = new Set(); for (const b of pb) { const id = own(b, "bid_id"); if (!isStr(id) || !specBid.has(id)) { fail(`bid_bindings: '${String(id)}' er ikke et bid i indekset`); continue; } if (seen.has(id)) { fail(`bid_bindings: dublet ${id}`); continue; } seen.add(id); const base = own(b, "base_oid"); if (!isOid(base)) fail(`${id}: base_oid mangler/ugyldig`); else if (gitObjectType(git, base) !== "commit") fail(`${id}: base_oid er ikke en eksisterende commit`); else if (isOid(commitSha) && !isAncestor(git, base, commitSha)) fail(`${id}: base_oid er ikke en ancestor af den gatede commit`); bidBase.set(id, base); } for (const id of specBid.keys()) if (!seen.has(id)) fail(`bid '${id}' fra indekset mangler i proofen (den låste graf kan ikke beskæres)`); }
   const reviewed = new Map(); const reviews = own(proof, "async_reviews");
-  if (!isDense(reviews, isPlain)) fail("async_reviews skal være et tæt array af objekter (manglende = anti-tavshed rød)");
-  else for (const r of reviews) {
-    const rbid = own(r, "bid_id");
-    if (!isStr(rbid) || !specBid.has(rbid)) { fail(`async_review for ukendt bid '${String(rbid)}'`); continue; }
-    if (own(r, "conclusion") !== "PASS") { fail(`async_review for ${rbid} ikke PASS`); continue; }
-    if (!isOid(own(r, "base_oid"))) { fail(`async_review for ${rbid}: base_oid mangler/ugyldig`); continue; }
-    reviewed.set(rbid, own(r, "base_oid"));
-  }
-  for (const id of specBid.keys()) { if (!reviewed.has(id)) fail(`bid '${id}' mangler et PASS async-review (anti-tavshed)`); else if (bidBase.has(id) && reviewed.get(id) !== bidBase.get(id)) fail(`bid '${id}': async-review base_oid matcher ikke bid'ets base_oid (stale review)`); }
-
-  // ---------- 8) prover: konsistent resumé der dækker kørslen (F-19) ----------
+  if (!isDense(reviews, isPlain)) fail("async_reviews skal være et tæt array (manglende = anti-tavshed rød)");
+  else for (const r of reviews) { const rbid = own(r, "bid_id"); if (!isStr(rbid) || !specBid.has(rbid)) { fail(`async_review for ukendt bid '${String(rbid)}'`); continue; } if (own(r, "conclusion") !== "PASS") { fail(`async_review for ${rbid} ikke PASS`); continue; } if (!isOid(own(r, "base_oid"))) { fail(`async_review for ${rbid}: base_oid mangler`); continue; } reviewed.set(rbid, own(r, "base_oid")); }
+  for (const id of specBid.keys()) { if (!reviewed.has(id)) fail(`bid '${id}' mangler et PASS async-review`); else if (bidBase.has(id) && reviewed.get(id) !== bidBase.get(id)) fail(`bid '${id}': review base_oid ≠ bid'ets base_oid (stale review)`); }
   const pr = own(proof, "prover_result");
-  if (!isPlain(pr)) fail("prover_result mangler/er ikke et objekt");
-  else {
-    if (!ownTrue(pr, "ok")) fail("prover_result.ok ikke eksplicit true (prover ikke grøn)");
-    const js = judgeTestSummary({ total: own(pr, "total"), passed: own(pr, "passed"), failed: own(pr, "failed"), skipped: own(pr, "skipped") });
-    if (!js.ok) fail(`prover_result: ${js.reasons.join("; ")}`);
-    // vejnings-skæring 2026-09-15: ingen id-bijektion mod cases+mutanter (se header). Leveres executed_ids, skal de være entydige spec-id'er.
-    if (hasOwn(pr, "executed_ids")) { const ex = own(pr, "executed_ids"); const want = new Set([...specCase.keys(), ...specMut.keys()]); if (!isDense(ex, isStr) || new Set(ex).size !== ex.length || !ex.every((id) => want.has(id))) fail("prover_result.executed_ids (valgfri) skal være entydige case_ids/mutant_ids fra spec'en — dubletter/fremmede id'er afvises (F-26)"); }
-  }
+  if (!isPlain(pr)) fail("prover_result mangler");
+  else { if (!ownTrue(pr, "ok")) fail(`prover_result.ok ikke true (${String(own(pr, "reason") ?? "prover ikke grøn")})`); const js = judgeTestSummary({ total: own(pr, "total"), passed: own(pr, "passed"), failed: own(pr, "failed"), skipped: own(pr, "skipped") }); if (!js.ok) fail(`prover_result: ${js.reasons.join("; ")}`); }
   return { ok: reasons.length === 0, reasons };
 }

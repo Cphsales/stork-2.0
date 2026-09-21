@@ -5,7 +5,7 @@
 // TO JOBS, TO TILLIDSZONER (F-C4b-1 — produktkode må aldrig nå dommerens emissions-token):
 //   MÅLING (job A, contents:read, ingen checks:write, checkout uden persist-credentials, Postgres-service):
 //     node scripts/v5/ci-build-dom.mjs --produce --commit <sha> --pg env|'<json-argv>' --proof-out build-proof.json --meta-out build-dom-meta.json
-//     → kører PRODUKTKODE (migrationer · motorens kald · prover-cmd · exit-kontroller) m. et RENSET miljø (producentMiljoe: ingen tokens) og
+//     → kører PRODUKTKODE (migrationer · Codex' testfiler via test-runner.mjs · mutanter · prover-cmd) m. et RENSET miljø (producentMiljoe: ingen tokens) og
 //       skriver bevis-body (bytes) + meta (nåethed · store · run_id). Ingen dom, ingen emission, intet token i jobbet.
 //   DOM (job B, checks:write, INGEN produktkode — kun betroet måle-lag mod git + bevis-bytes):
 //     node scripts/v5/ci-build-dom.mjs --judge --commit <sha> --proof-in build-proof.json --meta-in build-dom-meta.json [--emit]
@@ -14,7 +14,7 @@
 //
 // Forløbet (fail-closed i hvert led — ingen tavshed, ingen succes uden bevis):
 //   1. NÅETHED: plan-approval.json OG angrebs-spec.json findes i commit'en (Fase 4 pkt. 1 er leveret) — ellers intet check-run.
-//   2. INPUT: manifest + angrebs-spec @ commit (gate-eval-layout) valideres (validateManifest · validateAngrebsSpec).
+//   2. INPUT: manifest + angrebs-INDEKS (angrebs-spec.json skema 2, hurtigt spor pkt. 42) @ commit valideres (validateManifest · validateAngrebsIndeks).
 //   3. STORE: produktets migrationer (supabase/migrations/*.sql @ commit, sorteret) anvendes som ejer i den friske Postgres-service — en
 //      fejlende migration er rød (STOP), ikke »fortsæt«. (--skip-migrations kun lokalt mod en forberedt store — mærkes i beviset.)
 //   4. FORGÆNGER: plan-gaten dømmes FRISK ved sin pinnede commit m. evidens @ denne commit (ci-gate-dom.doemGates(gates:["plan"]),
@@ -45,8 +45,8 @@ import { buildSnapshot, DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { makeProofVerifier } from "./proofs.mjs";
 import { checkRunFromGateResult } from "./checkrun.mjs";
 import { validateManifest } from "./forventnings-manifest.mjs";
-import { validateAngrebsSpec } from "./angrebs-spec.mjs";
-import { runBuildProofEngine } from "./build-harness.mjs";
+import { validateAngrebsIndeks } from "./angrebs-indeks.mjs";
+import { runTestSuite } from "./test-runner.mjs";
 import { runProver } from "./prover.mjs";
 import { makeGit } from "./git.mjs";
 import { doemGates, emitCheckRuns } from "./ci-gate-dom.mjs";
@@ -97,11 +97,11 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
   for (const f of BUILD_NAAETHED) { const fil = f.replace("<pakke>", pk); if (!findes(fil)) return { naaet: false, fil }; }
 
   // 2) input
-  let manifest, spec;
+  let manifest, spec, indexOid = null;
   try { manifest = json(lay("manifest", pk)); } catch (e) { return fejl([`manifest kan ikke læses @ commit: ${e?.message ?? e}`]); }
-  try { spec = json(lay("angrebsspec", pk)); } catch (e) { return fejl([`angrebs-spec kan ikke læses @ commit: ${e?.message ?? e}`]); }
+  try { spec = json(lay("angrebsspec", pk)); indexOid = g("rev-parse", `${commitSha}:${lay("angrebsspec", pk)}`).trim(); } catch (e) { return fejl([`angrebs-indeks kan ikke læses @ commit: ${e?.message ?? e}`]); }
   const vm = validateManifest(manifest); if (!vm.ok) return fejl([`manifest ugyldigt: ${vm.reasons.slice(0, 8).join("; ")}`]);
-  const vs = validateAngrebsSpec(spec, manifest); if (!vs.ok) return fejl([`angrebs-spec ugyldig/ukomplet mod manifestet: ${vs.reasons.slice(0, 8).join("; ")}`]);
+  const vs = validateAngrebsIndeks(spec, manifest); if (!vs.ok) return fejl([`angrebs-indeks ugyldigt/ukomplet mod manifestet: ${vs.reasons.slice(0, 8).join("; ")}`]);
 
   // 3) store: migrationer @ commit, i rækkefølge, som ejer — første fejl er STOP
   let store = { anvendt: 0, skipped: skipMigrations };
@@ -116,10 +116,9 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
     if (runner.http) { try { await runner.sql("notify pgrst, 'reload schema'; notify pgrst, 'reload config';", {}); } catch {} }   // H1: PostgREST skal se pakkens schema efter migrationerne
   }
 
-  // 4) måling
+  // 4) måling: Codex' testfiler (kode, frosne via indeksets oids) køres mod den friske store + mutant-loop (test-runner.mjs)
   const rid = runId ?? `ci-${process.env.GITHUB_RUN_ID ?? "lokal"}-${process.env.GITHUB_RUN_ATTEMPT ?? "1"}-${commitSha.slice(0, 12)}`;
-  const eng = await runBuildProofEngine({ manifest, run_id: rid, angrebsSpec: spec }, runner);
-  if (eng.error) return fejl([`motoren afviste kørslen: ${eng.error}`], store);
+  let eng; try { eng = await runTestSuite({ index: spec, indexOid, runner, manifest, root, runId: rid }); } catch (e) { return fejl([`test-runneren afviste kørslen: ${e?.message ?? e}`], store); }
 
   // 5) bevis-body (artefaktet)
   const reviews = []; const bidBase = {};
@@ -141,7 +140,8 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
       let pr; try { pr = prover ? await prover(pj, env) : runProver({ repoRoot: root, commitSha, cmd: pj.cmd, resultRelPath: pj.resultRelPath, git: g, env }); } finally { for (const [k, v] of Object.entries(gemt)) process.env[k] = v; }
       const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
   }
-  const body = { schema_version: 1, pakke: pk, commit_sha: commitSha, run_id: rid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk: eng.allOk === true }, cases: eng.cases, mutants: eng.mutants, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
+  const allOk = eng.tests.every((t) => t.ok === true) && eng.mutants.every((m) => m.killed === true);
+  const body = { schema_version: 3, pakke: pk, commit_sha: commitSha, run_id: rid, index_oid: indexOid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk }, tests: eng.tests, mutants: eng.mutants, summary: eng.summary, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
   const proofBytes = JSON.stringify(body, null, 1) + "\n";
   return { naaet: true, proofBytes, body, store, runId: rid, engine: eng };
 }
@@ -212,7 +212,7 @@ if (erMain()) {
       if (metaOut) writeFileSync(metaOut, JSON.stringify(meta, null, 1) + "\n");
       if (!p.naaet) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${p.fil} findes ikke) — intet bevis produceret`); return; }
       if (p.fejl) { console.log(`måling fejlede (dommen bliver rød m. grund): ${p.fejl.join("; ")}`); return; }
-      if (out) writeFileSync(out, p.proofBytes); console.log(`bevis produceret: ${out ?? "(ikke skrevet)"} · run_id ${p.runId} · store ${p.store.anvendt} migrationer · motor ${JSON.stringify(p.engine.summary)}`); return;
+      if (out) writeFileSync(out, p.proofBytes); console.log(`bevis produceret: ${out ?? "(ikke skrevet)"} · run_id ${p.runId} · store ${p.store.anvendt} migrationer · tests ${JSON.stringify(p.engine.summary)}`); return;
     }
     const d = await doemBuild({ commitSha, runner, skipMigrations: skip });   // lokalt: begge trin, ingen emission
     if (!d.naaet) { console.log(`build-gaten er ikke nået @ ${commitSha.slice(0, 7)} (${d.fil} findes ikke) — intet check-run (ikke nået = ikke grøn)`); return; }
