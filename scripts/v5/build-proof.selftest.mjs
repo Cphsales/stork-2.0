@@ -33,7 +33,7 @@ put(F1, `export const tests = [
 `);
 put(F2, `export const tests = [
   { id: "t-k2-neg", covers: ["K-2/ac-6:UT", "K-2/ac-6/neg-1"], run: async (lib) => { const a = lib.som({ role: "app_role" }); lib.forvent.ok(await a.sql("POS2")); lib.forvent.afvist(await a.sql("NEG2"), "K-2/ac-6/neg-1"); } },
-  { id: "t-k2-sa", covers: ["K-2/ac-6:SA", "K-2/ac-6|r1", "K-2/ac-6/neg-1"], run: async (lib) => { const r = await lib.race({ a: "A", b: "B" }); lib.forvent.sandt(r.protocolOk === true, "race-protokol"); lib.forvent.sandt(r.b?.ok === false && r.b?.code === "P0001", "taberen afvist m. P0001"); lib.forvent.lig(r.invariantRows, { kind: "scalar", value: 1 }, "invariant"); } },
+  { id: "t-k2-sa", covers: ["K-2/ac-6:SA", "K-2/ac-6|r1", "K-2/ac-6/neg-1"], run: async (lib) => { const r = await lib.race({ a: "A", b: "B" }); lib.forvent.sandt(r.protocolOk === true, "race-protokol"); lib.forvent.afvist(r.b, "K-2/ac-6/neg-1"); lib.forvent.lig(r.invariantRows, { kind: "scalar", value: 1 }, "invariant"); } },
 ];
 `);
 git("add", "-A"); git("commit", "-qm", "filer"); const C0 = git("rev-parse", "HEAD"); const oidAt = (p, c = C0) => resolveRef(git, c, p).oid;
@@ -77,7 +77,7 @@ function mkRunner() {
       case "AUDIT": return R(true, null, null, null, [{ id: 1 }]); case "OBS": return R(true, null, null, null, [{ pris: 100 }]); case "OBS_HIST": return R(true, null, null, null, [{ pris: 80 }]);
       case "M_NAVN_OFF": st.navn = false; return R(true); case "M_NAVN_ON": st.navn = true; return R(true); case "M_TRG_OFF": st.trg = false; return R(true); case "M_TRG_ON": st.trg = true; return R(true);
       default: return R(false, "42601", "ukendt " + t, null); } },
-    race() { return st.trg ? { ok: true, protocolOk: true, b: { ok: false, code: "P0001" }, invariantRows: [{ aktive: 1 }] } : { ok: true, protocolOk: true, b: { ok: true, code: null }, invariantRows: [{ aktive: 0 }] }; } };
+    race() { return st.trg ? { ok: true, protocolOk: true, b: { ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" } }, invariantRows: [{ aktive: 1 }] } : { ok: true, protocolOk: true, b: { ok: true, code: null, detail: null }, invariantRows: [{ aktive: 0 }] }; } };
 }
 const RUN = "run-2026-09-21T14";
 const REPORT = await runTestSuite({ index: INDEX, indexOid: idxRef.oid, runner: mkRunner(), manifest: MANIFEST, root: ROOT, runId: RUN });

@@ -9,6 +9,8 @@
 //     tests:   [{ id, file: "scripts/v5/<pakke>/tests/<navn>.test.mjs", oid, covers: ["K-n/ac-m:UT", "K-n/ac-m/neg-k", "K-n/ac-m|<delbevis-id>", …] }],
 //     mutants: [{ mutant_id, guard_ref | locus_ref, apply, restore, target_test_ids:[…], control_test_ids:[…] }] }   (locus_ref = planbundet I-locus uden manifest-værn)
 // TESTFIL: `export const tests = [{ id, covers, run: async (lib) => { … kast ved fejl … } }]` — id'er og covers SKAL være indeksets (mismatch = rød).
+// BINDING (Mathias 2026-09-21 »sandhed = krav = plan = byg … uden at overteste«): en test der afgiver ingen forventning er VAKUUM (rød);
+// dækker den et negativ, SKAL den have kaldt forvent.afvist(…, netop det negativ) — ellers rød. Billigt, mekanisk, ingen ny runde.
 // LIB (det Codex' tests får — alt andet er kode i testen):
 //   lib.ejer.sql(text)                       → kald-udfald som ejer            lib.som(actor).sql(text) / .http(req) → som aktør {role, settings}
 //   lib.race(scenario)                       → pg-runner race (overlap-vidne)  lib.kontrakt(negative_id) → manifestets reject_contract
@@ -49,18 +51,23 @@ export function urFraMiljoe(env = process.env) {
 // makeLib({runner, manifest, pakke, ur?}) → lib til testene
 export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
   const F = expectedSet(manifest);
+  // Mathias 2026-09-21: »sandhed = krav = plan = byg … uden at overteste« → billig BINDING mellem covers og faktisk håndhævelse:
+  // hver test skal afgive ≥1 forventning, og hvert negativ testen dækker SKAL være håndhævet m. forvent.afvist(…, <netop det negativ>).
+  const spor = { n: 0, nids: new Set() }; const tael = (nid) => { spor.n++; if (nid) spor.nids.add(nid); };
+  const NID = Symbol.for("v5.negativ_id");
   const kald = async (fn, ...a) => { let r; try { r = await fn(...a); } catch (e) { fejl(`runner kastede: ${e?.message ?? e}`); } if (!isPlain(r) || typeof r.ok !== "boolean") fejl("runner leverede ikke {ok:boolean}"); return r; };
   const som = (actor) => {
     if (!isPlain(actor) || !isStr(actor.role)) throw new Error("lib.som(actor): {role, settings?} kræves");
     const opts = { role: actor.role, settings: isPlain(actor.settings) ? actor.settings : undefined };
     return { sql: (text) => kald(runner.sql, text, opts), http: (req) => { if (typeof runner.http !== "function") fejl("runner.http mangler (PostgREST-transport ikke tilgængelig i dette måle-job)"); return kald(runner.http, req, actor); } };
   };
-  const kontrakt = (nid) => { const n = F.negatives.get(nid); if (!n) throw new Error(`negativ '${nid}' findes ikke i manifestet`); return n.reject_contract; };
+  const kontrakt = (nid) => { const n = F.negatives.get(nid); if (!n) throw new Error(`negativ '${nid}' findes ikke i manifestet`); return Object.defineProperty({ ...n.reject_contract }, NID, { value: nid }); };
   const forvent = {
-    ok: (k, hvad = "kaldet") => { if (k?.ok !== true) fejl(`${hvad} blev afvist: ${k?.code ?? "?"} ${k?.detail?.message ?? k?.error ?? ""}`); return k; },
+    ok: (k, hvad = "kaldet") => { tael(); if (k?.ok !== true) fejl(`${hvad} blev afvist: ${k?.code ?? "?"} ${k?.detail?.message ?? k?.error ?? ""}`); return k; },
     afvist: (k, nidEllerKontrakt, { subst } = {}) => {
       const rc = isStr(nidEllerKontrakt) ? kontrakt(nidEllerKontrakt) : nidEllerKontrakt;
       if (!isPlain(rc) || rc.kanal !== "sqlstate") throw new Error("forvent.afvist kræver en sqlstate-kontrakt");
+      tael(isStr(nidEllerKontrakt) ? nidEllerKontrakt : rc[NID]);
       if (k?.ok !== false) fejl(`FORBUDT HANDLING TILLADT (kontrakt ${rc.sqlstate}/${rc.grund})`);
       if (k.code !== rc.sqlstate) fejl(`afvist m. ${k.code} ≠ kontraktens ${rc.sqlstate} (${k?.detail?.message ?? ""})`);
       const ge = grundEffektiv(rc.grund, subst); if (ge.fejl) fejl(`substitution: ${ge.fejl}`);
@@ -70,12 +77,14 @@ export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
       if (!viaApi && rc.afvisningssted !== "-" && (k.detail?.routine ?? null) !== rc.afvisningssted) fejl(`afvisningssted '${k.detail?.routine}' ≠ kontraktens '${rc.afvisningssted}'`);
       return k;
     },
-    lig: (rows, expect, hvad = "observation") => { const m = matchExpect(rows, expect); if (m.ok === null) fejl(`${hvad}: protokol — ${m.detail}`); if (!m.ok) fejl(`${hvad}: ${m.detail}`); return true; },
-    sandt: (x, detail) => { if (x !== true) fejl(detail ?? "forventning ikke opfyldt"); return true; },
+    lig: (rows, expect, hvad = "observation") => { tael(); const m = matchExpect(rows, expect); if (m.ok === null) fejl(`${hvad}: protokol — ${m.detail}`); if (!m.ok) fejl(`${hvad}: ${m.detail}`); return true; },
+    sandt: (x, detail) => { tael(); if (x !== true) fejl(detail ?? "forventning ikke opfyldt"); return true; },
   };
   const exec = async (cmd) => { if (typeof runner.exec !== "function") fejl("runner.exec mangler (exit-kanalen ikke tilgængelig i dette måle-job)"); let r; try { r = await runner.exec(cmd); } catch (e) { fejl(`exec kastede: ${e?.message ?? e}`); } if (!isPlain(r) || !Number.isInteger(r.exit_code) || typeof r.stdout !== "string") fejl("runner.exec leverede ikke {exit_code, stdout}"); return r; };
   const session = (name) => { if (typeof runner.session !== "function") fejl("runner.session mangler (samme-backend-forløb ikke tilgængeligt)"); return runner.session(name); };   // én interaktiv psql (pg-runner.mjs session(name)) — flere sætninger i SAMME backend (tx over UTC-midnat, P:526/534)
-  return { pakke, manifest, forventning: F, ejer: { sql: (text) => kald(runner.sql, text, {}) }, som, race: (s) => kald(runner.race, s), http: runner.http ? (req, actor) => kald(runner.http, req, actor) : undefined, exec, session, ur, kontrakt, forvent, Afvist };
+  // bindingsdom efter en test: covers ↔ håndhævelse (kaldes af runneren med testens covers; nulstiller sporet)
+  const bindingsFejl = (covers) => { const n = spor.n, nids = new Set(spor.nids); spor.n = 0; spor.nids.clear(); if (n === 0) return "VAKUUM: testen afgav ingen forventning (lib.forvent.*) — dækker intet"; for (const c of covers) if (F.negatives.has(c) && !nids.has(c)) return `dækker negativet '${c}' uden at håndhæve dets kontrakt (forvent.afvist(…, "${c}") blev ikke kaldt)`; return null; };
+  return { pakke, manifest, forventning: F, ejer: { sql: (text) => kald(runner.sql, text, {}) }, som, race: (s) => kald(runner.race, s), http: runner.http ? (req, actor) => kald(runner.http, req, actor) : undefined, exec, session, ur, kontrakt, forvent, Afvist, _bindingsFejl: bindingsFejl };
 }
 
 // loadTests(index, root) → Map(id → {id, file, covers, run}) — filerne SKAL være indeksets (sti under scripts/v5/<pakke>/tests/, blob-oid == indeks)
@@ -95,8 +104,8 @@ export async function loadTests(index, root) {
 
 async function koer(test, lib, timeoutMs) {
   const t0 = Date.now(); let timer;
-  try { await Promise.race([test.run(lib), new Promise((_, rej) => { timer = setTimeout(() => rej(new Afvist(`timeout ${timeoutMs} ms`)), timeoutMs); })]); return { ok: true, ms: Date.now() - t0, detail: null }; }
-  catch (e) { return { ok: false, ms: Date.now() - t0, detail: `${e?.name === "Afvist" ? "" : "(exception) "}${e?.message ?? String(e)}`.slice(0, 500) }; }
+  try { await Promise.race([test.run(lib), new Promise((_, rej) => { timer = setTimeout(() => rej(new Afvist(`timeout ${timeoutMs} ms`)), timeoutMs); })]); const b = lib._bindingsFejl(test.covers); return b ? { ok: false, ms: Date.now() - t0, detail: `binding: ${b}` } : { ok: true, ms: Date.now() - t0, detail: null }; }
+  catch (e) { lib._bindingsFejl(test.covers); return { ok: false, ms: Date.now() - t0, detail: `${e?.name === "Afvist" ? "" : "(exception) "}${e?.message ?? String(e)}`.slice(0, 500) }; }
   finally { clearTimeout(timer); }
 }
 

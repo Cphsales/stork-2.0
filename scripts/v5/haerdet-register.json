@@ -123,10 +123,10 @@
  },
  "test-runner.mjs": {
   "status": "kandidat",
-  "blob_oid": "dd1dce7ce84db5ca4e0c2f215eac0c2e11716eab",
+  "blob_oid": "78d4def35cf494bc641ed040f0b5dc80e3164267",
   "pas_afventer": "Codex-pas bundles m. pakke-1-retro (hurtigt spor pkt. 42: permanent kandidat-drift for pakke 1, ingen Codex-pas pr. modul)",
   "kandidat_siden": "2026-09-21",
-  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): kører Codex' kode-tests (frosne via indeksets blob-oids, kun under scripts/v5/<pakke>/tests/) m. lib (ejer/som/race/kontrakt/forvent) og mutant-kill-protokollen (apply · alle targets fejler · controls ok · restore · alle grønne igen); rapport skema 3. Selvtest 48. + lib.exec/session/ur (FA-3-ur via libfaketime-fil, fremad-kun) 2026-09-21 delta."
+  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): kører Codex' kode-tests (frosne via indeksets blob-oids, kun under scripts/v5/<pakke>/tests/) m. lib (ejer/som/race/kontrakt/forvent) og mutant-kill-protokollen (apply · alle targets fejler · controls ok · restore · alle grønne igen); rapport skema 3. Selvtest 48. + lib.exec/session/ur (FA-3-ur via libfaketime-fil, fremad-kun) 2026-09-21 delta. + binding covers↔håndhævelse (VAKUUM rød · negativ kræver forvent.afvist(…, nid)) — Mathias 21/9 »sandhed = krav = plan = byg«."
  },
  "angrebs-indeks.mjs": {
   "status": "kandidat",

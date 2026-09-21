@@ -133,6 +133,22 @@ console.log("\nrunTestSuite — rapport skema 3 + mutant-kill-protokol:");
   const rep = await runTestSuite({ index: i, runner: mkRunner(), manifest: MANIFEST, root: ROOT, runId: "run-6", timeoutMs: 50 });
   eq("test der kaster en ikke-Afvist → ok:false mærket (exception)", rep.tests.find((x) => x.id === "t-kast").detail, "(exception) bug i testen");
   eq("test der hænger → ok:false m. timeout", /timeout 50 ms/.test(rep.tests.find((x) => x.id === "t-hang").detail), true); }
+console.log("\nbinding covers ↔ håndhævelse (Mathias 2026-09-21: sandhed = krav = plan = byg):");
+{ const F6 = "scripts/v5/pk/tests/binding.test.mjs"; put(F6, `export const tests = [
+  { id: "t-vakuum", covers: ["K-1/ac-3:FS"], run: async (lib) => { await lib.ejer.sql("OBS"); } },
+  { id: "t-neg-uden-afvist", covers: ["K-1/ac-1:UT", "K-1/ac-1/neg-1"], run: async (lib) => { lib.forvent.ok(await lib.som({ role: "app_role" }).sql("POS")); } },
+  { id: "t-neg-via-kontrakt", covers: ["K-1/ac-1/neg-1"], run: async (lib) => { lib.forvent.afvist(await lib.som({ role: "app_role" }).sql("NEG"), lib.kontrakt("K-1/ac-1/neg-1")); } },
+  { id: "t-neg-fremmed-kontrakt", covers: ["K-1/ac-1/neg-1"], run: async (lib) => { lib.forvent.afvist(await lib.som({ role: "app_role" }).sql("NEG"), { kanal: "sqlstate", sqlstate: "22023", grund: "navn_blank", afvisningssted: "f.lokation_opret" }); } },
+];
+`);
+  const i = IDX(); i.tests.push({ id: "t-vakuum", file: F6, oid: oidOf(F6), covers: ["K-1/ac-3:FS"] }, { id: "t-neg-uden-afvist", file: F6, oid: oidOf(F6), covers: ["K-1/ac-1:UT", "K-1/ac-1/neg-1"] }, { id: "t-neg-via-kontrakt", file: F6, oid: oidOf(F6), covers: ["K-1/ac-1/neg-1"] }, { id: "t-neg-fremmed-kontrakt", file: F6, oid: oidOf(F6), covers: ["K-1/ac-1/neg-1"] });
+  const rep = await runTestSuite({ index: i, runner: mkRunner(), manifest: MANIFEST, root: ROOT, runId: "run-7" }); const T = (id) => rep.tests.find((t) => t.id === id);
+  eq("test uden forventning → RØD 'VAKUUM' (dækker intet)", T("t-vakuum").ok === false && /VAKUUM/.test(T("t-vakuum").detail), true);
+  eq("test der dækker et negativ uden forvent.afvist(…, negativet) → RØD (binding)", T("t-neg-uden-afvist").ok === false && /uden at håndhæve dets kontrakt/.test(T("t-neg-uden-afvist").detail), true);
+  eq("forvent.afvist m. lib.kontrakt(nid) tæller som håndhævelse af nid → grøn", T("t-neg-via-kontrakt").ok, true);
+  eq("forvent.afvist m. fremmed kontrakt-objekt (ikke fra lib.kontrakt) håndhæver IKKE negativet → RØD", T("t-neg-fremmed-kontrakt").ok === false && /uden at håndhæve/.test(T("t-neg-fremmed-kontrakt").detail), true);
+  eq("de oprindelige tests stadig grønne (sporet nulstilles pr. test)", ["t-k1-neg", "t-k1-audit", "t-k1-fs"].every((id) => T(id).ok === true), true);
+  eq("mutant-loopet: target (der fejler under mutanten) tæller stadig som kill", rep.mutants[0].killed, true); }
 await throwsWith("runTestSuite m. ændret testfil → kast (ingen rapport)", () => { const i = IDX(); i.tests[0].oid = "e".repeat(40); return runTestSuite({ index: i, runner: mkRunner(), manifest: MANIFEST, root: ROOT, runId: "x" }); }, "ikke den frosne");
 
 console.log("");
