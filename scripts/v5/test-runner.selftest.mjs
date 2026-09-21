@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { makeLib, loadTests, runTestSuite, summarizeReport, Afvist } from "./test-runner.mjs";
+import { makeLib, loadTests, runTestSuite, summarizeReport, urFraMiljoe, Afvist } from "./test-runner.mjs";
 
 let passed = 0, failed = 0;
 const ok = (n) => { passed++; console.log(`  ✓ ${n}`); };
@@ -97,6 +97,19 @@ console.log("\nlib — kontrakten håndhæves i koden:");
   const k = await lib.som({ role: "authenticated" }).http({ method: "POST", path: "/rpc/lokation_opret" }); eq("som(actor).http → runner.http(req, actor)", k.actor, "authenticated");
   eq("forvent.afvist via API: http_status 4xx + kode + grund → ok (sted ikke observerbart via API)", lib.forvent.afvist(k, rc("42501", "f.lokation_opret", "lokation_opret: permission_denied")).http_status, 403);
   let e = null; try { lib.forvent.afvist({ ...k, http_status: 200 }, rc("42501", "f.x", "lokation_opret: permission_denied")); } catch (x) { e = x.message; } eq("API-afvisning m. http_status 200 → Afvist", /http_status 200/.test(e ?? ""), true); }
+
+console.log("\nlib — exec · session · ur (FA-3):");
+{ const lib = makeLib({ runner: { ...mkRunner(), exec: async (cmd) => ({ exit_code: 1, stdout: "klasse=klassifikation\n", cmd }), session: (n) => ({ navn: n }) }, manifest: MANIFEST, pakke: "pk", ur: urFraMiljoe({}) });
+  const r = await lib.exec(["node", "x.mjs"]); eq("lib.exec → runner.exec {exit_code, stdout}", r.exit_code === 1 && /klasse=/.test(r.stdout), true);
+  eq("lib.session(name) → runner.session", lib.session("A").navn, "A");
+  let e = null; try { lib.ur.saet("2026-04-01T00:00:00Z"); } catch (x) { e = x; } eq("ur uden V5_FAKETIME_FILE → Afvist (ærligt rød, ikke stiltiende)", e instanceof Afvist && /ur-driver ikke tilgængelig/.test(e.message), true); eq("ur.tilgaengelig false", lib.ur.tilgaengelig, false); }
+{ const lib = makeLib({ runner: mkRunner(), manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.exec(["x"]); } catch (x) { e = x; } eq("lib.exec uden runner.exec → Afvist", e instanceof Afvist && /runner.exec mangler/.test(e.message), true); }
+{ const file = join(ROOT, "faketime.txt"); const ur = urFraMiljoe({ V5_FAKETIME_FILE: file });
+  eq("ur.saet skriver libfaketime-format @YYYY-MM-DD HH:MM:SS", ur.saet("2026-04-03T02:29:30Z"), "@2026-04-03 02:29:30"); eq("filen bærer stemplet", readFileSync(file, "utf8"), "@2026-04-03 02:29:30\n");
+  eq("ur.frem(90) → +90 s", ur.frem(90), "@2026-04-03 02:31:00");
+  let e = null; try { ur.saet("2026-04-01T00:00:00Z"); } catch (x) { e = x; } eq("bagud → Afvist (fremad-kun, P:33)", e instanceof Afvist && /fremad/.test(e.message), true);
+  let e2 = null; try { ur.saet("ikke-en-tid"); } catch (x) { e2 = x.message; } eq("ugyldig ISO → kast", /ugyldig ISO/.test(e2 ?? ""), true);
+  const ur2 = urFraMiljoe({ V5_FAKETIME_FILE: file }); let e3 = null; try { ur2.frem(10); } catch (x) { e3 = x; } eq("frem før saet → Afvist", e3 instanceof Afvist, true); }
 
 console.log("\nrunTestSuite — rapport skema 3 + mutant-kill-protokol:");
 { const r = mkRunner(); const rep = await runTestSuite({ index: IDX(), indexOid: "a".repeat(40), runner: r, manifest: MANIFEST, root: ROOT, runId: "run-1" });

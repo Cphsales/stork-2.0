@@ -54,6 +54,7 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: v5-ci
       PGDATABASE: postgres
+      DATABASE_URL: postgres://postgres:v5-ci@localhost:5432/postgres # prover-cmd (produktets tests) — flygtig måle-store, ingen hemmelighed (kontraktbehov #9)
       V5_PGRST_URL: http://localhost:3000
       V5_PGRST_JWT_SECRET: v5-ci-jwt-secret-for-the-ephemeral-measurement-store-only
       V5_PGRST_SCHEMA: core_identity

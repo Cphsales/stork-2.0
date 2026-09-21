@@ -66,6 +66,10 @@ red("D10: mutanten på eneste-værnet fjernet → rød", V((i) => (i.mutants = i
 red("K-gulv: K-2 uden mutant → rød", V((i) => (i.mutants = i.mutants.filter((m) => m.mutant_id !== "m-k2"))), "K 'K-2' har ingen mutant");
 red("mutant_id kolliderer m. test-id → rød", V((i) => (i.mutants[1].mutant_id = "t-k1-fs")), "kolliderer");
 red("dublet mutant_id → rød", V((i) => (i.mutants[1].mutant_id = "m-navn")), "dublet");
+green("mutant m. locus_ref 'plan:…' (I-locus uden manifest-værn) → grøn, tæller for K-gulv", V((i) => { i.mutants[1] = { mutant_id: "m-k2", locus_ref: "plan:T3.2", apply: "X", restore: "Y", target_test_ids: ["t-k2-neg"], control_test_ids: ["t-k1-neg"] }; }));
+red("mutant m. både guard_ref og locus_ref → rød", V((i) => (i.mutants[1].locus_ref = "plan:T3.2")), "præcis én af");
+red("mutant m. locus_ref uden 'plan:' → rød", V((i) => { delete i.mutants[1].guard_ref; i.mutants[1].locus_ref = "T3.2"; }), "locus_ref");
+red("locus_ref-mutant tæller IKKE for D10 (eneste-værn kræver værnets mutant)", V((i) => { delete i.mutants[0].guard_ref; i.mutants[0].locus_ref = "plan:navn"; }), "D10");
 green("SA-test som target tæller for D10 (covers negativet)", V((i) => { i.tests.push({ id: "t-k1-sa", file: F1, oid: T1, covers: ["K-1/ac-1/neg-1"] }); i.mutants[0].target_test_ids = ["t-k1-sa"]; }));
 console.log("\nbids (D12):");
 red("forpligtelse udækket af effekt-bid → rød", V((i) => (i.bids[1].covers = ["K-1/ac-1", "K-1/ac-3"])), "dækkes af intet effekt-bid");

@@ -99,7 +99,7 @@ export function verifyBuildProof(proof, snapshot, { git } = {}) {
       const mid = own(m, "mutant_id"); if (!isStr(mid) || !idxMut.has(mid)) { fail(`mutant '${String(mid)}' findes ikke i indekset (rogue)`); continue; }
       if (seen.has(mid)) { fail(`dublet mutant-resultat ${mid}`); continue; } seen.add(mid);
       const im = idxMut.get(mid);
-      if (own(m, "guard_ref") !== im.guard_ref) fail(`${mid}: guard_ref ≠ indeksets`);
+      if ((own(m, "guard_ref") ?? null) !== (im.guard_ref ?? null) || (own(m, "locus_ref") ?? null) !== (im.locus_ref ?? null)) fail(`${mid}: guard_ref/locus_ref ≠ indeksets`);
       const tg = own(m, "targets"), ct = own(m, "controls"), rs = own(m, "restored");
       const ids = (a) => (isDense(a, isPlain) ? a.map((x) => own(x, "id")).sort().join("|") : null);
       if (ids(tg) !== [...im.target_test_ids].sort().join("|")) fail(`${mid}: targets ≠ indeksets target_test_ids`);

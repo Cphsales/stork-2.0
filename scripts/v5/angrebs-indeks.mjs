@@ -6,7 +6,8 @@
 //   D10: hvert eneste-værn g → en mutant m. guard_ref g hvis target_test_ids dækker en test der covers netop det negativ (SA-tests tæller)
 //   K-gulv: hvert K → ≥1 mutant hvis targets dækker en test på en af K's forpligtelser
 // Tests: id entydige · file under scripts/v5/<pakke>/tests/ · oid (blob) · covers kun manifest-kendte referencer. Mutanter: guard_ref
-// deklareret · apply/restore ikke-tomme · target_test_ids ≥1 · control_test_ids ≥1, alle kendte og disjunkte fra targets.
+// deklareret (eller locus_ref "plan:<henvisning>" for planbundne I-loci ud over manifestets værn — tæller for K-gulvet, ikke for D10) ·
+// apply/restore ikke-tomme · target_test_ids ≥1 · control_test_ids ≥1, alle kendte og disjunkte fra targets.
 import { expectedSet, validateManifest, PROOF_FORMS } from "./forventnings-manifest.mjs";
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -65,12 +66,15 @@ export function validateAngrebsIndeks(idx, manifest) {
   if (!isDense(mutants, isPlain)) fail("mutants skal være et tæt array");
   else for (const m of mutants) {
     const mid = own(m, "mutant_id"); if (!isStr(mid) || !ID_RE.test(mid)) { fail("mutant uden gyldigt mutant_id"); continue; } if (mutIds.has(mid) || testById.has(mid)) { fail(`mutant_id ${mid} dublet/kolliderer m. test-id`); continue; } mutIds.add(mid);
-    const g = own(m, "guard_ref"); if (!isStr(g) || !F.guards.has(g)) fail(`${mid}: guard_ref '${String(g)}' ikke deklareret i manifestet`);
+    const g = own(m, "guard_ref"); const lr = own(m, "locus_ref");
+    if (g !== undefined && lr !== undefined) fail(`${mid}: præcis én af guard_ref | locus_ref`);
+    else if (g !== undefined) { if (!isStr(g) || !F.guards.has(g)) fail(`${mid}: guard_ref '${String(g)}' ikke deklareret i manifestet`); }
+    else if (!isStr(lr) || !/^plan:/.test(lr)) fail(`${mid}: guard_ref (manifest-værn) eller locus_ref ("plan:<henvisning>" — planbundet I-locus uden værn) kræves`);
     if (!isStr(own(m, "apply")) || !isStr(own(m, "restore"))) fail(`${mid}: apply/restore kræves`);
     const tg = own(m, "target_test_ids"), ct = own(m, "control_test_ids");
     if (!isDense(tg, isStr) || tg.length === 0 || tg.some((x) => !testById.has(x))) fail(`${mid}: target_test_ids skal være ≥1 kendte test-id'er`);
     if (!isDense(ct, isStr) || ct.length === 0 || ct.some((x) => !testById.has(x) || (isDense(tg, isStr) && tg.includes(x)))) fail(`${mid}: control_test_ids skal være ≥1 kendte test-id'er disjunkte fra targets`);
-    if (isStr(g) && isDense(tg, isStr)) { const negs = new Set(), oids = new Set(); for (const tid of tg) for (const c of testById.get(tid)?.covers ?? []) { if (c.nid) negs.add(c.nid); oids.add(c.oid); } if (!killsByGuard.has(g)) killsByGuard.set(g, new Set()); for (const n of negs) killsByGuard.get(g).add(n); for (const o of oids) { const k = F.obligations.get(o)?.k_id; if (k) ksWithMutant.add(k); } }
+    if (isDense(tg, isStr)) { const negs = new Set(), oids = new Set(); for (const tid of tg) for (const c of testById.get(tid)?.covers ?? []) { if (c.nid) negs.add(c.nid); oids.add(c.oid); } if (isStr(g)) { if (!killsByGuard.has(g)) killsByGuard.set(g, new Set()); for (const n of negs) killsByGuard.get(g).add(n); } for (const o of oids) { const k = F.obligations.get(o)?.k_id; if (k) ksWithMutant.add(k); } }
   }
   for (const [g, nids] of F.soleGuards) for (const nid of nids) if (!(killsByGuard.get(g)?.has(nid))) fail(`D10: negativ '${nid}' bæres alene af '${g}' men ingen mutant på det værn har en target-test der dækker netop det negativ`);
   for (const k of F.ks) if (!ksWithMutant.has(k)) fail(`K '${k}' har ingen mutant (mutant-kill-gulv)`);

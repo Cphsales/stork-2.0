@@ -16,10 +16,10 @@
  },
  "build-proof.mjs": {
   "status": "kandidat",
-  "blob_oid": "07356e6d8309198d99b86ed5993002ccb94c15a2",
+  "blob_oid": "c9a09e616d42d13573f765c7d416b085bfe8f081",
   "pas_afventer": "Codex-pas bundles m. pakke-1-retro (hurtigt spor pkt. 42: permanent kandidat-drift for pakke 1, ingen Codex-pas pr. modul)",
   "kandidat_siden": "2026-09-21",
-  "note": "v3 (hurtigt spor 2026-09-21, pkt. 42): rapport-verifier — struktur + binding (præcis indeksets tests alle ok · mutanter dræbt genudledt fra protokollen · summary · index_oid · bids/reviews/prover · ci-produced). Selvtest 55. Forrige: Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v2.6: via + subst er spec-afledte i projektionen. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — ci-produceret artefakt uden git-sti-binding (kernen binder artifact_oid); v2.5-verifieren ellers uændret. Mutanter dræbt (ci-p"
+  "note": "v3 (hurtigt spor 2026-09-21, pkt. 42): rapport-verifier — struktur + binding (præcis indeksets tests alle ok · mutanter dræbt genudledt fra protokollen · summary · index_oid · bids/reviews/prover · ci-produced). Selvtest 55. Forrige: Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v2.6: via + subst er spec-afledte i projektionen. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — ci-produceret artefakt uden git-sti-binding (kernen binder artifact_oid); v2.5-verifieren ellers uændret. Mutanter dræbt (ci-p + guard_ref/locus_ref-binding 2026-09-21 delta."
  },
  "gate-eval.mjs": {
   "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
@@ -123,16 +123,16 @@
  },
  "test-runner.mjs": {
   "status": "kandidat",
-  "blob_oid": "76a9b4a7840532c42fbbd71c6c186b0c9684739d",
+  "blob_oid": "dd1dce7ce84db5ca4e0c2f215eac0c2e11716eab",
   "pas_afventer": "Codex-pas bundles m. pakke-1-retro (hurtigt spor pkt. 42: permanent kandidat-drift for pakke 1, ingen Codex-pas pr. modul)",
   "kandidat_siden": "2026-09-21",
-  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): kører Codex' kode-tests (frosne via indeksets blob-oids, kun under scripts/v5/<pakke>/tests/) m. lib (ejer/som/race/kontrakt/forvent) og mutant-kill-protokollen (apply · alle targets fejler · controls ok · restore · alle grønne igen); rapport skema 3. Selvtest 48."
+  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): kører Codex' kode-tests (frosne via indeksets blob-oids, kun under scripts/v5/<pakke>/tests/) m. lib (ejer/som/race/kontrakt/forvent) og mutant-kill-protokollen (apply · alle targets fejler · controls ok · restore · alle grønne igen); rapport skema 3. Selvtest 48. + lib.exec/session/ur (FA-3-ur via libfaketime-fil, fremad-kun) 2026-09-21 delta."
  },
  "angrebs-indeks.mjs": {
   "status": "kandidat",
-  "blob_oid": "e523af9053524b22d97281d066751df075872a88",
+  "blob_oid": "0c1e94f44be2b880b625be17c739da0722836c12",
   "pas_afventer": "Codex-pas bundles m. pakke-1-retro (hurtigt spor pkt. 42: permanent kandidat-drift for pakke 1, ingen Codex-pas pr. modul)",
   "kandidat_siden": "2026-09-21",
-  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): validator for angrebs-spec.json skema 2 (indeks over testfiler + mutanter): komplethed mod manifestet (form · negativ · delbevis · D10 · K-gulv · D12-bidgraf), filer/oids/covers-referencer. Selvtest 37."
+  "note": "NY (hurtigt spor 2026-09-21, pkt. 42): validator for angrebs-spec.json skema 2 (indeks over testfiler + mutanter): komplethed mod manifestet (form · negativ · delbevis · D10 · K-gulv · D12-bidgraf), filer/oids/covers-referencer. Selvtest 37. + locus_ref-mutanter (planbundne I-loci, tæller for K-gulv, ikke D10) 2026-09-21 delta."
  }
 }
