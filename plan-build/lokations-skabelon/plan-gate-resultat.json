@@ -1,0 +1,7 @@
+{
+ "open": true,
+ "gate_id": "plan",
+ "reasons": [],
+ "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+ "evalueret": "scripts/v5/plan-gate-run.mjs @ d4c69bd (forgænger krav ved egen pin efc85d5) — lokal KANDIDAT-dom (plan pkt. 36), evidens = commit B 3f906a7 (plan-approval.json · kvittering 840c0fbb · verdikter r4); autoritet = CI-dommeren v5/gate/plan (C4) ved push"
+}
