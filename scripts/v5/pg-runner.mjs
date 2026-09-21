@@ -3,7 +3,12 @@
 // udtrukket af build-harness.integration.mjs v2.8 efter Codex C1-runde 1-8: F-17 · F-27 · F-32 · F-33 · F-36 · F-38 · F-39 · F-40 ·
 // Codex C4b-runde: F-C4b-1 (miljø-isolation) · F-C4b-2 (aktørens settings i race)).
 //
-// makePgRunner({ argv, env? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql) }
+// makePgRunner({ argv, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
+//   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform (Codex HALT H1, 2026-09-21): handlinger via PostgREST som aktøren.
+//   http(req, actor): minter HS256-JWT {role: actor.role, exp, ...claims fra actor.settings (request.jwt.claim.<x> → x; request.jwt.claims
+//   → JSON merges)}, kalder {baseUrl}{req.path} m. req.method/body (+ Accept-/Content-Profile ved req.schema), og afleverer et KALD-UDFALD
+//   i samme kontrakt som sql(): {ok (2xx), code = body.code (PostgREST videregiver Postgres' SQLSTATE), detail:{message: body.message,
+//   routine: null}, http_status}. Afvisningsstedet (routine) er IKKE observerbart via API — dommen springer det over for via=api.
 //   argv = kommandopræfiks der starter psql m. stdin (fx ["docker","exec","-i",CONTAINER,"psql","-U","postgres"] lokalt, eller
 //   ["psql"] i CI m. PGHOST/PGUSER/PGPASSWORD/PGDATABASE i miljøet). Alle kald er ÉN psql-proces (sql/q1) eller én interaktiv
 //   session (race: to sessions + et tredje vidne).
@@ -28,7 +33,7 @@
 // en produkt-observation (blocking), ikke dom.
 
 import { spawn, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 
 const FELT = /^(ERROR|NOTICE|WARNING|INFO|LOG|DEBUG\d?|DETAIL|HINT|CONTEXT|LOCATION|QUERY|STATEMENT|SCHEMA NAME|TABLE NAME|COLUMN NAME|DATA TYPE|CONSTRAINT NAME):\s/;
 void FELT;
@@ -76,7 +81,56 @@ export function producentMiljoe(env = process.env) {
 const settingsGyldige = (settings) => settings === undefined || settings === null || (settings !== null && typeof settings === "object" && !Array.isArray(settings) && Object.keys(settings).every((k) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i.test(k)));
 const setSql = (settings) => Object.entries(settings ?? {}).map(([k, v]) => `set ${k} = '${String(v).replace(/'/g, "''")}';`).join("\n");
 
-export function makePgRunner({ argv, env = producentMiljoe(process.env) } = {}) {
+// ---------- API-transport (PostgREST) ----------
+const b64url = (buf) => Buffer.from(buf).toString("base64").replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+// mintJwt(secret, claims) → HS256-JWT (PostgREST's default). claims SKAL bære role.
+export function mintJwt(secret, claims) {
+  const h = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" })), p = b64url(JSON.stringify(claims));
+  return `${h}.${p}.${b64url(createHmac("sha256", secret).update(`${h}.${p}`).digest())}`;
+}
+// claimsFraAktoer(actor) → JWT-claims fra actor.role + actor.settings (ctx-A: request.jwt.claim.sub → sub; request.jwt.claims (JSON) merges)
+export function claimsFraAktoer(actor, nowSec = Math.floor(Date.now() / 1000)) {
+  if (!actor || typeof actor.role !== "string" || !actor.role) throw new Error("http: actor.role kræves (JWT-rollen)");
+  const claims = { role: actor.role, exp: nowSec + 300, iat: nowSec };
+  for (const [k, v] of Object.entries(actor.settings ?? {})) {
+    if (k === "request.jwt.claims") { let o; try { o = JSON.parse(String(v)); } catch { throw new Error("http: request.jwt.claims er ikke JSON"); } if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error("http: request.jwt.claims skal være et objekt"); Object.assign(claims, o); }
+    else if (k.startsWith("request.jwt.claim.")) claims[k.slice("request.jwt.claim.".length)] = String(v);
+  }
+  claims.role = actor.role;   // rollen er aktørens — aldrig et claim fra settings
+  return claims;
+}
+const HTTP_METHODS = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
+export const httpReqGyldig = (r) => r !== null && typeof r === "object" && !Array.isArray(r) && HTTP_METHODS.has(r.method) && typeof r.path === "string" && r.path.startsWith("/") && !/[\s]/.test(r.path)
+  && (r.body === undefined || (r.body !== null && typeof r.body === "object")) && (r.schema === undefined || (typeof r.schema === "string" && /^[a-z_][a-z0-9_]*$/i.test(r.schema)));
+export function makeHttpRunner({ baseUrl, jwtSecret, defaultSchema = null, fetchFn = globalThis.fetch, timeoutMs = 30000, retries503 = 20 } = {}) {
+  if (typeof baseUrl !== "string" || !/^https?:\/\//.test(baseUrl)) throw new Error("makeHttpRunner: baseUrl kræves (http(s)://…)");
+  if (typeof jwtSecret !== "string" || jwtSecret.length < 32) throw new Error("makeHttpRunner: jwtSecret ≥ 32 tegn kræves (PostgREST-krav)");
+  if (typeof fetchFn !== "function") throw new Error("makeHttpRunner: fetch mangler");
+  return async function http(req, actor) {
+    const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, http_status: null, protocol_fejl: true });
+    if (!httpReqGyldig(req)) return dead("ugyldig http-request ({method, path, body?, schema?})");
+    let claims; try { claims = claimsFraAktoer(actor); } catch (e) { return dead(e.message); }
+    const headers = { Authorization: `Bearer ${mintJwt(jwtSecret, claims)}`, Accept: "application/json", Prefer: "return=representation" };
+    const schema = req.schema ?? defaultSchema; if (schema) { headers["Accept-Profile"] = schema; headers["Content-Profile"] = schema; }
+    let body; if (req.body !== undefined) { headers["Content-Type"] = "application/json"; body = JSON.stringify(req.body); }
+    let res = null, text = "";
+    for (let i = 0; i <= retries503; i++) {
+      try { const ac = new AbortController(); const t = setTimeout(() => ac.abort(), timeoutMs); res = await fetchFn(`${baseUrl.replace(/\/$/, "")}${req.path}`, { method: req.method, headers, body, signal: ac.signal }); clearTimeout(t); text = await res.text(); }
+      catch (e) { return dead(`http-transport fejlede: ${e?.message ?? e}`); }
+      if (res.status !== 503 || i === retries503) break;   // 503 = PostgREST's schema-cache ikke klar (fx lige efter migrationer) → kort retry
+      await sleep(500);
+    }
+    if (typeof res.status !== "number") return dead("http: intet statussvar");
+    let json = null; if (text.trim()) { try { json = JSON.parse(text); } catch { json = null; } }
+    if (res.status >= 200 && res.status < 300) return { ok: true, error: null, code: null, detail: null, http_status: res.status, rows: Array.isArray(json) ? json : undefined };
+    const code = json && typeof json.code === "string" && json.code ? json.code : null;
+    const message = json && typeof json.message === "string" ? json.message : null;
+    if (!code) return dead(`http ${res.status} uden PostgREST-fejlkode i body (${text.slice(0, 120)}) — ikke klassificerbar`);
+    return { ok: false, error: `${code}: ${message ?? ""}`.slice(0, 200), code, detail: { message, routine: null }, http_status: res.status };
+  };
+}
+
+export function makePgRunner({ argv, env = producentMiljoe(process.env), http = null } = {}) {
   if (!Array.isArray(argv) || argv.length === 0 || !argv.every((a) => typeof a === "string")) throw new Error("makePgRunner: argv (psql-kommandopræfiks) kræves");
   if (env === null || typeof env !== "object") throw new Error("makePgRunner: env skal være et objekt");
   for (const k of Object.keys(env)) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`makePgRunner: env indeholder credential '${k}' — produktkode må ikke få den (F-C4b-1)`);
@@ -194,5 +248,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env) } = {}) 
     return { exit_code: typeof r.status === "number" ? r.status : 128, stdout: typeof r.stdout === "string" ? r.stdout : "" };
   }
 
-  return { sql, race, exec, session, q1 };
+  const out = { sql, race, exec, session, q1 };
+  if (http) out.http = makeHttpRunner(http);
+  return out;
 }

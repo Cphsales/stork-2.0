@@ -2,7 +2,7 @@
 // build-harness.selftest.mjs — red-team af case-engine v2.4 (C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30): observationer er rå, dommen
 // er ren (judgeObservations/judgeKill), reject-kontraktens grund/sted/aktør/fase håndhæves i alle varianter, uvedkommende fejl og
 // manglende målinger er protokol (aldrig brudt/kill), kills er målrettede, SA-kill kræver et gyldigt, vidnet raceforløb.
-import { runCase, killCaseMutant, runBuildProofEngine, matchExpect, judgeObservations, judgeKill, brudtPaaFormensMaade, STATUS } from "./build-harness.mjs";
+import { runCase, killCaseMutant, runBuildProofEngine, matchExpect, judgeObservations, judgeKill, brudtPaaFormensMaade, grundEffektiv, STATUS } from "./build-harness.mjs";
 import { expectedSet } from "./forventnings-manifest.mjs";
 
 let pass = 0, fail = 0;
@@ -19,6 +19,8 @@ const manifest = {
     { id: "K-1/ac-3", k_id: "K-1", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:3"], assertions: [{ id: "hist", form: "FS" }], negatives: [] },
     { id: "K-2/ac-6", k_id: "K-2", kind: "ac", proof_forms: ["SA", "UT"], scope: "nu", kildeankre: ["K:6"], assertions: [{ id: "r1", form: "SA" }], negatives: [{ id: "K-2/ac-6/neg-1", beskrivelse: "sidste stand", reject_contract: rc("P0001", "f.stand_deaktiver", "min_en_stand", "apply"), sole_guard_ref: "g.min" }] },
     { id: "K-7/S", k_id: "K-7", kind: "struktur", proof_forms: ["UT"], scope: "nu", kildeankre: ["K:7"], negatives: [{ id: "K-7/S/neg-1", beskrivelse: "ci", reject_contract: { kanal: "exit", exit_code: 1, klasse: "klassifikation", afvisningssted: "ci", fase: "ci", aktoer: "ci" } }] },
+    { id: "K-9/ac-1", k_id: "K-9", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:170"], assertions: [{ id: "w5-via-api", form: "MH" }], negatives: [{ id: "K-9/ac-1/neg-1", beskrivelse: "R− via API → 42501", reject_contract: rc("42501", "f.lokation_opret", "lokation_opret: permission_denied", "wrapper (via API)", "authenticated") }] },
+    { id: "K-7/ac-2", k_id: "K-7", kind: "ac", proof_forms: ["UT"], scope: "nu", kildeankre: ["K:140"], negatives: [{ id: "K-7/ac-2/neg-2", beskrivelse: "allerede anonymized", reject_contract: rc("22023", "f.anonymiser", "entity {id} af type gruppe_kontakt findes ikke eller er allerede anonymized", "apply") }] },
     { id: "K-2/ac-4", k_id: "K-2", kind: "ac", proof_forms: ["FS"], scope: "overdragelse", overdragelse_ref: "trin 24", kildeankre: ["K:4"], negatives: [] },
   ],
 };
@@ -38,6 +40,7 @@ function mkRunner(over = {}) {
         case "NEG_ANDET_STED": return R(false, "22023", "navn_blank", "f.anden_fn");
         case "NEG_WRONG_CLASS": return R(false, "42501", "permission denied", null);
         case "NEG_SYNTAX": return R(false, "42601", "syntax error", null);
+        case "NEG_ID": return R(false, "22023", `entity ${st.sentId ?? "11111111-1111-1111-1111-111111111111"} af type gruppe_kontakt findes ikke eller er allerede anonymized`, "f.anonymiser");
         case "STATE": return R(true, null, null, null, st.stateRows.map((r) => ({ ...r })));
         case "ACT": return R(true);
         case "OBS": return R(true, null, null, null, [{ pris: st.pris }]);
@@ -83,6 +86,13 @@ function mkRunner(over = {}) {
       return { protocolOk: true, a, b: rej, overlap, invariantRows: [{ aktive: 1 }] };
     },
     exec(cmd) { return over.exec ? over.exec(cmd) : { exit_code: 1, stdout: "fejl: klassifikation mangler\nklasse=klassifikation\n" }; },
+    // API-transport (H1): PostgREST-lignende udfald — body.code = SQLSTATE, http_status konsistent
+    http(req, actor) {
+      if (over.http) { const r = over.http(req, actor, st); if (r !== undefined) return r; }
+      st.lastHttp = { req, actor };
+      if (req.path === "/rpc/lokation_opret") { if (actor.role === "r_minus" || st.apiPerm === false) return { ok: false, error: "42501: lokation_opret: permission_denied", code: "42501", detail: { message: "lokation_opret: permission_denied", routine: null }, http_status: 403 }; if (req.body?.p_navn === "   ") return { ok: false, error: "22023", code: "22023", detail: { message: "navn_blank", routine: null }, http_status: 400 }; st.audit = true; return { ok: true, error: null, code: null, detail: null, http_status: 200 }; }
+      return { ok: false, error: "PGRST202", code: "PGRST202", detail: { message: "function not found", routine: null }, http_status: 404 };
+    },
   };
   return runner;
 }
@@ -93,6 +103,10 @@ const C = {
   mh: { case_id: "c-mh", hard_effect: HE, bid_id: BID, obligation_id: "K-1/ac-1", proof_form: "MH", entrypoint: ep, actor, action: { sql: "ACT_MH" }, witnesses: [{ id: "audit-row", observe: { sql: "AUDIT" }, expect: { kind: "count", value: 1 } }] },
   sa: { case_id: "c-sa", hard_effect: HE, bid_id: BID, obligation_id: "K-2/ac-6", proof_form: "SA", fase: "apply", entrypoint: ep, actor, race: { race_id: "r1", a: { sql: "A" }, b: { sql: "B" }, barrier: "row-lock", invariant: { observe: { sql: "INV" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
   ci: { case_id: "c-ci", hard_effect: "state", bid_id: BID, obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", fase: "ci", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "klassifikation.mjs"] } },
+  api: { case_id: "c-api-ut", hard_effect: HE, bid_id: BID, obligation_id: "K-9/ac-1", negative_id: "K-9/ac-1/neg-1", proof_form: "UT", fase: "wrapper (via API)", entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated", settings: { "request.jwt.claim.sub": "22222222-2222-2222-2222-222222222222" } },
+    positive: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_id: 7, p_navn: "Havnen" } } }, negative: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_id: 8, p_navn: "X" } } }, state: { sql: "STATE" } },
+  apiMh: { case_id: "c-api-mh", hard_effect: HE, bid_id: BID, obligation_id: "K-9/ac-1", proof_form: "MH", entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated" }, action: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_id: 9, p_navn: "Parken" } } }, witnesses: [{ id: "w5-via-api", observe: { sql: "AUDIT" }, expect: { kind: "count", value: 1 } }] },
+  subst: { case_id: "c-subst", hard_effect: HE, bid_id: BID, obligation_id: "K-7/ac-2", negative_id: "K-7/ac-2/neg-2", proof_form: "UT", fase: "apply", entrypoint: ep, actor, subst: { id: "11111111-1111-1111-1111-111111111111" }, positive: { sql: "POS" }, negative: { sql: "NEG_ID" }, state: { sql: "STATE" } },
 };
 const run = (c, r = mkRunner()) => runCase(c, ctx, r);
 const st = async (c, r) => (await run(c, r)).status;
@@ -173,6 +187,34 @@ eq("SA: session B afvist m. detail.message som tal → protokol (F-37)", await s
 eq("FS-observation i beviset m. ok:true OG code:'42601' (bevaret modstrid) → protokol i den rene dom (F-34)", judgeObservations("FS", { ...(await run(C.fs)).observations, observe: { ...(await run(C.fs)).observations.observe, code: "42601" } }).status, STATUS.PROTOKOL);
 { const o = (await run(C.fs)).observations; o.checkpoints[0].code = "42601"; eq("checkpoint-observation m. ok:true + code → protokol (F-34)", judgeObservations("FS", o).status, STATUS.PROTOKOL); }
 { const o = (await run(C.mh)).observations; o.witnesses[0].code = "42501"; eq("vidne-observation m. ok:true + code → protokol (F-34)", judgeObservations("MH", o).status, STATUS.PROTOKOL); }
+
+console.log("\nAPI-bevisform (H1) — handlinger via PostgREST som aktøren, observationer via SQL:");
+{ const r0 = mkRunner({ state: { apiPerm: true } }); r0.http = (req, actor) => { r0.st.lastHttp = { req, actor }; return actor.role === "authenticated" && req.body?.p_id === 8 ? { ok: false, error: "42501", code: "42501", detail: { message: "lokation_opret: permission_denied", routine: null }, http_status: 403 } : { ok: true, error: null, code: null, detail: null, http_status: 200 }; };
+  const r = await run(C.api, r0); eq("API-UT: positivt via API ok (200), negativt afvist 42501/token via API (403) → opfyldt — afvisningsstedet springes over (ikke observerbart via API)", r.status, STATUS.OPFYLDT);
+  eq("observationerne bærer via='api' og http_status på begge kald", r.observations.via === "api" && r.observations.positive.http_status === 200 && r.observations.negative.http_status === 403, true);
+  eq("runner.http modtog aktøren m. role + settings (JWT-grundlaget)", r0.st.lastHttp.actor.role === "authenticated" && r0.st.lastHttp.actor.settings["request.jwt.claim.sub"].startsWith("2222"), true); }
+{ const r0 = mkRunner(); r0.http = () => ({ ok: true, error: null, code: null, detail: null, http_status: 200 }); eq("API-UT: forbudt handling TILLADT via API (200) → brudt", await st(C.api, r0), STATUS.BRUDT); }
+{ const r0 = mkRunner(); r0.http = (req) => (req.body?.p_id === 8 ? { ok: false, error: "42501", code: "42501", detail: { message: "lokation_opret: permission_denied", routine: null }, http_status: 200 } : { ok: true, error: null, code: null, detail: null, http_status: 200 }); eq("API-UT: afvist m. rigtig kode men http_status 200 → protokol (inkonsistent transport)", await st(C.api, r0), STATUS.PROTOKOL); }
+{ const r0 = mkRunner(); r0.http = (req) => (req.body?.p_id === 8 ? { ok: false, error: "PGRST202", code: "PGRST202", detail: { message: "function not found", routine: null }, http_status: 404 } : { ok: true, error: null, code: null, detail: null, http_status: 200 }); eq("API-UT: PostgREST-fejl PGRST202 (funktion findes ikke) er uvedkommende → protokol, ikke afvisning", await st(C.api, r0), STATUS.PROTOKOL); }
+{ const r0 = mkRunner(); delete r0.http; eq("API-case uden runner.http → protokol (måle-jobbet mangler PostgREST-transport)", await st(C.api, r0), STATUS.PROTOKOL); }
+eq("API-case m. {sql} i positive (blandet form) → protokol", await st(withCase(C.api, (x) => (x.positive = { sql: "POS" }))), STATUS.PROTOKOL);
+eq("SQL-case m. {http} i negative (blandet form) → protokol", await st(withCase(C.ut, (x) => (x.negative = { http: { method: "POST", path: "/rpc/x" } }))), STATUS.PROTOKOL);
+{ const o = (await run(C.ut)).observations; o.negative.http_status = 403; eq("SQL-observationer m. http_status i beviset → protokol (blandet transport i dommen)", judgeObservations("UT", o).status, STATUS.PROTOKOL); }
+{ const r0 = mkRunner(); const r = await run(C.apiMh, r0); eq("API-MH: handling via API (200) + vidne via SQL → opfyldt; via='api'", r.status === STATUS.OPFYLDT && r.observations.via === "api" && r.observations.action.http_status === 200, true); }
+{ const r0 = mkRunner({ state: { apiPerm: false } }); eq("API-MH: handling afvist via API (42501/403) → brudt (handling udebliver)", await st(C.apiMh, r0), STATUS.BRUDT); }
+eq("SA m. entrypoint.kind api → protokol", await st(withCase(C.sa, (x) => (x.entrypoint = { kind: "api", ref: "/rpc/x" }))), STATUS.PROTOKOL);
+
+console.log("\nSubstitution (H2, plan:47 regel B) — {id} i kontraktens grund:");
+eq("grundEffektiv: {id} substitueret m. subst.id (uuid)", grundEffektiv("entity {id} af type x", { id: "11111111-1111-1111-1111-111111111111" }).grund, "entity 11111111-1111-1111-1111-111111111111 af type x");
+eq("grundEffektiv: token uden subst → fejl", /kræver subst/.test(grundEffektiv("entity {id}", undefined).fejl), true);
+eq("grundEffektiv: subst uden token → fejl (kan ikke forme en anden grund)", /intet \{token\}/.test(grundEffektiv("navn_blank", { id: "11111111-1111-1111-1111-111111111111" }).fejl), true);
+eq("grundEffektiv: overskydende nøgle → fejl", /svarer ikke til/.test(grundEffektiv("entity {id}", { id: "11111111-1111-1111-1111-111111111111", x: "22222222-2222-2222-2222-222222222222" }).fejl), true);
+eq("grundEffektiv: ikke-uuid værdi → fejl", /ikke en uuid/.test(grundEffektiv("entity {id}", { id: "hej" }).fejl), true);
+eq("UT m. {id}-grund + subst: produktets afvisning m. den sendte uuid → opfyldt", await st(C.subst), STATUS.OPFYLDT);
+eq("UT m. {id}-grund + subst: produktet afviser m. en ANDEN uuid → brudt (grund ≠ efter substitution)", await st(C.subst, mkRunner({ state: { sentId: "33333333-3333-3333-3333-333333333333" } })), STATUS.BRUDT);
+eq("UT m. {id}-grund UDEN subst → protokol", await st(withCase(C.subst, (x) => delete x.subst)), STATUS.PROTOKOL);
+eq("UT uden {id} i grund men m. subst → protokol", await st(withCase(C.ut, (x) => (x.subst = { id: "11111111-1111-1111-1111-111111111111" }))), STATUS.PROTOKOL);
+{ const r = await run(C.subst); eq("observationerne bærer subst rå (verifieren binder den til spec'en)", r.observations.subst?.id, "11111111-1111-1111-1111-111111111111"); }
 
 console.log("\nFS — forkert slutværdi:");
 eq("baseline → opfyldt (m. navngivet checkpoint)", await st(C.fs), STATUS.OPFYLDT);

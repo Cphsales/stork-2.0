@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.6 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30 · C1-r5 F-34/35 · C1-r6 F-37).
+// build-harness.mjs — v5's effect-harness/mutations-FRAMEWORK, v2.7 (plan 2.C · M-41 Trin C1 · Codex' adapter-krav B2 · C1-r1 F-3..8 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-28..30 · C1-r5 F-34/35 · C1-r6 F-37 · Fase 4 pkt. 1 HALT H1/H2 2026-09-21: API-bevisform + substitution).
+//
+// API-BEVISFORM (H1): en case m. entrypoint.kind === "api" udfører HANDLINGERNE (UT positive/negative · FS/MH action) via runner.http (PostgREST
+// som aktøren m. JWT fra actor.role + settings) i stedet for SQL; observationer (state · observe · vidner · checkpoints) er altid SQL. Kald-
+// udfaldet har samme kontrakt (ok · code = PG-SQLSTATE fra body.code · detail.message = body.message · http_status). Afvisningsstedet (routine)
+// kan ikke observeres via API → sted-tjekket springes over for via=api; http_status skal være konsistent (ok ⇒ 2xx · afvist ⇒ 4xx/5xx).
+// SUBSTITUTION (H2, plan:47 regel B): bærer kontraktens grund `{id}`-tokens, substitueres de m. casens `subst` (spec-bundet, verifieren binder
+// den) FØR lighedstjekket; manglende/overskydende/ikke-uuid subst = protokol.
 //
 // verifyBuildProof (build-proof.mjs) VALIDERER en build-proof; DETTE modul PRODUCERER beviset ved at KØRE cases mod en real
 // backing store som ikke-bypass rolle og dræbe mutanter formbestemt. Kernen i v2.1: hvert delbevis afleverer RÅ OBSERVATIONER,
@@ -72,6 +79,20 @@ const kaldGyldig = (x) => {
   return typeof code === "string" && code.length > 0 && detOk;
 };
 const pidGyldig = (v) => Number.isInteger(v) && v > 0;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// grundEffektiv(grund, subst) → {grund} | {fejl}: substituér {key}-tokens i kontraktens grund m. casens subst (H2). Alle tokens skal have
+// en uuid-værdi; subst uden token er overskydende (protokol) — så subst aldrig kan »forme« en anden grund end kontraktens.
+export function grundEffektiv(grund, subst) {
+  const tokens = [...String(grund).matchAll(/\{([a-z_][a-z0-9_]*)\}/g)].map((m) => m[1]);
+  if (tokens.length === 0) return subst !== undefined && subst !== null ? { fejl: "subst angivet men kontraktens grund har intet {token}" } : { grund: String(grund) };
+  if (!isPlain(subst)) return { fejl: `kontraktens grund kræver subst for {${[...new Set(tokens)].join("}, {")}}` };
+  const keys = Object.keys(subst); const need = new Set(tokens);
+  for (const k of keys) { if (!need.has(k)) return { fejl: `subst.${k} svarer ikke til et {token} i grund` }; if (typeof own(subst, k) !== "string" || !UUID_RE.test(own(subst, k))) return { fejl: `subst.${k} er ikke en uuid` }; }
+  for (const t of need) if (!keys.includes(t)) return { fejl: `subst mangler {${t}}` };
+  return { grund: String(grund).replace(/\{([a-z_][a-z0-9_]*)\}/g, (_, k) => own(subst, k)) };
+}
+// http-status konsistens (H1): ok ⇒ 2xx · afvist ⇒ 4xx/5xx; manglende status = protokol
+const httpKonsistent = (x) => Number.isInteger(own(x, "http_status")) && (own(x, "ok") === true ? own(x, "http_status") >= 200 && own(x, "http_status") < 300 : own(x, "http_status") >= 400 && own(x, "http_status") < 600);
 // F-37: RÅ kald-udfald fra runneren valideres i deres HELHED før noget normaliseres eller projiceres — ingen felt »repareres« til null.
 // Regler: ok boolean · code streng|null|udeladt · detail objekt|null|udeladt m. message/routine streng|null|udeladt ·
 // ok:true ⇒ code null/udeladt OG detail uden message/routine · ok:false ⇒ code ikke-tom streng. Returnerer fejltekst eller null.
@@ -110,7 +131,20 @@ async function safeSql(runner, text, opts) {
   const rowsOk = isDense(rows, isPlain) && rows.every((row) => safeCanon(row) !== null);
   return { protocolOk: true, ok: okVal, code: typeof code === "string" ? code : null, error: typeof err === "string" ? err : null, detail, rows: rowsOk ? rows : null };
 }
-const kald = (r) => ({ ok: r.ok, code: r.code, detail: r.detail });   // det der gemmes i observationerne
+const kald = (r) => (Number.isInteger(r.http_status) ? { ok: r.ok, code: r.code, detail: r.detail, http_status: r.http_status } : { ok: r.ok, code: r.code, detail: r.detail });   // det der gemmes i observationerne
+// runner.http(req, actor) → kald-udfald m. http_status (H1). Samme rå validering som safeSql; http_status skal være heltal.
+async function safeHttp(runner, req, actor) {
+  const dead = (error) => ({ protocolOk: false, ok: false, code: null, error, detail: null, rows: null });
+  const fn = isPlain(runner) ? own(runner, "http") : null;
+  if (typeof fn !== "function") return dead("runner.http mangler (API-bevisform kræver en PostgREST-transport i måle-jobbet)");
+  if (!isPlain(req) || typeof own(req, "method") !== "string" || typeof own(req, "path") !== "string") return dead("http-request ugyldig ({method, path, body?, schema?})");
+  let r; try { r = await fn(req, actor); } catch (e) { return dead(`runner.http kastede: ${e?.message ?? String(e)}`); }
+  if (!isPlain(r) || own(r, "protocol_fejl") === true) return dead(`http-transport: ${isPlain(r) ? own(r, "error") : "ugyldigt svar"}`);
+  const rf = raaKaldFejl(r); if (rf) return dead(`runner.http leverede ugyldigt/selvmodsigende udfald: ${rf}`);
+  if (!Number.isInteger(own(r, "http_status"))) return dead("runner.http leverede ikke http_status");
+  const det = own(r, "detail");
+  return { protocolOk: true, ok: own(r, "ok"), code: typeof own(r, "code") === "string" ? own(r, "code") : null, error: typeof own(r, "error") === "string" ? own(r, "error") : null, detail: isPlain(det) ? { message: typeof own(det, "message") === "string" ? own(det, "message") : null, routine: typeof own(det, "routine") === "string" ? own(det, "routine") : null } : null, http_status: own(r, "http_status"), rows: isDense(own(r, "rows"), isPlain) ? own(r, "rows") : null };
+}
 
 // ---------- typede observationer ----------
 // matchExpect(rows, expect) → {ok, detail}; ok:null = protokol (manglende rækkesæt / ugyldig forventning) — aldrig et udfald
@@ -177,12 +211,16 @@ export function judgeObservations(form, obs) {
     const p = own(obs, "positive"), n = own(obs, "negative"), b = own(obs, "state_before"), e = own(obs, "state_after");
     if (!isStr(own(k, "sqlstate")) || !isStr(own(k, "grund")) || !isStr(own(k, "afvisningssted")) || !isStr(own(k, "aktoer")) || !isStr(own(k, "fase"))) return protokol("reject-kontrakt (sqlstate/grund/afvisningssted/aktoer/fase) mangler i observationerne");
     if (!kaldGyldig(p) || !kaldGyldig(n) || !isDense(b, isPlain) || !isDense(e, isPlain)) return protokol("UT-observationer ufuldstændige (positive/negative som gyldige kald-udfald · state_before/state_after som rækkesæt)");
+    const via = own(obs, "via"); if (via !== "sql" && via !== "api") return protokol("via (sql|api) ikke observeret");
+    if (via === "api" && (!httpKonsistent(p) || !httpKonsistent(n))) return protokol("API-kald uden konsistent http_status (ok ⇒ 2xx · afvist ⇒ 4xx/5xx) — ikke et udfald");
+    if (via === "sql" && (hasOwn(p, "http_status") || hasOwn(n, "http_status"))) return protokol("SQL-case m. http_status — blandet transport afvises");
     if (klasse(p) === "uvedkommende") return protokol(`positivt kald fejlede uvedkommende (${p.code})`);
     if (klasse(n) === "uvedkommende") return protokol(`negativt kald fejlede uvedkommende (${n.code}) — ikke en afvisning, ikke et bevis`);
+    const ge = grundEffektiv(k.grund, own(obs, "subst")); if (ge.fejl) return protokol(`substitution: ${ge.fejl}`);   // H2
     push("positiv-soesterkald", p.ok === true, p.ok ? "lovligt kald lykkedes" : `lovligt kald afvist (${p.code}) — aktøren har ikke bevist adgang`);
     const det = isPlain(n.detail) ? n.detail : {};
-    const grundOk = det.message === k.grund; const stedOk = k.afvisningssted === "-" ? true : det.routine === k.afvisningssted;
-    push("negativ-afvist-bundet", n.ok === false && n.code === k.sqlstate && grundOk && stedOk, n.ok ? "FORBUDT HANDLING TILLADT" : `afvist m. ${n.code}/${String(det.message)}@${String(det.routine)} (kontrakt ${k.sqlstate}/${k.grund}@${k.afvisningssted})`);
+    const grundOk = det.message === ge.grund; const stedOk = k.afvisningssted === "-" || via === "api" ? true : det.routine === k.afvisningssted;   // H1: routine er ikke observerbar via API
+    push("negativ-afvist-bundet", n.ok === false && n.code === k.sqlstate && grundOk && stedOk, n.ok ? "FORBUDT HANDLING TILLADT" : `afvist m. ${n.code}/${String(det.message)}@${String(det.routine)} (kontrakt ${k.sqlstate}/${ge.grund}@${via === "api" ? "(via API: sted ikke observerbart)" : k.afvisningssted})`);
     push("aktoer-bundet", own(obs, "aktoer") === k.aktoer, `forsøget kørte som ${String(own(obs, "aktoer"))} (kontrakt ${k.aktoer})`);
     push("fase-bundet", own(obs, "fase") === k.fase, `forsøget skete i fasen '${String(own(obs, "fase"))}' (kontrakt ${k.fase})`);   // F-14
     const bc = safeCanon(b), ec = safeCanon(e); if (bc === null || ec === null) return protokol("tilstands-observation indeholder ugyldige værdier");
@@ -191,7 +229,8 @@ export function judgeObservations(form, obs) {
   }
   if (form === "FS") {
     const o = own(obs, "observe"), exp = own(obs, "expect");
-    if (hasOwn(obs, "action")) { const a = own(obs, "action"); if (!kaldGyldig(a)) return protokol("action-observation ugyldig/ufuldstændig (F-20)"); if (klasse(a) === "uvedkommende") return protokol(`handling fejlede uvedkommende (${a.code})`); push("handling-lykkedes", a.ok === true, a.ok ? "ok" : `afvist ${a.code}`); }
+    const viaF = own(obs, "via"); if (viaF !== "sql" && viaF !== "api") return protokol("via (sql|api) ikke observeret");
+    if (hasOwn(obs, "action")) { const a = own(obs, "action"); if (!kaldGyldig(a)) return protokol("action-observation ugyldig/ufuldstændig (F-20)"); if (viaF === "api" && !httpKonsistent(a)) return protokol("API-handling uden konsistent http_status"); if (viaF === "sql" && hasOwn(a, "http_status")) return protokol("SQL-case m. http_status — blandet transport"); if (klasse(a) === "uvedkommende") return protokol(`handling fejlede uvedkommende (${a.code})`); push("handling-lykkedes", a.ok === true, a.ok ? "ok" : `afvist ${a.code}`); }
     if (!obsKaldGyldig(o)) return protokol("observations-kaldet er ugyldigt/selvmodsigende (ok/code inkonsistente) — ingen observation (F-34)");
     if (o.ok !== true) return protokol("observations-kaldet lykkedes ikke (afvist/manglende) — ingen observation");
     const m = matchExpect(own(o, "rows"), exp); if (m.ok === null) return protokol(`observation: ${m.detail}`);
@@ -203,6 +242,8 @@ export function judgeObservations(form, obs) {
   if (form === "MH") {
     const a = own(obs, "action"), w = own(obs, "witnesses");
     if (!kaldGyldig(a) || !isDense(w, isPlain) || w.length === 0) return protokol("MH-observationer ufuldstændige (action som gyldigt kald-udfald + ≥1 vidne)");
+    const viaM = own(obs, "via"); if (viaM !== "sql" && viaM !== "api") return protokol("via (sql|api) ikke observeret");
+    if (viaM === "api" && !httpKonsistent(a)) return protokol("API-handling uden konsistent http_status"); if (viaM === "sql" && hasOwn(a, "http_status")) return protokol("SQL-case m. http_status — blandet transport");
     if (klasse(a) === "uvedkommende") return protokol(`handling fejlede uvedkommende (${a.code}) — ikke »handling udebliver«`);
     push("handling-mulig-for-legitim-aktoer", a.ok === true, a.ok ? "lovlig handling gennemført" : `HANDLING UDEBLEV (afvist ${a.code})`);
     for (const x of w) { if (!isStr(own(x, "id")) || !obsKaldGyldig(x)) return protokol(`vidne ${String(own(x, "id"))}: observations-kaldet ugyldigt/selvmodsigende (F-34)`); if (own(x, "ok") !== true) return protokol(`vidne ${String(own(x, "id"))}: observations-kaldet lykkedes ikke`); const m = matchExpect(own(x, "rows"), own(x, "expect")); if (m.ok === null) return protokol(`vidne ${x.id}: ${m.detail}`); push(`vidne:${x.id}`, m.ok, m.detail); }
@@ -224,8 +265,9 @@ export function judgeObservations(form, obs) {
     const wp = own(ov, "witness_pid");
     const overlapOk = own(ov, "observed") === true && pidGyldig(wp) && wp !== pa && wp !== pb && own(ov, "a_pid") === pa && own(ov, "b_pid") === pb;
     push("overlap-observeret", overlapOk, own(ov, "observed") === true ? (overlapOk ? `uafhængigt vidne ${wp} så A=${pa} og B=${pb} i åben transaktion samtidigt` : `overlap-vidne ugyldigt (witness ${String(wp)}, a_pid ${String(own(ov, "a_pid"))}, b_pid ${String(own(ov, "b_pid"))})`) : "intet overlap observeret — sekventiel kørsel er ikke SA");
-    const rej = [a, b].filter((x) => x.ok === false); const bundet = rej.every((x) => x.code === k.sqlstate && (isPlain(x.detail) ? x.detail.message : null) === k.grund && (k.afvisningssted === "-" || (isPlain(x.detail) ? x.detail.routine : null) === k.afvisningssted));
-    push("afvisninger-bundne", bundet, rej.length ? `afvisninger (${rej.map((x) => x.code + "/" + String(isPlain(x.detail) ? x.detail.message : null)).join(", ")}) mod kontrakt ${k.sqlstate}/${k.grund}@${k.afvisningssted}` : "ingen afvisninger");
+    const geS = grundEffektiv(k.grund, own(obs, "subst")); if (geS.fejl) return protokol(`substitution: ${geS.fejl}`);   // H2
+    const rej = [a, b].filter((x) => x.ok === false); const bundet = rej.every((x) => x.code === k.sqlstate && (isPlain(x.detail) ? x.detail.message : null) === geS.grund && (k.afvisningssted === "-" || (isPlain(x.detail) ? x.detail.routine : null) === k.afvisningssted));
+    push("afvisninger-bundne", bundet, rej.length ? `afvisninger (${rej.map((x) => x.code + "/" + String(isPlain(x.detail) ? x.detail.message : null)).join(", ")}) mod kontrakt ${k.sqlstate}/${geS.grund}@${k.afvisningssted}` : "ingen afvisninger");
     push("praecis-en-afvisning", rej.length === 1, `afvisninger=${rej.length}`);
     const afsl = (x) => (x.ok ? own(x, "commit") === "commit" : own(x, "commit") === "rollback");
     push("afslutning-konsistent", afsl(a) && afsl(b), `A ok=${a.ok} ${String(own(a, "commit"))} · B ok=${b.ok} ${String(own(b, "commit"))}`);
@@ -283,6 +325,12 @@ export async function runCase(c, ctx, runner) {
   if (!isStr(own(c, "bid_id"))) return protokol("bid_id kræves (D12: casen hører til et effekt-bid)");
   if (form !== "UT" && hasOwn(c, "negative_id") && own(c, "negative_id") !== null) return protokol("negative_id kun på UT-cases");
   const opts = { role: own(actor, "role"), settings: isPlain(own(actor, "settings")) ? own(actor, "settings") : undefined };
+  const via = own(ep, "kind") === "api" ? "api" : "sql";   // H1: handlingernes transport følger indgangen
+  const handling = (spec, hvad) => {   // udfør en handling ({sql} via SQL som aktør · {http} via API som aktør) — blandede/forkerte former er protokol
+    if (!isPlain(spec)) return { protocolOk: false, error: `${hvad} mangler` };
+    if (via === "api") { if (!isPlain(own(spec, "http")) || hasOwn(spec, "sql")) return { protocolOk: false, error: `${hvad}: API-case kræver {http}, ikke {sql}` }; return safeHttp(runner, own(spec, "http"), actor); }
+    if (!isStr(own(spec, "sql")) || hasOwn(spec, "http")) return { protocolOk: false, error: `${hvad}: SQL-case kræver {sql}, ikke {http}` }; return safeSql(runner, own(spec, "sql"), opts);
+  };
   const obs = {};
   if (hasOwn(c, "setup")) { const s = await safeSql(runner, own(own(c, "setup"), "sql"), {}); if (!s.protocolOk || !s.ok) return protokol(`setup (ejer) fejlede: ${s.error ?? s.code}`); obs.setup = { ok: true }; }
   const finish = () => { const j = judgeObservations(form, obs); return { ...base(), status: j.status, assertions: j.assertions, observations: obs }; };
@@ -306,11 +354,12 @@ export async function runCase(c, ctx, runner) {
       return finish();
     }
     const pos = own(c, "positive"); const negS = own(c, "negative"); const st = own(c, "state");
-    if (!isPlain(pos) || !isPlain(negS) || !isPlain(st)) return protokol("UT kræver positive{sql} (lovligt søsterkald), negative{sql} og state{sql}");
-    obs.kontrakt = { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;
-    const p = await safeSql(runner, own(pos, "sql"), opts); if (!p.protocolOk) return protokol(`positiv: ${p.error}`);
+    if (!isPlain(pos) || !isPlain(negS) || !isPlain(st) || !isStr(own(st, "sql"))) return protokol("UT kræver positive/negative ({sql} eller {http} efter indgangen) og state{sql}");
+    obs.kontrakt = { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null; obs.via = via;
+    if (hasOwn(c, "subst")) obs.subst = own(c, "subst");   // H2: spec-bundet substitution (verifieren binder den)
+    const p = await handling(pos, "positiv"); if (!p.protocolOk) return protokol(`positiv: ${p.error}`);
     const b = await safeSql(runner, own(st, "sql"), opts); if (!b.protocolOk || !b.ok || b.rows === null) return protokol(`state-observation før: ${b.error ?? b.code ?? "ingen rows"}`);
-    const n = await safeSql(runner, own(negS, "sql"), opts); if (!n.protocolOk) return protokol(`negativ: ${n.error}`);
+    const n = await handling(negS, "negativ"); if (!n.protocolOk) return protokol(`negativ: ${n.error}`);
     const e = await safeSql(runner, own(st, "sql"), opts); if (!e.protocolOk || !e.ok || e.rows === null) return protokol(`state-observation efter: ${e.error ?? e.code ?? "ingen rows"}`);
     obs.positive = kald(p); obs.state_before = b.rows; obs.negative = kald(n); obs.state_after = e.rows;
     return finish();
@@ -318,7 +367,8 @@ export async function runCase(c, ctx, runner) {
   if (form === "FS") {
     const act = own(c, "action"); const o1 = own(c, "observe"); const exp = own(c, "expect");
     if (!isPlain(o1) || !isPlain(exp)) return protokol("FS kræver observe{sql} og expect{kind,value}");
-    if (isPlain(act)) { const a = await safeSql(runner, own(act, "sql"), opts); if (!a.protocolOk) return protokol(`action: ${a.error}`); obs.action = kald(a); }
+    obs.via = via;
+    if (isPlain(act)) { const a = await handling(act, "action"); if (!a.protocolOk) return protokol(`action: ${a.error}`); obs.action = kald(a); }
     const o = await safeSql(runner, own(o1, "sql"), opts); if (!o.protocolOk) return protokol(`observe: ${o.error}`);
     obs.observe = { ok: o.ok, code: o.code, rows: o.rows }; obs.expect = exp;
     const cps = hasOwn(c, "checkpoints") ? own(c, "checkpoints") : [];
@@ -329,14 +379,16 @@ export async function runCase(c, ctx, runner) {
   }
   if (form === "MH") {
     const act = own(c, "action"); const wit = own(c, "witnesses");
-    if (!isPlain(act) || !isDense(wit, isPlain) || wit.length === 0) return protokol("MH kræver action{sql} og ≥1 witnesses[{id, observe{sql}, expect}]");
-    const a = await safeSql(runner, own(act, "sql"), opts); if (!a.protocolOk) return protokol(`action: ${a.error}`);
+    if (!isPlain(act) || !isDense(wit, isPlain) || wit.length === 0) return protokol("MH kræver action ({sql} eller {http} efter indgangen) og ≥1 witnesses[{id, observe{sql}, expect}]");
+    obs.via = via;
+    const a = await handling(act, "action"); if (!a.protocolOk) return protokol(`action: ${a.error}`);
     obs.action = kald(a); obs.witnesses = [];
     for (const w of wit) { const id = own(w, "id"); if (!isStr(id)) return protokol("vidne uden id"); const r = await safeSql(runner, own(own(w, "observe"), "sql"), opts); if (!r.protocolOk) return protokol(`vidne ${id}: ${r.error}`); obs.witnesses.push({ id, ok: r.ok, code: r.code, rows: r.rows, expect: own(w, "expect") }); }
     return finish();
   }
   if (form === "SA") {
     const race = own(c, "race"); const rf = isPlain(runner) ? own(runner, "race") : null;
+    if (via === "api") return protokol("SA måles ikke via API (racet kræver to bundne sessions)");
     if (!isPlain(race) || typeof rf !== "function") return protokol("SA kræver case.race{race_id,a,b,barrier,invariant,reject_negative_id} og runner.race");
     const nid = own(race, "reject_negative_id"); const neg = forventning.negatives.get(nid);
     if (!neg || neg.obligation_id !== oid || own(neg.reject_contract, "kanal") !== "sqlstate") return protokol(`race.reject_negative_id '${String(nid)}' er ikke et sqlstate-negativ under ${oid}`);
@@ -349,6 +401,7 @@ export async function runCase(c, ctx, runner) {
     const sess = (x) => ({ pid: own(x, "pid") ?? null, ok: own(x, "ok"), code: own(x, "code") ?? null, detail: isPlain(own(x, "detail")) ? { message: own(own(x, "detail"), "message") ?? null, routine: own(own(x, "detail"), "routine") ?? null } : null, commit: own(x, "commit") ?? null });
     const ov = own(r, "overlap"); const rawBool = (v) => (typeof v === "boolean" ? v : null);   // F-22: en manglende måling normaliseres IKKE til false
     obs.race_id = race.race_id; obs.kontrakt = { kanal: "sqlstate", sqlstate: neg.reject_contract.sqlstate, grund: neg.reject_contract.grund, afvisningssted: neg.reject_contract.afvisningssted, aktoer: neg.reject_contract.aktoer, fase: neg.reject_contract.fase }; obs.aktoer = opts.role; obs.fase = own(c, "fase") ?? null;   // F-24
+    if (hasOwn(c, "subst")) obs.subst = own(c, "subst");   // H2
     obs.a = sess(own(r, "a")); obs.b = sess(own(r, "b")); obs.overlap = isPlain(ov) ? { observed: rawBool(own(ov, "observed")), witness_pid: own(ov, "witness_pid") ?? null, a_pid: own(ov, "a_pid") ?? null, b_pid: own(ov, "b_pid") ?? null } : null;
     obs.invariantRows = own(r, "invariantRows") ?? null; obs.invariant_expect = own(own(race, "invariant"), "expect");
     return finish();

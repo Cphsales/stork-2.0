@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// angrebs-spec.mjs — den MASKINLÆSBARE angrebs-/måle-spec v2.3 (M-41 Trin C1/C2 · Codex C1-r2 F-13/F-16/F-18 · C1-r3 F-24/F-26): HVAD der måles, HVORDAN,
+// angrebs-spec.mjs — den MASKINLÆSBARE angrebs-/måle-spec v2.4 (M-41 Trin C1/C2 · Codex C1-r2 F-13/F-16/F-18 · C1-r3 F-24/F-26 · Fase 4 pkt. 1 HALT H1/H2): HVAD der måles, HVORDAN,
 // med hvilke orakler, kontroller og mutanter — låst FØR byg (plan 2.E attack-spec-state-machine · Fase 4 pkt. 1), path-bundet som
 // build-gate-binding (gates.mjs `angrebsspec`, layout plan-build/<pakke>/angrebs-spec.json). Bevisproducenten leverer kun
 // OBSERVATIONER; verifieren dømmer dem mod DENNE spec + manifestet — orakler, kontroller, mutationslocus og bid-graf kan ikke
@@ -10,7 +10,13 @@
 //     bids:    [{ bid_id, kind: "forudsaetning"|"effekt", depends_on: [bid_id], covers: [obligation_id] }],   // den låste D12-graf
 //     cases:   [ case-spec som build-harness.runCase forbruger (case_id · obligation_id · proof_form · bid_id · hard_effect ·
 //                entrypoint · actor · fase · setup? · UT: positive/negative/state | check · FS: action?/observe/expect/checkpoints[{id,…}]
-//                · MH: action/witnesses[{id,…}] · SA: race{race_id,a,b,barrier,invariant,reject_negative_id}) ],
+//                · MH: action/witnesses[{id,…}] · SA: race{race_id,a,b,barrier,invariant,reject_negative_id}
+//                · API-BEVISFORM (H1): entrypoint.kind === "api" ⇒ HANDLINGERNE (UT positive/negative · FS/MH action) er {http:{method,path,body?,schema?}}
+//                  (PostgREST som aktøren), observationer altid {sql}. Bundet til manifestet: UT-case er api ⇔ kontraktens fase matcher /\(via API\)/i;
+//                  MH-/FS-case er api ⇔ (et af dens navngivne delbevis-id'er matcher /via-api/i) ∨ (forpligtelsen har et negativ m. »(via API)« i fase);
+//                  SA aldrig api. Så API-negativer KAN kun måles via API (sted-tjekket springes over dér), og SQL-negativer kan IKKE snige sig over på API.
+//                · SUBSTITUTION (H2, plan:47 regel B): subst: {"<token>": "<uuid>"} KUN på UT-sqlstate/SA hvis negativets grund bærer {token}; nøglerne
+//                  skal være præcis grundens tokens.) ],
 //     mutants: [{ mutant_id, guard_ref, target_case_id, target_assertion_id, controls: [case_id…] (≥1), apply, restore,
 //                 footprint: { observe: {sql} } }] }   // footprint = ejer-observation af det muterede objekt (attesterer mutation + restore)
 // validateAngrebsSpec(spec, manifest) → {ok, reasons}: form, krydsreferencer og KOMPLETHED mod manifestet (pr. form · negativ ·
@@ -35,7 +41,15 @@ const isDense = (a, pred = () => true) => {
   for (let i = 0; i < len; i++) if (!hasOwn(a, i) || !pred(a[i])) return false;
   return true;
 };
-const sqlObj = (v) => isPlain(v) && isStr(own(v, "sql"));
+const sqlObj = (v) => isPlain(v) && isStr(own(v, "sql")) && !hasOwn(v, "http");
+const HTTP_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"];
+const httpObj = (v) => { if (!isPlain(v) || hasOwn(v, "sql") || !isPlain(own(v, "http"))) return false; const h = own(v, "http"); return HTTP_METHODS.includes(own(h, "method")) && isStr(own(h, "path")) && own(h, "path").startsWith("/") && !/\s/.test(own(h, "path")) && (!hasOwn(h, "body") || isPlain(own(h, "body"))) && (!hasOwn(h, "schema") || (isStr(own(h, "schema")) && /^[a-z_][a-z0-9_]*$/i.test(own(h, "schema")))); };
+const handlingObj = (v, api) => (api ? httpObj(v) : sqlObj(v));   // handlingens form følger indgangen (H1)
+const API_FASE_RE = /\(via API\)/i; const API_ID_RE = /via-api/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const grundTokens = (grund) => [...new Set([...String(grund ?? "").matchAll(/\{([a-z_][a-z0-9_]*)\}/g)].map((m) => m[1]))];
+// substOk(c, grund) → fejltekst|null: subst kun når grund har tokens; nøgler == tokens; værdier uuid (H2)
+const substFejl = (c, grund) => { const tokens = grundTokens(grund); const has = hasOwn(c, "subst"); if (!tokens.length) return has ? "subst angivet men negativets grund har intet {token}" : null; if (!has) return `negativets grund kræver subst for {${tokens.join("}, {")}}`; const sub = own(c, "subst"); if (!isPlain(sub)) return "subst skal være et objekt"; const keys = Object.keys(sub); if (keys.length !== tokens.length || !tokens.every((t) => keys.includes(t))) return `subst-nøgler (${keys.join(",")}) ≠ grundens tokens (${tokens.join(",")})`; for (const k of keys) if (!isStr(own(sub, k)) || !UUID_RE.test(own(sub, k))) return `subst.${k} er ikke en uuid`; return null; };
 const expectOk = (e) => { if (!isPlain(e) || !EXPECT_KINDS.includes(own(e, "kind"))) return false; const k = own(e, "kind"); if (k === "empty" || k === "null") return true; if (!hasOwn(e, "value")) return false; if (k === "count") return Number.isInteger(own(e, "value")) && own(e, "value") >= 0; if (k === "rows") return isDense(own(e, "value"), isPlain); return own(e, "value") !== undefined && !(typeof own(e, "value") === "number" && !Number.isFinite(own(e, "value"))); };
 
 export function validateAngrebsSpec(spec, manifest) {
@@ -92,17 +106,26 @@ export function validateAngrebsSpec(spec, manifest) {
     if (hasOwn(c, "setup") && !sqlObj(own(c, "setup"))) { fail(`${cid}: setup skal være {sql}`); okc = false; }
     const nid = own(c, "negative_id");
     if (form !== "UT" && nid !== undefined && nid !== null) { fail(`${cid}: negative_id kun på UT`); okc = false; }
+    if (form !== "UT" && form !== "SA" && hasOwn(c, "subst")) { fail(`${cid}: subst kun på UT/SA`); okc = false; }
+    const apiCase = isPlain(ep) && own(ep, "kind") === "api";
+    const obApiNeg = ob ? ob.negatives.some((n) => API_FASE_RE.test(String(F.negatives.get(n)?.reject_contract?.fase))) : false;   // forpligtelsen har et API-negativ
     if (form === "UT" && ob) {
       const neg = F.negatives.get(nid);
       if (!neg || neg.obligation_id !== oid) { fail(`${cid}: negative_id '${String(nid)}' er ikke et negativ under ${oid}`); okc = false; }
       else {
         const rc = neg.reject_contract;
         if (rc.kanal === "sqlstate") {
-          for (const k of ["positive", "negative", "state"]) if (!sqlObj(own(c, k))) { fail(`${cid}: UT (sqlstate) kræver ${k}{sql}`); okc = false; }
+          const apiFase = API_FASE_RE.test(String(rc.fase)); const apiCase = isPlain(ep) && own(ep, "kind") === "api";
+          if (apiFase !== apiCase) { fail(apiFase ? `${cid}: negativet '${nid}' er et API-negativ (fase »${rc.fase}«) og SKAL måles via API (entrypoint.kind api) — SQL beviser ikke API-eksponering (H1)` : `${cid}: entrypoint.kind api på et negativ hvis fase ikke er »(via API)« — SQL-negativer måles via SQL (afvisningsstedet er kun observerbart dér)`); okc = false; }
+          for (const k of ["positive", "negative"]) if (!handlingObj(own(c, k), apiCase)) { fail(`${cid}: UT (sqlstate${apiCase ? ", api" : ""}) kræver ${k}${apiCase ? "{http:{method,path,body?,schema?}}" : "{sql}"}`); okc = false; }
+          if (!sqlObj(own(c, "state"))) { fail(`${cid}: UT (sqlstate) kræver state{sql} (observation er altid SQL)`); okc = false; }
+          const sf = substFejl(c, rc.grund); if (sf) { fail(`${cid}: ${sf} (H2)`); okc = false; }
           if (hasOwn(c, "check")) { fail(`${cid}: check hører til exit-kanalen — blandet variant afvises`); okc = false; }
           if (own(c, "fase") !== rc.fase) { fail(`${cid}: fase '${String(own(c, "fase"))}' ≠ kontraktens '${rc.fase}'`); okc = false; }
           if (isPlain(actor) && own(actor, "role") !== rc.aktoer) { fail(`${cid}: actor.role '${String(own(actor, "role"))}' ≠ kontraktens aktør '${rc.aktoer}'`); okc = false; }
         } else {
+          if (hasOwn(c, "subst")) { fail(`${cid}: subst kun på sqlstate-negativer`); okc = false; }
+          if (isPlain(ep) && own(ep, "kind") === "api") { fail(`${cid}: exit-kanalen måles via check.cmd, ikke entrypoint.kind api`); okc = false; }
           if (!isPlain(own(c, "check")) || !isDense(own(own(c, "check"), "cmd"), isStr) || own(own(c, "check"), "cmd").length === 0) { fail(`${cid}: UT (exit) kræver check.cmd[]`); okc = false; }
           for (const k of ["positive", "negative", "state"]) if (hasOwn(c, k)) { fail(`${cid}: ${k} hører til sqlstate-kanalen — blandet variant afvises`); okc = false; }
           if (own(c, "fase") !== rc.fase) { fail(`${cid}: fase '${String(own(c, "fase"))}' ≠ kontraktens '${rc.fase}' (exit-kanal, F-24)`); okc = false; }
@@ -111,11 +134,13 @@ export function validateAngrebsSpec(spec, manifest) {
         if (okc) negCov.add(nid);
       }
     }
-    if (form === "FS") { if (!sqlObj(own(c, "observe")) || !expectOk(own(c, "expect"))) { fail(`${cid}: FS kræver observe{sql} + gyldig expect`); okc = false; } if (hasOwn(c, "action") && !sqlObj(own(c, "action"))) { fail(`${cid}: action skal være {sql}`); okc = false; }
-      const cps = hasOwn(c, "checkpoints") ? own(c, "checkpoints") : []; if (!isDense(cps, isPlain)) { fail(`${cid}: checkpoints skal være tæt array`); okc = false; } else { const seen = new Set(); for (const cp of cps) { const id = own(cp, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(cp, "observe")) || !expectOk(own(cp, "expect"))) { fail(`${cid}: checkpoint ugyldigt/dublet`); okc = false; } else { seen.add(id); if (okc && ob) assertCov.add(`${oid}|FS|${id}`); } } } }
-    if (form === "MH") { const w = own(c, "witnesses"); if (!sqlObj(own(c, "action")) || !isDense(w, isPlain) || w.length === 0) { fail(`${cid}: MH kræver action{sql} + ≥1 witnesses`); okc = false; } else { const seen = new Set(); for (const x of w) { const id = own(x, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(x, "observe")) || !expectOk(own(x, "expect"))) { fail(`${cid}: vidne ugyldigt/dublet`); okc = false; } else { seen.add(id); if (okc && ob) assertCov.add(`${oid}|MH|${id}`); } } } }
-    if (form === "SA") { const r = own(c, "race"); if (!isPlain(r) || !isStr(own(r, "race_id")) || !ID_RE.test(own(r, "race_id")) || !sqlObj(own(r, "a")) || !sqlObj(own(r, "b")) || !isStr(own(r, "barrier")) || !isPlain(own(r, "invariant")) || !sqlObj(own(own(r, "invariant"), "observe")) || !expectOk(own(own(r, "invariant"), "expect"))) { fail(`${cid}: race ufuldstændig`); okc = false; }
-      else { const rn = F.negatives.get(own(r, "reject_negative_id")); if (!rn || rn.obligation_id !== oid || rn.reject_contract.kanal !== "sqlstate") { fail(`${cid}: race.reject_negative_id er ikke et sqlstate-negativ under ${oid}`); okc = false; } else { if (isPlain(actor) && own(actor, "role") !== rn.reject_contract.aktoer) { fail(`${cid}: SA actor.role ≠ kontraktens aktør`); okc = false; } if (own(c, "fase") !== rn.reject_contract.fase) { fail(`${cid}: SA fase '${String(own(c, "fase"))}' ≠ kontraktens '${rn.reject_contract.fase}' (F-24)`); okc = false; } } if (hasOwn(r, "setup") && !sqlObj(own(r, "setup"))) { fail(`${cid}: race.setup skal være {sql}`); okc = false; } if (okc && ob) assertCov.add(`${oid}|SA|${own(r, "race_id")}`); } }
+    if (form === "FS") { if (!sqlObj(own(c, "observe")) || !expectOk(own(c, "expect"))) { fail(`${cid}: FS kræver observe{sql} + gyldig expect`); okc = false; } if (hasOwn(c, "action") && !handlingObj(own(c, "action"), apiCase)) { fail(`${cid}: action skal være ${apiCase ? "{http}" : "{sql}"} (følger indgangen)`); okc = false; }
+      const cps = hasOwn(c, "checkpoints") ? own(c, "checkpoints") : []; const cpIds = []; if (!isDense(cps, isPlain)) { fail(`${cid}: checkpoints skal være tæt array`); okc = false; } else { const seen = new Set(); for (const cp of cps) { const id = own(cp, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(cp, "observe")) || !expectOk(own(cp, "expect"))) { fail(`${cid}: checkpoint ugyldigt/dublet`); okc = false; } else { seen.add(id); cpIds.push(id); if (okc && ob) assertCov.add(`${oid}|FS|${id}`); } } }
+      const kraeverApi = obApiNeg || cpIds.some((id) => API_ID_RE.test(id)); if (kraeverApi !== apiCase) { fail(kraeverApi ? `${cid}: FS-casen SKAL måles via API (entrypoint.kind api) — forpligtelsen/delbeviset er bundet til API i manifestet (H1)` : `${cid}: entrypoint.kind api uden API-binding i manifestet — mål via SQL`); okc = false; } }
+    if (form === "MH") { const w = own(c, "witnesses"); const wIds = []; if (!handlingObj(own(c, "action"), apiCase) || !isDense(w, isPlain) || w.length === 0) { fail(`${cid}: MH kræver action${apiCase ? "{http}" : "{sql}"} + ≥1 witnesses`); okc = false; } else { const seen = new Set(); for (const x of w) { const id = own(x, "id"); if (!isStr(id) || !ID_RE.test(id) || seen.has(id) || !sqlObj(own(x, "observe")) || !expectOk(own(x, "expect"))) { fail(`${cid}: vidne ugyldigt/dublet`); okc = false; } else { seen.add(id); wIds.push(id); if (okc && ob) assertCov.add(`${oid}|MH|${id}`); } } }
+      const kraeverApi = obApiNeg || wIds.some((id) => API_ID_RE.test(id)); if (kraeverApi !== apiCase) { fail(kraeverApi ? `${cid}: MH-casen SKAL måles via API (entrypoint.kind api) — forpligtelsen/delbeviset er bundet til API i manifestet (H1)` : `${cid}: entrypoint.kind api uden API-binding i manifestet — mål via SQL`); okc = false; } }
+    if (form === "SA") { if (apiCase) { fail(`${cid}: SA måles aldrig via API`); okc = false; } const r = own(c, "race"); if (!isPlain(r) || !isStr(own(r, "race_id")) || !ID_RE.test(own(r, "race_id")) || !sqlObj(own(r, "a")) || !sqlObj(own(r, "b")) || !isStr(own(r, "barrier")) || !isPlain(own(r, "invariant")) || !sqlObj(own(own(r, "invariant"), "observe")) || !expectOk(own(own(r, "invariant"), "expect"))) { fail(`${cid}: race ufuldstændig`); okc = false; }
+      else { const rn = F.negatives.get(own(r, "reject_negative_id")); if (!rn || rn.obligation_id !== oid || rn.reject_contract.kanal !== "sqlstate") { fail(`${cid}: race.reject_negative_id er ikke et sqlstate-negativ under ${oid}`); okc = false; } else { if (isPlain(actor) && own(actor, "role") !== rn.reject_contract.aktoer) { fail(`${cid}: SA actor.role ≠ kontraktens aktør`); okc = false; } if (own(c, "fase") !== rn.reject_contract.fase) { fail(`${cid}: SA fase '${String(own(c, "fase"))}' ≠ kontraktens '${rn.reject_contract.fase}' (F-24)`); okc = false; } const sf = substFejl(c, rn.reject_contract.grund); if (sf) { fail(`${cid}: ${sf} (H2)`); okc = false; } } if (hasOwn(r, "setup") && !sqlObj(own(r, "setup"))) { fail(`${cid}: race.setup skal være {sql}`); okc = false; } if (okc && ob) assertCov.add(`${oid}|SA|${own(r, "race_id")}`); } }
     caseById.set(cid, { obligation_id: oid, form, k_id: ob?.k_id ?? null, ok: okc, negative_id: form === "UT" ? nid : null, bid_id: bid });
     if (okc) { if (!cov.has(oid)) cov.set(oid, new Set()); cov.get(oid).add(form); if (!casesByBid.has(bid)) casesByBid.set(bid, new Set()); casesByBid.get(bid).add(oid); }
   }

@@ -15,9 +15,11 @@
   "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "build-proof.mjs": {
-  "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
-  "blob_oid": "756627cb11cb4af4b2d23a994ee7041d8dd8c1e9",
-  "note": "Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — ci-produceret artefakt uden git-sti-binding (kernen binder artifact_oid); v2.5-verifieren ellers uændret. Mutanter dræbt (ci-produced overalt · som binding · fortsæt efter migration · ignorer forgænger · git-sti-binding sprunget over · delegation fjernet). snapshot.artifact type ci-produced springer git-sti-binding over (kernen binder proof.artifact_oid === artefakt-oid); ellers uændret v2.5. · Forrige pas: M-41 Trin C1 (sandheds-motoren): build-proof-verifier v2.5 (manifest + angrebs-spec som gate-bindinger · genudledning · locus-bundne claims · vejnings-skæring: prover-bijektion fjernet, claim_graph valgfri) — Codex-P2 C1-runde 1-6 (2026-09-10..15); PASS i runde 6 (run_id 20260915T133506-2226167-20356, regel_commit a7a9fcf) på netop denne blob. "
+  "status": "kandidat",
+  "blob_oid": "4f4747272926922c303ce580a3d4b241f7ba0842",
+  "pas_afventer": "Codex-pas bundles i én fabrik-runde når bid 1 viser behov (vejnings-regel 2026-09-16) — H1/H2 er Fase 4 pkt. 1-mekanik fra Codex' egen HALT",
+  "kandidat_siden": "2026-09-21",
+  "note": "Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v2.6: via + subst er spec-afledte i projektionen. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: Codex C4b-runde (2026-09-16, run_id 20260916T122454-2795331-10735, regel_commit 3fcab4a): PASS — ci-produceret artefakt uden git-sti-binding (kernen binder artifact_oid); v2.5-verifieren ellers uændret. Mutanter dræbt (ci-produced overalt · som binding · forts"
  },
  "gate-eval.mjs": {
   "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
@@ -77,9 +79,11 @@
   "note": "M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); manifest-kontrakt v2 + guards[].locus (F-31) PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r5."
  },
  "angrebs-spec.mjs": {
-  "pas_ref": "219eba54ebd98bff9d7c299482a1572e342bbccc",
-  "blob_oid": "e768060dc551e347fcc82362e1fc716251e9022e",
-  "note": "M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); måle-spec-validator (komplethed · D10 · fase/aktør i alle varianter · ét id-rum) — byte-identisk PASS i runde 4 og 5 PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r5."
+  "status": "kandidat",
+  "blob_oid": "5e9e60e02c31f3addde6c48f56d8ff56098faf00",
+  "pas_afventer": "Codex-pas bundles i én fabrik-runde når bid 1 viser behov (vejnings-regel 2026-09-16) — H1/H2 er Fase 4 pkt. 1-mekanik fra Codex' egen HALT",
+  "kandidat_siden": "2026-09-21",
+  "note": "Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v2.4: api ⇔ manifestet siger API (UT: fase »(via API)«; MH/FS: delbevis-id via-api ∨ forpligtelse m. API-negativ; SA aldrig) · http-shapes · subst-regler. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); måle-spec-validator (komplethed · D10 · fase/aktør i alle varianter · ét id-rum) — byte-identisk PASS i runde 4 og 5 PASS i run"
  },
  "prover.mjs": {
   "pas_ref": "219eba54ebd98bff9d7c299482a1572e342bbccc",
@@ -87,9 +91,11 @@
   "note": "M-41 Trin C1 (sandheds-motoren): Codex-P2 C1-runde 1-5 (2026-09-10..15, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); uændret blob c121b9fc; ny gate-afhængighed via judgeTestSummary i build-proof — PASS i runde 3, 4 og 5 PASS i runde 5 (run_id 20260915T130432-2142146-20533, regel_commit 219eba5). Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r5."
  },
  "build-harness.mjs": {
-  "pas_ref": "2fdfd7d2b54faae13a2f6180acf3cb697d4d229d",
-  "blob_oid": "500dfbfd819fb8762d194a01f7734ed835160e2f",
-  "note": "M-41 Trin C1 (sandheds-motoren): case-engine v2.6 (fire bevisformer · rå observationer + ren dom · footprint-attesteret mutation · SA m. uafhængigt overlap-vidne · exit-protokol · rå kald-udfald valideret i helhed) — Codex-P2 C1-runde 1-7 (2026-09-10..15); PASS i runde 7 (run_id 20260915T135701-2286740-30181, regel_commit 2fdfd7d) på netop denne blob, 166 selvtests + 97 målrettede dataprøver + 5 dræbte kodemutanter. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r1..r7."
+  "status": "kandidat",
+  "blob_oid": "17519857dde8ed684322e4b7f97ec749b6332bee",
+  "pas_afventer": "Codex-pas bundles i én fabrik-runde når bid 1 viser behov (vejnings-regel 2026-09-16) — H1/H2 er Fase 4 pkt. 1-mekanik fra Codex' egen HALT",
+  "kandidat_siden": "2026-09-21",
+  "note": "Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v2.7: API-bevisform (via=api: handlinger via runner.http, sted-tjek springes over, http_status-konsistens) + substitution (grundEffektiv, subst spec-bundet). Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: M-41 Trin C1 (sandheds-motoren): case-engine v2.6 (fire bevisformer · rå observationer + ren dom · footprint-attesteret mutation · SA m. uafhængigt overlap-vidne · exit-protokol · rå kald-udfald valideret i helhed) — Codex-P2 C1-runde 1-7 (2026-09-10..15); PAS"
  },
  "ci-gate-dom.mjs": {
   "pas_ref": "3fcab4aa3fbfed93bbe03b24a6ee9305435fc91e",
@@ -102,13 +108,17 @@
   "note": "C4 check-run-payload-mapper (fail-closed: kun eksplicit eget-data open===true m. tomme reasons → success; gate_id-mismatch/malformet → failure; ukendt gate → v5/gate/invalid). Codex P-1 transport-red-team (2026-09-15, run_id 20260915T142022-2377447-1654, regel_commit cdddf64): PASS — 20 mappercases + 7 dræbte transportmutanter. Leverance: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c4-p1/."
  },
  "ci-build-dom.mjs": {
-  "pas_ref": "445999332cdc66f8c99cb5860cd36ee857eaaba3",
-  "blob_oid": "4deb70bb5bd3be8c85ff8d18d303f53334959c02",
-  "note": "C4b build-dommer: producerBevis (måling i renset miljø, ingen dom/emission) + doemBevis (dom fra RÅ bytes: fatal UTF-8, oid over rå bytes, commit/pakke-binding, forgænger frisk, evaluateGate) + CLI --produce/--judge m. egne forbud. Codex C4b-runde 1-3 (2026-09-16): r1 F-C4b-1 (isolation) · r2 F-C4b-3 (tabsfuld afkodning) · r3 PASS som hærdet transport (run_id 20260916T130619-2902298-29361, regel_commit 4459993). Selvtest 38. Autoritet afventer C4c + admin (R-CI-AUTENTICITET · C3 · C4c). Leverancer: p2-c4b/ · p2-c4b-r2/ · p2-c4b-r3/."
+  "status": "kandidat",
+  "blob_oid": "d1ff2cc4047ff96697f88683d0b28f909393c6e3",
+  "pas_afventer": "Codex-pas bundles i én fabrik-runde når bid 1 viser behov (vejnings-regel 2026-09-16) — H1/H2 er Fase 4 pkt. 1-mekanik fra Codex' egen HALT",
+  "kandidat_siden": "2026-09-21",
+  "note": "Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): http-transport fra V5_PGRST_URL/V5_PGRST_JWT_SECRET/V5_PGRST_SCHEMA + NOTIFY pgrst reload efter migrationer. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: C4b build-dommer: producerBevis (måling i renset miljø, ingen dom/emission) + doemBevis (dom fra RÅ bytes: fatal UTF-8, oid over rå bytes, commit/pakke-binding, forgænger frisk, evaluateGate) + CLI --produce/--judge m. egne forbud. Codex C4b-runde 1-3 (2026-09"
  },
  "pg-runner.mjs": {
-  "pas_ref": "2de7499300558fba421279778c6123fe7cfaf8fe",
-  "blob_oid": "c43c57bcfdb193e0d8044a06f64d96ea4ebc0547",
-  "note": "Rigtig Postgres-runner v2 (struktureret diagnostik via psql-variable · flertydighed = protokol · F-40 · uafhængigt overlap-vidne · exit m. stdout som streng · env-isolation (producentMiljoe, credential i env afvises) · aktørens settings anvendt+verificeret i begge race-sessions). Codex C4b-runde 2 (2026-09-16, run_id 20260916T125157-2874685-17901, regel_commit 2de7499): PASS som hærdet transport. Integration 79 grønne mod rigtig Postgres (v2.9)."
+  "status": "kandidat",
+  "blob_oid": "42531d3a62e89d5e648cc551683d67136f5e5ffa",
+  "pas_afventer": "Codex-pas bundles i én fabrik-runde når bid 1 viser behov (vejnings-regel 2026-09-16) — H1/H2 er Fase 4 pkt. 1-mekanik fra Codex' egen HALT",
+  "kandidat_siden": "2026-09-21",
+  "note": "Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): v3: http-transport (HS256-JWT fra actor.role+settings, PostgREST body.code/message, 503-retry). Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: Rigtig Postgres-runner v2 (struktureret diagnostik via psql-variable · flertydighed = protokol · F-40 · uafhængigt overlap-vidne · exit m. stdout som streng · env-isolation (producentMiljoe, credential i env afvises) · aktørens settings anvendt+verificeret i b"
  }
 }

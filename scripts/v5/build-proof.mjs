@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build-proof.mjs — v5's build-gate proof-verifier, v2.5 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31 · vejnings-skæring 2026-09-15).
+// build-proof.mjs — v5's build-gate proof-verifier, v2.6 (plan 2.C · M-41 Trin C1/C2 · B2 · Codex C1-r1 F-1..10 · C1-r2 F-11..19 · C1-r3 F-20..27 · C1-r4 F-31 · vejnings-skæring 2026-09-15 · Fase 4 pkt. 1 H1/H2: via + subst er spec-afledte).
 //
 // Plugges ind i makeProofVerifier (proofs.mjs) → evaluateGate. CI RE-KØRER denne mod rå input hvert run. Verifieren GENUDLEDER alt:
 //   - FORVENTNINGEN = manifestet (gate-binding `manifest`, kæde-bundet til plan-gaten) · MÅLINGEN = angrebs-/måle-spec'en
@@ -56,24 +56,26 @@ export { HARD_EFFECTS, PUBLIC_ENTRYPOINT_KINDS };
 // observationerne, matcher projektionen ikke; er de til stede dømmer judgeObservations at de lykkedes.
 function specObs(c, F) {
   const hasSetup = hasOwn(c, "setup") || (c.proof_form === "SA" && hasOwn(c.race, "setup"));
+  const via = c.entrypoint.kind === "api" ? "api" : "sql";                       // H1: transporten er spec'ens
+  const subst = hasOwn(c, "subst") ? c.subst : null;                             // H2: substitutionen er spec'ens
   if (c.proof_form === "UT") {
     const rc = F.negatives.get(c.negative_id).reject_contract;
     if (rc.kanal === "exit") return { has_setup: hasSetup, kontrakt: { kanal: "exit", exit_code: rc.exit_code, klasse: rc.klasse, fase: rc.fase, aktoer: rc.aktoer }, aktoer: c.actor.role, fase: c.fase };   // F-24
-    return { has_setup: hasSetup, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase };
+    return { has_setup: hasSetup, via, subst, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase };
   }
-  if (c.proof_form === "FS") return { has_setup: hasSetup, has_action: hasOwn(c, "action"), expect: c.expect, checkpoints: (c.checkpoints ?? []).map((cp) => ({ id: cp.id, expect: cp.expect })) };
-  if (c.proof_form === "MH") return { has_setup: hasSetup, witnesses: c.witnesses.map((w) => ({ id: w.id, expect: w.expect })) };
-  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; return { has_setup: hasSetup, race_id: c.race.race_id, invariant_expect: c.race.invariant.expect, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase }; }   // F-24
+  if (c.proof_form === "FS") return { has_setup: hasSetup, via, has_action: hasOwn(c, "action"), expect: c.expect, checkpoints: (c.checkpoints ?? []).map((cp) => ({ id: cp.id, expect: cp.expect })) };
+  if (c.proof_form === "MH") return { has_setup: hasSetup, via, witnesses: c.witnesses.map((w) => ({ id: w.id, expect: w.expect })) };
+  if (c.proof_form === "SA") { const rc = F.negatives.get(c.race.reject_negative_id).reject_contract; return { has_setup: hasSetup, subst, race_id: c.race.race_id, invariant_expect: c.race.invariant.expect, kontrakt: { kanal: "sqlstate", sqlstate: rc.sqlstate, grund: rc.grund, afvisningssted: rc.afvisningssted, aktoer: rc.aktoer, fase: rc.fase }, aktoer: c.actor.role, fase: c.fase }; }   // F-24
   return {};
 }
 // projektion af observationerne på de spec-afledte felter (samme form som specObs)
 function obsProj(form, obs) {
   if (!isPlain(obs)) return null;
-  const hasSetup = hasOwn(obs, "setup");
-  if (form === "UT") { const k = own(obs, "kontrakt"); return { has_setup: hasSetup, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") }; }
-  if (form === "FS") return { has_setup: hasSetup, has_action: hasOwn(obs, "action"), expect: own(obs, "expect"), checkpoints: (isDense(own(obs, "checkpoints"), isPlain) ? own(obs, "checkpoints") : []).map((cp) => ({ id: own(cp, "id"), expect: own(cp, "expect") })) };
-  if (form === "MH") return { has_setup: hasSetup, witnesses: (isDense(own(obs, "witnesses"), isPlain) ? own(obs, "witnesses") : []).map((w) => ({ id: own(w, "id"), expect: own(w, "expect") })) };
-  if (form === "SA") return { has_setup: hasSetup, race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer"), fase: own(obs, "fase") };
+  const hasSetup = hasOwn(obs, "setup"); const via = own(obs, "via"); const subst = hasOwn(obs, "subst") ? own(obs, "subst") : null;
+  if (form === "UT") { const k = own(obs, "kontrakt"); return own(k, "kanal") === "exit" ? { has_setup: hasSetup, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") } : { has_setup: hasSetup, via, subst, kontrakt: k, aktoer: own(obs, "aktoer"), fase: own(obs, "fase") }; }
+  if (form === "FS") return { has_setup: hasSetup, via, has_action: hasOwn(obs, "action"), expect: own(obs, "expect"), checkpoints: (isDense(own(obs, "checkpoints"), isPlain) ? own(obs, "checkpoints") : []).map((cp) => ({ id: own(cp, "id"), expect: own(cp, "expect") })) };
+  if (form === "MH") return { has_setup: hasSetup, via, witnesses: (isDense(own(obs, "witnesses"), isPlain) ? own(obs, "witnesses") : []).map((w) => ({ id: own(w, "id"), expect: own(w, "expect") })) };
+  if (form === "SA") return { has_setup: hasSetup, subst, race_id: own(obs, "race_id"), invariant_expect: own(obs, "invariant_expect"), kontrakt: own(obs, "kontrakt"), aktoer: own(obs, "aktoer"), fase: own(obs, "fase") };
   return null;
 }
 export function verifyBuildProof(proof, snapshot, { git } = {}) {

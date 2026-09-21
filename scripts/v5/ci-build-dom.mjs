@@ -31,7 +31,9 @@
 //      {verifyProof: makeProofVerifier({git})}) → checkRunFromGateResult → emission v5/gate/build (emitCheckRuns fra ci-gate-dom).
 //   Residualer (navngivet): R-RUNNER-UDFØRELSE/R-CI-AUTENTICITET (CI's service-container ER den betroede store; jobbets integritet =
 //   måle-lag under ruleset) · R-RUNNER-ATOMARITET · R-SPEC-LEGITIMITET (at angrebs-spec.json er Codex' og frosset før byg: hooks/C4c) ·
-//   API-indgange (entrypoint.kind api/ui-flow) måles her via exit-kanalen (check.cmd) — en HTTP-adapter er ikke bygget.
+//   API-BEVISFORM (H1, 2026-09-21): entrypoint.kind api måles via PostgREST i måle-jobbet (service `postgrest` mod den friske store);
+//   runneren får http-transporten fra V5_PGRST_URL + V5_PGRST_JWT_SECRET (den EFEMERE stores test-secret — ikke en credential) og
+//   efter migrationerne sendes `NOTIFY pgrst, 'reload schema'` så PostgREST ser pakkens schema. ui-flow måles fortsat via exit-kanalen.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -111,6 +113,7 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
       if (!r || r.ok !== true) return fejl([`migration ${m} fejlede: ${r?.code ?? ""} ${r?.error ?? r?.detail?.message ?? ""}`.trim()], store);
       store.anvendt++;
     }
+    if (runner.http) { try { await runner.sql("notify pgrst, 'reload schema'; notify pgrst, 'reload config';", {}); } catch {} }   // H1: PostgREST skal se pakkens schema efter migrationerne
   }
 
   // 4) måling
@@ -201,7 +204,8 @@ if (erMain()) {
     if (emit && produce) throw new Error("--emit er forbudt i --produce (produktkode og emissions-token må aldrig dele job/proces — F-C4b-1)");
     if (process.env.GITHUB_TOKEN && produce) throw new Error("GITHUB_TOKEN er sat i måle-jobbet — produktkode må ikke kunne nå det (F-C4b-1); fjern tokenet fra jobbet");
     const argv = pg === "env" ? ["psql"] : JSON.parse(pg);
-    const runner = makePgRunner({ argv });
+    const http = process.env.V5_PGRST_URL ? { baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET ?? "", defaultSchema: process.env.V5_PGRST_SCHEMA || null } : null;   // H1
+    const runner = makePgRunner({ argv, http });
     if (produce) {   // JOB A: måling m. renset miljø
       const p = await producerBevis({ commitSha, runner, skipMigrations: skip });
       const meta = { naaet: p.naaet, fil: p.fil ?? null, fejl: p.fejl ?? null, store: p.store ?? null, run_id: p.runId ?? null, commit_sha: commitSha };

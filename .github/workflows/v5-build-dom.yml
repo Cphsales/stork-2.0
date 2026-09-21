@@ -35,12 +35,28 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 30
+      # H1 API-bevisform: PostgREST mod den friske store — cases m. entrypoint.kind api måles HER som aktøren (JWT). Secret'en er den
+      # EFEMERE måle-stores test-secret (ikke en credential); authenticator-rollen får POSTGRES_PASSWORD af ci-build-dom før målingen.
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://authenticator:v5-ci@postgres:5432/postgres
+          PGRST_DB_SCHEMAS: core_identity,core_compliance,public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: v5-ci-jwt-secret-for-the-ephemeral-measurement-store-only
+          PGRST_DB_POOL: "5"
+          PGRST_DB_CHANNEL_ENABLED: "true"
+        ports:
+          - 3000:3000
     env:
       PGHOST: localhost
       PGPORT: "5432"
       PGUSER: postgres
       PGPASSWORD: v5-ci
       PGDATABASE: postgres
+      V5_PGRST_URL: http://localhost:3000
+      V5_PGRST_JWT_SECRET: v5-ci-jwt-secret-for-the-ephemeral-measurement-store-only
+      V5_PGRST_SCHEMA: core_identity
     steps:
       - uses: actions/checkout@v6
         with:
@@ -57,6 +73,9 @@ jobs:
           git config --global user.email "v5-ci@users.noreply.github.com"
       - name: dømmer-selvtest (fail-closed før måling)
         run: node scripts/v5/ci-build-dom.selftest.mjs
+      - name: authenticator-rolle (PostgREST's forbindelsesrolle) får stores password
+        # supabase-imagets 'postgres' er IKKE superuser; reserverede roller ændres af supabase_admin (samme POSTGRES_PASSWORD)
+        run: psql -U supabase_admin -v ON_ERROR_STOP=1 -c "alter role authenticator with login password 'v5-ci';"
       - name: måling → bevis-body + meta (renset miljø, intet token)
         run: node scripts/v5/ci-build-dom.mjs --produce --commit "$GITHUB_SHA" --pg env --proof-out build-proof.json --meta-out build-dom-meta.json
       - name: måle-output til dom-jobbet

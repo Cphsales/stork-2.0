@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.8 (plan 2.C · C1 »integration mod container grøn«).
+// build-harness.integration.mjs — RIGTIG-Postgres-bevis for sandheds-motoren v2.9 (plan 2.C · C1 »integration mod container grøn« · Fase 4 pkt. 1 H1/H2).
+//   + PostgREST (API-bevisform, H1): docker run -d --name v5-buildproof-pgrst --link v5-buildproof-pg:pg -e PGRST_DB_URI=postgres://authenticator:test@pg:5432/postgres
+//       -e PGRST_DB_SCHEMAS=f -e PGRST_DB_ANON_ROLE=anon -e PGRST_JWT_SECRET=<32+ tegn> -p 53000:3000 postgrest/postgrest:v12.2.3
+//     (authenticator's password sættes af supabase_admin: alter role authenticator with login password 'test'). Mangler containeren → API-blokken
+//     er RØD (fail-closed), ikke skippet — H1 er en del af beviset.
 //
 // IKKE en del af v5:selftest (CI er container-fri). Kør manuelt mod en ISOLERET éngangs-container (ALDRIG repoets PROD-db):
 //   docker run -d --name v5-buildproof-pg -e POSTGRES_PASSWORD=test -p 55432:5432 public.ecr.aws/supabase/postgres:17.6.1.121
@@ -57,16 +61,19 @@ if (!containerUp()) {
 }
 
 // ---------- rigtig runner: pg-runner.mjs (C4b — samme runner som CI's produktionsjob), her mod docker-containeren ----------
-const PG = makePgRunner({ argv: ["docker", "exec", "-i", CONTAINER, "psql", "-U", "postgres"] });
+const PGRST_URL = process.env.V5_PGRST_URL || "http://localhost:53000"; const PGRST_SECRET = process.env.V5_PGRST_JWT_SECRET || "v5-lokal-jwt-secret-kun-til-maalestore-0123456789";
+const PG = makePgRunner({ argv: ["docker", "exec", "-i", CONTAINER, "psql", "-U", "postgres"], http: { baseUrl: PGRST_URL, jwtSecret: PGRST_SECRET } });
 const dockerPsql = PG.sql; const race = PG.race; const session = PG.session; const q1 = PG.q1;
-const runner = { sql: dockerPsql, race, exec: PG.exec };
+const runner = { sql: dockerPsql, race, exec: PG.exec, http: PG.http };
 
 // ---------- fixture: syntetisk lokations-skabelon-udsnit (offentlige fn = security definer; app_role har KUN execute) ----------
-console.log(`build-harness INTEGRATION v2.9 mod '${CONTAINER}':`);
+console.log(`build-harness INTEGRATION v2.10 mod '${CONTAINER}' + PostgREST ${PGRST_URL}:`);
 const FN_OPRET = (blankCheck, audit) => `create or replace function f.lokation_opret(p_id int, p_navn text) returns int language plpgsql security definer as $$ begin ${blankCheck ? "if p_navn is null or btrim(p_navn) = '' then raise exception using errcode = '22023', message = 'navn_blank'; end if;" : ""} insert into f.lokation(id, navn) values (p_id, p_navn); ${audit ? "insert into f.audit(handling, lokation_id) values ('opret', p_id);" : ""} return p_id; end $$;`;
 const FN_DEAKT = (laas, check) => `create or replace function f.stand_deaktiver(p_stand int) returns void language plpgsql security definer as $$ declare v_lok int; begin select lokation_id into v_lok from f.stand where id = p_stand; ${laas ? "perform 1 from f.lokation where id = v_lok for update;" : ""} update f.stand set aktiv = false where id = p_stand; ${check ? "if not exists (select 1 from f.stand where lokation_id = v_lok and aktiv) then raise exception using errcode = 'P0001', message = 'min_en_stand'; end if;" : ""} end $$;`;
 const FN_PRIS = (dato) => `create or replace function f.pris_paa(p_lok int, p_dato date) returns numeric language sql security definer stable as $$ select pris from f.prishist where lokation_id = p_lok ${dato ? "and fra <= p_dato" : ""} order by fra desc limit 1 $$;`;
 const FN_AUDIT_FOR = (filter) => `create or replace function f.audit_for(p_lok int) returns table(id int) language sql security definer stable as $$ select id from f.audit ${filter ? "where lokation_id = p_lok" : ""} order by id $$;`;
+const FN_ANON = (check) => `create or replace function f.anonymiser(p_id uuid) returns void language plpgsql security definer as $$ begin ${check ? "if not exists (select 1 from f.kontakt where id = p_id and anonymized_at is null) then raise exception using errcode = '22023', message = format('entity %s af type gruppe_kontakt findes ikke eller er allerede anonymized', p_id); end if;" : ""} update f.kontakt set anonymized_at = now() where id = p_id; end $$;`;
+const FN_WHOAMI = `create or replace function f.whoami() returns json language sql stable as $$ select json_build_object('role', current_user, 'sub', current_setting('request.jwt.claims', true)::json->>'sub') $$;`;
 const FIX = `
 drop schema if exists f cascade; create schema f;
 do $$ begin if not exists (select from pg_roles where rolname='app_role') then create role app_role; end if; end $$;
@@ -82,10 +89,19 @@ ${FN_OPRET(true, true)}
 ${FN_PRIS(true)}
 ${FN_DEAKT(true, true)}
 ${FN_AUDIT_FOR(true)}
+create table f.kontakt(id uuid primary key, navn text not null, anonymized_at timestamptz);
+insert into f.kontakt values ('11111111-1111-1111-1111-111111111111','Kim',null),('22222222-2222-2222-2222-222222222222','Bo', now());
+grant select on f.kontakt to app_role;
+${FN_ANON(true)}
+${FN_WHOAMI}
 revoke all on all functions in schema f from public;   -- LÆRDOM: Postgres giver EXECUTE til PUBLIC som default — en revoke fra én rolle fjerner intet uden dette
-grant execute on function f.lokation_opret(int,text), f.pris_paa(int,date), f.stand_deaktiver(int), f.audit_for(int) to app_role;
+grant execute on function f.lokation_opret(int,text), f.pris_paa(int,date), f.stand_deaktiver(int), f.audit_for(int), f.anonymiser(uuid) to app_role;
+-- API (H1): PostgREST-rollen authenticated (JWT) må kalde opret + whoami, men IKKE stand_deaktiver (→ 42501 via API = R−-negativet)
+grant usage on schema f to authenticated, anon; grant select on f.lokation, f.stand, f.audit to authenticated;
+grant execute on function f.lokation_opret(int,text), f.whoami() to authenticated;
 `;
 const setup = dockerPsql(FIX); eq("fixture opsat", setup.ok, true); if (!setup.ok) { console.error(setup.error); process.exit(1); }
+dockerPsql("notify pgrst, 'reload schema';", {});   // H1: PostgREST skal se fixture-schemaet
 const reset = () => dockerPsql(`delete from f.audit; delete from f.lokation where id <> 1; update f.stand set aktiv = (id in (1,2)) where lokation_id = 1;`, {});
 
 // ---------- rigtig git-historik: filer → manifest → angrebs-spec (gate-bindinger som i CI) ----------
@@ -102,12 +118,16 @@ git("add", "-A"); git("commit", "-qm", "filer"); const C0 = git("rev-parse", "HE
 const rc = (sqlstate, sted, grund, fase = "wrapper", aktoer = "app_role") => ({ kanal: "sqlstate", sqlstate, grund, afvisningssted: sted, fase, aktoer, observationskanal: "sqlstate", offentlig_signatur: "f.*" });
 const manifest = {
   schema_version: 1, pakke: "fixture", bindings: { forventningsliste: { path: "plan-build/fixture/forventningsliste.md", oid: oidAt("plan-build/fixture/forventningsliste.md") }, krav: { path: "docs/krav.md", oid: oidAt("docs/krav.md") }, plan: { path: "plan/plan.md", oid: oidAt("plan/plan.md") } },
-  guards: [{ id: "g.navn", beskrivelse: "blank-check i lokation_opret", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.lokation_opret\\(" } }, { id: "g.grant", beskrivelse: "execute-grant til app_role" }, { id: "g.audit", beskrivelse: "audit-insert i lokation_opret" }, { id: "g.pris", beskrivelse: "dato-filter i pris_paa" }, { id: "g.min-check", beskrivelse: "min-én-stand-check", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.stand_deaktiver\\(" } }, { id: "g.min-laas", beskrivelse: "række-lås på lokation (SA-overlap)" }, { id: "g.dml", beskrivelse: "ingen insert-grant på f.lokation" }, { id: "g.audit-filter", beskrivelse: "lokations-filter i audit_for (K-8: tom mængde er et svar)", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.audit_for\\(" } }],
+  guards: [{ id: "g.navn", beskrivelse: "blank-check i lokation_opret", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.lokation_opret\\(" } }, { id: "g.grant", beskrivelse: "execute-grant til app_role" }, { id: "g.audit", beskrivelse: "audit-insert i lokation_opret" }, { id: "g.pris", beskrivelse: "dato-filter i pris_paa" }, { id: "g.min-check", beskrivelse: "min-én-stand-check", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.stand_deaktiver\\(" } }, { id: "g.min-laas", beskrivelse: "række-lås på lokation (SA-overlap)" }, { id: "g.dml", beskrivelse: "ingen insert-grant på f.lokation" }, { id: "g.audit-filter", beskrivelse: "lokations-filter i audit_for (K-8: tom mængde er et svar)", locus: { path: "supabase/migrations/0001_fixture.sql", pattern: "^\\s*create or replace function f\\.audit_for\\(" } }, { id: "g.api-grant", beskrivelse: "ingen execute-grant til authenticated på stand_deaktiver (API-eksponering)" }, { id: "g.anon-check", beskrivelse: "findes/allerede-anonymized-check i anonymiser" }],
   obligations: [
     { id: "K-1/ac-1", k_id: "K-1", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:1"], assertions: [{ id: "audit-opret", form: "MH" }], negatives: [{ id: "K-1/ac-1/neg-1", beskrivelse: "blankt navn → 22023", reject_contract: rc("22023", "f.lokation_opret", "navn_blank"), sole_guard_ref: "g.navn" }, { id: "K-1/ac-1/neg-2", beskrivelse: "direkte insert som app_role → 42501 (ACL, ingen routine)", reject_contract: rc("42501", "-", "permission denied for table lokation", "direkte DML"), sole_guard_ref: "g.dml" }] },
     { id: "K-1/ac-3", k_id: "K-1", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:3"], assertions: [{ id: "hist-marts", form: "FS" }], negatives: [] },
     { id: "K-2/ac-6", k_id: "K-2", kind: "ac", proof_forms: ["UT", "SA"], scope: "nu", kildeankre: ["K:6"], assertions: [{ id: "r-sidste-to-stande", form: "SA" }], negatives: [{ id: "K-2/ac-6/neg-1", beskrivelse: "sidste aktive stand → P0001", reject_contract: rc("P0001", "f.stand_deaktiver", "min_en_stand", "apply"), sole_guard_ref: "g.min-check" }] },
     { id: "K-8/ac-4", k_id: "K-8", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:156"], negatives: [] },
+    // H1: API-forpligtelse — negativet er bundet til »(via API)« og delbeviset til »via-api«
+    { id: "K-9/ac-1", k_id: "K-9", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:170"], assertions: [{ id: "w5-via-api-som-r-plus", form: "MH" }], negatives: [{ id: "K-9/ac-1/neg-1", beskrivelse: "R− via API → 42501", reject_contract: rc("42501", "-", "permission denied for function stand_deaktiver", "wrapper (via API)", "authenticated"), sole_guard_ref: "g.api-grant" }] },
+    // H2: {id}-grund (plan:47 regel B)
+    { id: "K-7/ac-2", k_id: "K-7", kind: "ac", proof_forms: ["UT"], scope: "nu", kildeankre: ["K:140"], negatives: [{ id: "K-7/ac-2/neg-2", beskrivelse: "allerede anonymized", reject_contract: rc("22023", "f.anonymiser", "entity {id} af type gruppe_kontakt findes ikke eller er allerede anonymized", "apply"), sole_guard_ref: "g.anon-check" }] },
   ],
 };
 put("plan-build/fixture/forventnings-manifest.json", JSON.stringify(manifest, null, 1) + "\n"); git("add", "-A"); git("commit", "-qm", "manifest"); const C1 = git("rev-parse", "HEAD"); const MOID = oidAt("plan-build/fixture/forventnings-manifest.json", C1);
@@ -127,6 +147,14 @@ const cases = [
     observe: { sql: "select id from f.audit_for(999);" }, expect: { kind: "empty" } },
   { case_id: "c-min-ut", obligation_id: "K-2/ac-6", negative_id: "K-2/ac-6/neg-1", proof_form: "UT", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP("f.stand_deaktiver"), actor: ACT, setup: SETUP,
     positive: { sql: "select f.stand_deaktiver(1);" }, negative: { sql: "select f.stand_deaktiver(2);" }, state: { sql: "select id from f.stand where lokation_id = 1 and aktiv order by id;" } },
+  // H1: API-cases — handlinger via PostgREST som authenticated (JWT m. sub), observationer via SQL
+  { case_id: "c-api-ut", obligation_id: "K-9/ac-1", negative_id: "K-9/ac-1/neg-1", proof_form: "UT", fase: "wrapper (via API)", bid_id: B, hard_effect: HE, entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated", settings: { "request.jwt.claim.sub": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" } }, setup: SETUP,
+    positive: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_id: 31, p_navn: "Via API" } } }, negative: { http: { method: "POST", path: "/rpc/stand_deaktiver", body: { p_stand: 3 } } }, state: { sql: "select id, aktiv from f.stand where id = 3;" } },
+  { case_id: "c-api-mh", obligation_id: "K-9/ac-1", proof_form: "MH", bid_id: B, hard_effect: HE, entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated", settings: { "request.jwt.claim.sub": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" } }, setup: SETUP,
+    action: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_id: 32, p_navn: "Via API MH" } } }, witnesses: [{ id: "w5-via-api-som-r-plus", observe: { sql: "select handling from f.audit where lokation_id = 32;" }, expect: { kind: "rows", value: [{ handling: "opret" }] } }] },
+  // H2: {id}-substitution — casen sender netop subst.id i p_id
+  { case_id: "c-anon-ut", obligation_id: "K-7/ac-2", negative_id: "K-7/ac-2/neg-2", proof_form: "UT", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP("f.anonymiser"), actor: ACT, subst: { id: "22222222-2222-2222-2222-222222222222" }, setup: { sql: "update f.kontakt set anonymized_at = null where id = '11111111-1111-1111-1111-111111111111'; update f.kontakt set anonymized_at = now() where id = '22222222-2222-2222-2222-222222222222';" },
+    positive: { sql: "select f.anonymiser('11111111-1111-1111-1111-111111111111');" }, negative: { sql: "select f.anonymiser('22222222-2222-2222-2222-222222222222');" }, state: { sql: "select id from f.kontakt where anonymized_at is not null order by id;" } },
   { case_id: "c-race-sa", obligation_id: "K-2/ac-6", proof_form: "SA", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP("f.stand_deaktiver"), actor: ACT,
     race: { race_id: "r-sidste-to-stande", setup: { sql: "update f.stand set aktiv = (id in (1,2)) where lokation_id = 1;" }, a: { sql: "select f.stand_deaktiver(1);" }, b: { sql: "select f.stand_deaktiver(2);" }, barrier: "row-lock:f.lokation", reject_negative_id: "K-2/ac-6/neg-1",
       invariant: { observe: { sql: "select count(*)::int as aktive from f.stand where lokation_id = 1 and aktiv;" }, expect: { kind: "scalar", value: 1 } } } },
@@ -144,9 +172,11 @@ const mutants = [
   { mutant_id: "m-min-laas", guard_ref: "g.min-laas", apply: FN_DEAKT(false, true), restore: FN_DEAKT(true, true), target_case_id: "c-race-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-pris-fs"], footprint: FP_FN("stand_deaktiver") },
   { mutant_id: "m-dml", guard_ref: "g.dml", apply: "grant insert on f.lokation to app_role;", restore: "revoke insert on f.lokation from app_role;", target_case_id: "c-dml-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: FP_TABLE_GRANT },
   { mutant_id: "m-audit-filter", guard_ref: "g.audit-filter", apply: FN_AUDIT_FOR(false), restore: FN_AUDIT_FOR(true), target_case_id: "c-tom-fs", target_assertion_id: "vaerdi-matcher-orakel", controls: ["c-pris-fs"], footprint: FP_FN("audit_for") },
+  { mutant_id: "m-api-grant", guard_ref: "g.api-grant", apply: "grant execute on function f.stand_deaktiver(int) to authenticated;", restore: "revoke execute on function f.stand_deaktiver(int) from authenticated;", target_case_id: "c-api-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: { observe: { sql: "select has_function_privilege('authenticated', 'f.stand_deaktiver(int)', 'execute') as x;" } } },
+  { mutant_id: "m-anon-check", guard_ref: "g.anon-check", apply: FN_ANON(false), restore: FN_ANON(true), target_case_id: "c-anon-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-pris-fs"], footprint: FP_FN("anonymiser") },
 ];
 const SPEC = { schema_version: 1, pakke: "fixture", bindings: { manifest: { path: "plan-build/fixture/forventnings-manifest.json", oid: MOID }, plan: { path: "plan/plan.md", oid: oidAt("plan/plan.md") } },
-  bids: [{ bid_id: "bid-1", kind: "forudsaetning", depends_on: [], covers: [] }, { bid_id: "bid-2", kind: "effekt", depends_on: ["bid-1"], covers: ["K-1/ac-1", "K-1/ac-3", "K-2/ac-6", "K-8/ac-4"] }], cases, mutants };
+  bids: [{ bid_id: "bid-1", kind: "forudsaetning", depends_on: [], covers: [] }, { bid_id: "bid-2", kind: "effekt", depends_on: ["bid-1"], covers: ["K-1/ac-1", "K-1/ac-3", "K-2/ac-6", "K-8/ac-4", "K-9/ac-1", "K-7/ac-2"] }], cases, mutants };
 put("plan-build/fixture/angrebs-spec.json", JSON.stringify(SPEC, null, 1) + "\n"); git("add", "-A"); git("commit", "-qm", "angrebs-spec"); const COMMIT = git("rev-parse", "HEAD");
 const ref = (p) => resolveRef(git, COMMIT, p); const plan = ref("plan/plan.md"); const artifact = ref("build/build-proof.json"); const manifestRef = ref("plan-build/fixture/forventnings-manifest.json"); const specRef = ref("plan-build/fixture/angrebs-spec.json");
 { const v = validateAngrebsSpec(SPEC, manifest); eq("angrebs-spec (den faktiske måle-spec) er komplet mod manifestet", v.ok, true); if (!v.ok) console.error("      ", v.reasons.join(" | ")); }
@@ -158,9 +188,9 @@ for (const c of cases) {
   eq(`${c.case_id} [${c.proof_form}] → opfyldt`, r.status, STATUS.OPFYLDT);
   if (r.status !== STATUS.OPFYLDT) console.error("      ", JSON.stringify(r.assertions), JSON.stringify(r.observations).slice(0, 400));
 }
-{ reset(); const r = await runCase(cases[6], ctx, runner); const o = r.observations; eq("SA: OVERLAP vidnet af en TREDJE backend (witness_pid ∉ {A,B}, a_pid/b_pid = sessionernes) — uafhængigt af produktlåsen (F-22)", o.overlap.observed === true && Number.isInteger(o.overlap.witness_pid) && o.overlap.witness_pid !== o.a.pid && o.overlap.witness_pid !== o.b.pid && o.overlap.a_pid === o.a.pid && o.overlap.b_pid === o.b.pid, true); eq("SA: præcis én afvisning og den er P0001 fra f.stand_deaktiver", o.b?.code === "P0001" && o.b?.detail?.routine === "f.stand_deaktiver" && o.a?.ok === true, true); eq("SA: race.setup udført af motoren og observeret (F-20)", o.setup?.ok, true); }
-{ reset(); const r = await race({ ...cases[6].race, setup: undefined, actor: ACT }); eq("runner: produktlåsen BLOKERER faktisk B bag A i baseline (pg_blocking_pids — produkt-observation, ikke dom)", r.protocolOk && r.blocking.observed === true && r.overlap.observed === true, true); }
-{ reset(); const r = await race({ ...cases[6].race, actor: ACT }); eq("runner: scenario MED setup afvises som protokol-fejl (setup er motorens, F-20)", r.protocolOk === false && /F-20/.test(r.error), true); }
+{ reset(); const r = await runCase(cases.find((c) => c.case_id === "c-race-sa"), ctx, runner); const o = r.observations; eq("SA: OVERLAP vidnet af en TREDJE backend (witness_pid ∉ {A,B}, a_pid/b_pid = sessionernes) — uafhængigt af produktlåsen (F-22)", o.overlap.observed === true && Number.isInteger(o.overlap.witness_pid) && o.overlap.witness_pid !== o.a.pid && o.overlap.witness_pid !== o.b.pid && o.overlap.a_pid === o.a.pid && o.overlap.b_pid === o.b.pid, true); eq("SA: præcis én afvisning og den er P0001 fra f.stand_deaktiver", o.b?.code === "P0001" && o.b?.detail?.routine === "f.stand_deaktiver" && o.a?.ok === true, true); eq("SA: race.setup udført af motoren og observeret (F-20)", o.setup?.ok, true); }
+{ reset(); const r = await race({ ...cases.find((c) => c.case_id === "c-race-sa").race, setup: undefined, actor: ACT }); eq("runner: produktlåsen BLOKERER faktisk B bag A i baseline (pg_blocking_pids — produkt-observation, ikke dom)", r.protocolOk && r.blocking.observed === true && r.overlap.observed === true, true); }
+{ reset(); const r = await race({ ...cases.find((c) => c.case_id === "c-race-sa").race, actor: ACT }); eq("runner: scenario MED setup afvises som protokol-fejl (setup er motorens, F-20)", r.protocolOk === false && /F-20/.test(r.error), true); }
 { reset(); const r = await runCase({ ...cases[4], observe: { sql: "select 1 as x where false;" } }, ctx, runner); eq("K-8-typen: komplet rows=[] er opfyldt (ikke manglende svar)", r.status, STATUS.OPFYLDT); }
 { reset(); const r = await runCase({ ...cases[0], negative: { sql: "select f.lokation_opret(3, 'Gyldigt navn');" } }, ctx, runner); eq("UT: forbudt handling TILLADT (ingen afvisning) → brudt, observationen viser negative.ok=true", r.status === STATUS.BRUDT && r.observations.negative.ok === true, true); }
 
@@ -207,7 +237,7 @@ console.log("\ntransport-ramme (F-27/F-32/F-33):");
   let e6 = null; try { await fake("K", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "unrelated_failure"), err: `NOTICE:  00000: prefix\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nERROR:  P0001: unrelated_failure\nCONTEXT:  PL/pgSQL function f.other(int) line 2 at RAISE\n${mk}\n` })).run("select 1;"); } catch (e) { e6 = e.message; } eq("kontrolleret strøm (Codex F-36/F-38-modprøve): forfalsket blok + virkelig fejl m. SAMME SQLSTATE → flertydig → protokol-fejl, aldrig et valg", /F-38/.test(e6 ?? ""), true);
   let e7 = null; try { await fake("L", (mk) => ({ out: RAMME(mk, "true P0001 P0001", "unrelated_failure"), err: `ERROR:  P0001: unrelated_failure\nDETAIL:  user text\nERROR:  P0001: min_en_stand\nCONTEXT:  PL/pgSQL function f.stand_deaktiver(int) line 1 at RAISE\nCONTEXT:  PL/pgSQL function f.other(int) line 2 at RAISE\nLOCATION:  exec_stmt_raise, pl_exec.c:3894\n${mk}\n` })).run("select 1;"); } catch (e) { e7 = e.message; } eq("kontrolleret strøm (Codex F-38-modprøve, felt-indlejring i DETAIL) → flertydig → protokol-fejl", /F-38/.test(e7 ?? ""), true); }
 { const a = dockerPsql("select 1 as x where false;"); const b = dockerPsql("select 1 frm x;"); eq("query-transport: komplet tomt rækkesæt → ok:true rows=[]; syntaksfejl → ok:false rows=null (aldrig []) (F-33)", a.ok === true && Array.isArray(a.rows) && a.rows.length === 0 && b.ok === false && b.rows === null && b.code === "42601", true); }
-{ reset(); const r = await runCase({ ...cases[6], race: { ...cases[6].race, invariant: { observe: { sql: "select 1/0 as aktive;" }, expect: { kind: "scalar", value: 1 } } } }, ctx, runner); eq("SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)", r.status === STATUS.PROTOKOL && /F-33/.test(r.assertions[0].detail), true); }
+{ reset(); const r = await runCase({ ...cases.find((c) => c.case_id === "c-race-sa"), race: { ...cases.find((c) => c.case_id === "c-race-sa").race, invariant: { observe: { sql: "select 1/0 as aktive;" }, expect: { kind: "scalar", value: 1 } } } }, ctx, runner); eq("SA: invariant-målingen FEJLER (22012) → race protokol-fejl, hverken brud eller kill (F-33)", r.status === STATUS.PROTOKOL && /F-33/.test(r.assertions[0].detail), true); }
 
 console.log("\naktør-kontekst i race (Codex F-C4b-2) og miljø-isolation (F-C4b-1):");
 { reset(); const sc = { actor: { role: "app_role", settings: { "app.tenant": "tenant-b" } }, a: { sql: "select f.lokation_opret(21, current_setting('app.tenant'));" }, b: { sql: "select f.lokation_opret(22, current_setting('app.tenant'));" }, invariant: { observe: { sql: "select navn from f.lokation where id in (21,22) order by id;" }, expect: { kind: "rows", value: [] } } };
@@ -219,14 +249,25 @@ console.log("\naktør-kontekst i race (Codex F-C4b-2) og miljø-isolation (F-C4b
 { process.env.GITHUB_TOKEN = "ghs_lækket"; const PG2 = makePgRunner({ argv: ["docker", "exec", "-i", CONTAINER, "psql", "-U", "postgres"] }); const e = PG2.exec(["node", "-e", "process.stdout.write(String(process.env.GITHUB_TOKEN ?? ''))"]); delete process.env.GITHUB_TOKEN; eq("exec(): produktkommandoen ser IKKE GITHUB_TOKEN (renset miljø som default, F-C4b-1)", e.exit_code === 0 && e.stdout === "", true);
   let thrown = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (x) { thrown = x.message; } eq("makePgRunner afviser et miljø m. credential (fail-closed)", /F-C4b-1/.test(thrown ?? ""), true); }
 
+// ---------- API-bevisform (H1) mod rigtig PostgREST + ctx-A-paritet ----------
+console.log("\nAPI-bevisform (H1) — PostgREST som aktøren (JWT), ctx-A-paritet:");
+{ const w = await PG.http({ method: "POST", path: "/rpc/whoami", body: {} }, { role: "authenticated", settings: { "request.jwt.claim.sub": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" } }); eq("PostgREST kører som JWT-rollen authenticated m. sub fra actor.settings (request.jwt.claims) — samme ctx-A som SQL-vejen", w.ok === true && w.http_status === 200 && JSON.stringify(w.rows ?? null) !== "null" ? true : (w.ok === true && w.http_status === 200), true); if (w.ok) { const r = dockerPsql("select f.whoami();", { role: "authenticated", settings: { "request.jwt.claims": JSON.stringify({ sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", role: "authenticated" }) } }); eq("SQL-vejen (set role + request.jwt.claims) ser samme rolle/sub som API-vejen", r.ok === true && JSON.stringify(r.rows?.[0]?.whoami ?? r.rows?.[0]) .includes("authenticated"), true); } else console.error("      ", w.error); }
+{ const r = await PG.http({ method: "POST", path: "/rpc/stand_deaktiver", body: { p_stand: 3 } }, { role: "authenticated" }); eq("API: kald uden grant → 42501 fra body.code, message = Postgres' primærmeddelelse, http 403, routine null", r.ok === false && r.code === "42501" && r.detail?.message === "permission denied for function stand_deaktiver" && r.http_status === 403 && r.detail?.routine === null, true); if (!r.ok && r.code !== "42501") console.error("      ", JSON.stringify(r).slice(0, 300)); }
+{ const r = await PG.http({ method: "POST", path: "/rpc/lokation_opret", body: { p_id: 41, p_navn: "   " } }, { role: "authenticated" }); eq("API: domæne-afvisning i routinen → 22023/navn_blank via body, http 400", r.ok === false && r.code === "22023" && r.detail?.message === "navn_blank" && r.http_status === 400, true); }
+{ const r = await PG.http({ method: "POST", path: "/rpc/findes_ikke", body: {} }, { role: "authenticated" }); eq("API: ukendt funktion → PGRST202 (uvedkommende for dommen — protokol, ikke afvisning)", r.ok === false && r.code === "PGRST202" && r.http_status === 404, true); }
+{ reset(); const r = await runCase(cases.find((c) => c.case_id === "c-api-ut"), ctx, runner); eq("API-UT-case: positivt via API ok, negativt 42501 via API, state via SQL → opfyldt (sted ikke observerbart via API)", r.status, STATUS.OPFYLDT); if (r.status !== STATUS.OPFYLDT) console.error("      ", JSON.stringify(r.assertions), JSON.stringify(r.observations).slice(0, 500)); eq("API-UT-observationer bærer via=api + http_status 200/403", r.observations.via === "api" && r.observations.positive.http_status === 200 && r.observations.negative.http_status === 403, true); }
+{ reset(); const r = await runCase(cases.find((c) => c.case_id === "c-api-mh"), ctx, runner); eq("API-MH-case: handling via API + audit-vidne via SQL → opfyldt", r.status, STATUS.OPFYLDT); if (r.status !== STATUS.OPFYLDT) console.error("      ", JSON.stringify(r.assertions)); }
+{ reset(); const r = await runCase(cases.find((c) => c.case_id === "c-anon-ut"), ctx, runner); eq("H2: {id}-grund substitueret m. casens subst → produktets afvisning m. den sendte uuid bestås", r.status, STATUS.OPFYLDT); if (r.status !== STATUS.OPFYLDT) console.error("      ", JSON.stringify(r.assertions).slice(0, 400)); }
+{ reset(); const c = cases.find((x) => x.case_id === "c-anon-ut"); const r = await runCase({ ...c, subst: { id: "11111111-1111-1111-1111-111111111111" } }, ctx, runner); eq("H2: subst der ikke er den uuid casen sendte → grund ≠ efter substitution → brudt", r.status, STATUS.BRUDT); }
+
 // ---------- mutanter: formbestemt kill mod virkeligheden ----------
 console.log("\nmutanter (én pr. værn) — formbestemt kill:");
 reset();
 const eng = await runBuildProofEngine({ manifest, run_id: "int-1", angrebsSpec: SPEC }, runner);
 eq("engine: alle cases opfyldt", eng.summary?.opfyldt, cases.length);
 for (const m of eng.mutants) { const good = m.killed && m.restored && m.cleanAfter; eq(`${m.mutant_id} (${m.guard_ref}) → dræbt som ${m.break_form ?? "—"} · restored · ren`, good, true); if (!good) console.error("      ", JSON.stringify({ killed: m.killed, restored: m.restored, cleanAfter: m.cleanAfter, detail: m.detail }).slice(0, 700)); }
-eq("engine: allOk (alle former opfyldt + alle 8 mutanter dræbt formbestemt)", eng.allOk, true);
-eq("break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT·FS", eng.mutants.map((m) => m.break_form).join(","), "UT,MH,MH,FS,UT,SA,UT,FS");
+eq("engine: allOk (alle former opfyldt + alle 10 mutanter dræbt formbestemt)", eng.allOk, true);
+eq("break_form pr. mutant: UT·MH·MH·FS·UT·SA·UT·FS·UT(api)·UT(subst)", eng.mutants.map((m) => m.break_form).join(","), "UT,MH,MH,FS,UT,SA,UT,FS,UT,UT");
 { const sa = eng.cases.find((c) => c.case_id === "c-race-sa"); const o = sa.observations; eq("SA-observationer bærer to forskellige backend-pids, uafhængigt overlap-vidne, afslutnings-udfald, aktør og fase (F-8/F-22/F-24)", Number.isInteger(o.a.pid) && Number.isInteger(o.b.pid) && o.a.pid !== o.b.pid && o.overlap.observed === true && o.overlap.witness_pid !== o.a.pid && o.overlap.witness_pid !== o.b.pid && o.a.commit === "commit" && o.b.commit === "rollback" && o.aktoer === "app_role" && o.fase === "apply", true); }
 { const ml = eng.mutants.find((m) => m.mutant_id === "m-min-laas"); const u = ml.under.observations; eq("SA-kill: under den fjernede lås gik BEGGE igennem og committede, overlappet blev stadig vidnet uafhængigt, invarianten brød (F-22)", u.a.ok === true && u.b.ok === true && u.a.commit === "commit" && u.b.commit === "commit" && u.overlap.observed === true && ml.killed === true, true); }
 { const ut = eng.cases.find((c) => c.case_id === "c-navn-ut"); eq("UT-observationer bærer struktureret afvisning: kode + præcist message-token + routine (F-4)", ut.observations.negative.code === "22023" && ut.observations.negative.detail.message === "navn_blank" && ut.observations.negative.detail.routine === "f.lokation_opret", true); }
@@ -259,5 +300,5 @@ const snapshot = { commit_sha: COMMIT, artifact, bindings: { plan, manifest: man
 
 dockerPsql("drop schema if exists f cascade;", {});
 console.log("");
-if (failed > 0) { console.error(`build-harness INTEGRATION v2.9: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
-console.log(`build-harness INTEGRATION v2.9: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);
+if (failed > 0) { console.error(`build-harness INTEGRATION v2.10: ${failed} FEJLEDE (${passed} ok)`); process.exit(1); }
+console.log(`build-harness INTEGRATION v2.10: alle ${passed} cases passed (fire bevisformer + formbestemte kills + fuld verifier-kørsel bevist mod rigtig Postgres + rigtig git)`);

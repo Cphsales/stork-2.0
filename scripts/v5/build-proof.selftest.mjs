@@ -31,18 +31,21 @@ git("add", "-A"); git("commit", "-qm", "filer"); const C0 = git("rev-parse", "HE
 const rc = (sqlstate, sted, grund, fase = "wrapper", aktoer = "app_role") => ({ kanal: "sqlstate", sqlstate, grund, afvisningssted: sted, fase, aktoer, observationskanal: "sqlstate", offentlig_signatur: "f(text)" });
 const MANIFEST = { schema_version: 1, pakke: "pakke-x",
   bindings: { forventningsliste: { path: "plan-build/pakke-x/forventningsliste.md", oid: oidAt("plan-build/pakke-x/forventningsliste.md") }, krav: { path: "docs/krav.md", oid: oidAt("docs/krav.md") }, plan: { path: "plan/plan.md", oid: oidAt("plan/plan.md") } },
-  guards: [{ id: "g.navn", beskrivelse: "navn", locus: { path: "supabase/migrations/0001.sql", pattern: "^\\s*create (or replace )?function f\\.lokation_opret\\(" } }, { id: "g.min", beskrivelse: "min", locus: { path: "supabase/migrations/0001.sql", pattern: "^\\s*create (or replace )?function f\\.stand_deaktiver\\(" } }, { id: "g.klass", beskrivelse: "klass" }, { id: "g.laas", beskrivelse: "række-lås (SA-overlap)" }],
+  guards: [{ id: "g.navn", beskrivelse: "navn", locus: { path: "supabase/migrations/0001.sql", pattern: "^\\s*create (or replace )?function f\\.lokation_opret\\(" } }, { id: "g.min", beskrivelse: "min", locus: { path: "supabase/migrations/0001.sql", pattern: "^\\s*create (or replace )?function f\\.stand_deaktiver\\(" } }, { id: "g.klass", beskrivelse: "klass" }, { id: "g.laas", beskrivelse: "række-lås (SA-overlap)" }, { id: "g.api", beskrivelse: "execute-grant til authenticated (API-eksponering)" }],
   obligations: [
     { id: "K-1/ac-1", k_id: "K-1", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", effekt_bid: "bid-2", kildeankre: ["K:1"], assertions: [{ id: "audit-row", form: "MH" }], negatives: [{ id: "K-1/ac-1/neg-1", beskrivelse: "blank", reject_contract: rc("22023", "f.lokation_opret", "navn_blank"), sole_guard_ref: "g.navn" }] },
     { id: "K-1/ac-3", k_id: "K-1", kind: "ac", proof_forms: ["FS"], scope: "nu", kildeankre: ["K:3"], assertions: [{ id: "hist", form: "FS" }], negatives: [] },
     { id: "K-2/ac-6", k_id: "K-2", kind: "ac", proof_forms: ["SA", "UT"], scope: "nu", kildeankre: ["K:6"], assertions: [{ id: "r1", form: "SA" }], negatives: [{ id: "K-2/ac-6/neg-1", beskrivelse: "sidste", reject_contract: rc("P0001", "f.stand_deaktiver", "min_en_stand", "apply"), sole_guard_ref: "g.min" }] },
     { id: "K-7/S", k_id: "K-7", kind: "struktur", proof_forms: ["UT"], scope: "nu", kildeankre: ["K:7"], negatives: [{ id: "K-7/S/neg-1", beskrivelse: "ci", reject_contract: { kanal: "exit", exit_code: 1, klasse: "klassifikation", afvisningssted: "ci", fase: "ci", aktoer: "ci" } }] },
+    // H1/H2 (2026-09-21): API-forpligtelse + {id}-grund
+    { id: "K-9/ac-1", k_id: "K-9", kind: "ac", proof_forms: ["UT", "MH"], scope: "nu", kildeankre: ["K:170"], assertions: [{ id: "w5-via-api", form: "MH" }], negatives: [{ id: "K-9/ac-1/neg-1", beskrivelse: "R− via API", reject_contract: rc("42501", "f.lokation_opret", "lokation_opret: permission_denied", "wrapper (via API)", "authenticated"), sole_guard_ref: "g.api" }] },
+    { id: "K-7/ac-2", k_id: "K-7", kind: "ac", proof_forms: ["UT"], scope: "nu", kildeankre: ["K:140"], negatives: [{ id: "K-7/ac-2/neg-2", beskrivelse: "allerede anonymized", reject_contract: rc("22023", "f.anonymiser", "entity {id} af type gruppe_kontakt findes ikke eller er allerede anonymized", "apply") }] },
   ] };
 put("plan-build/pakke-x/forventnings-manifest.json", JSON.stringify(MANIFEST, null, 1) + "\n"); put("plan-build/pakke-x/manifest-ugyldigt.json", JSON.stringify({ ...MANIFEST, obligations: [] }) + "\n");
 git("add", "-A"); git("commit", "-qm", "manifest"); const C1 = git("rev-parse", "HEAD"); const MOID = oidAt("plan-build/pakke-x/forventnings-manifest.json", C1);
 const EP = { kind: "rpc", ref: "lokation_opret" }; const ACT = { role: "app_role" }; const B = "bid-2"; const HE = "db-row";
 const SPEC = { schema_version: 1, pakke: "pakke-x", bindings: { manifest: { path: "plan-build/pakke-x/forventnings-manifest.json", oid: MOID }, plan: { path: "plan/plan.md", oid: oidAt("plan/plan.md") } },
-  bids: [{ bid_id: "bid-1", kind: "forudsaetning", depends_on: [], covers: [] }, { bid_id: "bid-2", kind: "effekt", depends_on: ["bid-1"], covers: ["K-1/ac-1", "K-1/ac-3", "K-2/ac-6", "K-7/S"] }],
+  bids: [{ bid_id: "bid-1", kind: "forudsaetning", depends_on: [], covers: [] }, { bid_id: "bid-2", kind: "effekt", depends_on: ["bid-1"], covers: ["K-1/ac-1", "K-1/ac-3", "K-2/ac-6", "K-7/S", "K-9/ac-1", "K-7/ac-2"] }],
   cases: [
     { case_id: "c-k1-ut", obligation_id: "K-1/ac-1", negative_id: "K-1/ac-1/neg-1", proof_form: "UT", fase: "wrapper", bid_id: B, hard_effect: HE, entrypoint: EP, actor: ACT, setup: { sql: "SETUP" }, positive: { sql: "POS" }, negative: { sql: "NEG" }, state: { sql: "STATE" } },
     { case_id: "c-k1-mh", obligation_id: "K-1/ac-1", proof_form: "MH", bid_id: B, hard_effect: HE, entrypoint: EP, actor: ACT, action: { sql: "ACT_MH" }, witnesses: [{ id: "audit-row", observe: { sql: "AUDIT" }, expect: { kind: "count", value: 1 } }] },
@@ -50,12 +53,16 @@ const SPEC = { schema_version: 1, pakke: "pakke-x", bindings: { manifest: { path
     { case_id: "c-k2-sa", obligation_id: "K-2/ac-6", proof_form: "SA", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP, actor: ACT, race: { race_id: "r1", a: { sql: "A" }, b: { sql: "B" }, barrier: "row-lock", invariant: { observe: { sql: "INV" }, expect: { kind: "scalar", value: 1 } }, reject_negative_id: "K-2/ac-6/neg-1" } },
     { case_id: "c-k2-ut", obligation_id: "K-2/ac-6", negative_id: "K-2/ac-6/neg-1", proof_form: "UT", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP, actor: ACT, positive: { sql: "POS2" }, negative: { sql: "NEG2" }, state: { sql: "STATE2" } },
     { case_id: "c-k7-ut", obligation_id: "K-7/S", negative_id: "K-7/S/neg-1", proof_form: "UT", fase: "ci", bid_id: B, hard_effect: "state", entrypoint: { kind: "ui-flow", ref: "ci" }, actor: { role: "ci" }, check: { cmd: ["node", "klassifikation.mjs"] } },
+    { case_id: "c-k9-ut", obligation_id: "K-9/ac-1", negative_id: "K-9/ac-1/neg-1", proof_form: "UT", fase: "wrapper (via API)", bid_id: B, hard_effect: HE, entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated", settings: { "request.jwt.claim.sub": "22222222-2222-2222-2222-222222222222" } }, positive: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_navn: "A" } } }, negative: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_navn: "R-" } } }, state: { sql: "STATE" } },
+    { case_id: "c-k9-mh", obligation_id: "K-9/ac-1", proof_form: "MH", bid_id: B, hard_effect: HE, entrypoint: { kind: "api", ref: "/rpc/lokation_opret" }, actor: { role: "authenticated" }, action: { http: { method: "POST", path: "/rpc/lokation_opret", body: { p_navn: "B" } } }, witnesses: [{ id: "w5-via-api", observe: { sql: "AUDIT" }, expect: { kind: "count", value: 1 } }] },
+    { case_id: "c-k7ac2-ut", obligation_id: "K-7/ac-2", negative_id: "K-7/ac-2/neg-2", proof_form: "UT", fase: "apply", bid_id: B, hard_effect: HE, entrypoint: EP, actor: ACT, subst: { id: "11111111-1111-1111-1111-111111111111" }, positive: { sql: "POS" }, negative: { sql: "NEG_ID" }, state: { sql: "STATE" } },
   ],
   mutants: [
     { mutant_id: "m-navn", guard_ref: "g.navn", target_case_id: "c-k1-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-k1-fs"], apply: "M_NAVN_OFF", restore: "M_NAVN_ON", footprint: { observe: { sql: "FP" } } },
     { mutant_id: "m-min", guard_ref: "g.min", target_case_id: "c-k2-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-k1-fs"], apply: "M_TRG_OFF", restore: "M_TRG_ON", footprint: { observe: { sql: "FP" } } },
     { mutant_id: "m-klass", guard_ref: "g.klass", target_case_id: "c-k7-ut", target_assertion_id: "exit-klasse", controls: ["c-k1-fs"], apply: "M_KLASS_OFF", restore: "M_KLASS_ON", footprint: { observe: { sql: "FP" } } },
     { mutant_id: "m-laas", guard_ref: "g.laas", target_case_id: "c-k2-sa", target_assertion_id: "invariant-efter-commit", controls: ["c-k1-fs"], apply: "M_LAAS_OFF", restore: "M_LAAS_ON", footprint: { observe: { sql: "FP" } } },
+    { mutant_id: "m-api", guard_ref: "g.api", target_case_id: "c-k9-ut", target_assertion_id: "negativ-afvist-bundet", controls: ["c-k1-fs"], apply: "M_API_OFF", restore: "M_API_ON", footprint: { observe: { sql: "FP" } } },
   ] };
 put("plan-build/pakke-x/angrebs-spec.json", JSON.stringify(SPEC, null, 1) + "\n");
 const SPEC_UDEN_BID1 = { ...SPEC, bids: [{ bid_id: "bid-2", kind: "effekt", depends_on: [], covers: SPEC.bids[1].covers }] }; put("plan-build/pakke-x/angrebs-spec-uden-bid1.json", JSON.stringify(SPEC_UDEN_BID1, null, 1) + "\n");
@@ -69,20 +76,23 @@ const mkEvidence = (path, start, end) => { const r = resolveRef(git, COMMIT, pat
 const RUN = "run-2026-09-10T22";
 const R = (ok, code = null, message = null, routine = null, rows) => ({ ok, error: ok ? null : message, code, detail: ok ? null : { message, routine }, ...(rows !== undefined ? { rows } : {}) });
 function mkRunner() {
-  const st = { navn: true, pris: 100, audit: true, trg: true, klass: true, laas: true };
+  const st = { navn: true, pris: 100, audit: true, trg: true, klass: true, laas: true, apiPerm: true };
   return { st,
     sql(t) { switch (t) {
       case "SETUP": return R(true); case "POS": return R(true); case "NEG": return st.navn ? R(false, "22023", "navn_blank", "f.lokation_opret") : R(true); case "STATE": return R(true, null, null, null, [{ n: 1 }]);
       case "ACT": return R(true); case "OBS": return R(true, null, null, null, [{ pris: st.pris }]); case "OBS_HIST": return R(true, null, null, null, [{ pris: 80 }]);
       case "ACT_MH": return R(true); case "AUDIT": return R(true, null, null, null, st.audit ? [{ id: 1 }] : []);
       case "POS2": return R(true); case "NEG2": return st.trg ? R(false, "P0001", "min_en_stand", "f.stand_deaktiver") : R(true); case "STATE2": return R(true, null, null, null, [{ aktive: 1 }]);
-      case "FP": return R(true, null, null, null, [{ navn: st.navn, trg: st.trg, klass: st.klass, laas: st.laas }]);
+      case "FP": return R(true, null, null, null, [{ navn: st.navn, trg: st.trg, klass: st.klass, laas: st.laas, apiPerm: st.apiPerm }]);
       case "M_LAAS_OFF": st.laas = false; return R(true); case "M_LAAS_ON": st.laas = true; return R(true);
+      case "M_API_OFF": st.apiPerm = false; return R(true); case "M_API_ON": st.apiPerm = true; return R(true);
+      case "NEG_ID": return R(false, "22023", "entity 11111111-1111-1111-1111-111111111111 af type gruppe_kontakt findes ikke eller er allerede anonymized", "f.anonymiser");
       case "M_NAVN_OFF": st.navn = false; return R(true); case "M_NAVN_ON": st.navn = true; return R(true); case "M_TRG_OFF": st.trg = false; return R(true); case "M_TRG_ON": st.trg = true; return R(true);
       case "M_KLASS_OFF": st.klass = false; return R(true); case "M_KLASS_ON": st.klass = true; return R(true);
       default: return R(false, "42601", "ukendt " + t, null); } },
     race() { const a = { pid: 11, ok: true, code: null, detail: null, commit: "commit" }; const overlap = { observed: true, witness_pid: 13, a_pid: 11, b_pid: 12 }; return st.trg && st.laas ? { protocolOk: true, a, b: { pid: 12, ok: false, code: "P0001", detail: { message: "min_en_stand", routine: "f.stand_deaktiver" }, commit: "rollback" }, overlap, invariantRows: [{ aktive: 1 }] } : { protocolOk: true, a, b: { pid: 12, ok: true, code: null, detail: null, commit: "commit" }, overlap, invariantRows: [{ aktive: 0 }] }; },
     exec() { return st.klass ? { exit_code: 1, stdout: "klasse=klassifikation\n" } : { exit_code: 0, stdout: "" }; },
+    http(req) { if (req.body?.p_navn === "R-") return st.apiPerm ? { ok: false, error: "42501", code: "42501", detail: { message: "lokation_opret: permission_denied", routine: null }, http_status: 403 } : { ok: true, error: null, code: null, detail: null, http_status: 200 }; return { ok: true, error: null, code: null, detail: null, http_status: 200 }; },
   };
 }
 const ENGINE = await runBuildProofEngine({ manifest: MANIFEST, run_id: RUN, angrebsSpec: SPEC }, mkRunner());
@@ -166,6 +176,14 @@ expectRed("SA: fase i observationerne ≠ kontraktens (wrapper ≠ apply) → r�
 expectRed("SA: kontrakt.fase slettet i observationerne → rød (F-24)", verify(mutated((p) => { const c = cas(p, "c-k2-sa"); delete c.observations.kontrakt.fase; rejudge(c); })), "spec-afledte felter|≠ opfyldt");
 expectRed("exit-case: fase i observationerne ≠ kontraktens → rød (F-24)", verify(mutated((p) => { const c = cas(p, "c-k7-ut"); c.observations.fase = "wrapper"; rejudge(c); })), "spec-afledte felter|≠ opfyldt");
 expectRed("exit-case: aktør i observationerne ≠ kontraktens (postgres) → rød (F-24)", verify(mutated((p) => { const c = cas(p, "c-k7-ut"); c.observations.aktoer = "postgres"; rejudge(c); })), "spec-afledte felter|≠ opfyldt");
+
+console.log("\nH1/H2 — via og subst er spec-afledte (producenten kan ikke skifte transport eller substitution):");
+expectRed("API-case m. via ændret til 'sql' i observationerne (og http_status fjernet) → rød (spec-projektion)", verify(mutated((p) => { const c = cas(p, "c-k9-ut"); c.observations.via = "sql"; delete c.observations.positive.http_status; delete c.observations.negative.http_status; rejudge(c); })), "spec-afledte felter");
+expectRed("SQL-case m. via ændret til 'api' (så sted-tjekket springes over) → rød", verify(mutated((p) => { const c = cas(p, "c-k1-ut"); c.observations.via = "api"; c.observations.positive.http_status = 200; c.observations.negative.http_status = 400; rejudge(c); })), "spec-afledte felter");
+expectRed("API-negativ afvist m. rigtig kode men http_status 200 (inkonsistent) → rød", verify(mutated((p) => { const c = cas(p, "c-k9-ut"); c.observations.negative.http_status = 200; rejudge(c); })), "≠ opfyldt");
+expectRed("subst fjernet fra observationerne → rød (spec-projektion + protokol)", verify(mutated((p) => { const c = cas(p, "c-k7ac2-ut"); delete c.observations.subst; rejudge(c); })), "spec-afledte felter|≠ opfyldt");
+expectRed("subst ændret til en anden uuid (der matcher en manipuleret afvisning) → rød (subst er spec'ens)", verify(mutated((p) => { const c = cas(p, "c-k7ac2-ut"); c.observations.subst = { id: "33333333-3333-3333-3333-333333333333" }; c.observations.negative.detail.message = "entity 33333333-3333-3333-3333-333333333333 af type gruppe_kontakt findes ikke eller er allerede anonymized"; rejudge(c); })), "spec-afledte felter");
+expectRed("API-mutant: under mutanten stadig afvist (mutation uden virkning) → kill fejler", verify(mutated((p) => { const m = mut(p, "m-api"); m.under = clone(m.baseline); })), "genudledt kill fejler");
 
 console.log("\nprover · claim_graph · reviews (F-19):");
 expectRed("prover_result uden konsistent resumé (failed 99 skjult) → rød", verify(mutated((p) => (p.prover_result = { ok: true, total: ALL_IDS.length, passed: ALL_IDS.length, failed: 99, skipped: 0, executed_ids: ALL_IDS }))), "prover_result");
