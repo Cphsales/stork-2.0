@@ -8,7 +8,15 @@
 // gate-eval-layoutet · verdikter (code-reviewer · codex · claude-ai) udvalgt via
 // plan-approval.json._provenance.verdikt_run_ids · approval · KVITTERING (kvittering.mjs:
 // digest + indhold + fremlæggelses-/devil-blobs + commit-orden) · forgængeren (krav)
-// re-dømmes FRISK. Committede filer er spor — dommen fældes her. Exit 0 ⟺ gaten er åben.
+// re-dømmes FRISK VED SIN EGEN PIN (driver-fund 2026-09-21 ved første plan-dom: krav-gatens
+// verdikter/approval er bundet til krav-gatens pinnede commit (fx efc85d5), ikke planens (P5) —
+// at dømme krav ved P5 gav »evidens citerer commit efc85d5 ≠ gated commit« ×14 og lukkede plan-
+// gaten på forgængeren). Forgængerens pin læses fra det committede kandidat-resultat
+// plan-build/<pakke>/krav-gate-resultat.json.commit_sha @ evidenceRef (samme kilde som CI's
+// ci-gate-dom PINNED_KILDE), SKAL være en fuld OID og forfader til/lig planens commit, og krav-
+// gatens inputs (artefakt · bindinger · pakke) SKAL være identiske @ pin og @ planens commit
+// (F-C4-1-identitet) — ellers fail-closed. Committede filer er spor — dommen fældes her.
+// Exit 0 ⟺ gaten er åben.
 import { evaluateGate } from "./gates.mjs";
 import { buildSnapshot } from "./gate-eval.mjs";
 import { makeVerdictVerifier } from "./verdikt.mjs";
@@ -16,6 +24,7 @@ import { makeApprovalVerifier, makeTransportVerifier, resolveEvidence } from "./
 import { DEFAULT_LAYOUT } from "./gate-eval.mjs";
 import { runKravGate, vaelgVerdikter } from "./krav-gate-run.mjs";
 import { makeGit } from "./git.mjs";
+import { isOid } from "./gates.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
@@ -44,12 +53,14 @@ function runPlanGateInner(commitSha, root, evidenceRefIn) {
   // VERBATIM: kun .approval sendes videre, u-rørt (kernen afviser ukendte felter selv)
   const approval = approvalFil.approval ?? approvalFil;
 
-  // forgænger: krav-gaten re-dømmes FRISK ved samme pinnede commit
-  const krav = runKravGate(commitSha, { root, evidenceRef });
+  // forgænger: krav-gaten re-dømmes FRISK ved SIN EGEN pin (forfader til/lig planens commit; krav-inputs identiske) —
+  // predecessor.artifact_oid er krav-gatens EGET artefakt @ pin; kernen kræver at det == planens krav-binding @ commitSha
+  const fp = forgaengerPin({ git, commitSha, evidenceRef, pakke, forgaenger: "krav" });
+  const krav = runKravGate(fp.pin, { root, evidenceRef });
   const predecessor = {
     gate_id: "krav",
     conclusion: krav.open === true ? "success" : "failure",
-    artifact_oid: snapshot.bindings?.krav?.oid ?? null,
+    artifact_oid: fp.artifact_oid,
   };
 
   const r = evaluateGate(
@@ -62,6 +73,33 @@ function runPlanGateInner(commitSha, root, evidenceRefIn) {
     },
   );
   return { ...r, evidence_commit: evidenceRef };
+}
+
+// forgaengerPin({git, commitSha, evidenceRef, pakke, forgaenger}) → { pin, artifact_oid }  — kaster fail-closed med præcis grund.
+// Kilden er det committede kandidat-resultat plan-build/<pakke>/<forgaenger>-gate-resultat.json @ evidenceRef (samme kilde som CI's
+// ci-gate-dom). Krav: commit_sha er fuld OID · forfader til/lig commitSha · forgænger-gatens inputs (artefakt + alle bindinger via
+// gate-eval-layoutet + launch.pakke) har samme blob-OID @ pin og @ commitSha. En gammel åben forgænger-dom gælder ikke ændret indhold.
+export function forgaengerPin({ git, commitSha, evidenceRef, pakke, forgaenger }) {
+  const kilde = `plan-build/${pakke}/${forgaenger}-gate-resultat.json`;
+  let raw;
+  try { raw = git.bytes("show", `${evidenceRef}:${kilde}`).toString("utf8"); }
+  catch { throw new Error(`forgænger (${forgaenger}): kandidat-resultatet ${kilde} findes ikke @ evidens ${String(evidenceRef).slice(0, 7)} — forgængerens pin kan ikke afledes (fail-closed)`); }
+  let pin; try { pin = JSON.parse(raw)?.commit_sha; } catch { throw new Error(`forgænger (${forgaenger}): ${kilde} er ikke gyldig JSON`); }
+  if (!isOid(pin)) throw new Error(`forgænger (${forgaenger}): ${kilde}.commit_sha mangler/ikke en fuld OID (fail-closed)`);
+  if (pin !== commitSha) { try { git("merge-base", "--is-ancestor", pin, commitSha); } catch { throw new Error(`forgænger (${forgaenger}): pin ${pin.slice(0, 7)} er ikke forfader til gatens commit ${commitSha.slice(0, 7)} — fremmed historik (fail-closed)`); } }
+  const id = (sha) => {
+    const launch = JSON.parse(git.bytes("show", `${sha}:launch/launch.json`).toString("utf8"));
+    const snap = buildSnapshot(forgaenger, { git, commitSha: sha, pakke });
+    return { pakke: launch.pakke, artifact: snap.artifact?.oid ?? null, bindings: Object.fromEntries(Object.entries(snap.bindings ?? {}).map(([k, v]) => [k, v?.oid ?? null])) };
+  };
+  const a = id(pin); const b = pin === commitSha ? a : id(commitSha);
+  const diff = [];
+  if (a.pakke !== b.pakke) diff.push(`pakke ${a.pakke} → ${b.pakke}`);
+  if (a.artifact !== b.artifact) diff.push(`artefakt ${String(a.artifact).slice(0, 12)} → ${String(b.artifact).slice(0, 12)}`);
+  for (const k of new Set([...Object.keys(a.bindings), ...Object.keys(b.bindings)])) if (a.bindings[k] !== b.bindings[k]) diff.push(`binding ${k} ${String(a.bindings[k]).slice(0, 12)} → ${String(b.bindings[k]).slice(0, 12)}`);
+  if (diff.length) throw new Error(`forgænger (${forgaenger}): inputs ÆNDRET mellem pin ${pin.slice(0, 7)} og gatens commit ${commitSha.slice(0, 7)}: ${diff.join(" · ")} — en gammel åben dom gælder ikke ændret indhold (F-C4-1)`);
+  if (!isOid(a.artifact)) throw new Error(`forgænger (${forgaenger}): artefaktet findes ikke @ pin ${pin.slice(0, 7)}`);
+  return { pin, artifact_oid: a.artifact };
 }
 
 // symlink-sikker CLI-detektion (samme mønster som krav-gate-run)

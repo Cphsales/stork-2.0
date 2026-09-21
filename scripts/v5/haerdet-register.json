@@ -65,9 +65,11 @@
   "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
  },
  "plan-gate-run.mjs": {
-  "pas_ref": "8a5755fd6b4ffbf917ffee6418ddf339e7a61efd",
-  "blob_oid": "8b4f60f529262e353a9f8f3a89c72819a3aee5f3",
-  "note": "M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Leverancer: docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/ (runde 9 run_id 20260910T094013-1159511-3098) — PASS-entry i runde 9-leverancen — genbekræftet byte-identisk PASS i runde 10-10h (2026-09-10)"
+  "status": "kandidat",
+  "blob_oid": "91ca5e9af16aa49bada26f5753b3d693682ae47f",
+  "pas_afventer": "Codex-pas på forgaengerPin (bundles m. næste fabrik-runde — ingen selvstændig red-team-runde før behov, vejnings-regel 2026-09-16)",
+  "kandidat_siden": "2026-09-21",
+  "note": "Driver-fund 2026-09-21: forgængeren (krav) dømmes nu ved sin egen pin fra krav-gate-resultat.json @ evidens m. forfader- + identitetsbinding (F-C4-1); før blev krav dømt ved planens commit → falsk rød. Selvtest 13. Forrige pas: M-41 Trin A: Codex-P2 runde 1-9 (2026-09-08..10, codex-angreb gpt-6-astra xhigh, wrapper v4.1 m. kvittering); runde 9 PASS (VERDIKT-DRAFT-sidste-linje-kontrakt) — alle mekaniske fund F-1..F-18/T-F1..T-F7 lukket; kun G-F1 (Mathias' mandat, plan DEL VIII pkt. 36) udestår som HALT uden for koden. Lever"
  },
  "forventnings-manifest.mjs": {
   "pas_ref": "219eba54ebd98bff9d7c299482a1572e342bbccc",
