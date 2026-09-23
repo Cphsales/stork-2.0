@@ -1,0 +1,952 @@
+{
+  "schema_version": 2,
+  "pakke": "lokations-skabelon",
+  "bindings": {
+    "manifest": {
+      "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+      "oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+    },
+    "plan": {
+      "path": "plan-build/lokations-skabelon/plan.md",
+      "oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29"
+    }
+  },
+  "bids": [
+    {
+      "bid_id": "1.1",
+      "kind": "forudsaetning",
+      "depends_on": [],
+      "covers": []
+    },
+    {
+      "bid_id": "1.2",
+      "kind": "effekt",
+      "depends_on": [
+        "1.1"
+      ],
+      "covers": [
+        "K-3/ac-3"
+      ]
+    },
+    {
+      "bid_id": "1.3",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "1.2"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "1.4",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "1.3"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "2.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.3",
+        "1.4"
+      ],
+      "covers": [
+        "K-7/S"
+      ]
+    },
+    {
+      "bid_id": "2.2",
+      "kind": "effekt",
+      "depends_on": [
+        "2.1"
+      ],
+      "covers": [
+        "K-1/ac-1",
+        "K-1/ac-2",
+        "K-1/ac-3",
+        "K-1/S",
+        "K-2/ac-1",
+        "K-2/ac-2",
+        "K-2/ac-4",
+        "K-2/ac-6",
+        "K-2/S",
+        "K-3/ac-1",
+        "K-3/ac-2"
+      ]
+    },
+    {
+      "bid_id": "2.3",
+      "kind": "forudsaetning",
+      "depends_on": [
+        "2.2"
+      ],
+      "covers": []
+    },
+    {
+      "bid_id": "3.1",
+      "kind": "effekt",
+      "depends_on": [
+        "2.3"
+      ],
+      "covers": [
+        "K-2/ac-3",
+        "K-2/ac-5",
+        "K-4/ac-1",
+        "K-4/ac-2",
+        "K-4/ac-3",
+        "K-4/ac-4",
+        "K-4/ac-5",
+        "K-4/ac-7",
+        "K-5/ac-1",
+        "K-5/ac-2",
+        "K-5/ac-3",
+        "K-5/ac-5",
+        "K-5/S"
+      ]
+    },
+    {
+      "bid_id": "4.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.4",
+        "2.3",
+        "3.1"
+      ],
+      "covers": [
+        "K-7/ac-1",
+        "K-7/ac-3",
+        "K-8/ac-3"
+      ]
+    },
+    {
+      "bid_id": "4.2",
+      "kind": "effekt",
+      "depends_on": [
+        "4.1"
+      ],
+      "covers": [
+        "K-4/ac-8",
+        "K-6/ac-1",
+        "K-6/ac-2",
+        "K-8/ac-5"
+      ]
+    },
+    {
+      "bid_id": "4.3",
+      "kind": "effekt",
+      "depends_on": [
+        "4.2"
+      ],
+      "covers": [
+        "K-3/ac-4",
+        "K-3/ac-5",
+        "K-3/ac-6",
+        "K-4/ac-6",
+        "K-4/ac-9",
+        "K-6/ac-3",
+        "K-6/ac-4",
+        "K-6/ac-5",
+        "K-6/ac-6",
+        "K-6/ac-7",
+        "K-6/ac-8",
+        "K-6/ac-9",
+        "K-6/ac-10",
+        "K-6/S",
+        "K-8/ac-4"
+      ]
+    },
+    {
+      "bid_id": "5.1",
+      "kind": "effekt",
+      "depends_on": [
+        "1.4",
+        "2.3",
+        "4.3"
+      ],
+      "covers": [
+        "K-1/ac-4",
+        "K-7/ac-2",
+        "K-7/ac-4",
+        "K-8/ac-1",
+        "K-8/ac-2",
+        "K-8/S",
+        "K-9/ac-3",
+        "K-9/S"
+      ]
+    },
+    {
+      "bid_id": "5.2",
+      "kind": "effekt",
+      "depends_on": [
+        "4.3",
+        "5.1"
+      ],
+      "covers": [
+        "K-1/ac-5",
+        "K-5/ac-4",
+        "K-9/ac-1",
+        "K-9/ac-2"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "b1.gruppe-identitet",
+      "file": "scripts/v5/lokations-skabelon/tests/bid1.test.mjs",
+      "oid": "11ace9a9bacc9b4455431f0f9226782d0a43783c",
+      "covers": [
+        "K-3/ac-3:MH",
+        "K-3/ac-3|k-3.ac-3.mh.g-og-h-oprettet-med-navn-og-separate-stabile-id",
+        "K-3/ac-3|k-3.ac-3.mh.redigering-genlaeses"
+      ]
+    },
+    {
+      "id": "b1.gruppe-input",
+      "file": "scripts/v5/lokations-skabelon/tests/bid1.test.mjs",
+      "oid": "11ace9a9bacc9b4455431f0f9226782d0a43783c",
+      "covers": [
+        "K-3/ac-3:UT",
+        "K-3/ac-3/neg-1",
+        "K-3/ac-3/neg-2"
+      ]
+    },
+    {
+      "id": "b2.pii-nedgradering",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2-klassifikation.test.mjs",
+      "oid": "fce9af3383eb3352afb98e31650b9a7d035cd9e3",
+      "covers": [
+        "K-7/S/neg-1",
+        "K-7/S/neg-2",
+        "K-7/S:FS",
+        "K-7/S|k-7.s.fs.efter-afvist-nedgradering-hasher-audit-fortsat-email-sporvaerdi"
+      ]
+    },
+    {
+      "id": "b2.pii-delete",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2-klassifikation.test.mjs",
+      "oid": "fce9af3383eb3352afb98e31650b9a7d035cd9e3",
+      "covers": [
+        "K-7/S/neg-3"
+      ]
+    },
+    {
+      "id": "b2.pii-indirect",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2-klassifikation.test.mjs",
+      "oid": "fce9af3383eb3352afb98e31650b9a7d035cd9e3",
+      "covers": [
+        "K-7/S/neg-4",
+        "K-7/S/neg-5"
+      ]
+    },
+    {
+      "id": "b2.pii-uden-vej",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2-klassifikation.test.mjs",
+      "oid": "fce9af3383eb3352afb98e31650b9a7d035cd9e3",
+      "covers": [
+        "K-7/S/neg-6",
+        "K-7/S/neg-7"
+      ]
+    },
+    {
+      "id": "b2.lokation-opret",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-1/ac-1:MH",
+        "K-1/ac-1|k-1.ac-1.mh.lokation-raekke-og-foerste-stand-genlaest",
+        "K-1/ac-1|k-1.ac-1.mh.init-status-event-aktiv",
+        "K-1/ac-1|k-1.ac-1.mh.pris-og-gruppe-historik-raekker",
+        "K-2/ac-6|k-2.ac-6.fs.min-1-aktiv-stand-efter-commit-pr-oprettet-lokation"
+      ]
+    },
+    {
+      "id": "b2.lokation-navn",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-1/ac-1:UT",
+        "K-1/ac-1/neg-1",
+        "K-1/ac-1/neg-2",
+        "K-1/ac-1/neg-3"
+      ]
+    },
+    {
+      "id": "b2.lokation-typer",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-1/ac-2:MH",
+        "K-1/ac-2:UT",
+        "K-1/ac-2/neg-1",
+        "K-1/ac-2/neg-2",
+        "K-1/ac-2|k-1.ac-2.mh.fem-typer-accepteres-og-genlaeses-ordret"
+      ]
+    },
+    {
+      "id": "b2.gruppe-reference",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-3/ac-1:UT",
+        "K-3/ac-2:UT",
+        "K-3/ac-1/neg-1",
+        "K-3/ac-1/neg-2",
+        "K-3/ac-2/neg-2"
+      ]
+    },
+    {
+      "id": "b2.stand-reference",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-1:UT",
+        "K-2/S:UT",
+        "K-2/ac-1/neg-1",
+        "K-2/ac-1/neg-2",
+        "K-2/ac-1/neg-3",
+        "K-2/ac-6/neg-3",
+        "K-2/S/neg-1"
+      ]
+    },
+    {
+      "id": "b2.stand-pris",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-2:UT",
+        "K-2/ac-2/neg-1",
+        "K-2/ac-2|k-2.ac-2.fs.egen-pris-vinder-over-lokationens",
+        "K-2/ac-2|k-2.ac-2.fs.stand-rediger-null-reset-til-arv",
+        "K-2/ac-2|k-2.ac-2.fs.nul-er-en-pris-ikke-null"
+      ]
+    },
+    {
+      "id": "b2.stand-identitet",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-4:FS",
+        "K-2/ac-4|k-2.ac-4.fs.stand-id-stabil-identitet-med-lokation-id-reference"
+      ]
+    },
+    {
+      "id": "b2.sidste-stand",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-6:UT",
+        "K-2/ac-6/neg-1",
+        "K-2/ac-6/neg-2"
+      ]
+    },
+    {
+      "id": "b2.ejerkaede",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-6:FS",
+        "K-2/ac-6|k-2.ac-6.fs.ejerkaede-fk-not-null-stande-lokationer-grupper"
+      ]
+    },
+    {
+      "id": "b2.dml-lokation",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-1/S/neg-1"
+      ]
+    },
+    {
+      "id": "b2.dml-stand",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-2/ac-1/neg-5"
+      ]
+    },
+    {
+      "id": "b2.pris-immutabel",
+      "file": "scripts/v5/lokations-skabelon/tests/bid2.test.mjs",
+      "oid": "2fd477ec936915706ecbfab23d75b011a1ab98e7",
+      "covers": [
+        "K-1/ac-3:UT",
+        "K-1/ac-3/neg-1",
+        "K-1/ac-3/neg-2"
+      ]
+    },
+    {
+      "id": "b3.status-overgange",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-4/ac-1:MH",
+        "K-4/ac-1:UT",
+        "K-4/ac-1/neg-1",
+        "K-4/ac-1/neg-2",
+        "K-4/ac-1/neg-3",
+        "K-4/ac-1|k-4.ac-1.mh.hver-af-aktiv-dvale-nedlagt-kan-saettes-genlaes-status-paa",
+        "K-4/ac-1|k-4.ac-1.mh.alle-overgange-mellem-forskellige-statusser-tilladt",
+        "K-4/ac-2:FS",
+        "K-4/ac-2|k-4.ac-2.fs.praecis-en-audit-raekke-pr-skift-change-reason-brugertekst",
+        "K-4/ac-2|k-4.ac-2.fs.audit-actor-user-id-lig-r-plus-auth-uid",
+        "K-4/ac-2|k-4.ac-2.fs.audit-source-type-manual"
+      ]
+    },
+    {
+      "id": "b3.status-aarsag",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-4/ac-2:UT",
+        "K-4/ac-2/neg-1",
+        "K-4/ac-2/neg-2"
+      ]
+    },
+    {
+      "id": "b3.status-dedikeret",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-4/ac-3:UT",
+        "K-4/ac-3:FS",
+        "K-4/ac-3/neg-1",
+        "K-5/ac-1:UT",
+        "K-5/ac-1/neg-4",
+        "K-4/ac-3|k-4.ac-3.fs.omdoeb-dvale-lokation-via-lokation-rediger-status-uaendret"
+      ]
+    },
+    {
+      "id": "b3.status-historik",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-4/ac-4:UT",
+        "K-4/ac-4/neg-1",
+        "K-4/ac-4/neg-2",
+        "K-4/ac-4|k-4.ac-4.fs.status-historik-alle-events-seq-orden-sat-dato-uaendret"
+      ]
+    },
+    {
+      "id": "b3.stande-bevares",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-2/ac-5:FS",
+        "K-2/ac-5:UT",
+        "K-2/ac-5/neg-1",
+        "K-2/ac-5|k-2.ac-5.fs.stand-maengde-id-antal-is-active-egne-priser-uaendret",
+        "K-2/ac-5|k-2.ac-5.fs.prishistorik-uaendret-foer-under-efter-nedlaeg-genaabn",
+        "K-4/ac-7:MH",
+        "K-4/ac-7:FS",
+        "K-4/ac-7|k-4.ac-7.mh.genaabning-fra-nedlagt-via-lokation-saet-status-aktiv",
+        "K-4/ac-7|k-4.ac-7.fs.bookbar-true-audit-med-aarsag",
+        "K-4/ac-7|k-4.ac-7.fs.samme-lokation-og-stand-id-ingen-manuel-genindsaettelse"
+      ]
+    },
+    {
+      "id": "b3.bookbar",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-2/ac-3:FS",
+        "K-2/ac-3|k-2.ac-3.fs.stand-er-bookbar-false-alle-stande-dvale-nedlagt",
+        "K-2/ac-3|k-2.ac-3.fs.stand-er-bookbar-true-under-aktiv",
+        "K-2/ac-3|k-2.ac-3.fs.false-for-deaktiveret-stand-under-aktiv-lokation",
+        "K-5/ac-1:FS",
+        "K-5/ac-1|k-5.ac-1.fs.bookbar-false-alle-datoer-i-perioden-for-c1-og-c2",
+        "K-5/ac-1|k-5.ac-1.fs.l2-aktiv-true",
+        "K-5/ac-1|k-5.ac-1.fs.som-sa-samme-false-ingen-admin-gren",
+        "K-4/ac-5|k-4.ac-5.fs.samme-dags-start-stop-seneste-seq-gaelder",
+        "K-4/ac-5|k-4.ac-5.fs.datoer-foer-oprettelse-null-false"
+      ]
+    },
+    {
+      "id": "b3.stop-rettighed",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-5/ac-2:UT",
+        "K-5/S:UT",
+        "K-5/ac-2/neg-1",
+        "K-5/ac-2/neg-2",
+        "K-5/S/neg-1",
+        "K-8/ac-4/neg-1",
+        "K-8/S:UT",
+        "K-8/S/neg-1",
+        "K-5/ac-2:MH",
+        "K-5/ac-2|k-5.ac-2.mh.stop-foer-tid-udfoert-af-r-plus",
+        "K-5/ac-2|k-5.ac-2.fs.bookbar-l1-dags-dato-flipper-straks-til-true",
+        "K-5/ac-2|k-5.ac-2.fs.audit-raekke-med-aarsag"
+      ]
+    },
+    {
+      "id": "b3.hviledage",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-5/ac-3:UT",
+        "K-5/ac-3:MH",
+        "K-5/ac-3:FS",
+        "K-5/ac-3/neg-1",
+        "K-5/ac-3/neg-2",
+        "K-5/ac-3/neg-3",
+        "K-5/ac-3|k-5.ac-3.mh.hviledage-aendret-af-r-plus-uden-godkendelsestrin",
+        "K-5/ac-3|k-5.ac-3.fs.ny-vaerdi-straks-synlig-lokation-hent-hviledage",
+        "K-5/ac-3|k-5.ac-3.fs.ingen-pending-raekke-oprettet",
+        "K-5/ac-3|k-5.ac-3.fs.audit-raekke-med-aarsag",
+        "K-5/ac-3|k-5.ac-3.fs.lokalitet-l2-og-h-uaendret"
+      ]
+    },
+    {
+      "id": "b3.hvile-default",
+      "file": "scripts/v5/lokations-skabelon/tests/bid3.test.mjs",
+      "oid": "1ee12adf87a6b00bad4af91189b239864d9462d7",
+      "covers": [
+        "K-5/ac-5:UT",
+        "K-5/ac-5:FS",
+        "K-5/ac-5/neg-1",
+        "K-5/ac-5|k-5.ac-5.fs.ny-lokation-hviledage-is-null-default",
+        "K-5/ac-5|k-5.ac-5.fs.ingen-pakke-mekanik-skriver-dvale-event-af-sig-selv",
+        "K-5/ac-5|k-5.ac-5.fs.saet-14-fjern-med-null-null-igen",
+        "K-5/ac-5|k-5.ac-5.fs.manuel-dvale-paa-l2-bestaar-uanset-hviledage"
+      ]
+    },
+    {
+      "id": "b4.fravalg-request-kanter",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4-kanter.test.mjs",
+      "oid": "9df5cfed92e935f0209b138ad0288a7f311b134c",
+      "covers": [
+        "K-3/ac-6:UT",
+        "K-6/ac-5:UT",
+        "K-3/ac-6/neg-1",
+        "K-3/ac-6/neg-2",
+        "K-3/ac-6/neg-3",
+        "K-6/ac-5/neg-1",
+        "K-6/ac-5/neg-2",
+        "K-6/ac-5/neg-3"
+      ]
+    },
+    {
+      "id": "b4.frakobl-request-kanter",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4-kanter.test.mjs",
+      "oid": "9df5cfed92e935f0209b138ad0288a7f311b134c",
+      "covers": [
+        "K-6/ac-6/neg-1",
+        "K-6/ac-6/neg-3",
+        "K-6/ac-6/neg-4"
+      ]
+    },
+    {
+      "id": "b4.nedlagt-apply",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4-kanter.test.mjs",
+      "oid": "9df5cfed92e935f0209b138ad0288a7f311b134c",
+      "covers": [
+        "K-4/ac-9:UT",
+        "K-4/ac-9/neg-1"
+      ]
+    },
+    {
+      "id": "b4.relationshistorik-schema",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4-kanter.test.mjs",
+      "oid": "9df5cfed92e935f0209b138ad0288a7f311b134c",
+      "covers": [
+        "K-6/ac-6:UT",
+        "K-6/ac-6/neg-2",
+        "K-8/ac-3/neg-4"
+      ]
+    },
+    {
+      "id": "b4.gruppe-udfasning",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-3/ac-5:UT",
+        "K-3/ac-5:FS",
+        "K-3/ac-5/neg-1",
+        "K-3/ac-5/neg-3",
+        "K-3/ac-5/neg-4",
+        "K-3/ac-5|k-3.ac-5.fs.udfasning-is-active-false",
+        "K-3/ac-5|k-3.ac-5.fs.g-l-stande-historik-koblinger-og-effektive-retter-bestaar"
+      ]
+    },
+    {
+      "id": "b4.due-dato-og-genkoersel",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-6/ac-10/neg-5",
+        "K-6/ac-10/neg-6",
+        "K-6/ac-10|k-6.ac-10.fs.replay-genkoersel-af-applied-22023-ingen-ekstra-raekke"
+      ]
+    },
+    {
+      "id": "b4.kobl-input",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-6/ac-1:UT",
+        "K-6/ac-1/neg-1",
+        "K-6/ac-1/neg-2",
+        "K-6/ac-1/neg-3",
+        "K-6/ac-1/neg-4",
+        "K-6/ac-1/neg-5",
+        "K-6/ac-10/neg-9"
+      ]
+    },
+    {
+      "id": "b4.pending-payload-adgang",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-6/ac-10/neg-8",
+        "K-8/ac-4/neg-4",
+        "K-6/ac-10|k-6.ac-10.mh.request-r-plus-pending-synlig-for-a-plus-med-foreslaaede-vaerdier",
+        "K-8/ac-4|k-8.ac-4.fs.requester-laeser-egen-pending-med-payload",
+        "K-8/ac-4|k-8.ac-4.fs.v-r17-kan-kun-laese-egne-requests",
+        "K-6/ac-10|k-6.ac-10.fs.audit-request-label-pending-change-request-payload-aarsag"
+      ]
+    },
+    {
+      "id": "b4.approve-undo",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-6/ac-10/neg-2",
+        "K-6/ac-10/neg-4",
+        "K-6/ac-10/neg-7",
+        "K-6/ac-10|k-6.ac-10.mh.approve-a-plus-ikke-requester-undo-vindue-fra-undo-settings",
+        "K-6/ac-10|k-6.ac-10.mh.undo-foer-frist-status-undone-ingen-effekt",
+        "K-6/ac-10|k-6.ac-10.fs.audit-approve-undo-labels-actor-user-id-a-plus"
+      ]
+    },
+    {
+      "id": "b4.medlemskab-arv",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-3/ac-4:FS",
+        "K-6/ac-4:FS",
+        "K-6/ac-3:MH",
+        "K-6/ac-8:MH",
+        "K-6/ac-8:FS",
+        "K-3/ac-4|k-3.ac-4.fs.ret-c1-c2-paa-l1-l2-true",
+        "K-3/ac-4|k-3.ac-4.fs.ret-arves-til-senere-l3-l5-true",
+        "K-3/ac-4|k-3.ac-4.fs.ret-c3-false-paa-alle-g-lokationer",
+        "K-6/ac-4|k-6.ac-4.fs.ret-c1-c2-l1-l2-true-og-senere-l3-l5-true",
+        "K-6/ac-4|k-6.ac-4.fs.ret-c3-false-paa-alle-g-lokationer",
+        "K-6/ac-3|k-6.ac-3.mh.kobl-approve-due-apply-giver-aaben-raekke-gaeldende-til-null",
+        "K-6/ac-3|k-6.ac-3.mh.genlaes-via-gruppe-koblinger-liste",
+        "K-6/ac-8|k-6.ac-8.mh.c1-og-c2-paa-g-samt-c1-paa-h-afvises-ikke",
+        "K-6/ac-8|k-6.ac-8.fs.ret-c1-l1-og-ret-c2-l1-true-samtidig-c1-ret-paa-h-lokation"
+      ]
+    },
+    {
+      "id": "b4.outsider",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-3/ac-4:UT",
+        "K-6/ac-4:UT",
+        "K-3/ac-4/neg-1",
+        "K-3/ac-4/neg-2",
+        "K-6/ac-4/neg-1",
+        "K-6/ac-4/neg-2"
+      ]
+    },
+    {
+      "id": "b4.nedlagt-wrapper",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-4/ac-8:UT",
+        "K-6/S:UT",
+        "K-4/ac-8/neg-1",
+        "K-4/ac-8/neg-2",
+        "K-4/ac-8/neg-3",
+        "K-6/S/neg-1"
+      ]
+    },
+    {
+      "id": "b4.kobling-dublet-request",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-6/ac-2/neg-1"
+      ]
+    },
+    {
+      "id": "b4.r1-laesegraense",
+      "file": "scripts/v5/lokations-skabelon/tests/bid4.test.mjs",
+      "oid": "eaa83da3b255603e4114c2f90242e77e3f2a2006",
+      "covers": [
+        "K-8/ac-4:UT",
+        "K-8/ac-4/neg-2",
+        "K-8/ac-4|k-8.ac-4.fs.r-minus-direkte-select-rows-tom-ikke-fejl-neg-3"
+      ]
+    },
+    {
+      "id": "b5.api-lokation-hviledage",
+      "file": "scripts/v5/lokations-skabelon/tests/bid5-api.test.mjs",
+      "oid": "fad74ddaf69b55220526798c1392c691fc1903d5",
+      "covers": [
+        "K-1/ac-5:MH",
+        "K-5/ac-4:MH",
+        "K-1/ac-5|k-1.ac-5.mh.w5-w6-via-api-som-r-plus-genlaest-lokation-hent",
+        "K-5/ac-4|k-5.ac-4.mh.w8-via-api-som-r-plus-genlaest-lokation-hent-hviledage"
+      ]
+    },
+    {
+      "id": "b5.api-read-negativer",
+      "file": "scripts/v5/lokations-skabelon/tests/bid5-api.test.mjs",
+      "oid": "fad74ddaf69b55220526798c1392c691fc1903d5",
+      "covers": [
+        "K-9/ac-2:UT",
+        "K-9/ac-2/neg-1",
+        "K-9/ac-2/neg-2",
+        "K-9/ac-2/neg-3"
+      ]
+    },
+    {
+      "id": "b5.ni-tabeller-fire-dml",
+      "file": "scripts/v5/lokations-skabelon/tests/bid5-privilegier.test.mjs",
+      "oid": "b1cf9da386c0bea60f451d9e33b23c7a15efc405",
+      "covers": [
+        "K-8/ac-1/neg-1"
+      ]
+    }
+  ],
+  "mutants": [
+    {
+      "mutant_id": "t7.1-direct-nedgradering",
+      "guard_ref": "g.pii_klassifikation_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_compliance._pii_klassifikation_guard()'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  \n  v_new := regexp_replace(v_src, '(^|\n)([\t ]*)begin([\t ]*\n|[\t ]*$)', '\\1\\2begin\n  if tg_op = ''UPDATE'' then if old.pii_level = ''direct'' and new.pii_level <> ''direct'' then return new; end if; end if;\n', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t7.1-direct-nedgradering'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t7.1-direct-nedgradering',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t7.1-direct-nedgradering';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t7.1-direct-nedgradering';\nend $restore$;",
+      "target_test_ids": [
+        "b2.pii-nedgradering"
+      ],
+      "control_test_ids": [
+        "b2.pii-delete"
+      ]
+    },
+    {
+      "mutant_id": "t7.2-direct-delete",
+      "guard_ref": "g.pii_klassifikation_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_compliance._pii_klassifikation_guard()'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  \n  v_new := regexp_replace(v_src, '(^|\n)([\t ]*)begin([\t ]*\n|[\t ]*$)', '\\1\\2begin\n  if tg_op = ''DELETE'' then if old.pii_level = ''direct'' then return old; end if; end if;\n', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t7.2-direct-delete'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t7.2-direct-delete',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t7.2-direct-delete';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t7.2-direct-delete';\nend $restore$;",
+      "target_test_ids": [
+        "b2.pii-delete"
+      ],
+      "control_test_ids": [
+        "b2.pii-nedgradering"
+      ]
+    },
+    {
+      "mutant_id": "t7.10-indirect",
+      "guard_ref": "g.pii_klassifikation_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_compliance._pii_klassifikation_guard()'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  \n  v_new := regexp_replace(v_src, '(^|\n)([\t ]*)begin([\t ]*\n|[\t ]*$)', '\\1\\2begin\n  if tg_op <> ''DELETE'' then if new.pii_level = ''indirect'' then return new; end if; end if;\n', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t7.10-indirect'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t7.10-indirect',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t7.10-indirect';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t7.10-indirect';\nend $restore$;",
+      "target_test_ids": [
+        "b2.pii-indirect"
+      ],
+      "control_test_ids": [
+        "b2.pii-uden-vej"
+      ]
+    },
+    {
+      "mutant_id": "t7.15-direct-uden-vej",
+      "guard_ref": "g.pii_klassifikation_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_compliance._pii_klassifikation_guard()'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  \n  v_new := regexp_replace(v_src, '(^|\n)([\t ]*)begin([\t ]*\n|[\t ]*$)', '\\1\\2begin\n  if tg_op <> ''DELETE'' then if new.pii_level = ''direct'' then return new; end if; end if;\n', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t7.15-direct-uden-vej'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t7.15-direct-uden-vej',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t7.15-direct-uden-vej';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t7.15-direct-uden-vej';\nend $restore$;",
+      "target_test_ids": [
+        "b2.pii-uden-vej"
+      ],
+      "control_test_ids": [
+        "b2.pii-nedgradering"
+      ]
+    },
+    {
+      "mutant_id": "t6.3-w15-uden-medlemskab",
+      "guard_ref": "g.w15_ikke_i_gruppen",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_klient_fravaelg(uuid,uuid,date,text)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravaelg: klient_ikke_i_gruppen''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t6.3-w15-uden-medlemskab'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravaelg: klient_ikke_i_gruppen''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t6.3-w15-uden-medlemskab'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t6.3-w15-uden-medlemskab',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t6.3-w15-uden-medlemskab';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t6.3-w15-uden-medlemskab';\nend $restore$;",
+      "target_test_ids": [
+        "b4.outsider"
+      ],
+      "control_test_ids": [
+        "b4.nedlagt-wrapper"
+      ]
+    },
+    {
+      "mutant_id": "t4.7-w16-uden-nedlagt",
+      "guard_ref": "g.nedlagt_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_klient_fravalg_ophaev(uuid,uuid,date,text)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravalg_ophaev: lokation_nedlagt''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t4.7-w16-uden-nedlagt'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravalg_ophaev: lokation_nedlagt''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t4.7-w16-uden-nedlagt'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t4.7-w16-uden-nedlagt',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t4.7-w16-uden-nedlagt';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t4.7-w16-uden-nedlagt';\nend $restore$;",
+      "target_test_ids": [
+        "b4.nedlagt-wrapper"
+      ],
+      "control_test_ids": [
+        "b4.outsider"
+      ]
+    },
+    {
+      "mutant_id": "t4.8-w15-uden-nedlagt",
+      "guard_ref": "g.nedlagt_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_klient_fravaelg(uuid,uuid,date,text)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravaelg: lokation_nedlagt''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t4.8-w15-uden-nedlagt'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_klient_fravaelg: lokation_nedlagt''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t4.8-w15-uden-nedlagt'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t4.8-w15-uden-nedlagt',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t4.8-w15-uden-nedlagt';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t4.8-w15-uden-nedlagt';\nend $restore$;",
+      "target_test_ids": [
+        "b4.nedlagt-wrapper"
+      ],
+      "control_test_ids": [
+        "b4.outsider"
+      ]
+    },
+    {
+      "mutant_id": "t8.11-r17-payload",
+      "guard_ref": "g.r17_pending_read_gate",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_pending_hent(uuid)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_pending_hent: permission_denied''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t8.11-r17-payload'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_pending_hent: permission_denied''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t8.11-r17-payload'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t8.11-r17-payload',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t8.11-r17-payload';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t8.11-r17-payload';\nend $restore$;",
+      "target_test_ids": [
+        "b4.pending-payload-adgang"
+      ],
+      "control_test_ids": [
+        "b4.approve-undo"
+      ]
+    },
+    {
+      "mutant_id": "t8.5-r1-laesning",
+      "guard_ref": "g.r1_read_gate",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.gruppe_hent(uuid)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''gruppe_hent: permission_denied''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t8.5-r1-laesning'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''gruppe_hent: permission_denied''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t8.5-r1-laesning'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t8.5-r1-laesning',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t8.5-r1-laesning';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t8.5-r1-laesning';\nend $restore$;",
+      "target_test_ids": [
+        "b4.r1-laesegraense",
+        "b5.api-read-negativer"
+      ],
+      "control_test_ids": [
+        "b3.hviledage"
+      ]
+    },
+    {
+      "mutant_id": "t8.2-w12-write",
+      "guard_ref": "g.has_permission_write_gate",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_saet_status(uuid,text,text,date)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_saet_status: permission_denied''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t8.2-w12-write'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_saet_status: permission_denied''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t8.2-w12-write'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t8.2-w12-write',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t8.2-w12-write';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t8.2-w12-write';\nend $restore$;",
+      "target_test_ids": [
+        "b3.stop-rettighed"
+      ],
+      "control_test_ids": [
+        "b3.hviledage"
+      ]
+    },
+    {
+      "mutant_id": "t8.2-w8-write",
+      "guard_ref": "g.has_permission_write_gate",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.lokation_saet_hviledage(uuid,integer,text)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_saet_hviledage: permission_denied''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t8.2-w8-write'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''lokation_saet_hviledage: permission_denied''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t8.2-w8-write'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t8.2-w8-write',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t8.2-w8-write';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t8.2-w8-write';\nend $restore$;",
+      "target_test_ids": [
+        "b3.hviledage"
+      ],
+      "control_test_ids": [
+        "b3.stop-rettighed"
+      ]
+    },
+    {
+      "mutant_id": "t8.2-w13-write",
+      "guard_ref": "g.has_permission_write_gate",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity.gruppe_klient_kobl(uuid,uuid,date,text)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''gruppe_klient_kobl: permission_denied''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t8.2-w13-write'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''gruppe_klient_kobl: permission_denied''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t8.2-w13-write'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t8.2-w13-write',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t8.2-w13-write';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t8.2-w13-write';\nend $restore$;",
+      "target_test_ids": [
+        "b4.approve-undo"
+      ],
+      "control_test_ids": [
+        "b4.kobl-input"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-grupper",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.grupper to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.grupper from authenticated;",
+      "target_test_ids": [
+        "b5.ni-tabeller-fire-dml"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-lokationer",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.lokationer to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.lokationer from authenticated;",
+      "target_test_ids": [
+        "b2.dml-lokation"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-stande",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.stande to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.stande from authenticated;",
+      "target_test_ids": [
+        "b2.dml-stand",
+        "b3.stande-bevares"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-pris_historik",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.pris_historik to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.pris_historik from authenticated;",
+      "target_test_ids": [
+        "b2.pris-immutabel"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-lokation_status_skift",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.lokation_status_skift to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.lokation_status_skift from authenticated;",
+      "target_test_ids": [
+        "b3.status-dedikeret",
+        "b3.status-historik"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    },
+    {
+      "mutant_id": "t4.8-i3-uden-nedlagt",
+      "guard_ref": "g.nedlagt_guard",
+      "apply": "create schema if not exists v5_angreb;\nrevoke all on schema v5_angreb from public, anon, authenticated;\ncreate table if not exists v5_angreb.function_restore (mutant_id text primary key, definition text not null);\ndo $mutation$\ndeclare\n  v_oid regprocedure := 'core_identity._apply_lokation_klient_fravalg(jsonb,uuid)'::regprocedure;\n  v_src text; v_def text; v_new text;\nbegin\n  select prosrc, pg_get_functiondef(oid) into strict v_src,v_def from pg_proc where oid=v_oid and prolang=(select oid from pg_language where lanname='plpgsql');\n  if regexp_count(v_src, 'raise[[:space:]]+exception[[:space:]]+''_apply_lokation_klient_fravalg: lokation_nedlagt''[^;]*;', 1, 'i') <> 1 then raise exception 'Mutation locus is not unique: t4.8-i3-uden-nedlagt'; end if;\n  v_new := regexp_replace(v_src, 'raise[[:space:]]+exception[[:space:]]+''_apply_lokation_klient_fravalg: lokation_nedlagt''[^;]*;', 'null;', 'i');\n  if v_new = v_src then raise exception 'Mutation locus absent: t4.8-i3-uden-nedlagt'; end if;\n  insert into v5_angreb.function_restore(mutant_id,definition) values ('t4.8-i3-uden-nedlagt',v_def);\n  execute replace(v_def,v_src,v_new);\nend $mutation$;",
+      "restore": "do $restore$\ndeclare v_def text;\nbegin\n  select definition into strict v_def from v5_angreb.function_restore where mutant_id='t4.8-i3-uden-nedlagt';\n  execute v_def;\n  delete from v5_angreb.function_restore where mutant_id='t4.8-i3-uden-nedlagt';\nend $restore$;",
+      "target_test_ids": [
+        "b4.nedlagt-apply"
+      ],
+      "control_test_ids": [
+        "b4.nedlagt-wrapper"
+      ]
+    },
+    {
+      "mutant_id": "t8.1-grant-gruppe_klient_koblinger",
+      "guard_ref": "g.app_dml_revoke",
+      "apply": "grant insert, update, delete, truncate on core_identity.gruppe_klient_koblinger to authenticated;",
+      "restore": "revoke insert, update, delete, truncate on core_identity.gruppe_klient_koblinger from authenticated;",
+      "target_test_ids": [
+        "b4.frakobl-request-kanter"
+      ],
+      "control_test_ids": [
+        "b1.gruppe-identitet"
+      ]
+    }
+  ]
+}
