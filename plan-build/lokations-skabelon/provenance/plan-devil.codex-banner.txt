@@ -1,14 +1,14 @@
-WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/b6r2/out-devil/.run-mXl0n0ha/codex-home"))
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/devil36/out-r2/.run-YZwwnBtt/codex-home"))
 Reading additional input from stdin...
 OpenAI Codex v0.154.0
 --------
-workdir: /tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/b6r2/wd-devil
+workdir: /tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/devil36/wd
 model: gpt-6-astra
 provider: openai
 approval: never
 sandbox: read-only
 reasoning effort: xhigh
 reasoning summaries: none
-session id: 01a0aa6a-596a-72a0-b5bd-18c14168b67e
+session id: 01a0cd92-97b7-7740-8623-b6b00e3187e0
 --------
 user
