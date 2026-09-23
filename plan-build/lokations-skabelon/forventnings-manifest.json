@@ -12,13 +12,13 @@
     },
     "plan": {
       "path": "plan-build/lokations-skabelon/plan.md",
-      "oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29"
+      "oid": "807fdf93056180c766d23f93c4137ded98b78e3b"
     }
   },
   "guards": [
     {
       "id": "g.app_dml_revoke",
-      "beskrivelse": "Ingen app-DML-grants paa pakkens 9 tabeller (revoke all + kun grant select); write-policiernes GUC-betingelse kan opfyldes af app-rollen, saa revoken baerer alene (S-29, T8.1 I)"
+      "beskrivelse": "Ingen app-DML-grants paa pakkens 9 tabeller (revoke all + kun grant select). Baerer ALENE hvor en write-policy ellers ville tillade operationen for app-rollen med selvsat GUC: INSERT/UPDATE paa de 6 master-/relationstabeller (koblinger/fravalg: UPDATE kun i luk-formen, som _kobling_historik_guard tillader) - dér er sole_guard_ref sat: K-1/S/neg-1 (INSERT lokationer) · K-2/ac-1/neg-5 (INSERT stande) · K-6/ac-6/neg-1 (UPDATE koblinger, luk-formen) · K-8/ac-1/neg-1 (repraesentant UPDATE grupper; T8.1 I). IKKE alene (dobbelt-daekket, ingen sole_guard_ref - M-40 D10): de 3 historik-logs (ingen write-policies -> RLS enabled+forced uden policy = default-deny; _historik_immutabel for UPDATE/DELETE/TRUNCATE), DELETE paa alle 9 (ingen delete-policy -> default-deny), oevrige UPDATE-former/DELETE/TRUNCATE paa koblinger/fravalg (_kobling_historik_guard), TRUNCATE paa FK-refererede master-tabeller (PG 0A000), audit_log (fundament-tabel uden for scope, egen guard-familie). 42501 fra privilegie-laget er uaendret i normalen for alle negativer. (S-29 · §0.2 AK-DIREKTE-DML · KB-#6, v3.6)"
     },
     {
       "id": "g.pii_klassifikation_guard",
@@ -237,7 +237,7 @@
       "negatives": [
         {
           "id": "K-1/ac-3/neg-1",
-          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa pris_historik -> AK-DIREKTE-DML (lighed pinnet til UPDATE; DELETE/TRUNCATE giver samme faste PG-besked for tabellen). Rolle R+.",
+          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa pris_historik -> AK-DIREKTE-DML (lighed pinnet til UPDATE; DELETE/TRUNCATE giver samme faste PG-besked for tabellen). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): pris_historik er historik-log UDEN write-policies (RLS enabled+forced uden policy = default-deny for UPDATE/DELETE) og med _historik_immutabel BEFORE UPDATE/DELETE (row) + TRUNCATE (statement) - revoken baerer ikke alene; negativet bestaar uaendret (42501 fra privilegie-laget); S-beviset for guarden er neg-2.",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -247,8 +247,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "UPDATE core_identity.pris_historik"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         },
         {
           "id": "K-1/ac-3/neg-2",
@@ -380,7 +379,7 @@
       "negatives": [
         {
           "id": "K-1/S/neg-1",
-          "beskrivelse": "ctx-A INSERT direkte i core_identity.lokationer (lokations-data uden om master-indgangen) -> AK-DIREKTE-DML; samme case som K-8/ac-1/neg-1. Rolle R+.",
+          "beskrivelse": "ctx-A INSERT direkte i core_identity.lokationer (lokations-data uden om master-indgangen) -> AK-DIREKTE-DML; samme case som K-8/ac-1/neg-1. Rolle R+. Sole (KB-#6, v3.6): lokationer har insert-policy with check (current_setting('stork.allow_lokationer_write', true) = 'true'), som app-rollen selv kan saette -> med grant ville INSERT lykkes; revoken baerer alene. D10-mutant: grant insert on core_identity.lokationer to authenticated + selvsat GUC/aarsag -> raekke lagret uden om lokation_opret (ingen stand, intet status-event) -> roed.",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -456,7 +455,7 @@
         },
         {
           "id": "K-2/ac-1/neg-5",
-          "beskrivelse": "ctx-A DML paa stande/lokationer -> AK-DIREKTE-DML (lighed pinnet til INSERT INTO stande; neg-4 API-signatur er S-note, ikke manifest-negativ). Rolle R+.",
+          "beskrivelse": "ctx-A DML paa stande/lokationer -> AK-DIREKTE-DML (lighed pinnet til INSERT INTO stande; neg-4 API-signatur er S-note, ikke manifest-negativ). Rolle R+. Sole (KB-#6, v3.6): stande har insert-policy m. GUC-betingelse app-rollen selv kan saette -> med grant ville INSERT lykkes; revoken baerer alene for INSERT. D10-mutant: grant insert on core_identity.stande to authenticated + selvsat GUC/aarsag -> stand lagret uden om stand_opret/lokation_opret -> roed.",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -607,7 +606,7 @@
       "negatives": [
         {
           "id": "K-2/ac-5/neg-1",
-          "beskrivelse": "ctx-A DELETE paa stande -> AK-DIREKTE-DML (neg-2 signatur-assert og neg-3 FK RESTRICT er S-noter). Rolle R+.",
+          "beskrivelse": "ctx-A DELETE paa stande -> AK-DIREKTE-DML (neg-2 signatur-assert og neg-3 FK RESTRICT er S-noter). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): ingen tabel har delete-policy (§2.1) -> RLS enabled+forced = default-deny for DELETE (0 raekker) selv med grant; pris_historik.stand_id FK RESTRICT (neg-3) er tredje lag for stande m. prishistorik - revoken baerer ikke alene; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -617,8 +616,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "DELETE FROM core_identity.stande"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         }
       ]
     },
@@ -967,7 +965,7 @@
       "negatives": [
         {
           "id": "K-3/ac-5/neg-1",
-          "beskrivelse": "ctx-A DELETE paa grupper -> AK-DIREKTE-DML (neg-2 signatur-assert er S-note). Rolle R+.",
+          "beskrivelse": "ctx-A DELETE paa grupper -> AK-DIREKTE-DML (neg-2 signatur-assert er S-note). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): ingen delete-policy -> RLS enabled+forced = default-deny for DELETE (0 raekker) selv med grant; lokationer.gruppe_id FK RESTRICT (S-1, ctx-B) er tredje lag for G m. lokationer - revoken baerer ikke alene; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -977,8 +975,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "DELETE FROM core_identity.grupper"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         },
         {
           "id": "K-3/ac-5/neg-3",
@@ -1253,7 +1250,7 @@
       "negatives": [
         {
           "id": "K-4/ac-3/neg-1",
-          "beskrivelse": "ctx-A INSERT paa lokation_status_skift -> AK-DIREKTE-DML (neg-2 API-signatur er S-note; neg-3 er FS-observation). Rolle R+.",
+          "beskrivelse": "ctx-A INSERT paa lokation_status_skift -> AK-DIREKTE-DML (neg-2 API-signatur er S-note; neg-3 er FS-observation). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): lokation_status_skift er historik-log UDEN write-policies -> RLS enabled+forced uden insert-policy = default-deny (med grant: 42501 'new row violates row-level security policy', ingen raekke) - revoken baerer ikke alene; negativet bestaar uaendret (42501 'permission denied for table' i normalen).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -1263,8 +1260,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "INSERT INTO core_identity.lokation_status_skift"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         }
       ]
     },
@@ -1299,7 +1295,7 @@
       "negatives": [
         {
           "id": "K-4/ac-4/neg-1",
-          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa lokation_status_skift -> AK-DIREKTE-DML (lighed pinnet til UPDATE). Rolle R+.",
+          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa lokation_status_skift -> AK-DIREKTE-DML (lighed pinnet til UPDATE). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): historik-log uden write-policies (RLS enabled+forced = default-deny for UPDATE/DELETE) og med _historik_immutabel (UPDATE/DELETE row + TRUNCATE statement, neg-2) - revoken baerer ikke alene; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -1309,8 +1305,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "UPDATE core_identity.lokation_status_skift"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         },
         {
           "id": "K-4/ac-4/neg-2",
@@ -1583,7 +1578,7 @@
       "negatives": [
         {
           "id": "K-5/ac-1/neg-4",
-          "beskrivelse": "omgaaelse via direkte skrivning: ctx-A INSERT lokation_status_skift (L1,'aktiv') for at aabne hvilen uden om lokation_saet_status -> AK-DIREKTE-DML; samme case som K-4/ac-3/neg-1 (neg-1/neg-2 signatur-S, neg-3 FS false som SA). Rolle R+.",
+          "beskrivelse": "omgaaelse via direkte skrivning: ctx-A INSERT lokation_status_skift (L1,'aktiv') for at aabne hvilen uden om lokation_saet_status -> AK-DIREKTE-DML; samme case som K-4/ac-3/neg-1 (neg-1/neg-2 signatur-S, neg-3 FS false som SA). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): som K-4/ac-3/neg-1 - historik-log uden insert-policy, RLS enabled+forced = default-deny baerer ogsaa; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -1593,8 +1588,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "INSERT INTO core_identity.lokation_status_skift"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         }
       ]
     },
@@ -2247,7 +2241,7 @@
       "negatives": [
         {
           "id": "K-6/ac-6/neg-1",
-          "beskrivelse": "ctx-A UPDATE/DELETE paa gruppe_klient_koblinger -> AK-DIREKTE-DML (lighed pinnet til UPDATE). Rolle R+.",
+          "beskrivelse": "ctx-A UPDATE/DELETE paa gruppe_klient_koblinger -> AK-DIREKTE-DML (lighed pinnet til UPDATE i LUK-FORMEN: gaeldende_til sat paa en aaben raekke, oevrige kolonner uaendrede). Rolle R+. Sole KUN for luk-formen (KB-#6, v3.6): koblinger har update-policy m. GUC-betingelse app-rollen selv kan saette, og _kobling_historik_guard TILLADER netop luk-formen -> med grant ville R+ lukke koblingen uden om pending-kaeden (approve/apply) - revoken baerer alene. D10-mutant: grant update on core_identity.gruppe_klient_koblinger to authenticated + selvsat GUC/aarsag + luk-UPDATE paa aaben raekke -> gaeldende_til sat, Ret(C,L,D>=i dag) flipper uden pending -> roed. DELETE og oevrige UPDATE-former baeres ogsaa af _kobling_historik_guard (neg-2, S) og er ikke D10-bundne.",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -2754,7 +2748,7 @@
       "negatives": [
         {
           "id": "K-7/ac-2/neg-1",
-          "beskrivelse": "ctx-A DELETE paa gruppe_kontakter -> AK-DIREKTE-DML. Rolle R+.",
+          "beskrivelse": "ctx-A DELETE paa gruppe_kontakter -> AK-DIREKTE-DML. Rolle R+. Ikke D10-bundet (KB-#6, v3.6): ingen delete-policy -> RLS enabled+forced = default-deny for DELETE (0 raekker) selv med grant - revoken baerer ikke alene; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -2764,8 +2758,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "DELETE FROM core_identity.gruppe_kontakter"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         },
         {
           "id": "K-7/ac-2/neg-2",
@@ -3182,7 +3175,7 @@
         },
         {
           "id": "K-7/S/neg-8",
-          "beskrivelse": "Direct uden kompatibel udfoerelse - strukturfelt med fast liste (R4-1/A5-3, S-46 allowlist): data_field_definition_upsert('core_identity','lokationer','type','master_data','direct','Type ...', null, null, null, aarsag) som R+ (classification/manage) mod den eksisterende none-raekke (Step 2.1) -> AK-PII-DIRECT-UDEN-VEJ (trigger gren (4), BEFORE INSERT-stien: type er text men uden for allowlisten - CHECK type in (butik,messe,marked,event,andet) tillader ingen registreret strategis output ('[anonymized]' 15557e93:21-25 / sha256-hex / ...@anonymized.invalid), saa en accepteret markering ville give 23514 i anonymize_generic_apply's UPDATE 6083fecd:99-108 og blokere anonymisering af hele raekken); samme som SA. type forbliver none, registry og store uaendrede. Soesterkontrol: lokationer.adresse -> direct som R+ lykkes og lifecycle -> anonymiser_lokation(L1) erstatter adressen faktisk (K-7/ac-4 (b)). Targeted mutant T7.18 (plan): allowlist erstattet af v3.3's data_type='text'-test -> markeringen accepteres (registry-raekke pii_level=direct observeret) -> roed; neg-6/-7 forbliver afvist under mutanten.",
+          "beskrivelse": "Direct uden kompatibel udfoerelse - strukturfelt med fast liste (R4-1/A5-3, S-46 allowlist): data_field_definition_upsert('core_identity','lokationer','type','master_data','direct','Type ...', null, null, null, aarsag) som R+ (classification/manage) mod den eksisterende none-raekke (Step 2.1) -> AK-PII-DIRECT-UDEN-VEJ (trigger gren (4), BEFORE INSERT-stien: type er text men uden for allowlisten - CHECK type in (butik,messe,marked,event,andet) tillader ingen registreret strategis output ('[anonymized]' 15557e93:21-25 / sha256-hex / ...@anonymized.invalid), saa en accepteret markering ville give 23514 i anonymize_generic_apply's UPDATE 6083fecd:99-108 og blokere anonymisering af hele raekken); samme som SA. type forbliver none, registry og store uaendrede. Soesterkontrol (KB-#7, v3.6 - to led m. hvert sit bid): (i) REGISTRY-positivet lokationer.adresse -> direct som R+ ACCEPTERES (registry-raekke pii_level=direct observeret; gren (4) passerer allowlisten) - naabart i 2.1 og del af K-7/S's Bid 2-bevis; (ii) den FAKTISKE anonymiseringsvej (mapping-lifecycle -> W18 anonymiser_lokation(L1) erstatter adressen) er K-7/ac-4 (b)'s effekt i Bid 5.1 og indgaar IKKE i K-7/S's done. Targeted mutant T7.18 (plan): allowlist erstattet af v3.3's data_type='text'-test -> markeringen accepteres (registry-raekke pii_level=direct observeret) -> roed; neg-6/-7 forbliver afvist under mutanten; kontrolcase i Bid 2 = registry-positivet (i).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "P0001",
@@ -3216,7 +3209,7 @@
       "negatives": [
         {
           "id": "K-8/ac-1/neg-1",
-          "beskrivelse": "ctx-A INSERT/UPDATE/DELETE/TRUNCATE paa hver af de 9 tabeller, ogsaa med selvsat stork.allow_<tabel>_write='true' -> AK-DIREKTE-DML (T8.1 I). Lighed pinnet til repraesentant UPDATE core_identity.grupper (T8.1-locus); parametriseret over 9 tabeller x 4 operationer, hver med PG's faste besked for tabellen. Rolle R+.",
+          "beskrivelse": "ctx-A INSERT/UPDATE/DELETE/TRUNCATE paa hver af de 9 tabeller, ogsaa med selvsat stork.allow_<tabel>_write='true' -> AK-DIREKTE-DML (T8.1 I). Lighed pinnet til repraesentant UPDATE core_identity.grupper (T8.1-locus); parametriseret over 9 tabeller x 4 operationer, hver med PG's faste besked for tabellen. Rolle R+. Sole-binding (D10) afgjort efter repraesentanten (KB-#6, v3.6): UPDATE grupper har update-policy m. GUC-betingelse app-rollen selv kan saette -> revoken baerer alene -> sole_guard_ref beholdt; D10-mutant = T8.1 (grant update on grupper + selvsat GUC -> UPDATE lagres uden om gruppe_upsert). Ekspansionen (36 instanser) BESTAAR som negativ-proeve (alle -> 42501) men er ikke D10-bundet pr. instans: revoken baerer alene for INSERT/UPDATE paa de 6 master-/relationstabeller (koblinger/fravalg: UPDATE kun i luk-formen) og for TRUNCATE paa gruppe_kontakter (ikke FK-refereret); dobbelt-daekket for de 3 historik-logs (ingen write-policies -> RLS default-deny; _historik_immutabel), for DELETE paa alle 9 (ingen delete-policy), for oevrige UPDATE-former/DELETE/TRUNCATE paa koblinger/fravalg (_kobling_historik_guard) og for TRUNCATE paa FK-refererede master-tabeller (PG 0A000). Se §0.2 AK-DIREKTE-DML og S-29.",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -3365,7 +3358,7 @@
       "negatives": [
         {
           "id": "K-8/ac-3/neg-1",
-          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa audit_log og de 5 historik-/relationstabeller -> AK-DIREKTE-DML (lighed pinnet til repraesentant UPDATE core_compliance.audit_log; parametriseret). Rolle R+.",
+          "beskrivelse": "ctx-A UPDATE/DELETE/TRUNCATE paa audit_log og de 5 historik-/relationstabeller -> AK-DIREKTE-DML (lighed pinnet til repraesentant UPDATE core_compliance.audit_log; parametriseret). Rolle R+. Ikke D10-bundet (KB-#6, v3.6): repraesentanten audit_log er en FUNDAMENT-tabel uden for g.app_dml_revoke's scope (pakkens 9) og baeres af fundamentets egen guard-familie (audit_log_immutability_check row + block_truncate_immutable statement, neg-2); ekspansionens 3 logs har RLS default-deny + _historik_immutabel (neg-3) og koblinger/fravalg _kobling_historik_guard (neg-4) - revoken baerer ikke alene for nogen pinnet instans; negativet bestaar uaendret (42501).",
           "reject_contract": {
             "kanal": "sqlstate",
             "sqlstate": "42501",
@@ -3375,8 +3368,7 @@
             "aktoer": "authenticated",
             "observationskanal": "sqlstate",
             "offentlig_signatur": "UPDATE core_compliance.audit_log / core_identity.<historik-tabel>"
-          },
-          "sole_guard_ref": "g.app_dml_revoke"
+          }
         },
         {
           "id": "K-8/ac-3/neg-2",
