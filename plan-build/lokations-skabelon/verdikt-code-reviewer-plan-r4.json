@@ -1,0 +1,166 @@
+{
+ "schema_version": 1,
+ "gate_id": "plan",
+ "aktor": "code-reviewer",
+ "artifact_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+ "bindings_oids": {
+  "krav": "9402164d87a35fb939661058bea77c1a052493d0",
+  "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
+  "manifest": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+ },
+ "input_oids_read": [
+  "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+  "9402164d87a35fb939661058bea77c1a052493d0",
+  "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "13b783927f4fed107caa0e849e65499fd3291b61",
+  "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "FA-6 × plan.md:37,391 — v3.4's runner-sti plan-build/lokations-skabelon/prover-run.mjs: pathZone = produkt (hooks.mjs:61) → builder-code allow (:252) · codex deny (:255) = A6-1's hul; v3.5's sti scripts/v5/lokations-skabelon/prover-run.mjs: MEASUREMENT_PREFIXES (:24) + segment-sikker match (:34) → maale-lag (:60) → builder deny · codex allow; verificeret i kilden @ 295e81a7; udfald: lukket mekanisk",
+  "§3 × plan.md:391,436 — bindende cmd/kørsels-reference på den gamle sti tilbage? grep: gammel sti kun på 11 · 37 · 1004 · 1022 · 1035 (forklarende/historisk); cmd og byggerens kørsel bundet til scripts/v5-stien på 391 og 436; udfald: ingen",
+  "§11.5 × plan.md:1016 — hunks 235/599 uden fund-række (A6-2): nu i R4-1/A5-3-rækken m. anker 15557e93:21-25; linje 235/599 selv uændrede (ingen hunk) og bærer ankret; 1012's løfte om binding er nu sandt; udfald: lukket",
+  "§1-§3 × diff provenance/plan-v34.md — hunk uden §11.6-henvisning? 12 hunks (11 c m. uændret linjenummer + 1027a1028,1038), alle henvist fra 1035/1036/1037; §1 og §2 ingen hunk; §3 kun 391/436/438 = A6-1; udfald: ingen uanmeldt ændring",
+  "manifest × forventnings-manifest.json:15 — diff mod a2128907 alene linje 15 (bindings.plan.oid → 289b8761 = plan v3.5's blob); validator gyldigt 60 forpligtelser · 127 negativer · 12 eneste-værn; ingen forpligtelse refererer runneren; udfald: 1:1 og gyldigt",
+  "§11.6 × plan.md:1035 — påstanden at :393 nævner filnavnet prover-run.mjs: linje 393 siger prover-kørsel FA-6 (a) uden filnavn; filnavn uden sti står på 272 · 696 · 841; udfald: form-unøjagtighed i ikke-bindende note (R6-1), ingen binding berørt",
+  "FA-6 × plan.md:37 — prover.json (cmd-pointer) forbliver i plan-build/ = produkt-zone (hooks.mjs:61), læses hårdkodet dér af ci-build-dom.mjs:129, og runProver kører cmd uden zone-tjek (prover.mjs:142); værn = P-7 rød + C4c prover-registrering (implplan pkt. 39); udfald: deklareret residual i fabrik-laget (R6-2), ikke plan-rest",
+  "K-genlæsning × plan.md:143-278 — ingen K-obligation, negativ, assertion, guard, bevisform eller effekt_bid berørt (§1 ingen hunk); troskab pr. K bærer C'/C''s dom; udfald: uændret"
+ ],
+ "claim_graph_refs": [
+  "plan-build/lokations-skabelon/plan.md:143-154 → K-1 · T1.1 T1.2 T1.3 T1.4 S1.1",
+  "plan-build/lokations-skabelon/plan.md:156-168 → K-2 · T2.4 T2.5 T2.6 T2.7 T2.8 T2.9 T2.10",
+  "plan-build/lokations-skabelon/plan.md:170-181 → K-3 · T3.2 T3.3 T3.4 T3.5 T3.6 T6.3",
+  "plan-build/lokations-skabelon/plan.md:183-197 → K-4 · T4.1 T4.2 T4.4 T4.5 T4.6 T4.7 T4.8 T4.9 T6.8-a",
+  "plan-build/lokations-skabelon/plan.md:199-210 → K-5 · T5.2 T5.3 T5.4 T5.5 T5.6",
+  "plan-build/lokations-skabelon/plan.md:212-228 → K-6 · T6.1 T6.2 T6.4 T6.5 T6.6 T6.7 T6.8-b T6.9 T6.10 T6.11 T6.12 T6.13 T6.14 T6.15 T6.16 T6.17 T9.4 DATO-TRANSPORT",
+  "plan-build/lokations-skabelon/plan.md:230-240 → K-7 · T7.1 T7.2 T7.3 T7.4 T7.5 T7.6 T7.7 T7.8-a T7.8-b T7.9 T7.10 T7.12 T7.13 T7.14 T7.15 T7.16 T7.17 T7.18 S-33",
+  "plan-build/lokations-skabelon/plan.md:242-253 → K-8 · T8.1 T8.2 T8.5 T8.6 T8.7 T8.8 T8.9 T8.11",
+  "plan-build/lokations-skabelon/plan.md:255-264 → K-9 · T9.1 T9.3",
+  "plan-build/lokations-skabelon/plan.md:266-278 → K-1..K-9 · D12-bijektion",
+  "plan-build/lokations-skabelon/plan.md:107-107 → K-7/S · T7.18 T7.15",
+  "plan-build/lokations-skabelon/plan.md:315-316 → K-7/S · T7.10 T7.15 T7.16 T7.18",
+  "plan-build/lokations-skabelon/plan.md:328-328 → K-7/ac-4 · S-33",
+  "plan-build/lokations-skabelon/plan.md:606-608 → K-7/ac-4 · T7.7 T7.8-a T7.8-b T7.18",
+  "plan-build/lokations-skabelon/plan.md:689-689 → K-7/S · T7.18",
+  "plan-build/lokations-skabelon/plan.md:37-37 → FA-6 (a) · A6-1 runner-sti måle-lag",
+  "plan-build/lokations-skabelon/plan.md:391-391 → §3 (vi)(a) · A6-1 cmd scripts/v5",
+  "plan-build/lokations-skabelon/plan.md:436-438 → Bid 1 Step 1.4/done · A6-1",
+  "plan-build/lokations-skabelon/plan.md:790-790 → §8 build⊨plan · A6-1",
+  "plan-build/lokations-skabelon/plan.md:1016-1016 → §11.5 R4-1/A5-3 · A6-2 (:235 · :599)",
+  "plan-build/lokations-skabelon/plan.md:1029-1038 → §11.6 ændringslog v3.4→v3.5"
+ ],
+ "evidence": [
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    37,
+    37
+   ],
+   "excerpt_sha": "cd31649585e8075b1b667448c0b4149791049f95aa068d9f4e5ae8dcb60d4eb5"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    391,
+    391
+   ],
+   "excerpt_sha": "c7c2d1d973e34120bb99614ccfdfc9072c807ce155887ec61eade2120e4d54ee"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    436,
+    438
+   ],
+   "excerpt_sha": "18c790752d2fad7334e9ba2a091afdfabc73a2a47373cb4b4a07d340b0ea6639"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    790,
+    790
+   ],
+   "excerpt_sha": "747c0117ee621421837c594e7af3065e8d60407811b98a3b5fa59b130d8aa60c"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1004,
+    1004
+   ],
+   "excerpt_sha": "324e2ae23e4e99503348426b4c3fcd0a8a45461011319cb5ec205ccdaf305381"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1012,
+    1012
+   ],
+   "excerpt_sha": "86bc9230c703b9bd8cb7ff1dfa3b06463d55117895adb11221baf23c764c6502"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1016,
+    1016
+   ],
+   "excerpt_sha": "cb47dfbf7e686bb5e12234d1bd1260c4904e7cbdbc6eaa25095ba411ed505ba9"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1022,
+    1022
+   ],
+   "excerpt_sha": "a3cb1f04886bb76e173013efd5ef96033e8ad8b722ff279353ae989a3dc1f268"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1029,
+    1038
+   ],
+   "excerpt_sha": "f3bb2b5079ce52f3796ccc12accab499565da3aa67d172d63cc9bc321f56329b"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
+   "line_span": [
+    10,
+    20
+   ],
+   "excerpt_sha": "e48065d7bd76ca7a1618e8af8bf52e37252d8348bac72244233ae2c0976c1f9b"
+  }
+ ],
+ "run": {
+  "run_id": "b6-code-reviewer-plan-r4-d4810dec",
+  "run_attempt": 1,
+  "raw_output_sha256": "0c75dcf1b61dacc6a7a1ded06bef758c42347d47b815f373704d463e57f4feec",
+  "actor_server_id": "local-driver-spawn (SELV-ERKLÆRET run/effort — ingen transport-kvittering; kun tilladt for Claude-Agent-aktører; server-provenance = residual til CI actor-runner)",
+  "effort": "xhigh"
+ }
+}

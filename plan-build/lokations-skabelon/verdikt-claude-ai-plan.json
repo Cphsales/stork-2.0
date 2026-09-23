@@ -2,200 +2,247 @@
  "schema_version": 1,
  "gate_id": "plan",
  "aktor": "claude-ai",
- "artifact_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+ "artifact_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
  "bindings_oids": {
   "krav": "9402164d87a35fb939661058bea77c1a052493d0",
   "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
   "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
   "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
   "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
-  "manifest": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+  "manifest": "4e84481d6df1750581cce8b78288602006d06cc2"
  },
  "input_oids_read": [
-  "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+  "934291780be93ec7353d7a9f777b4661e79a0158",
   "9402164d87a35fb939661058bea77c1a052493d0",
   "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
   "4af07ef4164882ca54643e79df3554c0bf22b0e4",
   "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
   "13b783927f4fed107caa0e849e65499fd3291b61",
-  "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+  "4e84481d6df1750581cce8b78288602006d06cc2"
  ],
  "conclusion": "PASS",
  "negative_cases": [
-  "K-1 ac 1 × plan.md:147 — butik uden navn afvises, også for superadmin, ingen halv butik/stand efterlades → afbildet (uændret v3.4→v3.5, §1 uden hunk; D'' præmis)",
-  "K-1 ac 4 × plan.md:150 — butik kan ikke blive økonomi-/attributionsdimension; tre uafhængige leverance-kontroller → afbildet (uændret)",
-  "K-2 ac 1/ac 6 × plan.md:160,165 — under-stand og stand uden butik afvises; sidste aktive stand kan ikke deaktiveres, også for SA → afbildet (uændret)",
-  "K-3 ac 1/2/3/5 × plan.md:174-178 — butik uden gruppe, fritekst-gruppe, gruppe uden navn afvises; gruppe med butikker kan ikke slettes, effektive retter består efter udfasning (effekt-step 4.3) → afbildet (uændret)",
-  "K-4 ac 8/ac 9 × plan.md:194-195 — til-valg på nedlagt afvises uden SA-bypass; nedlagt butik har ingen klienter med ret, gruppens kobling/stande/historik består → afbildet (uændret)",
-  "K-5 ac 1/ac 5 × plan.md:203,207 — ingen book-alligevel, SA får samme false; ingen automatisk hvile uden valgt antal dage → afbildet (uændret)",
-  "K-6 ac 10 × plan.md:225 — godkendt ophævelse af fravalg afvises ved gennemførelsen når klienten i mellemtiden er koblet fra gruppen → afbildet (uændret, = K:120)",
-  "K-7 S × plan.md:238 — neg-6 grupper.navn→direct, neg-7 lokationer.dagspris→direct og neg-8 lokationer.type→direct afvises ved markeringen, også for SA; registry/store uændrede; søsterkontrol adresse→direct→anonymisering faktisk → K:143 ubøjet, M-42 (ledger:96) overholdt (uændret v3.4→v3.5; D'' præmis)",
-  "K-7 ac 4 (d)/(f) × plan.md:237 — redigering af navn/type/pris på anonymiseret butik uden adresse lykkes; rydning af adressen afvises efter neg-5's kontrakt; senere persondata-valg anonymiseres også på allerede anonymiserede butikker og dækkes ved genskabelse → afbildet (uændret, = K:141/K:143)",
-  "K-8 ac 1/ac 3 × plan.md:246,248 — direkte skrivning afvises uanset rettigheder; audit/historik uændrelig → afbildet (uændret)",
-  "K-9 ac 3 × plan.md:261 — strukturelt forbud kan ikke slås fra efter konfig-omgåelse, heller ikke af SA → afbildet (uændret)",
-  "§10 D-11 × plan.md:829 — byte-identisk med v3.4 (ingen hunk i 802-854); bord-test NEJ genlæst: type-listen ordret K:19/K:26; K:134 »intet Mathias-ord klassificerer lokationens felter« → plannerens bord inden for K:143; gruppens grænse = K:134's §11-henvisning; stop-konsekvens deklareret for gruppens navn OG typen → bestået",
-  "§10 HALT/KRÆVER MATHIAS × plan.md:804-806 — INGEN · INGEN; Dit ord-citater ordrette mod ledger 05275cef: M-42 (813↔ledger:96) · M-36 (817↔ledger:85); M-44 i plan:11 ordret mod ledger:98 → bestået",
-  "A6-1 × plan.md:37,391,436,438,790 — prover-runner bundet til scripts/v5/ (måle-lags-zone, hook-deny for byggeren); forfatter Codex, frys før Bid 1, byggerens kørsel uændrede; ingen K-række, negativ eller §10-post berørt; fabrik-afgørelse (b) opfyldt → HVAD uændret, ingen Mathias-flade (M-43)",
-  "A6-2 × plan.md:1016 — §11.5's R4-1-række henviser nu :235/:599; indhold uændret siden v3.4 → ren bogføring, HVAD uændret",
-  "§11.6 × plan.md:1029-1039 — diff provenance/plan-v34.md vs plan.md kørt selv: præcis 11 c-hunks (1·11·13·37·391·436·438·790·1004·1016·1022) + 1027a1028,1038, ingen d-hunks = §11.6's liste; §1 og §10 uden hunk; manifest-diff = alene linje 15; bindings.plan.oid (manifest:15) = 289b8761 = plan-blob → D'' præmis gyldig for alt uden for hunkene"
+  "A8-1 = C5 R-1 × plan.md:104,672 + manifest:381-392 — K-1/S/neg-1 (INSERT lokationer): sole_guard_ref g.app_dml_revoke FJERNET efter A8 :76-82 (invoker-historiktriggere :312/:314 kaskaderer til logs m. RLS default-deny → revoken bærer ikke alene); negativet består m. uændret reject_contract 42501 'permission denied for table lokationer' → K-1's struktur-forbud (krav:21) og K-8 ac 1 (krav:157) ubøjet; udfald: lukket ved kilden efter ordlyd",
+  "C5 R-2 × plan.md:672 + manifest:456-468 — K-2/ac-1/neg-5 (INSERT stande): lighed pinnet til dagspris IS NULL-formen (§2.2 :313: _pris_historik_stand fyrer kun ved dagspris not null); sole BEHOLDT i den form; reject_contract/offentlig_signatur uændrede; udfald: pinnet præcis som C5 :51",
+  "repræsentant-note × plan.md:246,253 + manifest:3210-3222 — K-8/ac-1/neg-1: sole afgrænset til repræsentanten UPDATE grupper (T8.1); generaliseringen 'INSERT/UPDATE på de 6' fjernet som A8 :60/C5 :16 skrev; ekspansionen 9×4 → 42501 uændret; udfald: afgrænset efter ordlyd",
+  "FABRIK-VILKÅR × plan.md:288,310-316,397-427,374-388 — UPDATE grupper (grant update + selvsat GUC + gyldig årsag): eneste triggere er set_updated_at (samme række) og stork_audit (SECDEF iflg. C5 :30, t1_audit_partitioned.sql:93-96); INGEN pakke-trigger på grupper i §2.1-halen, §2.2's ni trigger-fns, Bid 1's DDL eller §2.6; grep 'on core_identity.grupper' rammer kun indeks :426 → ingen kaskade ind i log uden write-policy → sole korrekt beholdt; udfald: bekræftet eksplicit, 3 bliver 3",
+  "K-6/ac-6/neg-1 × plan.md:221,311 — luk-formen: ingen hunk; bæres af D5 :22 / C5 #9 / A8 :59 (guarden TILLADER netop luk-formen → grant+GUC ville lukke kobling uden pending → revoken alene); udfald: rigtig, uændret",
+  "Diff-kontrol × plan.md:1053-1064 — diff provenance/plan-v36.md plan.md kørt selv: præcis 1c1·11c11·13c13·104c104·246c246·253c253·672c672·1046c1046·1051a1052,1064 = §11.8's liste; §1-§3 kun 246/253; §10 (802-854) uden hunk → S-1..SM-4 byte-identiske m. M-45's fremlæggelse c4757b3c (hash-verificeret); udfald: ingen uanmeldt ændring",
+  "Manifest-diff × manifest:15,21,382,392-393,458,3212 — 6 hunks = præcis de anmeldte felter (plan-oid = 93429178 = plan-blob · guard-beskrivelse · 3 negativ-beskrivelser · 1 sole_guard_ref fjernet); ingen id/reject_contract/assertion/effekt_bid/guard-id berørt; optalt sole 40→39, g.app_dml_revoke 4→3 på :468/:2254/:3222; validator ✓ 60·127·12; udfald: 1:1 og gyldigt",
+  "Løfte-test × krav:147-162,17-50 + kill-list:180 — alle tolv AK-DIREKTE-DML-forbud afviser stadig (42501); kun én D10-mutant-pligt falder på et værn der ikke bærer alene = kill-listens T8.1-regel ('krediteres intet domæne-kill') og M-48 'uden at overteste'; at beholde bindingen ville være en besked-kill uden effekt (falsk-grøn); udfald: intet krav bøjet",
+  "F-1 (form, a) × plan.md:104,672 — kriterie-tilføjelsen 'OG ingen invoker-trigger kaskaderer …' er C5's mekanisme (:1/:49) på regelform, ikke ordret; ingen substans tilføjet; udfald: ingen dom-konsekvens",
+  "F-2 (form, a — Codex/code-reviewers bord) × plan.md:672 — 'Alle andre tabel×operation er DOBBELT-dækkede' står bogstaveligt for bredt efter generaliseringens fjernelse (INSERT grupper/gruppe_kontakter, ikke-kaskaderende UPDATE på lokationer/stande/gruppe_kontakter er i ingen af listerne); ingen sole-binding eller afvisning forkert; ekspansionen prøver dem som 42501; udfald: meldes, ikke dømt af mig",
+  "F-3 (form, a) × plan.md:104,672 — C5 :49's parentes '(og UPDATE af dagspris/gruppe_id)' ikke overført; fjernet generalisering efterlader ingen falsk sole-påstand om UPDATE lokationer; udfald: ingen dom-konsekvens",
+  "F-4 (residual, c — C5 §5) × plan.md:520 — 'skrives kun af triggere i SECDEF-kontekst' urørt (ingen hunk); præcisionen bæres af :104/:672; sand for RPC-vejen; udfald: ikke K-brud",
+  "Fremlæggelse-v37 (note) × fremlaeggelse-plan-v37.md ↔ plan.md:672 + ordbog:1-34 — 12/9/3, SHA, M-45-dato, 22 valg og stop-udfald tro mod v3.7 (D5's N-2/N-3/N-4 indfriet); 'butik' = ordet i M-45's signerede fremlæggelse; form-rester: N-1 'kun hvornår' videreført · N-5 'Bid 2/Bid 5' uden ordbogs-entry · N-6 'prishistorik' nævner én af to logs; udfald: tro i substans, form til devilen"
  ],
  "claim_graph_refs": [],
  "evidence": [
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    1029,
-    1039
+    1053,
+    1064
    ],
-   "excerpt_sha": "eb14f43e97e1f9b254b475b8237b4ccc3e1c3ef7e4ad2583477b5c4d1d5de93a"
+   "excerpt_sha": "3d4ef5c4db586c949bd0449867b57a7c41c8d66e82eb123966aa6070fec12921"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    104,
+    104
+   ],
+   "excerpt_sha": "205eea415b84b2db6a78cfb7f79f95423d6a0cbbd95c97ebfaf4cd7b611f1cf8"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    246,
+    253
+   ],
+   "excerpt_sha": "a143d3f549728b4ae9e9fffc26f4f0179a9d012ed705d6b6caf4f50d0544213f"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    672,
+    672
+   ],
+   "excerpt_sha": "aca463c63c1f865678819ce4b5ce44030cc1c31d58678c3f1130c7d4c55b35a1"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    286,
+    316
+   ],
+   "excerpt_sha": "0f12c6e28cb633c6e553a781f4abc65a153056ef33c3d82c939286062b177450"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    393,
+    427
+   ],
+   "excerpt_sha": "ca5b33a195e0a67710bef039e4f3800cc4a76a59853bdf2321983c277c0863d9"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    374,
+    388
+   ],
+   "excerpt_sha": "28f11b99f91981619d42b9bf5ad3df94ca4b3e2033dd3bdb1d04bf025c2fc932"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    520,
+    520
+   ],
+   "excerpt_sha": "4e07aa2f5d9d7186fa57a96351b099f9eba471fc4ea76429161794e4ebb4c4ae"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
+   "line_span": [
+    221,
+    221
+   ],
+   "excerpt_sha": "161aa50354bc77dd1707eb3da12dda7dfc810def033da6daf894232bbed72b81"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
     802,
-    833
+    854
    ],
-   "excerpt_sha": "aed4cc4c76d1e74938ca9d160b5ef44420e25604064acad30b01b50e10219502"
+   "excerpt_sha": "3f834690b42bb33831638d0e91d96acb67873dd48791744f4b5f5d0ada1be222"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    230,
-    240
-   ],
-   "excerpt_sha": "6c5c9201cc3a8aa666a778dbb7a65c2fa66e5849a744683ed81b4ae533410f0b"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    143,
-    262
-   ],
-   "excerpt_sha": "36bc8a75a0f317ffab28049ba6c016aeeb2a62ec931d959b7af17455c48e7a88"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    266,
-    278
-   ],
-   "excerpt_sha": "d97f6ff79c3cdf2b50b7e88919f13c953ce985221ecddd18dee01a5c5818dbe1"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    37,
-    37
-   ],
-   "excerpt_sha": "cd31649585e8075b1b667448c0b4149791049f95aa068d9f4e5ae8dcb60d4eb5"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    391,
-    391
-   ],
-   "excerpt_sha": "c7c2d1d973e34120bb99614ccfdfc9072c807ce155887ec61eade2120e4d54ee"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    436,
-    438
-   ],
-   "excerpt_sha": "18c790752d2fad7334e9ba2a091afdfabc73a2a47373cb4b4a07d340b0ea6639"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    790,
-    790
-   ],
-   "excerpt_sha": "747c0117ee621421837c594e7af3065e8d60407811b98a3b5fa59b130d8aa60c"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
-   "line_span": [
-    1016,
-    1022
-   ],
-   "excerpt_sha": "2d877d77318adf5119f86523fff5a373a57ec702693c63b3d38fb2158461e44f"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
     1,
-    13
+    20
    ],
-   "excerpt_sha": "c957b84fa19d98814a324b5f4e0eff4c9071f32b83b1f60c30cb3249e862c1ab"
+   "excerpt_sha": "efa2e13384f258d671695b1f3b500d1ed765a453ffff52750fd45687147b061c"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    15,
+    21
+   ],
+   "excerpt_sha": "7e583704045be1fd2bb369bbdfd9066815cb601d62c9de69de5b7aa1e043ec8c"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    379,
+    393
+   ],
+   "excerpt_sha": "800aa87838232c01723fbb0bd492e9515d7dec5578ae789842e2a64afa951984"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    455,
+    469
+   ],
+   "excerpt_sha": "79edac99e33a855d364c9dac8daba1b4fb8d9b5f6ecede51f639007585012eaf"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    2241,
+    2255
+   ],
+   "excerpt_sha": "046d557b488c11d1c6d81a9ca39f18cc393d66ea97808cd05f8b8cb3f21d8eef"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    3209,
+    3223
+   ],
+   "excerpt_sha": "99e160266ceb110af1ea37252602494fe2c09397c477ed99fd78881179185d11"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
+   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "line_span": [
+    147,
+    162
+   ],
+   "excerpt_sha": "9db4c961d30ace559d0e7af81bfb94a27ed397f2a212af4c022295135aea940c"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
    "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
    "line_span": [
     17,
-    31
+    50
    ],
-   "excerpt_sha": "51952080017204c8e62bf89ef729c2af08180640b302965f0a7a7b0f9004fe38"
+   "excerpt_sha": "355d89ba3ab1d6100b0f2acdd8ff1b4ba78055909cdc0cf870c270df03f002a9"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "docs/sandhed/krav/lokations-skabelon-krav.md",
-   "blob_oid": "9402164d87a35fb939661058bea77c1a052493d0",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/kill-list-udkast.md",
+   "blob_oid": "13b783927f4fed107caa0e849e65499fd3291b61",
    "line_span": [
-    132,
-    145
+    178,
+    181
    ],
-   "excerpt_sha": "5f2ed67fea6b768bd3f96c31e3fadfedcc6a122149e5644b167302df994ef4ae"
+   "excerpt_sha": "325f119bb2bc925870cb9d9abf789c9fb1c8d2ead7bff405e05a3d651e8d5179"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
-   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
-   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
-   "line_span": [
-    15,
-    15
-   ],
-   "excerpt_sha": "4d19a89e77af92c0ea780e86a835dd58f981f4b14631072793b684c6e4131386"
-  },
-  {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/ordbog.md",
    "blob_oid": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
    "line_span": [
-    25,
+    1,
     34
    ],
-   "excerpt_sha": "e34c726d3c885a7b91feac0e6d8c5160f0e8523732d305a3940b6805ebc1f752"
+   "excerpt_sha": "512d22d5b6a45633aa77e0534832da52778ac75a6cbf0e6afa9cec394f1a8b8c"
   }
  ],
  "run": {
-  "run_id": "b6-claude-ai-plan-r4-cc13dc0f",
+  "run_id": "b6-claude-ai-plan-r6-26fcec1b",
   "run_attempt": 1,
-  "raw_output_sha256": "49454f00f2dfe2e661e01ef4266248e686aada45bf8f4c318384b6152c66e64e",
+  "raw_output_sha256": "26fcec1b5999749aceec6eae294f57c0efb19d88081952c24c1061f9481fd0e0",
   "actor_server_id": "local-driver-spawn (SELV-ERKLÆRET run/effort — ingen transport-kvittering; kun tilladt for Claude-Agent-aktører; server-provenance = residual til CI actor-runner)",
   "effort": "xhigh"
  }

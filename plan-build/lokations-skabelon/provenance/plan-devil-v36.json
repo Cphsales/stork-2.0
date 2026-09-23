@@ -1,0 +1,10 @@
+{
+ "konklusion": "PASS",
+ "fremlaeggelse_blob": "0214545ec2fc5b8446c2cae2d238011494e1c130",
+ "fund": 0,
+ "kilde": "provenance/plan-devil.leverance.md (DEVIL-JSON sidste linje)",
+ "run_id": "20260923T112209-827064-30333",
+ "gate_input": null,
+ "akse": "plan = kode (M-42/pkt. 37) · bord-test · form · afled · troskab · delta-komplethed (v3.6) · DOM-TÆRSKEL a-d (prompt-template v2 + DELTA-afsnit)",
+ "runder": "r1 FAIL 3 (a-d) → r2 REN (sidste; fabrik-regel 16/9: højst to)"
+}

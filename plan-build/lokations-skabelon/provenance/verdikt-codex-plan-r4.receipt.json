@@ -1,7 +1,7 @@
 {
  "schema_version": 2,
  "status": "success",
- "run_id": "20260923T114303-859077-9597",
+ "run_id": "20260916T145111-2991921-29320",
  "rolle": "codex-angreb",
  "aktivitet": "dom",
  "model": "gpt-6-astra",
@@ -14,17 +14,21 @@
  },
  "service_tier": "default",
  "codex_version": "codex-cli 0.154.0",
- "regel_commit": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+ "regel_commit": "4a91894d0a34e5dc5bc5547b84df384385614491",
  "lock_mode": "committed",
  "lock_blob": "023e51765e49687db514d3e26c95cdf6adca2194",
  "skill_path": "scripts/v5/roller/codex-angreb.md",
  "skill_oid": "f6e64979941b55b57d6000306ccf9404dd2a15d1",
- "prompt_sha256": "f8a40a6cf69f0147805d465c4a3640d375ba78c8c66f39576097b018c84ad292",
- "gate_input": null,
+ "prompt_sha256": "982cecea5d3f9a7246b3d6843fbbec738e065a4108d011bf2aff3e287ae6bbdb",
+ "gate_input": {
+  "gate_id": "plan",
+  "gated_commit": "4a91894d0a34e5dc5bc5547b84df384385614491",
+  "artifact_path": "plan-build/lokations-skabelon/plan.md"
+ },
  "selftest": false,
- "workdir": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/devil37/wd",
- "out": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/devil37/out/OUT-devil37.md",
- "codex_home": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/devil37/out/.run-YJRHCmMw/codex-home",
+ "workdir": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/b6r4/wd-a",
+ "out": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/b6r4/out-a/OUT-a7.md",
+ "codex_home": "/tmp/claude-1000/-home-mathias/f959f211-d030-4057-8817-443b2b6f1add/scratchpad/b6r4/out-a/.run-0WdKfZpH/codex-home",
  "codex_home_mode": "privat-uden-config",
  "auth_source": "/home/mathias/.codex/auth.json",
  "env_mode": "allowlist(HOME,PATH,LANG,CODEX_HOME,CODEX_MANAGED_PACKAGE_ROOT,CODEX_MANAGED_BY_NPM)",
@@ -65,14 +69,14 @@
    "model": "gpt-6-astra",
    "effort": "xhigh",
    "sandbox": "read-only",
-   "output_sha256": "29f22398354e4d3a1d0a3c3ffc212e78b6b5b8f0f65dc642dfd143d5975a7627",
-   "output_bytes": 6041,
-   "varighed_mono_s": 417,
-   "varighed_vaeg_s": 417,
-   "started": "2026-09-23T11:43:04+02:00",
-   "ended": "2026-09-23T11:50:01+02:00"
+   "output_sha256": "701ae65fd3ad07d32688310debab20571e42a22b65e1a13957eef361bd8991f7",
+   "output_bytes": 6849,
+   "varighed_mono_s": 446,
+   "varighed_vaeg_s": 446,
+   "started": "2026-09-16T14:51:12+02:00",
+   "ended": "2026-09-16T14:58:38+02:00"
   }
  ],
- "started": "2026-09-23T11:43:03+02:00",
- "ended": "2026-09-23T11:50:01+02:00"
+ "started": "2026-09-16T14:51:11+02:00",
+ "ended": "2026-09-16T14:58:38+02:00"
 }

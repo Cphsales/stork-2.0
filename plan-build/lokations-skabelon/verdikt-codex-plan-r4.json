@@ -1,0 +1,114 @@
+{
+ "schema_version": 1,
+ "gate_id": "plan",
+ "aktor": "codex",
+ "artifact_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+ "bindings_oids": {
+  "krav": "9402164d87a35fb939661058bea77c1a052493d0",
+  "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
+  "manifest": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+ },
+ "input_oids_read": [
+  "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+  "9402164d87a35fb939661058bea77c1a052493d0",
+  "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
+  "4af07ef4164882ca54643e79df3554c0bf22b0e4",
+  "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
+  "13b783927f4fed107caa0e849e65499fd3291b61",
+  "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+ ],
+ "conclusion": "PASS",
+ "negative_cases": [
+  "K-9 × plan.md:391 — ny runner-sti giver builder write=deny og commit=deny; Codex commit=allow i eksekveret zoneprobe. PASS for A6-1.",
+  "K-9 × plan.md:436 — cmd og Step 1.4 bruger samme scripts/v5-sti; gammel produktsti findes kun i eksplicit historik. PASS.",
+  "K-9 × plan.md:37 — prover.json har pkt. 39-layout; Codex forfatter og fryser før Bid 1, byggeren må kun køre. PASS som plankontrakt.",
+  "K-7/ac-2 × plan.md:1016 — manglende fund-henvisning til :235 er rettet under R4-1/A5-3; værdi-asserten er uændret. PASS for A6-2.",
+  "K-7/ac-2 × plan.md:1016 — manglende fund-henvisning til :599 er rettet med strategiankrene; mapping-seed er uændret. PASS for A6-2.",
+  "K-7/S × plan.md:1031 — ingen tavs ændring af negativer eller reject_contract: manifest-diff ændrer kun plan-OID. PASS med tidligere A-verdikts præmis.",
+  "K-7/S × plan.md:438 — ingen uanmeldt ændring af effekt-bid eller mutantkrav; kun runner-stien er tilføjet. PASS ved mekanisk delta-kontrol."
+ ],
+ "claim_graph_refs": [],
+ "evidence": [
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    37,
+    37
+   ],
+   "excerpt_sha": "cd31649585e8075b1b667448c0b4149791049f95aa068d9f4e5ae8dcb60d4eb5"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    391,
+    391
+   ],
+   "excerpt_sha": "c7c2d1d973e34120bb99614ccfdfc9072c807ce155887ec61eade2120e4d54ee"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    436,
+    438
+   ],
+   "excerpt_sha": "18c790752d2fad7334e9ba2a091afdfabc73a2a47373cb4b4a07d340b0ea6639"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1016,
+    1016
+   ],
+   "excerpt_sha": "cb47dfbf7e686bb5e12234d1bd1260c4904e7cbdbc6eaa25095ba411ed505ba9"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/plan.md",
+   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "line_span": [
+    1031,
+    1038
+   ],
+   "excerpt_sha": "027552cfaab6ab31948cc52d241bda74be38d73b5c5f745d11942a1a6a370774"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
+   "line_span": [
+    13,
+    16
+   ],
+   "excerpt_sha": "e09ca1416db86472047ff4d69ba5873f06ec1f3c3fdb86f767f9a7c64b7622d2"
+  },
+  {
+   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
+   "line_span": [
+    3184,
+    3196
+   ],
+   "excerpt_sha": "34ae8a1c7982ab068c4b32fd929e715dbdbd8f0896eb8b7a33793675dd8eb0ce"
+  }
+ ],
+ "run": {
+  "run_id": "20260916T145111-2991921-29320",
+  "run_attempt": 1,
+  "raw_output_sha256": "701ae65fd3ad07d32688310debab20571e42a22b65e1a13957eef361bd8991f7",
+  "actor_server_id": "local-driver-spawn via codex-run.sh v4 (kvittering 20260916T145111-2991921-29320; usigneret = residual til CI actor-runner, DEL I: lokal = candidate)",
+  "effort": "xhigh",
+  "receipt_sha256": "f12effda9b51c6815583dd2ed9d8c5a9a1e59877a5d39bc0fdd95598be381c8f"
+ }
+}

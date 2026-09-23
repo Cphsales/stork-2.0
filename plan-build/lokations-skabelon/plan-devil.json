@@ -1,10 +1,10 @@
 {
  "konklusion": "PASS",
- "fremlaeggelse_blob": "0214545ec2fc5b8446c2cae2d238011494e1c130",
+ "fremlaeggelse_blob": "81e1425428297341b997df4eeca4bb09f6cd91b4",
  "fund": 0,
  "kilde": "provenance/plan-devil.leverance.md (DEVIL-JSON sidste linje)",
- "run_id": "20260923T112209-827064-30333",
+ "run_id": "20260923T114303-859077-9597",
  "gate_input": null,
- "akse": "plan = kode (M-42/pkt. 37) · bord-test · form · afled · troskab · delta-komplethed (v3.6) · DOM-TÆRSKEL a-d (prompt-template v2 + DELTA-afsnit)",
- "runder": "r1 FAIL 3 (a-d) → r2 REN (sidste; fabrik-regel 16/9: højst to)"
+ "akse": "plan = kode (M-42/pkt. 37) · bord-test · form · afled · troskab · delta-komplethed (v3.6+v3.7) · DOM-TÆRSKEL a-d (prompt-template v2 + DELTA-afsnit)",
+ "runder": "v36: r1 FAIL 3 → r2 REN · v37: r1 REN (fabrik-regel 16/9: højst to pr. fremlæggelse)"
 }

@@ -2,113 +2,134 @@
  "schema_version": 1,
  "gate_id": "plan",
  "aktor": "codex",
- "artifact_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+ "artifact_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
  "bindings_oids": {
   "krav": "9402164d87a35fb939661058bea77c1a052493d0",
   "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
   "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
   "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
   "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
-  "manifest": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+  "manifest": "4e84481d6df1750581cce8b78288602006d06cc2"
  },
  "input_oids_read": [
-  "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+  "934291780be93ec7353d7a9f777b4661e79a0158",
   "9402164d87a35fb939661058bea77c1a052493d0",
   "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
   "4af07ef4164882ca54643e79df3554c0bf22b0e4",
   "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
   "13b783927f4fed107caa0e849e65499fd3291b61",
-  "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+  "4e84481d6df1750581cce8b78288602006d06cc2"
  ],
  "conclusion": "PASS",
  "negative_cases": [
-  "K-9 × plan.md:391 — ny runner-sti giver builder write=deny og commit=deny; Codex commit=allow i eksekveret zoneprobe. PASS for A6-1.",
-  "K-9 × plan.md:436 — cmd og Step 1.4 bruger samme scripts/v5-sti; gammel produktsti findes kun i eksplicit historik. PASS.",
-  "K-9 × plan.md:37 — prover.json har pkt. 39-layout; Codex forfatter og fryser før Bid 1, byggeren må kun køre. PASS som plankontrakt.",
-  "K-7/ac-2 × plan.md:1016 — manglende fund-henvisning til :235 er rettet under R4-1/A5-3; værdi-asserten er uændret. PASS for A6-2.",
-  "K-7/ac-2 × plan.md:1016 — manglende fund-henvisning til :599 er rettet med strategiankrene; mapping-seed er uændret. PASS for A6-2.",
-  "K-7/S × plan.md:1031 — ingen tavs ændring af negativer eller reject_contract: manifest-diff ændrer kun plan-OID. PASS med tidligere A-verdikts præmis.",
-  "K-7/S × plan.md:438 — ingen uanmeldt ændring af effekt-bid eller mutantkrav; kun runner-stien er tilføjet. PASS ved mekanisk delta-kontrol."
+  "K-1/S/neg-1 × plan.md:104,312,314,672 — INSERT lokationer kaskaderer som invoker til logs; sole fjernet, reject_contract bevaret. A8-1/R-1 lukket med kildebevis i v3.7.",
+  "K-2/ac-1/neg-5 × plan.md:104,313,672 — INSERT stande er pinnet til dagspris IS NULL; ingen prislog-INSERT i denne form. R-2 lukket; sole korrekt beholdt.",
+  "K-6/ac-6/neg-1 × plan.md:221,288,311 — luk-formen tillades af guarden; gyldig slutdato og SECDEF-audit giver ingen ekstra blokering. Sole korrekt beholdt.",
+  "K-8/ac-1/neg-1 × plan.md:246,288,401-430 — UPDATE grupper har ingen invoker-logkaskade; set_updated_at skriver kun NEW, stork_audit er SECDEF. Fabrik-vilkaar opfyldt; sole beholdt.",
+  "K-8/ac-1/neg-1 × plan.md:246,253,672 — sole afgraenset til repraesentanten; alle 36 normale DML-afvisninger bestaar. Ingen negativ-forpligtelse indskraenket.",
+  "K-1..K-9 × plan.md:1057-1064 — byte-diff matcher alle ni anmeldte hunks; manifest har kun seks tilladte feltdeltaer. 60/127/150 og 12 guards bevaret; validator exit 0.",
+  "K-7/S × plan.md:238,240,526 — byte-identisk med v3.6; A8's kildebevis for KB-#7 viderefoert, ingen ny genlaesning.",
+  "K-5/ac-1 × plan.md:33,678 — FA-3 byte-identisk med v3.6; A8's kildebevis viderefoert. Ingen implementeret effekt eller mutantdrab attesteret her."
  ],
  "claim_graph_refs": [],
  "evidence": [
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    37,
-    37
+    246,
+    253
    ],
-   "excerpt_sha": "cd31649585e8075b1b667448c0b4149791049f95aa068d9f4e5ae8dcb60d4eb5"
+   "excerpt_sha": "a143d3f549728b4ae9e9fffc26f4f0179a9d012ed705d6b6caf4f50d0544213f"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    391,
-    391
+    288,
+    314
    ],
-   "excerpt_sha": "c7c2d1d973e34120bb99614ccfdfc9072c807ce155887ec61eade2120e4d54ee"
+   "excerpt_sha": "2854f3137519c3254fb9001c75b522b8df2bf736819931c5ee6a6dd09a668e60"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    436,
-    438
+    401,
+    430
    ],
-   "excerpt_sha": "18c790752d2fad7334e9ba2a091afdfabc73a2a47373cb4b4a07d340b0ea6639"
+   "excerpt_sha": "65a3837b75dedcba4e0a7729714718560d233baf5a3fd5fb1cf60937da8e9d97"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    1016,
-    1016
+    672,
+    672
    ],
-   "excerpt_sha": "cb47dfbf7e686bb5e12234d1bd1260c4904e7cbdbc6eaa25095ba411ed505ba9"
+   "excerpt_sha": "aca463c63c1f865678819ce4b5ce44030cc1c31d58678c3f1130c7d4c55b35a1"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/plan.md",
-   "blob_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+   "blob_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
    "line_span": [
-    1031,
-    1038
+    1053,
+    1064
    ],
-   "excerpt_sha": "027552cfaab6ab31948cc52d241bda74be38d73b5c5f745d11942a1a6a370774"
+   "excerpt_sha": "3d4ef5c4db586c949bd0449867b57a7c41c8d66e82eb123966aa6070fec12921"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
-   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
    "line_span": [
-    13,
-    16
+    381,
+    392
    ],
-   "excerpt_sha": "e09ca1416db86472047ff4d69ba5873f06ec1f3c3fdb86f767f9a7c64b7622d2"
+   "excerpt_sha": "f9b1ba4b336799bfdaa1567412c1e5aef48962e8651aefeee963e682b61ad52b"
   },
   {
-   "commit_sha": "4a91894d0a34e5dc5bc5547b84df384385614491",
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
    "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
-   "blob_oid": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
    "line_span": [
-    3184,
-    3196
+    456,
+    468
    ],
-   "excerpt_sha": "34ae8a1c7982ab068c4b32fd929e715dbdbd8f0896eb8b7a33793675dd8eb0ce"
+   "excerpt_sha": "8f6a9ce05fe084fd69711d5665a8f88a43fd23e87f82b2f69e117ee2ee940ac4"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/forventnings-manifest.json",
+   "blob_oid": "4e84481d6df1750581cce8b78288602006d06cc2",
+   "line_span": [
+    3210,
+    3222
+   ],
+   "excerpt_sha": "b09a8012c7ebe0ec564099ab4777a22ad8af51a31cbb10bb63148fe64924bec5"
+  },
+  {
+   "commit_sha": "0288741faad5b0bcbf25f7a6ab2147791e61611c",
+   "path": "plan-build/lokations-skabelon/kill-list-udkast.md",
+   "blob_oid": "13b783927f4fed107caa0e849e65499fd3291b61",
+   "line_span": [
+    180,
+    180
+   ],
+   "excerpt_sha": "24e23495f203f4508d65c63d73411d2cbca1e20543581a750e04bc96ec6d126d"
   }
  ],
  "run": {
-  "run_id": "20260916T145111-2991921-29320",
+  "run_id": "20260923T114303-858980-19988",
   "run_attempt": 1,
-  "raw_output_sha256": "701ae65fd3ad07d32688310debab20571e42a22b65e1a13957eef361bd8991f7",
-  "actor_server_id": "local-driver-spawn via codex-run.sh v4 (kvittering 20260916T145111-2991921-29320; usigneret = residual til CI actor-runner, DEL I: lokal = candidate)",
+  "raw_output_sha256": "a77ec4fb80fac8b84330bf066be785562c2005b788c7c73e660d6b903e702bf4",
+  "actor_server_id": "local-driver-spawn via codex-run.sh v4 (kvittering 20260923T114303-858980-19988; usigneret = residual til CI actor-runner, DEL I: lokal = candidate)",
   "effort": "xhigh",
-  "receipt_sha256": "f12effda9b51c6815583dd2ed9d8c5a9a1e59877a5d39bc0fdd95598be381c8f"
+  "receipt_sha256": "033bec3358295bbbe2ba256141aa37fd2fe343f8d3952df2036c5f0873007a4c"
  }
 }

@@ -2,29 +2,29 @@
  "schema_version": 1,
  "gate_id": "plan",
  "pakke": "lokations-skabelon",
- "artifact_oid": "289b87616750a1a1180a8ec5f7a639cd43f07a29",
+ "artifact_oid": "934291780be93ec7353d7a9f777b4661e79a0158",
  "bindings_oids": {
   "krav": "9402164d87a35fb939661058bea77c1a052493d0",
   "recon2": "2bdbb122158b6f8c72fc942b8de28e679742b4aa",
   "p8": "4af07ef4164882ca54643e79df3554c0bf22b0e4",
   "ordbog": "bcab6b4ed9c9c0fe21f13c70d8e1d47a2afd9fef",
   "killlist": "13b783927f4fed107caa0e849e65499fd3291b61",
-  "manifest": "ab4c8501253cbc9310f9875c0ab5c672f1ad23dd"
+  "manifest": "4e84481d6df1750581cce8b78288602006d06cc2"
  },
- "scope_digest": "09c5f34136e947b87d909d75c7865b8800d5a5f95710f430e212ef16ed38bcd6",
+ "scope_digest": "fe84726e6a88f39a92572cdaa3c51d1e397ddc48dc83e620f03ab69b7608847b",
  "prerequisite_digests": [
-  "2f253c2f2f136a85ed8d7a067ae400126458064c9d06e803d7528c6199b4ad3c",
-  "692a7c73fc8d9081eeacf8c4fe24ef5dfdaea56c93ec7246e0f61c2821cb6425",
-  "b544a6be6bdf5ba74f231d46869f0c752b2e471660620e717ae198d42433223f"
+  "17a300029d2ddf6556ea0191c232c9cfa6810ebc08c9d64612e41d7beecd2c68",
+  "3038b3925fa04d3b77ca7c9073e2790967d72815dd518d52989867dffac5d82b",
+  "48fa20f1856cbf5db2adee95cc50507b9ec868cf2686fe99646e9b376c434d10"
  ],
  "fremlaeggelse": {
-  "path": "plan-build/lokations-skabelon/fremlaeggelse-plan.md",
-  "blob_oid": "c4757b3cdff8d6668f2724718cdde1525f90c5ff"
+  "path": "plan-build/lokations-skabelon/fremlaeggelse-plan-v37.md",
+  "blob_oid": "81e1425428297341b997df4eeca4bb09f6cd91b4"
  },
  "devil": {
   "path": "plan-build/lokations-skabelon/plan-devil.json",
-  "blob_oid": "49a5de0da6b7aaf4c3b749f261493dd0a98b9ffd",
+  "blob_oid": "f27645971f8b756611060a74393e31417f3b1337",
   "dom": "PASS"
  },
- "frosset": "2026-09-17T08:34:56.757Z"
+ "frosset": "2026-09-23T09:56:57.866Z"
 }
