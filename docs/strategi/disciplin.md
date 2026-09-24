@@ -26,7 +26,7 @@
 
 At verificere er at have læst den faktiske database og kode i denne session (funktions-definitioner, kolonner og constraints, policies, grants), før man skriver noget om dem. Ingen gæt, ingen cached state.
 
-**Spørg ved uklarhed — antag ALDRIG (Mathias).** En aktør der ikke forstår en del af krav eller plan, eller finder at den skal uddybes, HALTER og spørger. Den antager aldrig. Forretningsspørgsmål går til Mathias (i den form §2 trin 1 kræver); teknisk uklarhed går til den relevante ejer. Der bygges ikke videre, før spørgsmålet er besvaret. Bygget oven på en antaget tolkning = FAIL.
+**Spørg ved uklarhed — antag ALDRIG.** En aktør der ikke forstår en del af krav eller plan, eller finder at den skal uddybes, HALTER og spørger. Den antager aldrig. Forretningsspørgsmål går til Mathias (i den form §2 trin 1 kræver); teknisk uklarhed går til den relevante ejer. Der bygges ikke videre, før spørgsmålet er besvaret. Bygget oven på en antaget tolkning = FAIL.
 
 **Mathias-suverænitet:** Mathias kan til enhver tid — også midt i en igangværende pakke/build — stoppe, modsige eller ændre retning. Alle workflowets låse (formåls-immutabilitet §3.0, `krav ok`- og `plan ok`-låsene, testlåsen) binder AI'erne, aldrig Mathias. Hans ord gælder straks; kravet og planen opdateres bagefter ad normal vej som konsekvens, aldrig som betingelse.
 
@@ -73,13 +73,13 @@ Et krav-dokument er **Mathias' forretningsgange** for én masterplan-pakke — i
 
 De fem regler nedenfor (afled-før-spørg, bord-testen, ét-skridts-reglen, spørgsmålets form, antag aldrig) gælder **hvert spørgsmål til Mathias i alle trin**, ikke kun i krav-trinnet. De står ordret som i rolleteksten fra september; de få ord workflowet ændrer, står i Del B.3.
 
-**Afled-før-spørg (Mathias 2026-09-02):** elicitér FØRST fra kilderne, SÅ fra Mathias. Før du stiller ham et åbent spørgsmål, SKAL du have undersøgt hans allerede-nedskrevne holdninger — de låste docs (vision-og-principper · forretningsforstaaelse) + masterplanens afgørelser + hvad eksisterende kode allerede afgør (som Codex' for-tjek melder det) — og præsentere det AFLEDTE svar til bekræftelse: _"din sandhed siger X (citat) → foreslået svar Y — korrekt?"_ Kilderne omfatter **MØNSTER-ANALOGI**, ikke kun ordret tekst: en regel han har låst ét sted overføres som forslag til det analoge sted. Kun punkter kilderne reelt IKKE besvarer må stå som åbne spørgsmål. Grænsen står fast: et afledt svar er et FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden (antag-aldrig gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til et acceptkriterie).
+**Afled-før-spørg:** elicitér FØRST fra kilderne, SÅ fra Mathias. Før du stiller ham et åbent spørgsmål, SKAL du have undersøgt hans allerede-nedskrevne holdninger — de låste docs (vision-og-principper · forretningsforstaaelse) + masterplanens afgørelser + hvad eksisterende kode allerede afgør (som Codex' for-tjek melder det) — og præsentere det AFLEDTE svar til bekræftelse: _"din sandhed siger X (citat) → foreslået svar Y — korrekt?"_ Kilderne omfatter **MØNSTER-ANALOGI**, ikke kun ordret tekst: en regel han har låst ét sted overføres som forslag til det analoge sted. Kun punkter kilderne reelt IKKE besvarer må stå som åbne spørgsmål. Grænsen står fast: et afledt svar er et FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden (antag-aldrig gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til et acceptkriterie).
 
-**BORD-TESTEN (Mathias 2026-09-02 + M-33 2026-09-08 — kør den på HVERT spørgsmål før du stiller det):** (a) kan KUN Mathias svare — er det forretnings-sandhed/fakta kun han kender? OG (b) kan han svare UDEN teknik-viden — uden at skulle forholde sig til tabeller/felter/flows/enums som model? OG (c) **MATERIALITET (M-33):** ændrer svaret hvad der bygges i DETTE trin, og skal det afgøres NU? Svar der først bliver materielle nedstrøms → nedstrøms-liste (»afgøres ved trin X«) med eksplicit default — INGEN spørgsmål. **Fejler bare ét af de tre, er det IKKE et krav-spørgsmål.**
+**BORD-TESTEN (kør den på HVERT spørgsmål før du stiller det):** (a) kan KUN Mathias svare — er det forretnings-sandhed/fakta kun han kender? OG (b) kan han svare UDEN teknik-viden — uden at skulle forholde sig til tabeller/felter/flows/enums som model? OG (c) **MATERIALITET (M-33):** ændrer svaret hvad der bygges i DETTE trin, og skal det afgøres NU? Svar der først bliver materielle nedstrøms → nedstrøms-liste (»afgøres ved trin X«) med eksplicit default — INGEN spørgsmål. **Fejler bare ét af de tre, er det IKKE et krav-spørgsmål.**
 
 **ÉT-SKRIDTS-REGLEN (M-33, 2026-09-08):** følger konsekvensen af Mathias' ORDRETTE ord (ledgeren) i ét skridt, er det en **BEKRÆFTELSE** i fremlæggelsen (»dit ord siger X (M-n) → kravet siger Y — står medmindre du siger stop«, batchet, ét samlet ok) — ALDRIG et spørgsmål. Kun ægte åbne punkter (intet M-ord bærer dem i ét skridt) går videre som spørgsmål. INTET loft/takt-budget på spørgsmål (Mathias afviste værn 3) — værnet er kvalitativt, ikke et tal. Teknik-/model-forks noteres i stedet EKSPLICIT som **plan-fase-afgørelser**: planner afgør inden for kravets ramme, Codex læser planen, og Mathias' plan OK dækker dem. De forsvinder ALDRIG tavst — de flytter bord, synligt, på kravets »Flyttet til planen«-liste.
 
-**FORM-KRAV til spørgsmål der BESTÅR bord-testen (Mathias 2026-09-02 — et uskarpt spørgsmål koster hans svar):**
+**FORM-KRAV til spørgsmål der BESTÅR bord-testen (M-26 — et uskarpt spørgsmål koster hans svar):**
 1. **ÉN beslutning pr. spørgsmål.** Del-spørgsmål må ALDRIG gemmes i en parentes/hale (de bliver svaret forbi) — de får eget nummer eller venter.
 2. **SCENARIE-FORM:** stil spørgsmålet som en konkret situation fra HANS forretning med navngivne klienter/steder ("Tryg i Bilka Hundige…"), aldrig meta-sprog ("hvad repræsenterer X kommercielt?" forstår han med rette ikke).
 3. **SVARBART MED ÉT ORD:** giv svarmulighederne (ja/nej eller 2-3 navngivne udfald) + evt. din anbefaling. Svarer han "forstår ikke" → spørgsmålet HALTER og omformuleres — gå ALDRIG videre uden svar.
@@ -91,7 +91,7 @@ De fem regler nedenfor (afled-før-spørg, bord-testen, ét-skridts-reglen, spø
 1. Hver krav-sætning har en kilde, og kilden siger det samme.
 2. Hvert punkt i masterplan-trinnet står i kravet eller under »Ikke i scope«, og de negativer masterplanen sætter for trinnet, står som negativer i kravet.
 
-Påstår kravet noget om det byggede, holdes det mod koden. Den tekniske gæld (G/H) hører til planen (trin 2). Nettet er ikke en kilde: web i recon skaber forvirring + nye forkerte sandheder (Mathias).
+Påstår kravet noget om det byggede, holdes det mod koden. Den tekniske gæld (G/H) hører til planen (trin 2). Nettet er ikke en kilde: web i recon skaber forvirring + nye forkerte sandheder.
 
 **Fremlæggelse og `krav ok`:** Mathias' svar skrives ordret i ledgeren med nummer, og kravet citerer nummeret. Når Codex har holdt udkastet op mod dokumenterne, og resultatet står i kravets afsnit »Holdt mod dine dokumenter«, fremlægges hele kravet i chatten: krav-filens tekst gengivet ordret (»Chat = fil« ovenfor).
 
@@ -107,7 +107,7 @@ Planen skrives efter skabelonen i §10.2 af Code — planner og bygger. Den er k
 
 **Spørgereglen i plan-fasen:** Mathias får ingen tekniske spørgsmål. Et spørgsmål i ½-siden er kun et uafklaret forretningsvalg, der består bord-testen (trin 1). Det kravet har flyttet til planen (fx om to af hans begreber er én eller to ting i systemet), afgør planen; det er ikke et spørgsmål. Afviger planen fra hans dokumenter (fx at systemets dag følger UTC, mens dokumenterne peger på dansk kalenderdag), fremlægges afvigelsen i ½-siden, og han godkender den med `plan ok` eller siger stop.
 
-- **Ordbogen arves (Mathias 2026-09-03).** Planen og dermed koden ARVER Mathias' navne fra ordbogen `docs/sandhed/ordbog.md` (én for hele Stork, §4). Tabeller, felter og RPC'er hedder hans ord, ELLER planen mapper dem eksplicit i ordbogen (Mathias-ord ↔ systemnavn). En navne-afvigelse uden ordbogs-entry er et fund i plan-læsningen.
+- **Ordbogen arves.** Planen og dermed koden ARVER Mathias' navne fra ordbogen `docs/sandhed/ordbog.md` (én for hele Stork, §4). Tabeller, felter og RPC'er hedder hans ord, ELLER planen mapper dem eksplicit i ordbogen (Mathias-ord ↔ systemnavn). En navne-afvigelse uden ordbogs-entry er et fund i plan-læsningen.
 - Punkterne på kravets liste »Flyttet til planen« afgøres her, hver med en begrundelse inden for kravets ramme. De forsvinder aldrig tavst.
 - **G/H-opslag:** planen laver et opslag i `docs/teknisk/teknisk-gaeld.md` og `docs/teknisk/huskeliste.md`. Alle åbne G-/H-numre, hvis **Løses-i**/deadline rammer pakkens scope, listes, og hver post tages med eller udskydes med begrundelse. En tom liste skrives eksplicit ("ingen G/H rammer dette scope"). Gælds-listen og huskelisten er de eneste sandheder om G/H; opslaget er reference, ikke kopi.
 - **Fundamentet:** planen skal stå på mål med vision og forretningsforstaaelse. Vil en plan ændre det Mathias' dokumenter siger, fremlægges det i ½-siden før `plan ok` (spørgereglen ovenfor), så han kan godkende det eller sige stop. En plan godkendes ikke stående på fundament den modsiger.
@@ -122,18 +122,18 @@ Codex læser planen én gang, og der er én rettelse. Codex genlæser kun rettel
   - **D10 (M-40):** én meningsfuld dræbt mutant pr. afvisnings-acceptkriterie, når ét værn alene bærer negativet (deklareret med `sole_guard_ref`) — aldrig pr. "konfig-knap". Redundante værn gøres ikke isoleret nødvendige. Gulvet består: ≥1 målrettet dræbt mutant pr. opsætnings-krav.
   - **Testene dækker kravet direkte:** hver test deklarerer hvilke K, acceptkriterier og negativer den dækker (`covers`), og dækningsdommen holder det mod kravet. (D12's opdeling i forudsætnings- og effekt-trin gælder kun pakke 1, hvis manifest bruges som det er.)
   - **Hvad en test er:** offentlig indgang · rigtig database med en rolle uden bypass · hård slut-effekt (række, tilstand, fejlkode). Det gælder også når planen gør et negativ umuligt (constraint, type, RLS): umuligheden bevises gennem den rigtige indgang med en effekt-test — en constraint erstatter aldrig effekt-testen (D13, M-40). En test der kun tjekker en intern hjælpefunktions svar, tæller ikke. Mutanterne dræbes gennem samme effekt-sti.
-  - En test uden forventning er tom og tæller som rød. Hvert dækket negativ skal være forsøgt og afvist netop dér (M-48).
+  - En test uden forventning er tom og tæller som rød. Hvert dækket negativ skal være forsøgt og afvist netop dér.
   - **Vejnings-reglen:** _"tjener testen et led, og ville en reel falsk-grøn slippe UDEN den?"_ Nej → over-test → skriv den ikke.
-- **Grøn = reel konsekvens, aldrig påstand.** Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt (Mathias' krav, juni 2026). »funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.« (Mathias' krav 1, juni 2026).
+- **Grøn = reel konsekvens, aldrig påstand.** Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt. »funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.«
 - **Byggetjekket** er ét CI-job med fire tjek: (a) testene er grønne · (b) de udpegede mutanter er dræbt · (c) intet låst er ændret (planen, testene, manifestet, testindekset, `prover.json`) · (d) planen og kørselsfladen er dem, `plan ok` og den grønne dækningsdom bandt (blob for blob).
 - **Byggeren vælger det planen ikke afgør** og skriver valgene i slut-rapporten. Bygningen er mekanisk dømt af byggetjekket; der er ingen byg-godkendelse hos Mathias.
-- **Build-fokus (Mathias): fokus under build SKAL være build.** Opstår der ændringer under byg, er et større issue gæld (G-nummer, løses KORREKT senere, ikke hurtigt/hacket), og et mindre er et bilag til ændringen. Repo-docs røres ikke under byg; de rettes ved trin 4.
+- **Build-fokus: fokus under build SKAL være build.** Opstår der ændringer under byg, er et større issue gæld (G-nummer, løses KORREKT senere, ikke hurtigt/hacket), og et mindre er et bilag til ændringen. Repo-docs røres ikke under byg; de rettes ved trin 4.
 - Afvigelse fra kravet: §3.7. Patch-først: §3.1. Destruktive drops: §3.9.
 - Codex gennemser den samlede ændring én gang, før slutprøven (fokus: §9.3).
 
 ### Trin 4 — Slut
 
-- **Top-til-tå: kode = Mathias' sandhed.** Den endelige dom er reel kode kørt mod hans sandhed ved fuld dybde, ikke at ordene/docs findes (doc-grøn ≠ dybde; Mathias 2026-06-19). Derfor køres slutprøven i fuld dybde gennem brugernes indgange: på testdatabasen med realistiske data, og på driftsdata kun når pakken læser data der allerede findes (fx løn).
+- **Top-til-tå: kode = Mathias' sandhed.** Den endelige dom er reel kode kørt mod hans sandhed ved fuld dybde, ikke at ordene/docs findes (doc-grøn ≠ dybde). Derfor køres slutprøven i fuld dybde gennem brugernes indgange: på testdatabasen med realistiske data, og på driftsdata kun når pakken læser data der allerede findes (fx løn).
 - Code skriver slut-rapporten efter §10.3 i `plan-build/<pakke>/slut-rapport.md`.
 - claude-ai-rollen læser rapporten mod kravet, visionen og forretningsforstaaelse efter §5 »Sådan dømmer alle dommere« og skriver rapportens afsnit »Fremlæggelse for Mathias«. Afsnittet fremlægges ordret.
 - **`slut ok`** = pakken må i drift. Ledgeren binder ordet til `slut-rapport.md`'s blob **og** til den prøvede kodeversion: det commit, som slutprøven, Codex' samlede gennemgang og byggetjekket kørte på (rapportens felt »Prøvet kodeversion«). Mellem det commit og det der merges, må kun **afslutningsfilerne** ændres, og hver kontrolleres ét sted: (1) dokumentrettelserne skal have præcis den blob, som rapportens afsnit »Rettelser i Mathias' dokumenter« angiver; (2) slut-rapportens blob står i ledgerens `slut ok`-post; (3) ledgeren skal være sit tidligere indhold uændret plus præcis den nye `slut ok`-post. Rapporten angiver ikke sin egen eller ledgerens blob. Alt andet i repoet skal være uændret. Uden den post kan pakke-PR'en ikke merges (§6). Ændres koden derefter, er slutprøven, gennemgangen, byggetjekket og `slut ok` ugyldige for den nye kode og skal gives på ny. Med samme ord rettes Mathias' dokumenter som rapporten foreslår (ordret nuværende → ny tekst), efter §8.1 — også de poster på kravets liste »Afgøres ved senere trin«, som skrives ind i masterplanen ved deres trin.
@@ -227,9 +227,9 @@ Fuld dømmekrafts-pris hvor dømmekraft kræves; mekanik hvor mekanik beviseligt
 
 **Slettes ved pakke-luk:** alt andet i `plan-build/<pakke>/` (arbejdsfiler, udkast, byggetjekkets input). Byggetjekkets input fjernes først, når ingen kontrol længere læser det.
 
-**Én bevarings-politik.** Hvert dokument har ét formål, ingen dubletter, én sandhed (Mathias' krav, juni 2026). Arkivet er ikke en voksende kirkegård; iterations-, review- og udkast-filer lever i git-history, ikke som filer på main.
+**Én bevarings-politik.** Hvert dokument har ét formål, ingen dubletter, én sandhed. Arkivet er ikke en voksende kirkegård; iterations-, review- og udkast-filer lever i git-history, ikke som filer på main.
 
-**Pakke-luk-tjek — udtømt formål (Mathias-princip, 2026-06-10):** ved hver pakke-luk tjekkes også: docs hvis formål DENNE pakke har udtømt — også uden for pakkens egne filer — slettes/arkiveres med begrundelse. Repo-renhed gælder alt der mister formål, ikke kun pakkens egne artefakter. (Samme princip gælder GitHub-fladen: døde PR'er lukkes med begrundelse; merged branches auto-slettes — `delete_branch_on_merge` aktiv.)
+**Pakke-luk-tjek — udtømt formål:** ved hver pakke-luk tjekkes også: docs hvis formål DENNE pakke har udtømt — også uden for pakkens egne filer — slettes/arkiveres med begrundelse. Repo-renhed gælder alt der mister formål, ikke kun pakkens egne artefakter. (Samme princip gælder GitHub-fladen: døde PR'er lukkes med begrundelse; merged branches auto-slettes — `delete_branch_on_merge` aktiv.)
 
 ---
 
@@ -241,7 +241,7 @@ Hvem der retter en fejl, og hvornår Mathias spørges: §3.4.
 - Et kritisk fund (sikkerhedshul, tab af eksisterende bevarelse §3.1, destruktivt drop uden preflight §3.9) stopper trinnet, til det er rettet.
 - Mathias' spørgsmål (§3.4, §3.7, §8) stilles i chatten i hans sprog og besvares ordret i ledgeren.
 
-**Sådan dømmer alle dommere** (Codex, code-reviewer, claude-ai-rollen). Metoden er bindende (gate-læringerne, Mathias 2026-06-11, og princip 6 i den arbejdsmetode han godkendte med M-41 »jeg går med din anbefaling«):
+**Sådan dømmer alle dommere** (Codex, code-reviewer, claude-ai-rollen). Metoden er bindende (gate-læringerne og princip 6 i den arbejdsmetode han godkendte med M-41 »jeg går med din anbefaling«):
 1. Kravet læses SÆTNING FOR SÆTNING mod leverancen (planen, testene, ændringen eller rapporten). Hver krav-sætning er realiseret, eksplicit begrundet afgrænset eller et FUND.
 2. Formålet læses FØRST. Spørgsmålet er altid: "er FORMÅLET opnået?" — ikke "ligner leverancen planen".
 3. Kravets MENING, ikke ord-match. En sætning kan være ord-opfyldt og menings-brudt.
@@ -318,7 +318,7 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 
 ### §9.1 claude-ai-rollen
 
-**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. »Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.« (Mathias' krav 2, juni 2026).
+**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. »Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.«
 
 **Mathias forstår ikke kode; hans gates skal være reelle.** Alt der fremlægges for ham, står i hans sprog. Konklusionen står først. Hans reelle afgørelser er adskilt fra teknik.
 
@@ -607,4 +607,4 @@ Uventede commits ved sync → STOP, rapportér.
 
 ---
 
-**Udgave 2026-09 — afløser V5 (2026-06-03).** Skrevet om til ét workflow med fire trin og forenklet med Mathias' ord 24/9 (»jeg går med dine anbefalinger«). Gælder fra Mathias' `ok` (M-67, 2026-09-24). Tidligere udgaver står i git-historikken.
+**Udgave 2026-09 — afløser V5 (2026-06-03).** Skrevet om til ét workflow med fire trin og forenklet med Mathias' ord (M-66, 2026-09-24: »jeg går med dine anbefalinger«). Gælder fra Mathias' `ok` (M-67, 2026-09-24). Tidligere udgaver står i git-historikken.
