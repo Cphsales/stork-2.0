@@ -47,6 +47,24 @@ jobs:
           fi
           echo "Ændrede filer:"; echo "$FILER"
 
+  sandhed:
+    # Mathias' sandhedsdokumenter (vision, forretningsforståelse, masterplan) ændres kun med hans
+    # ord for netop den tekst i ledgeren (workflow-planen M-67 + 24/9; disciplin.md §8.1). Kører altid.
+    name: Sandhedsdokumenter kun med Mathias' ord
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Sandhed-vagt
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then base="origin/${{ github.base_ref }}"; else base="${{ github.event.before }}"; fi
+          node scripts/v5/sandhed-vagt.mjs --base "$base"
+
   kode:
     name: Kode (lint, typecheck, test, build)
     runs-on: ubuntu-latest
@@ -153,17 +171,19 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [klassificer, kode, governance, db]
+    needs: [klassificer, sandhed, kode, governance, db]
     if: always()
     steps:
       - name: Saml verdikt
         run: |
           ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
           echo "klassificer: ${{ needs.klassificer.result }}"
+          echo "sandhed:     ${{ needs.sandhed.result }}"
           echo "kode:        ${{ needs.kode.result }}"
           echo "governance:  ${{ needs.governance.result }}"
           echo "db:          ${{ needs.db.result }}"
           [ "${{ needs.klassificer.result }}" = "success" ] || { echo "klassificer fejlede"; exit 1; }
+          [ "${{ needs.sandhed.result }}" = "success" ] || { echo "sandhed-vagt fejlede"; exit 1; }
           [ "${{ needs.governance.result }}" = "success" ] || { echo "governance fejlede"; exit 1; }
           ok "${{ needs.kode.result }}" || { echo "kode fejlede"; exit 1; }
           ok "${{ needs.db.result }}" || { echo "db fejlede"; exit 1; }

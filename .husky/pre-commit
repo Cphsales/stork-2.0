@@ -5,6 +5,9 @@
 # Step 0: v5 commit-zoner (A4 — sessionens rolle-zone, fail-closed på beskyttede zoner)
 node scripts/v5/pre-commit-zone.mjs || exit 2
 
+# Step 0b: Mathias' sandhedsdokumenter kun med hans ord i ledgeren (disciplin.md §8.1)
+node scripts/v5/sandhed-vagt.mjs --staged || exit 2
+
 # Step 1: lint-staged kører altid (uændret eksisterende)
 pnpm exec lint-staged
 LINT_EXIT=$?
