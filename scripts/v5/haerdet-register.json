@@ -109,10 +109,10 @@
  },
  "ci-build-dom.mjs": {
   "status": "kandidat",
-  "blob_oid": "3acea6d1b36cdab3ab9757ecb7264a120f27fcbf",
+  "blob_oid": "a0307f9aa4f88a0c684ee2a366b5482e20575bd5",
   "pas_afventer": "Codex-pas bundles m. pakke-1-retro (hurtigt spor pkt. 42: permanent kandidat-drift for pakke 1, ingen Codex-pas pr. modul)",
   "kandidat_siden": "2026-09-21",
-  "note": "Hurtigt spor 2026-09-21 (pkt. 42): måling via test-runner.mjs (Codex' testfiler + mutant-loop) mod indeks skema 2; rapport skema 3 = bevis-body m. index_oid. Selvtest 41. Forrige: Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): http-transport fra V5_PGRST_URL/V5_PGRST_JWT_SECRET/V5_PGRST_SCHEMA + NOTIFY pgrst reload efter migrationer. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: C4b build-dommer: producerBevis (måling i renset miljø, ingen dom/emission) + doemBevis (dom fra RÅ bytes: fatal UTF-8, oid over rå bytes, commit/pakke-binding, for"
+  "note": "Trin 0b 2026-09-24 (workflow-undersøgelsen §7, G003): frisk-store-bootstrap (to Auth-rækker før første migration) + blob-bundet undtagelse for H024-live-oprydningen (b076fbc6); afprøvet lokalt mod supabase/postgres:17.6.1.121 (nr. 21 stop uden bootstrap · nr. 77 stop uden undtagelse · øvrige 124 grønne); selvtest 49; bundet Codex-kodedom afventer. Forrige: Hurtigt spor 2026-09-21 (pkt. 42): måling via test-runner.mjs (Codex' testfiler + mutant-loop) mod indeks skema 2; rapport skema 3 = bevis-body m. index_oid. Selvtest 41. Forrige: Fase 4 pkt. 1 HALT H1/H2 (Codex 2026-09-21): http-transport fra V5_PGRST_URL/V5_PGRST_JWT_SECRET/V5_PGRST_SCHEMA + NOTIFY pgrst reload efter migrationer. Integration v2.10: 94 grønne mod rigtig Postgres + rigtig PostgREST. Forrige pas: C4b build-dommer: producerBevis (måling i renset miljø, ingen dom/emission) + doemBevis (dom fra RÅ bytes: fatal UTF-8, oid over rå bytes, commit/pakke-binding, for"
  },
  "pg-runner.mjs": {
   "status": "kandidat",

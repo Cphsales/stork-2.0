@@ -66,7 +66,8 @@ const R = (okv, code = null, message = null, routine = null, rows) => ({ ok: okv
 function mkRunner(over = {}) {
   const st = { navn: true, pris: 100, audit: true, mutable: true, migs: [], ...over };
   return { st,
-    sql(t) { if (/^-- migration/.test(t)) { if (st.failMigration && t.includes(st.failMigration)) return R(false, "42601", "syntax error", null); st.migs.push(t.split("\n")[0]); return R(true); }
+    sql(t) { if (/^insert into auth\.users/.test(t)) { if (st.failBootstrap) return R(false, "42501", "permission denied for table users", null); st.bootAt = st.migs.length; return R(true); }
+      if (/^-- migration/.test(t)) { if (st.failMigration && t.includes(st.failMigration)) return R(false, "42601", "syntax error", null); st.migs.push(t.split("\n")[0]); return R(true); }
       switch (t) { case "POS": return R(true); case "NEG": return st.navn ? R(false, "22023", "navn_blank", "f.lokation_opret") : R(true); case "STATE": return R(true, null, null, null, [{ n: 1 }]);
         case "ACT": return R(true); case "OBS": return R(true, null, null, null, [{ pris: st.pris }]); case "OBS_HIST": return R(true, null, null, null, [{ pris: 80 }]);
         case "ACT_MH": return R(true); case "AUDIT": return R(true, null, null, null, st.audit ? [{ id: 1 }] : []); case "FP": return R(true, null, null, null, [{ navn: st.navn }]);
@@ -87,6 +88,16 @@ console.log("\nstore — migrationer @ commit som ejer, STOP ved fejl:");
 { const r = mkRunner(); const d = await doemBuild(base({ runner: r })); eq("begge migrationer anvendt i rækkefølge (0001 før 0002)", r.st.migs.join("|"), "-- migration a|-- migration b"); eq("store.anvendt = 2 i beviset", d.envelope?.store?.migrationer_anvendt, 2); }
 { const r = mkRunner({ failMigration: "migration a" }); const d = await doemBuild(base({ runner: r })); eq("første migration fejler → failure m. 'migration … fejlede', den anden køres IKKE (STOP)", d.checkRun.conclusion === "failure" && /migration supabase\/migrations\/0001_a.sql fejlede/.test(d.result.reasons[0]) && r.st.migs.length === 0, true); }
 { const d = await doemBuild(base({ skipMigrations: true })); eq("--skip-migrations mærkes ærligt i beviset (store.skipped_migrations)", d.envelope?.store?.skipped_migrations, true); }
+console.log("\nfrisk store (trin 0b) — bootstrap + blob-bundet undtagelse:");
+{ const r = mkRunner(); const d = await doemBuild(base({ runner: r })); eq("bootstrap (Auth-rækker) kører FØR første migration", r.st.bootAt, 0); eq("bootstrap mærkes i beviset (store.frisk_store_bootstrap)", d.envelope?.store?.frisk_store_bootstrap, true); eq("default-undtagelsen (H024) rammer ikke fixturens migrationer → ingen undtaget", JSON.stringify(d.envelope?.store?.undtagne_migrationer), "[]"); }
+{ const r = mkRunner({ failBootstrap: true }); const d = await doemBuild(base({ runner: r })); eq("bootstrap fejler → failure m. 'frisk-store-bootstrap fejlede', ingen migration køres", d.checkRun.conclusion === "failure" && /frisk-store-bootstrap fejlede/.test(d.result.reasons.join(" ")) && r.st.migs.length === 0, true); }
+{ const A = "supabase/migrations/0001_a.sql"; const bo = git("rev-parse", `${COMMIT2}:${A}`); const r = mkRunner();
+  const d = await doemBuild(base({ runner: r, undtagelser: [{ path: A, blob: bo, grund: "test" }] }));
+  eq("undtagelse m. matchende blob springes over (kun b anvendt)", r.st.migs.join("|"), "-- migration b");
+  eq("undtagelsen skrives ind i beviset m. path+blob+grund", JSON.stringify(d.envelope?.store?.undtagne_migrationer), JSON.stringify([{ path: A, blob: bo, grund: "test" }])); }
+{ const A = "supabase/migrations/0001_a.sql"; const r = mkRunner(); const d = await doemBuild(base({ runner: r, undtagelser: [{ path: A, blob: "f".repeat(40), grund: "test" }] }));
+  eq("undtagelse m. ANDEN blob end filen @ commit → failure (STOP), intet anvendt", d.checkRun.conclusion === "failure" && /undtagelsen gælder ikke/.test(d.result.reasons.join(" ")) && r.st.migs.length === 0, true); }
+{ const r = mkRunner(); const d = await doemBuild(base({ runner: r, bootstrap: null })); eq("bootstrap: null (forberedt store) → ingen bootstrap, mærket false", r.st.bootAt === undefined && d.envelope?.store?.frisk_store_bootstrap === false, true); }
 
 console.log("\nforgænger — plan-gaten frisk:");
 { const d = await doemBuild(base({ planDom: planDom(false) })); eq("plan-gaten lukket → build failure m. forgængerens grund", d.checkRun.conclusion === "failure" && /forgængeren \(plan-gaten\) er ikke åben/.test(d.result.reasons[0]) && /approval mangler/.test(d.result.reasons[0]), true); }

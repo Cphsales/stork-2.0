@@ -58,6 +58,12 @@ const lay = (k, pk) => DEFAULT_LAYOUT[k].replaceAll("<pakke>", pk);
 void GATE_IDS;
 
 export const BUILD_NAAETHED = Object.freeze(["plan-build/<pakke>/plan-approval.json", "plan-build/<pakke>/angrebs-spec.json"]);
+// Trin 0b (fabrik 2026-09-24, workflow-undersøgelsen §7 · G003): en FRISK store kan ikke køre migrationshistorikken uden (1) de to Auth-rækker
+// som t1_bootstrap_admins peger på (FK til auth.users, faste UUID'er) og (2) at springe én one-shot LIVE-oprydning over (H024: precondition på
+// live test-artefakter — tom effekt på en frisk store). Afprøvet lokalt mod supabase/postgres:17.6.1.121: uden bootstrap stop ved nr. 21;
+// med bootstrap stop ved nr. 77 (H024); med begge → alle øvrige 124 grønne. Undtagelsen er blob-bundet: ændres filen, gælder den ikke (STOP).
+export const FRISK_STORE_BOOTSTRAP = "insert into auth.users (id, email, aud, role) values ('6d034bba-84ec-48ad-a94e-219aa5755b88','bootstrap-1@test.invalid','authenticated','authenticated'), ('735dca62-808c-4389-b038-9242313c4a20','bootstrap-2@test.invalid','authenticated','authenticated') on conflict (id) do nothing;";
+export const FRISK_STORE_UNDTAGELSER = Object.freeze([Object.freeze({ path: "supabase/migrations/20260516200000_h024_test_artifact_cleanup.sql", blob: "b076fbc6b7a969aa4cb2e838e31653efc225f2d2", grund: "H024 one-shot pre-cutover-oprydning af LIVE test-artefakter; precondition kræver live-data (>= 27 pay_period clean-targets) — tom effekt på en frisk store" })]);
 import { producentMiljoe, CREDENTIAL_ENV_RE } from "./pg-runner.mjs";
 void CREDENTIAL_ENV_RE;
 
@@ -87,7 +93,7 @@ const failRes = (reasons, extra = {}) => { const result = { open: false, gate_id
 
 // producerBevis(deps) → { naaet, fil? } | { naaet, fejl: reasons, store } | { naaet, proofBytes, body, store, runId }
 // JOB A (måling): kører produktkode m. RENSET miljø; ingen dom, ingen emission, intet token.
-export async function producerBevis({ commitSha, root = repoRoot, git = null, runner, exists = null, readJson = null, readText = null, listMigrations = null, prover = null, runId = null, skipMigrations = false, env = producentMiljoe(process.env) } = {}) {
+export async function producerBevis({ commitSha, root = repoRoot, git = null, runner, exists = null, readJson = null, readText = null, listMigrations = null, prover = null, runId = null, skipMigrations = false, bootstrap = FRISK_STORE_BOOTSTRAP, undtagelser = FRISK_STORE_UNDTAGELSER, blobOf = null, env = producentMiljoe(process.env) } = {}) {
   if (!runner || typeof runner.sql !== "function") throw new Error("runner (pg-runner) kræves");
   for (const k of Object.keys(env ?? {})) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`producerBevis: miljøet til produktkode indeholder credential '${k}' (F-C4b-1)`);
   const { g, findes, tekst, json, pk } = ctxFor({ commitSha, root, git, exists, readJson, readText });
@@ -104,11 +110,24 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
   const vs = validateAngrebsIndeks(spec, manifest); if (!vs.ok) return fejl([`angrebs-indeks ugyldigt/ukomplet mod manifestet: ${vs.reasons.slice(0, 8).join("; ")}`]);
 
   // 3) store: migrationer @ commit, i rækkefølge, som ejer — første fejl er STOP
-  let store = { anvendt: 0, skipped: skipMigrations };
+  let store = { anvendt: 0, skipped: skipMigrations, bootstrap: false, undtaget: [] };
   if (!skipMigrations) {
     const migs = (listMigrations ?? (() => g("ls-tree", "--name-only", `${commitSha}:supabase/migrations`).split("\n").filter((f) => /\.sql$/.test(f)).sort().map((f) => `supabase/migrations/${f}`)))();
     if (!Array.isArray(migs) || migs.length === 0) return fejl(["ingen migrationer fundet @ commit (supabase/migrations/*.sql) — ingen store at måle mod"], store);
+    if (bootstrap) {   // trin 0b: de to Auth-rækker FØR første migration (G003)
+      let b; try { b = await runner.sql(bootstrap, {}); } catch (e) { return fejl([`frisk-store-bootstrap kastede: ${e?.message ?? e}`], store); }
+      if (!b || b.ok !== true) return fejl([`frisk-store-bootstrap fejlede: ${b?.code ?? ""} ${b?.error ?? b?.detail?.message ?? ""}`.trim()], store);
+      store.bootstrap = true;
+    }
+    const blob = blobOf ?? ((p) => String(g("rev-parse", `${commitSha}:${p}`)).trim());
     for (const m of migs) {
+      const u = (undtagelser ?? []).find((x) => x.path === m);
+      if (u) {   // blob-bundet undtagelse: kun præcis den godkendte fil springes over — ændret indhold = STOP
+        let bo; try { bo = blob(m); } catch (e) { return fejl([`frisk-store-undtagelse ${m}: blob kan ikke læses @ commit (${e?.message ?? e})`], store); }
+        if (bo !== u.blob) return fejl([`frisk-store-undtagelsen for ${m} er bundet til blob ${u.blob.slice(0, 8)}, men filen @ commit er ${String(bo).slice(0, 8)} — undtagelsen gælder ikke (STOP)`], store);
+        store.undtaget.push({ path: m, blob: bo, grund: u.grund });
+        continue;
+      }
       let r; try { r = await runner.sql(tekst(m), {}); } catch (e) { return fejl([`migration ${m} kastede: ${e?.message ?? e}`], store); }
       if (!r || r.ok !== true) return fejl([`migration ${m} fejlede: ${r?.code ?? ""} ${r?.error ?? r?.detail?.message ?? ""}`.trim()], store);
       store.anvendt++;
@@ -141,7 +160,7 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
       const sum = pr?.summary ?? {}; prover_result = { ok: pr?.ok === true, total: sum.total ?? 0, passed: sum.passed ?? 0, failed: sum.failed ?? 0, skipped: sum.skipped ?? 0, ...(pr?.ok === true ? {} : { reason: (pr?.reasons ?? ["prover ikke grøn"]).join("; ") }) }; }
   }
   const allOk = eng.tests.every((t) => t.ok === true) && eng.mutants.every((m) => m.killed === true);
-  const body = { schema_version: 3, pakke: pk, commit_sha: commitSha, run_id: rid, index_oid: indexOid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk }, tests: eng.tests, mutants: eng.mutants, summary: eng.summary, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
+  const body = { schema_version: 3, pakke: pk, commit_sha: commitSha, run_id: rid, index_oid: indexOid, store: { kind: "ci-postgres-service", migrationer_anvendt: store.anvendt, skipped_migrations: skipMigrations, frisk_store_bootstrap: store.bootstrap === true, undtagne_migrationer: store.undtaget ?? [] }, engine: { run_id: rid, store: "real", summary: eng.summary, allOk }, tests: eng.tests, mutants: eng.mutants, summary: eng.summary, bid_bindings: spec.bids.map((b) => ({ bid_id: b.bid_id, base_oid: bidBase[b.bid_id] })), async_reviews: reviews, prover_result };
   const proofBytes = JSON.stringify(body, null, 1) + "\n";
   return { naaet: true, proofBytes, body, store, runId: rid, engine: eng };
 }
@@ -173,7 +192,7 @@ export async function doemBevis({ commitSha, root = repoRoot, git = null, exists
   const result = evaluateGate("build", snap, { verifyProof: makeProofVerifier({ git: g }) });
   const checkRun = checkRunFromGateResult("build", result);
   const st = body?.store ?? {};
-  if (checkRun?.output) checkRun.output.summary = `bevis-artefakt (ci-produced) ${artifactOid} · run_id ${String(body?.run_id)} · store: ${st.migrationer_anvendt ?? "?"} migrationer${st.skipped_migrations ? " (SKIPPED)" : ""} · motor: ${JSON.stringify(body?.engine?.summary ?? null)}\n${checkRun.output.summary}`;
+  if (checkRun?.output) checkRun.output.summary = `bevis-artefakt (ci-produced) ${artifactOid} · run_id ${String(body?.run_id)} · store: ${st.migrationer_anvendt ?? "?"} migrationer${st.skipped_migrations ? " (SKIPPED)" : ""}${Array.isArray(st.undtagne_migrationer) && st.undtagne_migrationer.length ? ` · ${st.undtagne_migrationer.length} blob-bundet undtaget (frisk store)` : ""}${st.frisk_store_bootstrap ? " · bootstrap" : ""} · motor: ${JSON.stringify(body?.engine?.summary ?? null)}\n${checkRun.output.summary}`;
   return { naaet: true, result, checkRun, artifactOid, envelope, forgaenger, store: store ?? st };
 }
 
