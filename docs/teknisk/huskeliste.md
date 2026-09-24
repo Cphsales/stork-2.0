@@ -35,9 +35,9 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 
 ### [H006] Migration TODO-markører løst
 
-- **Handling:** 0 TODO-markører i migration-filer før cutover.
+- **Handling:** 0 TODO-markører i 1.0-migrations-skabelonerne før cutover: `scripts/migration/employees/1_discovery.sql` (4 i dag) og `2_extract.sql` (3 i dag). (`supabase/migrations/` har 0 — aflæst 2026-09-24.)
 - **Status:** åben (cutover-blocker). Refereret fra `cutover-checklist.md`.
-- **Løses-i:** 1.0-discovery / før cutover (kobler til G007)
+- **Løses-i:** 1.0-discovery / før cutover (kobler til G007; samme præcisering gælder cutover-checklist #11 og masterplanens cutover-blocker #11)
 
 ### [H012] Hård deadline-tracker for G039
 
@@ -51,23 +51,31 @@ En H-reference andre steder i docs er en _mention_; den kanoniske definition bor
 - **Status:** åben (Trin 14-blocker). Rejst af gov-3b-1 (#19 FK-dækning). #19's selv-udløb gør (3) mekanisk håndhævet — `fk-coverage` bliver rød hvis FK'erne mangler efter `sales` findes.
 - **Løses-i:** Trin 14 (sales-stamme)
 
-### [H028] Mekanisk G/H-opslag i recon-doc'en (partnerskabs-runde-input)
+### [H030] Nedgradér stork-code-bot fra admin til write + aflæs branch-beskyttelsen
 
-- **Handling:** Recon-/data-grundlags-mekanismen skal udføre G/H-opslaget mekanisk (filtrér åbne G/H på Løses-i mod pakkens trin/scope og præsentér dem i plan-fasen). §3.2's manuelle G/H-opslags-pligt (indført 2026-06-10) er broen indtil da.
-- **Status:** åben. Rejst af Mathias 2026-06-10 (restliste DEL 3-note).
-- **Løses-i:** gov-5-automation / partnerskabs-runde (recon-doc)
+- **Handling:** (1) Sæt `stork-code-bot`s rolle på `Cphsales/stork-2.0` til `write` (i dag `admin` — aflæst 2026-09-24 med `gh api repos/Cphsales/stork-2.0/collaborators`). (2) Aflæs hele beskyttelsesreglen for `main` (`gh api repos/Cphsales/stork-2.0/branches/main/protection`: krævede godkendelser, code-owner-review, `enforce_admins`) og skriv den ind i `.github/BRANCH_PROTECTION.md`. (3) Ret linjen om botten i `CLAUDE.md`, når (1) er gjort.
+- **Hvem:** et login med administrations-adgang (det fælles admin-login, jf. H026). Botten kan ikke selv: dens token får 403 på beskyttelses-API'et. Mathias rører ikke GitHub.
+- **Hvorfor:** Så længe botten er admin, kan den muligvis gå uden om beskyttelsen; det afhænger af `enforce_admins`, som ikke kan aflæses (workflow-planen §2, accepterede risici).
+- **Status:** åben.
+- **Løses-i:** når et admin-login er til rådighed (ingen fast deadline; risikoen er accepteret indtil da)
 
-### [H029] Indre tekst-staleness-gennemgang af alle docs
+### [H031] Codex-CLI-opdatering: tjek den native binær, ikke shim'en
 
-- **Handling:** Indholds-påstande (tal, status, beskrivelser) i alle docs gennemgås mod den endelige virkelighed. Delt efter bord: Claude.ai tager forretnings-docs, Code tekniske docs. Kun reelle fejl rettes — ingen omskrivninger. [G018] (bygge-status-klassifikations-tal) hører under denne paraply.
-- **Status:** åben. **Bevidst udskudt til efter gov-5 (Mathias 2026-06-10):** sandheden skal være stabil før teksterne rettes mod den; gov-5 ændrer selv hvad der er sandt.
-- **Løses-i:** dedikeret pakke LIGE EFTER gov-6 (Codes anbefaling ved oprettelsen: gov-6's arkiv-fold reducerer doc-fladen først, så gennemgangen rammer mindst mulig flade; gov-6 selv er strukturel, denne er indholds-revision med to aktører — blandes ikke)
+- **Handling:** Ved opdatering af Codex-CLI'en (`npm`) verificeres versionen på den native binær under `node_modules/@openai/codex-linux-x64/vendor/…/bin/codex`. Shim-filen `bin/codex.js` er byte-identisk på tværs af versioner, så en pin eller et versionstjek på den fanger ikke en opdatering.
+- **Status:** åben (gælder hver opdatering, så længe Codex er dommer).
+- **Løses-i:** ved hver Codex-CLI-opdatering
+
+### [H032] Codex-opsætning: identitet og git-tilladelser
+
+- **Handling:** (1) Identitet tjekkes før skrivehandling: CLI = `stork-code-bot`, GitHub-integration = `copenhagensales`. (2) Git-tilladelsen `git branch` matcher også `git branch -D` og skal indsnævres. (3) Der findes ingen projekt-`AGENTS.md` eller `.codex/` i repoet (aflæst 2026-09-24); de oprettes kun hvis rollerne kræver det.
+- **Status:** åben.
+- **Løses-i:** før næste pakke der lader Codex skrive (testene i pakke 1, trin 3)
 
 ## Historiske H-koder (afsluttede — provenance, ikke åbne actions)
 
-Maskin-læsbar source of truth (læses af `governance-check.mjs` til H-ref-integrity):
+Liste over afsluttede koder:
 
-<!-- gov-historical-codes: H010, H011, H020, H022, H024, H026, H027 -->
+<!-- gov-historical-codes: H010, H011, H020, H022, H024, H026, H027, H028, H029 -->
 
 Tabel for mennesker:
 
@@ -79,5 +87,8 @@ Tabel for mennesker:
 | H022 | Immutable-test tx-wrap (løst i H024)                                                                                                                                           | `teknisk-gaeld.md` G-historik              |
 | H026 | gov-4 approval-mekanik (løst: tre-konto-struktur — fælles login urørt/kun protection-API, mgrubak = code owner, stork-code-bot = committer; CODEOWNERS-fix; bevist på PR #110) | gov-4 slut-rapport                         |
 | H024 | Test-artefakt-cleanup (pakke)                                                                                                                                                  | git-history; `rapport-historik/`           |
+| H027 | Node 24-deadline: GitHub Actions bumpet til v6 (løst 2026-06-10, PR #114/#116)                                                                                                | git-historik (commit `b4c8c49`)            |
+| H028 | Mekanisk G/H-opslag i recon (erstattet: planens G/H-disposition, tjekket i Codex' planlæsning, workflow-planen §2)                                                            | git-historik                               |
+| H029 | Indre tekst-staleness-gennemgang af alle docs (udført 2026-09-24 som dokumentgennemgangen + oprydningen, workflow-planen §4)                                                | git-historik                               |
 
 Historiske koder er afsluttede pakke-/issue-identifikatorer (som `T9`, `trin-10`). De er IKKE åbne handlinger og får ikke `### [Hxxx]`-entries; de lever som provenance i de angivne hjem.

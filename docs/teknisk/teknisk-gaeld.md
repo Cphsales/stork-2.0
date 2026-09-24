@@ -10,11 +10,155 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 10. juni 2026 (revision + DEL 5: G066 rejst m. advisor-baseline-check leveret; G001/G039/G040 Løses-i præciseret)
+**Sidste opdatering:** 2026-09-24 (oprydningen efter workflow-planen: G018/G029/G036/G037/G038/G041/G046/G058 lukket, G063 lukkes sammen med governance-tjekket, G006 afgrænset, døde henvisninger rettet, G067-G082 rejst)
 
 ---
 
 ## Åben gæld
+
+### [G082] LAV — migration-gate ser ikke dynamisk DDL; audit-filteret gennemgår ikke jsonb generelt
+
+- **Beskrivelse:** (1) `scripts/migration-gate.mjs` finder kolonner i `CREATE TABLE`/`ALTER TABLE ADD COLUMN`-tekst; DDL bygget med `EXECUTE format(...)` ses ikke. (2) `core_compliance.audit_filter_values` har kun specialtilfældet `core_identity.clients.fields` for jsonb (`20260521000004_t10_audit_filter_values.sql`, kommentaren l.129); andre jsonb-kolonner med PII gennemgås ikke.
+- **Vision-svækkelse:** Princip 2 (styr på data).
+- **Introduceret:** Fundamentet. Synliggjort i recon (pakke 1).
+- **Skal løses:** (1) forbud mod eller tjek af dynamisk DDL i migrationer; (2) generisk jsonb-gennemgang, når næste jsonb-felt med PII kommer.
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** den pakke der indfører næste jsonb-felt med PII eller dynamisk DDL.
+
+### [G081] LAV — stille ikke-afvisninger i anonymiserings- og retention-vejen
+
+- **Beskrivelse:** Retention-jobbet springer uden fejl over tabeller uden `event_based`-klassifikation og mappings der ikke er `status='active' AND is_active=true` (`20260515130000_r7a_regprocedure_callable_fix.sql` l.331-339, 247-249).
+- **Vision-svækkelse:** Princip 2 (styr på data) — et fravalg ser ud som et vellykket job.
+- **Introduceret:** R7a/fundamentet. Synliggjort i recon.md:152, 279 (pakke 1).
+- **Skal løses:** Jobbet rapporterer oversprungne tabeller/mappings (heartbeat/audit), så det kan ses i drift.
+- **Risiko hvis glemt:** Lav før rigtige retention-regler er aktiveret.
+- **Løses-i:** før cutover (sammen med G069).
+
+### [G080] LAV — ingen lint for hardkodede satser (`disciplin.md` §7 invariant 4)
+
+- **Beskrivelse:** Invariant 4 "Ingen hardkodede satser/lønarter" håndhæves af Codex- og Claude-tjek; "lint bygges i senere spor" (`disciplin.md` l.232). Der fandtes ingen G-post (grep i dette register: 0).
+- **Vision-svækkelse:** Princip 3 (forretningslogik som data).
+- **Introduceret:** disciplin §7.
+- **Skal løses:** Lint/fitness-tjek for hardkodede satser i kode.
+- **Risiko hvis glemt:** Lav før formel-systemet findes.
+- **Løses-i:** senest ved trin 13 (formel-system).
+
+### [G079] MELLEM — destruktive drops (`disciplin.md` §3.9) håndhæves ikke mekanisk
+
+- **Beskrivelse:** §3.9 kræver tom-check, reference-check, audit-spor og rollback-plan for `DROP TABLE/COLUMN`, `TRUNCATE`, `DELETE` uden WHERE, og siger "Post-cutover: alle fire er CI-blocker". Der findes intet mekanisk tjek (`scripts/migration-gate.mjs`: 0 træf på DROP/TRUNCATE); i dag bærer reviewet det.
+- **Vision-svækkelse:** "Stork rører løndata" — den dyreste fejl-klasse.
+- **Introduceret:** §3.9 (genindført); løftet om CI-blocker står kun i disciplin.
+- **Skal løses:** CI-tjek for de fire krav.
+- **Risiko hvis glemt:** Mellem før cutover, høj efter.
+- **Løses-i:** før cutover.
+
+### [G078] MELLEM — »Schema drift check« i CI tjekker intet
+
+- **Beskrivelse:** `supabase/schema.sql` er stadig en pladsholder (3 linjer, `-- PLACEHOLDER`), og `scripts/schema-check.sh` l.11-14 slutter med 0 på markøren. Trinnet i `ci.yml` (l.143-145) er derfor grønt uden at tjekke noget. Desuden dumper scriptet kun `--schema public` (l.19), mens alle rigtige tabeller ligger i core_* (dem dækker kun `types:check`).
+- **Vision-svækkelse:** Én sandhed — et grønt trin der intet tjekker.
+- **Introduceret:** Fase 0 (pladsholderen blev aldrig erstattet).
+- **Skal løses:** Gøres reelt (pull + core_*-schemas) eller fjernes.
+- **Risiko hvis glemt:** Mellem. Falsk tryghed om skema-drift.
+- **Løses-i:** pakke 1, trin 2 (workflow-planen §3).
+
+### [G077] MELLEM — testbiblioteket: race-tests kaster altid, HTTP-svar tabes, OpenAPI-tjekket rammer driftsprojektet
+
+- **Beskrivelse:** (1) LIB-RACE: `lib.race` kræver `{ok:boolean}` (`scripts/v5/test-runner.mjs` l.58, 87), men `pg-runner`s `race()` returnerer `{protocolOk,…}` (`pg-runner.mjs` l.211-239), så alle race-tests kaster. (2) LIB-HTTP: et HTTP-svar der ikke er et array, tabes (`rows` kun hvis `Array.isArray`, `pg-runner.mjs` l.125), og headers ignoreres. (3) Kontraktbehov #10: `postgrest-t9-schema-exposure` spørger det eksterne driftsprojekt (`scripts/fitness.mjs` l.1015), ikke test-databasen. (4) 15 datoforløb er ikke testet, fordi den styrede klokke mangler (HALT-FA3-listen i Codex' pas 1). (5) Det er ikke verificeret at en manglende database aldrig giver exit 0 i de beholdte runnere (O-9).
+- **Vision-svækkelse:** Én sandhed — test-grønt kan skyldes et bibliotek der ikke måler.
+- **Introduceret:** Fase 4 (2026-09-21). Står i dag kun i `provenance/angrebs-tests-pas1.leverance.md`, `angrebs-kontraktbehov.leverance.md` og fund-log (fjernes).
+- **Skal løses:** (1)-(2) rettes i test-biblioteket; (3) OpenAPI-tjekket flyttes til test-databasen; (4) styret klokke — også for API- og login-tokens' tid; (5) manglende database = rødt.
+- **Risiko hvis glemt:** Mellem. »Codex færdiggør testene« kan ikke lykkes.
+- **Løses-i:** pakke 1, trin 2 (workflow-planen §3).
+
+### [G076] LAV — accepteret restrisiko: godkendelsesordet kommer fra en kanal producenten kan skrive i
+
+- **Beskrivelse:** Mathias' `krav ok`/`plan ok`/`slut ok` falder i chatten og skrives i ledgeren af en AI-session (approval-filerne fjernes, §8.2). Kæden beviser tekst og rækkefølge, ikke hvem der skrev ordet (R-CI-APPROVER-FLOW / R-CI-AUTENTICITET, implementeringsplanen @ 87a877b l.338, 340).
+- **Vision-svækkelse:** Ingen direkte — det er en accepteret risiko.
+- **Introduceret:** C4 (2026-09-15).
+- **Skal løses:** Ingen aktiv handling. Accepteret i workflow-planen §2 (accepterede risici): ordet bindes til teksten og står i ledgeren.
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** ingen handling (accepteret risiko; genovervejes kun hvis godkendelseskanalen ændres).
+
+### [G075] MELLEM — `prover.json` ligger i produkt-zonen, og dens kommando køres uden zone-tjek (R6-2)
+
+- **Beskrivelse:** `plan-build/<pakke>/prover.json` angiver kommandoen CI kører (`ci-build-dom.mjs` l.131-141). Filen ligger hvor byggeren kan skrive, så byggeren kan pege kommandoen om og ændre hvad der måles.
+- **Vision-svækkelse:** Én sandhed — den der bygger, kan påvirke målingen.
+- **Introduceret:** C4b. Rejst i planreview (plan-slutlaesning-r6 R6-2; verdikt-code-reviewer-plan-r4 neg[6]).
+- **Skal løses:** `prover.json` og `prover-run.mjs` med i låsen på testene (workflow-planen §2 trin 3: »testene + filen der vælger hvilke tests der køres« låses ved grøn dækningsdom). Dækningsdommen binder hele kørselsfladen med blob-OID'er (testene, manifestet, testindekset, `prover.json`), og byggetjekkets tjek 3-4 kontrollerer dem. Hooken klassificerer manifest, testindeks og `prover.json` som Codex' målelag (Codex før låsen, byggeren aldrig; `skill-og-roller.md` D).
+- **Risiko hvis glemt:** Mellem.
+- **Løses-i:** pakke 1 (låsen i trin 3).
+
+### [G074] MELLEM — byggetjekkets tillidsgrænser (runneren)
+
+- **Beskrivelse:** Kendte, ikke lukkede grænser i målingen: (a) migrationer og ejer-kald kører som superuser; det tjekkes ikke at aktørrollerne mangler `BYPASSRLS`/superuser efter producentens migrationer — en test-rolle med bypass giver falsk-grønne RLS-tests; (b) `pg-runner` kører med `ON_ERROR_STOP=0` (`pg-runner.mjs` l.137), så et flersætnings-setup kan være delvist udført; (c) et renset underproces-miljø er ikke isolation: produktkode kan læse forælderens miljø via `/proc/<ppid>/environ`, og `prover.mjs` l.145 merger `process.env`; (d) `COPY TO PROGRAM`/`lo_export` kører i Postgres-servicecontaineren, hvis isolation ikke er attesteret; (e) manglende `meta` i måle-jobbet giver intet check (tavshed), ikke rødt.
+- **Vision-svækkelse:** Én sandhed — målingen kan i særtilfælde bevise noget andet end det produktet gør.
+- **Introduceret:** C4b (2026-09-16). Navngivet som R-RUNNER-UDFØRELSE/-ATOMARITET/-LIVSCYKLUS/-OVERLAP i implementeringsplanen (@ 87a877b, l.105, 341).
+- **Skal løses:** (a) tjek af rolle-attributter efter migrationerne; (b) atomar udførelse eller eksplicit tjek; (e) samle-tjekket behandler et manglende byggetjek som rødt (workflow-planen §2). (c)/(d) dokumenteres som accepteret, hvis de ikke lukkes.
+- **Risiko hvis glemt:** Mellem.
+- **Løses-i:** (e) 4.1 trin 3 (samle-tjekket); (a)-(d) i Codex-gennemgangen af byggetjekket (G073).
+
+### [G073] MELLEM — byggetjekkets moduler har intet gældende Codex-pas
+
+- **Beskrivelse:** De moduler der bevares som byggetjek, er ændret efter Codex' sidste PASS: `scripts/v5/ci-build-dom.mjs` (i dag blob `3acea6d1`), `pg-runner.mjs` (`42531d3a`, inkl. PostgREST/JWT-stien, som aldrig er angrebet), `build-proof.mjs` (`c9a09e61`), `build-harness.mjs` og `test-runner.mjs`. `haerdet-register.json` markerer alle fem `kandidat`.
+- **Vision-svækkelse:** Én sandhed — den dommer der skal spærre før drift, er ikke efterprøvet i sin nuværende form.
+- **Introduceret:** Hurtigt spor 21/9 (kandidat-drift; M-47).
+- **Skal løses:** Én Codex-gennemgang af byggetjekket (ci-build-dom, test-runner, pg-runner) i sin omlagte form.
+- **Risiko hvis glemt:** Mellem. En fejl i dommeren giver falsk grønt for alle pakker.
+- **Løses-i:** pakke 1, trin 2 (workflow-planen §3: »Én Codex-gennemgang af byggetjekket«) og efter omlægningen i 4.1 trin 3.
+
+### [G072] LAV — `gdpr_responsible_employee_id` er erklæret, men ikke koblet; migrations-kommentaren er forkert
+
+- **Beskrivelse:** Kolonnen `core_compliance.superadmin_settings.gdpr_responsible_employee_id` sættes (`20260515110000_p0_gdpr_responsible_employee.sql` l.48, 76), men ingen RPC læser den; aktivering af anonymiserings-strategier kræver kun rettigheden (`20260515110100_p1a_anonymization_strategies.sql` l.293). Kolonnens COMMENT (samme p0-fil l.50-51) siger "Refereret af anonymization-RPCs" — det passer ikke.
+- **Vision-svækkelse:** Én sandhed — en kommentar i selve databasen påstår noget der ikke gælder.
+- **Introduceret:** P0 (2026-05-15). Synliggjort i recon.md:216 (pakke 1).
+- **Skal løses:** Ny `COMMENT ON COLUMN` (migrationen selv er append-only). Om den GDPR-ansvarlige skal være den eneste der kan aktivere strategier, er Mathias' spørgsmål (masterplan l.1950) og afgøres i den pakke der rører GDPR-strategierne.
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** den pakke der rører anonymiserings-strategierne.
+
+### [G071] LAV — `pending_change_request` overskriver `stork.change_reason`
+
+- **Beskrivelse:** `pending_change_request` sætter `stork.change_reason` til sin egen label før INSERT (`20260518000000_t9_pending_changes.sql` l.143). Request-audit'en bærer labelen; brugerens årsag lever i payload og på apply-rækkerne.
+- **Vision-svækkelse:** Princip 6 (audit) — årsagen står ikke på request-rækken.
+- **Introduceret:** T9. Synliggjort i pakke 1's plan (R2-2, arv-note plan.md:851).
+- **Skal løses:** Bevar brugerens change_reason (fx label + årsag).
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** næste pakke der ændrer pending-fundamentet.
+
+### [G070] LAV — due-gaten bruger `current_date` i sessionens tidszone
+
+- **Beskrivelse:** `pending_change_apply` afviser med `not_yet_due` når `effective_from > current_date` (`20260518000004_t9_client_node_placements.sql` l.183-186); `current_date` følger sessionens tidszone.
+- **Vision-svækkelse:** Én sandhed — samme ændring kan være forfalden eller ej afhængigt af sessionen.
+- **Introduceret:** T9. Synliggjort i pakke 1's plan (arv-note plan.md:849; pakken gør sin egen effektive dato robust, S-17/S-18).
+- **Skal løses:** Fast tidszone for forfalds-afgørelsen (afhænger af beslutningen om »systemets dag«, se pakke 1's ½ side).
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** når »systemets dag« er afgjort (pakke 1's `plan ok`); rettelsen i fundamentet ved næste pending-pakke.
+
+### [G069] MELLEM — retention udføres kun for `event_based`
+
+- **Beskrivelse:** Retention-jobbet (`retention_cleanup_daily`, cron-body i `20260515130000_r7a_regprocedure_callable_fix.sql` l.331-339) læser kun `event_based`-klassifikation via `retention_event_column`. `time_based` og `manual` har ingen udførende vej.
+- **Vision-svækkelse:** "Alt drift styres i UI" + princip 2 (styr på data) — et UI-valg af `time_based`/`manual` har ingen effekt.
+- **Introduceret:** R7a/fundamentet. Synliggjort i pakke 1's plan (SM-4, arv-note plan.md:847).
+- **Skal løses:** Executor for `time_based` og `manual`, eller UI der afviser valg uden executor.
+- **Risiko hvis glemt:** Mellem. Data der skulle slettes/anonymiseres bliver liggende uden fejl.
+- **Løses-i:** før cutover (retention er fundament, jf. vision »skal være på plads før systemet går i produktion«).
+
+### [G068] MELLEM — pending-modellen har ingen »afvist«-status
+
+- **Beskrivelse:** `pending_changes.status` tillader kun `pending/approved/applied/undone` (`20260518000000_t9_pending_changes.sql` l.45-46). En godkendt ændring hvis apply-genvalidering fejler, bliver stående som `approved` og logges af cron som `partial_failure` (samme fil l.394-435).
+- **Vision-svækkelse:** Princip 9 (status-modeller bevarer historik) — en fejlet ændring kan ikke skelnes fra en ventende.
+- **Introduceret:** T9. Synliggjort i pakke 1's plan (D-10, arv-note plan.md:846).
+- **Skal løses:** Terminal status for fejlet apply (fx `afvist`/`failed`) + audit af årsagen.
+- **Risiko hvis glemt:** Mellem. Cron forsøger samme fejlede ændring igen hver kørsel.
+- **Løses-i:** næste pakke der ændrer pending-fundamentet.
+
+### [G067] MELLEM — `pending_change_apply(uuid)` har ingen rettigheds-gate
+
+- **Beskrivelse:** Enhver indlogget (`authenticated`) bruger kan udløse apply af en godkendt, forfalden pending-ændring. Funktionen tjekker kun status og forfaldsdato — ingen `has_permission`/`is_admin` (seneste definition `20260518000004_t9_client_node_placements.sql` l.152-220; kun `revoke … from public, anon`, l.220).
+- **Vision-svækkelse:** "Rettigheder der virker" (vision operationelt princip 2).
+- **Introduceret:** T9 (pending-fundamentet). Synliggjort i pakke 1's plan (NF-5, arv-note plan.md:850).
+- **Skal løses:** Beslut om apply skal kræve en rettighed eller kun køre som cron/service-rolle; dokumentér det valgte som kontrakt.
+- **Risiko hvis glemt:** Mellem. Ændringen er godkendt, men tidspunktet for gennemførelse kan styres af enhver bruger; alle senere pakker med pending-flow arver det.
+- **Løses-i:** næste pakke der ændrer pending-fundamentet; senest før cutover.
 
 ### [G066] MELLEM — Supabase klik-flade uden versionering/baseline-værn
 
@@ -45,25 +189,15 @@
 - **Risiko hvis glemt:** Lav-mellem. Manuel regen lukker hver forekomst; men gentager sig.
 - **Løses-i:** gov-spor (senere pakke — types-gen-ekskludering eller auto-regen-cron)
 
-### [G058] MELLEM — FK-coverage-fitness-check ikke implementeret per master-plan §3 punkt 19
-
-- **Beskrivelse:** Master-plan §3 punkt 19 specificerer fitness-check der identificerer kolonner med suffix `_id` og verificerer at de har FK-constraint mod kolonnens ankerentitet. Allowlist `FK_COVERAGE_EXEMPTIONS` skal dokumentere tilladte undtagelser (fx `external_id`, `client_crm_match_id`). Check findes IKKE i `scripts/fitness.mjs`. T9-migration `20260518000004_t9_client_node_placements.sql:5` har forhåndsdokumentation der ikke matcher nuværende fitness-script-state.
-- **Vision-svækkelse:** Princip 4 (default = intet — FK-coverage er strukturel disciplin der ikke håndhæves automatisk).
-- **Introduceret:** Master-plan §3.19 + T9-kommentar (begge planlagt, ikke implementeret)
-- **Skal løses:** Næste fitness-script-pakke. Kan kombineres med Trin 10's T10.16-ændring.
-- **Risiko hvis glemt:** Mellem. Nye tabeller kan deploy'es uden FK-coverage-verifikation; potentielt urelaterede `_id`-kolonner uden FK forbliver ikke detekteret.
-- **Plan:** Tilføj `fkCoverage()` fitness-check med `FK_COVERAGE_EXEMPTIONS`-allowlist. Eksisterende exemption-kandidater fra master-plan: `external_id`, `client_crm_match_id` (sidstnævnte fjernes når match-mekanik bygges). Trin 10's FK på `client_node_placements.client_id` (T10.7) eliminerer behov for entry der.
-- **Løses-i:** fitness-spor (næste fitness-pakke)
-
 ### [G001] HØJ — `audit_filter_values` LENIENT-default ved ukendt schema/table
 
 - **Beskrivelse:** Hvis migration INSERT'er på en tabel uden klassifikation, returnerer `audit_filter_values` WARNING + lader værdier passere uændret. Strict-mode kræver eksplicit `stork.audit_filter_strict='true'` session-var.
 - **Vision-svækkelse:** "Styr på data — klassifikation på hver kolonne". Ukendt tabel kan skrive PII direkte til audit-log uden hash.
-- **Introduceret:** Trin 1 (`20260514120006_t1_audit_filter_values.sql`)
+- **Introduceret:** Trin 1 (`20260514120006_t1_audit_filter_values.sql`). **Gældende definition:** `20260521000004_t10_audit_filter_values.sql` l.26 og l.43-50 (`stork.audit_filter_strict` skal være `'true'`; ellers WARNING og værdierne bevares uændret; kommentaren l.129 siger selv »LENIENT-default«).
 - **Skal løses:** Før første produktions-data
 - **Risiko hvis glemt:** Høj. Ny tabel uden klassifikation → PII læk i audit-log.
 - **Plan:** Migration der flipper default til strict + verificerer ingen eksisterende migration genererer warnings. Migration-gate fanger normalt det, men kun for migration-FILER — runtime-skrivninger er sårbare.
-- **Løses-i:** forretnings-trinnet/Trin 9+ — SKAL være løst FØR trinnet åbner for første reelle data (DEL 5-præcisering)
+- **Løses-i:** pakke 1 (lokations-skabelon, trin 10b) — i plan v3.8 (workflow-planen §3 trin 1): migration der gør filteret strict som default, negativ test og tjek af de eksisterende migrationer; også i manifestet. SKAL være løst FØR trinnet åbner for første reelle data (DEL 5-præcisering).
 
 ### [G002] LAV — `source_type`-enum udvidet inline med 'migration'
 
@@ -84,6 +218,7 @@
 - **Risiko hvis glemt:** Lav i drift (kun ved DB-reset). Migration er kørt én gang.
 - **Plan:** Hvis nyt admin-team dukker op, flyttes auth-mapping til lag F-konfig-tabel
 - **Løses-i:** ingen handling (bevidst bootstrap-pragmatik)
+- **Pakke 1:** test-opstart på en tom database indsætter to syntetiske `auth.users`-rækker før migrationerne (workflow-planen §3 trin 2). Selve migrationen ændres ikke (append-only), så posten forbliver åben for driften. Fabrikkens lokale afprøvning 24/9 (ikke genkørt her): uden bootstrap stopper historikken ved `20260514120007`; med bootstrap stopper den ved `20260516200000_h024_test_artifact_cleanup.sql` (precondition på live-data), og resten er grønt.
 
 ### [G004] STRUKTUREL — `employees_active_idx` mangler `current_date` i prædikat
 
@@ -104,15 +239,15 @@
 - **Plan:** Cleanup-commit der DELETE'er fase 0-filer + sletter deres rows i `supabase_migrations.schema_migrations`
 - **Løses-i:** Trin 8+ (efter strict-aktivering har kørt stabilt)
 
-### [G006] MELLEM — `db-rls-policies` fitness-check er "soft" (warning only)
+### [G006] MELLEM — fire ældre live-fitness-tjek kan give grønt uden at have tjekket (delvist løst)
 
-- **Beskrivelse:** Tabeller med ENABLE RLS + 0 policies (default-deny) skal have `-- skip-force-rls:` eller `-- default-deny:`-markør. Check skippes hvis fitness ikke kan kontakte Supabase Management API. Violations er markeret som warnings (soft), ikke errors.
-- **Vision-svækkelse:** "Rettigheder der virker" — default-deny uden eksplicit markør kan slippe igennem.
-- **Introduceret:** Trin 1 (`scripts/fitness.mjs:397-458`)
-- **Skal løses:** Når Supabase-token er pålideligt sat i CI
-- **Risiko hvis glemt:** Mellem. Tabel oprettes med RLS uden policies → ingen kan læse den.
-- **Plan:** Flip soft → hard når CI-token er stabil
-- **Løses-i:** CI-hardening (når Supabase-token er pålideligt i CI)
+- **Beskrivelse:** De egentlige fund er nu hårde fejl (`db-rls-policies` returnerer fund uden `soft`, `scripts/fitness.mjs` l.622). Tilbage er at fire ældre live-tjek ikke bruger `liveGuard()` (l.1249-1263, fail-closed i CI): (1) uden `SUPABASE_ACCESS_TOKEN` returnerer `db-rls-policies` (l.564-566), `write-policy-session-var-consistency` (l.760-766), `legacy-is-active-readers` (l.843-849) og `postgrest-t9-schema-exposure` (l.1022-1028) `skipped` med 0 fund — også i CI; (2) ved API- eller netværksfejl returnerer de tre første `soft: true` (l.590-599 m.fl.), og soft-fund tæller ikke (l.1859).
+- **Vision-svækkelse:** "Rettigheder der virker" — et manglende token eller et API-udfald giver grønt uden at tjekket er kørt.
+- **Introduceret:** Trin 1 (`db-rls-policies`); de tre andre fulgte samme mønster.
+- **Delvist løst:** fund er hårde; tokenet er sat i CI (`.github/workflows/ci.yml` l.87).
+- **Skal løses:** Manglende token, API-fejl og netværksfejl skal give rødt i CI for alle fire (samme adfærd som `liveGuard()`); lokal udvikler-kørsel må fortsat springe over.
+- **Risiko hvis glemt:** Mellem. Et udfald ser ud som et bestået tjek.
+- **Løses-i:** pakke 1 (lokations-skabelon), trin 2 — sammen med test-databasen (G047), workflow-planen §3.
 
 ### [G007] MELLEM — Migration-scripts har TODO-markører for 1.0-skema
 
@@ -133,19 +268,6 @@
 - **Risiko hvis glemt:** Lav
 - **Plan:** Upload-script læser rolle-mapping fra konfig-tabel når lag F leverer rolle-konfig
 - **Løses-i:** Lag F (rolle-katalog i UI)
-
-### [G029] MELLEM — C001-backfill bruger legal retention mod master-plan-reservation
-
-- **Beskrivelse:** C001-fix (commit `71ab37f`) klassificerede `pay_periods`, `commission_snapshots`, `salary_corrections`, `cancellations`, `audit_log`, `break_glass_requests` som `retention_type='legal'` med 2555 dage (7 år).
-- **Konflikt:** `legal` retention-type fjernes helt fra systemet pr. rettelse 24. Stork har ingen lovbestemt min-retention på forretningsdata. Løn-tabeller skal klassificeres som `time_based` (admin vælger værdi via UI) eller `NULL` (ikke valgt — migration-gate blokerer prod).
-- **Vision-svækkelse:** "Styr på data" + "alt drift styres i UI" — klassifikation på fundamentet matcher ikke vision-princippet om data-kontrol i UI.
-- **Introduceret:** Trin 1 (commit `71ab37f`, C001-fix).
-- **Opdaget:** Master-plan status-verifikation 2026-05-14.
-- **Skal løses:** Før trin 5 startes ELLER samtidig med refactor-pakke for §1.6 (audit-strategi).
-- **Risiko hvis glemt:** Slette/anonym-regler får forkert default. UI-styret retention-mekanisme får 7-årig låsning på data der reelt skulle være drift-retention.
-- **Plan:** Konvertér løn-tabeller fra `legal` til `time_based` med retention-værdi afgjort af Mathias. Princip: "alle slette og anonym-regler styres i UI".
-- **Berørt af C001:** 71 rows klassificeret som `legal` (audit_log 15 + break_glass_requests 17 + pay_periods 11 + commission_snapshots 7 + salary_corrections 10 + cancellations 11). Beslutning om scope af konvertering (alle 71 eller kun løn-relaterede tabeller) afventer afgørelse.
-- **Løses-i:** Trin 5 ELLER §1.6-audit-refactor (først-kommende)
 
 ### [G012] HØJ — `pay_period_compute_candidate` er SKELETON → fejl-låst prod-periode-risiko
 
@@ -196,16 +318,6 @@
 - **Risiko hvis glemt:** Lav
 - **Plan:** Hvis system-employee-konvention etableres ("system" employee i core_identity der ejer cron-handlinger), kan locked_by sættes til dens UUID. Ikke akut.
 - **Løses-i:** uplaceret (ikke akut)
-
-### [G018] LAV — Bygge-status klassifikations-tal er forkerte
-
-- **Beskrivelse:** `docs/strategi/bygge-status.md` siger "207/211/233 klassificerede kolonner" efter trin 1/2/3. Aktuelt i DB: 90 før trin 7, 193 efter. Tallene stammer fra migration-gate's union-count over alle migration-file-INSERTs inkl. fase 0-filer der blev DROP CASCADE'd.
-- **Vision-svækkelse:** Lav — dokumentations-accuracy
-- **Introduceret:** Trin 1-3 (rapport-skrivning)
-- **Skal løses:** Ved næste bygge-status-revision
-- **Risiko hvis glemt:** Lav — credibility
-- **Plan:** Korrigér historiske tal eller marker dem som ukorrekte. Fremover: brug eksplicit `SELECT count(*)` mod DB i verifikation, ikke migration-gate-output.
-- **Løses-i:** [H029]-paraplyen (indre tekst-staleness-gennemgang, efter gov-6) — master-plan §4.1 er hjemmet for tallene
 
 ### [G031] MELLEM — Lock-pipeline-benchmark mangler (R8b post-lag-E)
 
@@ -274,50 +386,6 @@
 - **Plan (G035):** Per-occurrence-detection via AST eller regex split af SELECT/WHERE-blokke. Eller: kør D5 + dokumentér antagelsen om at funktioner enten har alle compliant eller ingen.
 - **Løses-i:** uplaceret (trigger: funktion med mixed pattern)
 
-### [G036] MELLEM — R7a+R7d cron-reschedule race-window
-
-- **Beskrivelse:** R7a opdaterer `retention_cleanup_daily` cron-body (regprocedure fix). R7d opdaterer samme cron-body igen (is_active+status). Hvis cron fyrer i mellem to migrations, kan den ramme partial state. Sandsynlighed lav (cron kører kl. 02:30, migrations anvendes typisk udenfor cron-window) men ikke nul.
-- **Vision-svækkelse:** Driftstabilitet (§1.14).
-- **Introduceret:** R-runde-2 planlægning 2026-05-15
-- **Opdaget:** Codex v2-validering Fund #2 MELLEM
-- **Skal løses:** Vurder i implementation. Option A: kombinér cron-body-ændringer i én migration (én cron.unschedule + cron.schedule). Option B: cron.unschedule jobid=10 først; reschedule til sidst.
-- **Plan (G036):** Implementér Option A — kombinér R7a's cron-body-fix + R7d's reader-fix i ét cron.unschedule + cron.schedule kald. Eller flag som G036-deferred hvis implementation viser at to separate migrations er nødvendige af andre grunde.
-- **Løses-i:** R7a/R7d-implementation
-
-### [G037] MELLEM — R7d backfill mangler session-vars for audit-spor
-
-- **Beskrivelse:** R7d-backfill skitse bruger ikke fuldt session-var-mønster (stork.allow\_\*\_write, source_type, change_reason) der etableret i P2/P3. Backfill-UPDATE kører som migration med implicit context, hvilket gør audit-trail svagere end runtime-mønstret.
-- **Vision-svækkelse:** Audit-bevares (§1.3).
-- **Introduceret:** R-runde-2 planlægning 2026-05-15
-- **Opdaget:** Codex v2-validering Fund #4 MELLEM
-- **Skal løses:** I R7d-implementation. Tilføj eksplicit session-var-block før UPDATE.
-- **Plan (G037):** R7d-migration starter med:
-  ```sql
-  select set_config('stork.source_type', 'migration', false);
-  select set_config('stork.allow_anonymization_mappings_write', 'true', false);
-  select set_config('stork.allow_break_glass_operation_types_write', 'true', false);
-  select set_config('stork.change_reason', 'R7d: ryd is_active drift (Codex Fund #3)', false);
-  -- så UPDATE'er
-  ```
-- **Løses-i:** R7d-implementation
-
-### [G038] LAV — cron.unschedule via navn-lookup vs jobid-lookup
-
-- **Beskrivelse:** R7a + R7d bruger `cron.unschedule('retention_cleanup_daily')` — navn-baseret. Hvis cron-extension API ændrer eller jobname duplikerer, kan unschedule fejle eller ramme forkert job. jobid-lookup (`select jobid from cron.job where jobname = ... limit 1`) er mere robust.
-- **Vision-svækkelse:** Driftstabilitet (§1.14).
-- **Introduceret:** R-runde-2 planlægning 2026-05-15
-- **Opdaget:** Codex v2-validering Fund #2 MELLEM (første del)
-- **Skal løses:** I R7a/R7d-implementation. Brug jobid-lookup hvor muligt; håndtér missing job-case eksplicit.
-- **Plan (G038):** Pattern:
-  ```sql
-  do $$ declare v_id bigint;
-  begin
-    select jobid into v_id from cron.job where jobname = 'retention_cleanup_daily' limit 1;
-    if v_id is not null then perform cron.unschedule(v_id); end if;
-  end $$;
-  ```
-- **Løses-i:** R7a/R7d-implementation
-
 ### [G039] LAV — V1 PostgREST-test bør køres med både anon og authenticated
 
 - **Beskrivelse:** Codex v2 anbefaler at V1 PostgREST-eksponerings-test køres både med anon-key OG authenticated JWT. Aktuelt plan-beskrivelse nævner kun anon. authenticated kan have anderledes attack-surface (RLS-context, JWT-claims).
@@ -353,34 +421,6 @@
 - **R7h-håndtering:** Test 2 bruger Strategi A (seed legacy flat-shape direkte i anonymization_state) for at isolere R7a regprocedure-fix. Replay-shape-bug testes IKKE i R7h.
 - **Løses-i:** før første post-cutover replay-kørsel
 
-### [G041] LAV — Retention cron e2e-test bør eksekvere faktisk scheduled command
-
-- **Beskrivelse:** `smoke/r7a_retention_cleanup_cron_e2e.sql` (planlagt i T1) eksekverer kopieret helper-logic, ikke selve cron.job-command'en. Hvis cron-body afviger fra helper (fx. error-handling-block), kan test passere mens reel cron fejler.
-- **Vision-svækkelse:** Test-coverage (§3 — CI-disciplin).
-- **Introduceret:** R-runde-2 planlægning 2026-05-15
-- **Opdaget:** Codex v2-validering Fund #8 MELLEM
-- **Skal løses:** I T1-implementation. Test skal hente cron.job.command via SELECT og eksekvere den, ikke kopiere.
-- **Plan (G041):** Test-pattern:
-  ```sql
-  do $$ declare v_command text;
-  begin
-    select command into v_command from cron.job where jobname = 'retention_cleanup_daily';
-    execute v_command;  -- eksekver selve cron-bodyen
-    -- verificér side-effects
-  end $$;
-  ```
-- **Løses-i:** T1-implementation
-
-### [G046] MELLEM — Fitness-check fanger ikke manglende table grants ved policy-tilføjelse
-
-- **Beskrivelse:** RLS-policy og SQL table-privileges er ortogonale. T9 build tilføjede SELECT-policies på 6 write-tabeller uden tilsvarende GRANT INSERT/UPDATE — RPCs fejlede med "permission denied for table" før session-var-policy kunne evaluere. Codex runde 3 fundet (T9-fundament-supplement). Fitness-check `write-policy-session-var-consistency` validerer policy-form, men ikke at GRANT er på plads.
-- **Vision-svækkelse:** Drift-disciplin (§3). Plan-vs-kode-drift kan smutte igennem CI.
-- **Introduceret:** T9-build (Step 1 + Step 6 + Step 7 hver tilføjede SELECT-only grants). T9-fundament-supplement fixede ad hoc.
-- **Skal løses:** Når næste pakke tilføjer policies på en ny write-tabel.
-- **Risiko hvis glemt:** Mellem. Manifesterer som "permission denied for table" ved første kald — fanget ved manuel test, ikke CI.
-- **Plan (Mønster):** Udvid `write-policy-session-var-consistency` eller ny check der scanner `create policy ... for insert/update/delete` og verificerer at samme tabel har matchende `grant insert/update/delete to <role>`-statement. Falsk-positiv-risiko: medium (kan kræve allowlist for tabeller med policy uden grant by design). Implementation-kompleksitet: lav.
-- **Løses-i:** næste pakke med nye write-policies
-
 ### [G047] MELLEM — DB-tests kører mod live remote DB (ingen isoleret test-DB)
 
 - **Beskrivelse:** `scripts/run-db-tests.mjs:15` peger på samme Supabase-project som production (`imtxvrymaqbgcvsarlib`). DB-tests kører mod live remote via Management API. Konsekvens under T9-build: 3 admin-merges med rød CI (PR #36-38) fordi DB-tests fejlede chicken-and-egg ved partial T9-deploy (M1 + r7b smoke-tests forventede T9-tabeller der først blev oprettet efter merge + push).
@@ -389,7 +429,7 @@
 - **Skal løses:** Før næste større pakke der ændrer schema (T9-supplement, trin 10+).
 - **Risiko hvis glemt:** Mellem. Future bugs i applied migrations manifesterer sig som DB-test-fejl på efterfølgende PRs uden mulighed for at fixe i PR'en.
 - **Plan:** Provisioning af separat Supabase-project (eller Supabase branching-feature på Pro+); CI-step der applier alle migrations til test-DB før db:test; sekret SUPABASE_TEST_PROJECT_REF + SUPABASE_TEST_ACCESS_TOKEN; run-db-tests.mjs udvidet med project-ref-valg.
-- **Løses-i:** næste større schema-pakke
+- **Løses-i:** pakke 1 (lokations-skabelon), trin 2 — test-database til PR-kontrollerne (workflow-planen §3). `db:test` og fitness' live-tjek rammer i dag driftsprojektet (`scripts/run-db-tests.mjs` l.15).
 
 ### [G048] LAV — Step 3's fil-as-applied indeholder buggy closure-rebuild CTE
 
@@ -398,7 +438,7 @@
 - **Introduceret:** T9-build (Step 3, applied 2026-05-18).
 - **Skal løses:** Ingen aktiv handling — dokumentation tilstrækkelig.
 - **Risiko hvis glemt:** Lav. Developer der læser Step 3's fil ser buggy kode "as applied" uden at vide om fix-location.
-- **Spor til fix-location:** G048 selv + bygge-status.md "Vores trin 5"-detalje-sektion + T9 slut-rapport (git-historik) dokumenterer bug-klassen og fix-location i Step 12. Inline kommentar i Step 3-filen overvejet, ikke leveret (ville kræve modifikation af applied migration-fil; rejected per append-only).
+- **Spor til fix-location:** G048 selv + T9 slut-rapport (git-historik) dokumenterer bug-klassen og fix-location i Step 12 (`20260518000010_t9_seed_owners.sql`). (`bygge-status.md` er slettet, `c1c1b1b`.) Inline kommentar i Step 3-filen overvejet, ikke leveret (ville kræve modifikation af applied migration-fil; rejected per append-only).
 - **Løses-i:** ingen handling (dokumentation tilstrækkelig)
 
 ### [G049] MELLEM — Apply-dispatcher-extension-pattern ikke formaliseret i plan-skabelon
@@ -408,7 +448,7 @@
 - **Introduceret:** Plan V6 (T9-plan).
 - **Skal løses:** Næste pakke der bruger dispatcher-extension.
 - **Risiko hvis glemt:** Mellem. Samme bug-klasse kan ramme andre pakker.
-- **Plan:** Plan-skabelon (`docs/skabeloner/plan-skabelon.md`) opdateres med pattern-checklist for CREATE OR REPLACE FUNCTION: signatur-bevarelse (DEFAULTs, arg-count), CASE-statement-minimums-WHEN, record-INTO-field-restriction.
+- **Plan:** Plan-skabelonen i `docs/strategi/disciplin.md` (§10.2) får pattern-checklist for CREATE OR REPLACE FUNCTION: signatur-bevarelse (DEFAULTs, arg-count), CASE-statement-minimums-WHEN, record-INTO-field-restriction. (`docs/skabeloner/plan-skabelon.md` blev slettet 22/5, `4e65fa8`.)
 - **Løses-i:** næste dispatcher-extension-pakke
 
 ### [G050] MELLEM — Plan V6 mangelfuldt om RLS write-policy-strategi
@@ -418,8 +458,8 @@
 - **Introduceret:** Plan V6.
 - **Skal løses:** Fremadrettet — plan-skabelon skal kræve eksplicit policy-strategi pr. write-tabel.
 - **Risiko hvis glemt:** Mellem. Næste pakke med write-RPCs kan have samme lacuna.
-- **Plan:** Plan-skabelon udvides med "Write-policy-checklist": for hver write-tabel skal planen specificere INSERT/UPDATE/DELETE-policies + session-var + GRANTs.
-- **Løses-i:** disciplin-skabelon-revision (delvist dækket af V5 §3.3 — verificér)
+- **Plan:** Plan-skabelonen i `docs/strategi/disciplin.md` (§10.2) får en "Write-policy-checklist": for hver write-tabel skal planen specificere policies + session-var + skrivevej (i dag: SECURITY DEFINER-RPC; direkte write-grants er forbudt, jf. G065/`app-write-revoke-discipline`).
+- **Løses-i:** disciplin-skabelon-revision (delvist dækket af `disciplin.md` §3.3 — verificér mod den omskrevne disciplin.md)
 
 ### [G051] LAV — Pre-T9 funktioner redefineret uden eksplicit signatur-diff
 
@@ -429,7 +469,7 @@
 - **Skal løses:** Næste pakke der CREATE OR REPLACE'er pre-existing functions.
 - **Risiko hvis glemt:** Lav (build-time-fanget) men gentager bug-klasse.
 - **Plan:** Fitness-check der scanner alle CREATE OR REPLACE FUNCTION i migration-filer; sammenligner argument-signatur (inkl. DEFAULTs) med pre-existing definition (live introspection); fejler hvis defaults fjernes eller arg-count ændres. Implementation-kompleksitet: medium.
-- **Løses-i:** næste funktions-ændrende pakke (V5 §3.1 dækker formentlig — verificér)
+- **Løses-i:** næste funktions-ændrende pakke (`disciplin.md` §3.1 patch-først dækker formentlig — verificér mod den omskrevne disciplin.md)
 
 ### [G052] LAV — Vej B i PR #40 skabte præcedens for "ret merged-til-main migration når ej applied"
 
@@ -438,7 +478,7 @@
 - **Introduceret:** PR #40 (2026-05-18).
 - **Skal løses:** Append-only-disciplin-dokumentation skal afspejle nuancen.
 - **Risiko hvis glemt:** Lav. Vej B er sjælden (kræver atomic rollback). Men mangler regel kan friste til oversnedig brug.
-- **Plan:** Append-only-sektion i `docs/strategi/arbejds-disciplin.md` udvides: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
+- **Plan:** `docs/strategi/disciplin.md` (afløser `arbejds-disciplin.md`, slettet 22/5 i `4e65fa8`) får append-only-reglen med nuancen: "Filer merget til main MEN ikke applied til remote (atomic rollback) kan rettes direkte med eksplicit Mathias-godkendelse. Vej A (repair --status applied + ny fix-migration) er default; Vej B (ret filen) kræver eksplicit beslutning."
 - **Løses-i:** append-only-disciplin-dokumentation (revision)
 
 ### [G045] LAV — Fitness-check `db-test-tx-wrap-on-immutable-insert` fanger ikke RPC-side-effects
@@ -455,6 +495,54 @@
 - **Løses-i:** Lag E (RPC-test-mønster — udvid til Mønster D ved behov)
 
 ## Løst gæld (arkiv)
+
+### [G029] LØST 2026-05-15 — C001-backfill bruger legal retention mod master-plan-reservation
+
+- **Beskrivelse:** C001-fix (`71ab37f`) klassificerede løn-tabeller m.fl. som `retention_type='legal'` (2555 dage); `legal` skulle fjernes pr. rettelse 24.
+- **Løst:** `20260514180500_d1_d2_drop_legal_convert_rows.sql` fjerner `legal` fra retention_type-CHECK og konverterer de 71 legal-rækker: `audit_log.*` → `permanent`, alle øvrige (bl.a. pay_periods, commission_snapshots, salary_corrections, cancellations, break_glass_requests) → NULL (ikke valgt). Løsningen blev NULL, ikke `time_based` (rettelse 24/25).
+- **Konstateret lukket:** 2026-09-24 (dokumentgennemgangen).
+
+### [G036] LØST 2026-05-15 — R7a+R7d cron-reschedule race-window
+
+- **Beskrivelse:** R7a og R7d ændrede begge `retention_cleanup_daily`s cron-body; cron kunne fyre mellem de to migrationer.
+- **Løst:** Option A — R7a kombinerer begge cron-body-rettelser i én unschedule + schedule; R7d rører ikke cron'en (`20260515130000_r7a_regprocedure_callable_fix.sql` l.19-21, 304; `20260515130300_r7d_is_active_status_alignment.sql` l.24-25).
+- **Konstateret lukket:** 2026-09-24.
+
+### [G037] LØST 2026-05-15 — R7d backfill mangler session-vars for audit-spor
+
+- **Beskrivelse:** R7d-backfillen manglede session-var-mønstret (source_type, allow_*_write, change_reason).
+- **Løst:** `20260515130300_r7d_is_active_status_alignment.sql` l.9 og l.27-31 sætter `stork.source_type`, begge `stork.allow_*_write` og `stork.change_reason` før UPDATE.
+- **Konstateret lukket:** 2026-09-24.
+
+### [G038] LØST 2026-05-15 — cron.unschedule via navn-lookup vs jobid-lookup
+
+- **Beskrivelse:** `cron.unschedule('retention_cleanup_daily')` var navne-baseret.
+- **Løst:** `20260515130000_r7a_regprocedure_callable_fix.sql` l.23 og l.306-312: jobid slås op i `cron.job`; unschedule kun hvis jobbet findes.
+- **Konstateret lukket:** 2026-09-24.
+
+### [G041] LØST 2026-05-15 — Retention cron e2e-test bør eksekvere faktisk scheduled command
+
+- **Beskrivelse:** e2e-testen kørte kopieret helper-logik, ikke selve `cron.job.command`.
+- **Løst:** `supabase/tests/smoke/r7a_retention_cleanup_cron_e2e.sql` l.3-4 og l.56-61 henter `command` fra `cron.job` og eksekverer den (commit `04482b9`).
+- **Konstateret lukket:** 2026-09-24.
+
+### [G058] LØST 2026-06-05 — FK-coverage-fitness-check ikke implementeret per master-plan §3 punkt 19
+
+- **Beskrivelse:** Master-plan §3 punkt 19 krævede et fitness-tjek for `_id`-kolonner uden FK.
+- **Løst:** gov-3b-1 (commit `58f36d4`, PR #96): `fkCoverage()` i `scripts/fitness.mjs` (l.1443) med `FK_COVERAGE_EXEMPTIONS` (l.1368) og `FK_PENDING` (l.1380); står i checks-listen (l.1832) og er fail-closed i CI.
+- **Konstateret lukket:** 2026-09-24.
+
+### [G046] LUKKET (overhalet) 2026-06-07 — Fitness-check fanger ikke manglende table grants ved policy-tilføjelse
+
+- **Beskrivelse:** Policies på write-tabeller blev tilføjet uden matchende GRANT; fitness så det ikke.
+- **Hvorfor lukket:** Præmissen er væk. gov-3b-3b (G065, PR #105) fjernede alle direkte write-grants til `authenticated` på core_* (`20260607110004_core_identity_revoke_authenticated_core_writes.sql` l.11); skrivning går udelukkende via SECURITY DEFINER-RPC'er. `app-write-revoke-discipline` (`scripts/fitness.mjs` l.1728, effektiv privilegie-test, fail-closed i CI) forbyder direkte app-write-grants. Et manglende grant kan derfor ikke længere være fejlen.
+- **Konstateret lukket:** 2026-09-24 (workflow-planen §4.3). G/H-dispositionen for pakke 1 (24/9) sagde »tages med«; det er afløst af denne lukning.
+
+### [G018] LUKKET (overhalet) 2026-05-22 — Bygge-status klassifikations-tal er forkerte
+
+- **Beskrivelse:** `docs/strategi/bygge-status.md` havde forkerte tal for klassificerede kolonner efter trin 1-3.
+- **Hvorfor lukket:** Filen blev slettet 22/5 (`c1c1b1b`, »koble bygge-status ind i master-plan §4.1 + §4.2«). Lærdommen står fortsat: brug `SELECT count(*)` mod databasen, ikke migration-gate-output. Masterplanens eget punkt om klassifikations-tal (§4.2) hører til masterplan-rettelserne.
+- **Konstateret lukket:** 2026-09-24.
 
 ### [G065] LØST 2026-06-07 — `authenticated` direkte write-grant + session-var-gate = privilegie-eskaleringshul på core\_\*
 

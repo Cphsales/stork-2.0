@@ -1,5 +1,7 @@
 # Workflow — implementeringsplan (v5) · SAMLET
 
+> **AFLØST 2026-09-24** af `docs/strategi/disciplin.md` og workflow-planen (`docs/workflow-plan/`, Mathias' ok M-67). Filen fjernes i oprydningen.
+
 **Status:** ÉN samlet plan (2026-08-11). Design godkendt af Mathias 2026-06-25; herefter foldet ind: Codex-endcheck (9 fund, 2026-06-26) · gate-kerne v4 · dybde-resolution (effect-harness + config-mutant-kill). **Erstatter v1/v2/v3 — denne fil er eneste sandhed.** **Design-grøn ≠ skudsikker:** en designet-men-utestet mekanisme er selv doc-grøn (KERNEN gælder også planen); skudsikker = DEL VI bestået.
 
 > **OVERLEVERING til frisk session (2026-08-12) — hvor vi er:**

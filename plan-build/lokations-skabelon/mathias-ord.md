@@ -1,9 +1,13 @@
 # mathias-ord — lokations-skabelon (append-only ledger)
 
-Regler (plan DEL IV + 2.F): append-only · tidsstemplet · VERBATIM (stavefejl
-bevares — `[sic]` markeres ikke; parafrase deklareres eksplicit) · committes af
-driveren ved hvert ord · krav/plan CITERER ord-id (K-n → M-n). Et ord uden
-ledger-entry kan ikke bære et krav.
+Regler (jf. `docs/strategi/disciplin.md`): append-only · tidsstemplet · VERBATIM
+(stavefejl bevares — `[sic]` markeres ikke; parafrase deklareres eksplicit) ·
+committes ved hvert ord af den session der modtog det · krav/plan CITERER ord-id
+(K-n → M-n). Et ord uden ledger-entry kan ikke bære et krav. Er ordet en
+godkendelse (`krav ok` · `plan ok` · `slut ok`), står blob-OID for præcis den
+fil Mathias så, i kontekst-feltet; ved `slut ok` også den prøvede kodeversion
+(commit), som slutprøven, Codex' samlede gennemgang og byggetjekket kørte på. Én ledger for hele Stork: M-numrene fortsætter
+på tværs af pakker, og kontekst-feltet nævner pakken. Ledgeren slettes aldrig.
 
 | id | tid (ca.) | kanal | ord | kontekst |
 |---|---|---|---|---|
@@ -24,12 +28,10 @@ ledger-entry kan ikke bære et krav.
 | M-15 | 2026-09-03 18:12-18:16 | mathias-df (direkte, verbatim) | »krav upload« | upload-ordet → commit 727ba0b (krav-blob b01d85fd) |
 | M-16 | 2026-09-03 efter 18:16 | mathias-df (direkte, verbatim) | »præsenter krav for mig« | → fremlæggelse-1 (687a99f) |
 
-## Afventer verbatim (må kun leveres af den session der modtog dem)
+## Afventer verbatim — opfyldt
 
-Fra mathias-78 (modtaget dér 2026-09-02/03, hidtil kun som parafrase):
-de 7 svar fra spørgerunden — »stande-model«-svaret · »forstår ikke« ×2 ·
-»styres i retigheder« · »den skal væres åben« · »hvad menes der med aftaler? …«
-(+ fuld kontekst pr. svar). Tilføjes som M-23+ når de leveres ordret (M-17..M-22 = runde 2 nedenfor).
+De 7 svar fra spørgerunden 2026-09-02/03 er leveret ordret som M-23..M-30
+(afsnittet »Spørgerunden« nedenfor); intet afventer.
 
 ## Runde 2 (appendet af driveren 2026-09-03 — leveret direkte i mathias-df)
 
@@ -119,3 +121,10 @@ M-30's referenter (mathias-78's omformulerede 2+4, leveret verbatim af mathias-7
 | M-65 | 2026-09-24 | mathias-52 (fabrik-armen, direkte til den; verbatim) | »og det er vigtigt at du er ærlig med de 5 elementer og gør dig umage med at gå workflowet igennem og analyser hvad der sker når en pakke tages fra start til slut. er der mere end 5 fortsætter du og præsentere alle elementer for mig« | OPGAVE: ærlig gennemgang af alle overflødige elementer (42 fundet; 9 huller i kæden). |
 | M-66 | 2026-09-24 | mathias-52 (fabrik-armen, direkte til den; verbatim) | »jeg går med dine anbefalinger« | WORKFLOW-DOM: ja til de anbefalede forenklinger S1-S15 og lukningen af hullerne H1-H9 (aendringer-41.md) — herunder at D12 kun gælder pakke 1, at slutprøven kører på testdatabasen (driftsdata kun når pakken læser eksisterende data), én plan-læser, planner+bygger én rolle. |
 | M-67 | 2026-09-24 | mathias-52 (fabrik-armen, direkte til den; verbatim) | »ok« | GODKENDELSE: `ok` til workflow-planen v43 (`docs/workflow-plan/workflow-plan.md` blob 4e5e85baf07b + `docs/workflow-plan/tekster/`, fremlagt i chatten 24/9; mappen fjernes når planen er udført) — workflowet, rammen for krav-dokumenter, pakke 1 efter vej (B) og oprydningen i §4.1-rækkefølgen, inkl. alle tekster. Svar på planens ene bordpunkt; ophæver »vent lige« (M-54) for udførelsen af planen. Pakke 1's næste ord er `plan ok` til plan v3.8. |
+
+## Ordlyd uafklaret (tilføjet 2026-09-24, workflow-planen §4.3)
+
+To ord har en anden ordlyd i andre kilder. Rækkerne ovenfor er ikke ændret; Mathias retter dem, hvis han vil.
+
+- **M-46** — ledgeren: »vi overkompliserer opgaven — det kan ikke være rigtigt at der bruges så meget tid på en simpel pakke« · implementeringsplanen (`docs/workflow-faerdiggoerelse/workflow-implementeringsplan.md` l.344, blob `8138afa8` @ `87a877b`): »Du skal løse at vi lige nu overkomplisere opgaven. det kan ikke være rigtigt at der bliver brugt så meget tid på en simpel pakke«
+- **M-53** — ledgeren: »der går alt for langsomt — tjek for over-test« · implementeringsplanen (samme blob, l.105): »der går alt for langsomt — tjek grundigt for at vi over-tester« · Codex-prompten `docs/workflow-faerdiggoerelse/p2-haerdning-2026-09-09/p2-c1-r6/prompt.txt` l.4 (blob `8a3e6880` @ `87a877b`): »der går alt for langsomt. Tjek grundigt for at vi over tester og dermed forsinker vores proces«
