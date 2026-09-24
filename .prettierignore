@@ -25,3 +25,4 @@ recon/
 # fabrikkens egne artefakter er blob-bundne (hærdet-register + actors.lock skill_oid) — blob-stabilitet > formatering
 scripts/v5/
 docs/workflow-faerdiggoerelse/
+docs/workflow-plan/

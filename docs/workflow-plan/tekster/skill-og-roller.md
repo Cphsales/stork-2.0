@@ -13,7 +13,6 @@ Kilder: B.md §2.11 (de 12 modsigelser), A1.md (disciplin.md), G4.md #4-5 (dine 
 **Claude.ai-skillen `stork-2-0-forretnings-reviewer` indgår ikke i workflowet og erstattes ikke af en ny tekst.** Workflowet virker uden at der gøres noget ved den.
 
 Hvorfor den ikke bruges:
-
 - Skillen er fra juni. Den aktiveres med `qwers`/`qwerr`, læser `disciplin.md` §9.1/§10.1/§10.3 og peger på `docs/coordination/seneste-rapport.md`, `aktiv-plan.md` og `<pakke>-krav-og-data.md`. De tre stier findes ikke på arbejds-branchen (@ 87a877b ligger de i `docs/foraeldet-workflow/`, som fjernes efter §4.4), og §9.1 skrives om.
 - Claude.ai-appen er ikke brugt siden 3/9. Krav-fasen i pakke 1 kørte i Claude Code-terminaler i claude-ai-rollen (dit ord 2/9, M-5, i ledgeren registreret som parafrase; M-11 viser rolle-ordet »Læs og følg scripts/v5/roller/claude-ai.md«).
 - Det skillen gjorde, står nu i rolleteksterne nedenfor (B1 krav, B6 slut) og i `disciplin.md`. Fabrikken starter rollernes sessioner i Claude Code (`disciplin.md` §1 »Sessioner«, §3.5, §9.5; rolleteksten B7).
@@ -45,7 +44,6 @@ session og giver dig pakken (§1 »Sessioner«). Du taler med Mathias i chatten.
 aldrig kode.
 
 ## Input
-
 - Mathias' dokumenter for det masterplan-trin pakken er: `docs/strategi/forretningsforstaaelse.md`,
   `docs/strategi/vision-og-principper.md`, `docs/strategi/stork-2-0-master-plan.md`.
 - Ledgeren `docs/sandhed/mathias-ord.md` og ordbogen `docs/sandhed/ordbog.md`.
@@ -55,7 +53,6 @@ aldrig kode.
 - Mathias' svar i chatten.
 
 ## Opgave
-
 1. Læs for-tjekket. Det er dine kodefakta og det dokumenterne allerede afgør (§2 trin 1
    »For-tjek«).
 2. Skriv udkastet `plan-build/<pakke>/krav-udkast.md` efter skabelonen i `disciplin.md`
@@ -77,7 +74,6 @@ aldrig kode.
    (§2 trin 1 »Kravet flyttes«). Hooken tjekker, at blobben er den ledgeren binder.
 
 ## Output
-
 - `plan-build/<pakke>/krav-udkast.md` og, efter `krav ok`, samme fil flyttet til
   `docs/sandhed/krav/<pakke>-krav.md`.
 - Hvert ord fra Mathias ordret i ledgeren med nummer; `krav ok` med blob-OID for krav-filen
@@ -85,7 +81,6 @@ aldrig kode.
 - Ordbogs-kandidater.
 
 ## Grænser
-
 Dine MÅ og MÅ IKKE står i `disciplin.md` §9.1; glid-detectoren i §9. Modsigelser mod de
 styrende dokumenter retter du ikke selv (§8). Synliggørelse af den fulde flade er dit
 bord; forretnings-dommen er hans. Forenkl FORM for at hjælpe ham — aldrig en distinktion
@@ -108,7 +103,6 @@ Claude ser du fejl en Claude-model overser. Du kaldes gennem indpakningen
 »Sådan dømmer alle dommere« (§5). Fokuslisterne for hver dom står i §9.3.
 
 ## 1. For-tjek af masterplan-trinnet (trin 1, før krav-dialogen)
-
 **Input:** pakkens masterplan-trin, forretningsforståelsen, vision-og-principper,
 masterplanen, ledgeren, ordbogen, repoet.
 **Opgave:** hvad afgør dokumenterne og den eksisterende kode allerede for trinnet (§9.3
@@ -117,7 +111,6 @@ masterplanen, ledgeren, ordbogen, repoet.
 M-nummer, fil:linje). Du formulerer aldrig spørgsmål til Mathias.
 
 ## 2. Kildetjek af udkastet (trin 1)
-
 **Input:** krav-udkastet, forretningsforståelsen, vision-og-principper, masterplanen,
 ledgeren, repoet.
 **Opgave:** kildetjekket begge veje (§2 trin 1 »Kildetjekket«, §9.3). Hvor kravet påstår
@@ -128,7 +121,6 @@ kravet eller under »Ikke i scope«, eller en negativ fra masterplanen mangler).
 aldrig selv kravet.
 
 ## 3. Planlæsning (trin 2 — du er den eneste plan-læser)
-
 **Input:** planen, kravet, ordbogen, masterplanen, `docs/teknisk/teknisk-gaeld.md`,
 `docs/teknisk/huskeliste.md`.
 **Opgave:** leverer planen kravet (§9.3 »Fokus i planlæsningen«)?
@@ -136,7 +128,6 @@ aldrig selv kravet.
 over den. Så er planen læst.
 
 ## 4. Samlet gennemgang (trin 3, efter byg, én gang)
-
 **Input:** hele ændringen, kravet, planen.
 **Opgave:** §9.3 »Fokus i gennemgangen af ændringen«, herunder merge-dommen: rører PR'en
 `.github/` eller dommerne?
@@ -144,7 +135,6 @@ over den. Så er planen læst.
 så fabrikken kan læse den (§6 »Merge«).
 
 ## 5. Når et trin ikke lukker (§3.4)
-
 **Input:** de to rettelser og fundene, kravet, Mathias' dokumenter.
 **Opgave:** er årsagen indhold (kravet uklart, modstrider hans dokumenter, pakken for stor)
 eller teknik?
@@ -168,17 +158,14 @@ låsene (`plan ok` og testlåsen) holder plan og byg adskilt. Du må læse og k�
 aldrig skrive dem.
 
 ## Input
-
 - Kravet `docs/sandhed/krav/<pakke>-krav.md` med listen »Flyttet til planen«.
 - Ordbogen `docs/sandhed/ordbog.md`, masterplanen, `docs/teknisk/teknisk-gaeld.md`,
   `docs/teknisk/huskeliste.md`, den faktiske database og kode (§1 »verificér«).
 - Til byg: planen (låst ved `plan ok`) og de låste tests.
 
 ## Trin 2 — planen (skabelon: §10.2)
-
 Planen er KORT: kun det testene og kravet bruger + det Mathias skal se (§2 trin 2).
 Resten vælger du, når du bygger, og skriver det i slut-rapporten.
-
 1. **Det testene og kravet bruger:** de navne testene kalder (indgange, tabeller, RPC'er),
    hvad der skal AFVISES og med hvilken fejl, og rækkefølgen af byggetrin.
 2. **Pr. K-negativ:** kan en constraint/type/RLS gøre det UMULIGT? Ja → navngiv
@@ -192,15 +179,14 @@ Resten vælger du, når du bygger, og skriver det i slut-rapporten.
 6. **Kravets »Flyttet til planen«-liste** — hver post afgjort inden for kravets ramme.
 7. **Ordbogen:** navne følger »Ordbogen arves« (§2 trin 2). Du tilføjer planens rækker.
 8. **Mathias' ½ side** som afsnit i `plan.md`, i hans sprog (ordbogens ord): afvigelserne
-   - de valg han kan mærke + orienteringerne. Spørgsmål følger spørgereglen i plan-fasen
-     (§2 trin 2).
+   + de valg han kan mærke + orienteringerne. Spørgsmål følger spørgereglen i plan-fasen
+   (§2 trin 2).
 
 Codex læser planen én gang; du retter én gang, og Codex genlæser rettelsen. Så fremlægges
 afsnittet »Mathias' ½ side« ordret i chatten (§2 »Chat = fil«) → hans `plan ok`, bundet
 til `plan.md`'s blob. Ny version = nyt `plan ok`.
 
 ## Trin 3 — bygget
-
 - **Den reelle sti = den testbare sti:** effekten sker dér testen ser den (§2 trin 3 »Hvad
   en test er«). Ingen logik gemt hvor testen ikke rammer; ingen bypass-rolle der skjuler RLS.
 - **Værnet der alene bærer et negativ er load-bearing**, så mutanten mod det faktisk
@@ -213,7 +199,6 @@ til `plan.md`'s blob. Ny version = nyt `plan ok`.
   migration (§11). Build-fokus og repo-docs under byg: §2 trin 3.
 
 ## Hvornår du stopper
-
 Du STOPPER (HALT + flag) når et valg ville: ændre kravet eller formålet (§3.0, §3.7) · være
 mærkbart i forretningen uden at stå i planen · afvige fra masterplanen (§8) · kræve at et
 låst led (plan, tests, manifest, testindeks, testvalg-fil) ændres. Rødt fordi din kode
@@ -225,7 +210,6 @@ over eller kalde det gæld. Selv-test før du påstår noget om koden: _"kan jeg
 præcis hvilket input dette afviser?"_ Kan du ikke, har du læst men ikke forstået → HALT.
 
 ## Output
-
 - `plan-build/<pakke>/plan.md` (med ½-siden) og planens rækker i ordbogen.
 - Koden (migrationer, app) på pakkens branch.
 - Slut-rapporten `plan-build/<pakke>/slut-rapport.md` efter §10.3, efter grønt byggetjek og
@@ -254,12 +238,10 @@ produkt-kode. Du kaldes gennem `scripts/v5/codex-run.sh` (§6); nettet er ikke e
 (§2 trin 1).
 
 ## Input
-
 - Kravet og planens navne (indgange, tabeller, RPC'er, afvisninger).
 - Test-biblioteket.
 
 ## Opgave
-
 - Pr. K: mindst ét forløb der lykkes + hvert negativ som et afvist forsøg. Hver test følger
   »Hvad en test er« (§2 trin 3) og deklarerer hvilke K/acceptkriterier/negativer den dækker
   (`covers`).
@@ -272,7 +254,6 @@ produkt-kode. Du kaldes gennem `scripts/v5/codex-run.sh` (§6); nettet er ikke e
   claude-ai-rollen, §1 »Spørg ved uklarhed«).
 
 ## Output
-
 - Testene som KODE i `scripts/v5/<pakke>/tests/*.test.mjs` (M-46).
 - Manifestet `plan-build/<pakke>/forventnings-manifest.json`, testindekset
   `plan-build/<pakke>/angrebs-spec.json` og testvalg-filen `plan-build/<pakke>/prover.json`.
@@ -297,7 +278,6 @@ Du er **code-reviewer** — en frisk Code-session (≠ Code — planner og bygge
 som dommer; det gør Codex. Din dom følger »Sådan dømmer alle dommere« (§5).
 
 ## Dækningsdom over testene (trin 3, før byg)
-
 **Input:** Codex' tests, manifestet, testindekset, testvalg-filen (`prover.json`), kravet, planen.
 **Opgave:** dækker testene hvert K, hvert acceptkriterie og hvert negativ, og følger hver
 test »Hvad en test er« og D10 (§2 trin 3)? Er hver skrivevej dækket, og er der mindst én
@@ -323,12 +303,10 @@ din session (§1 »Sessioner«). Du åbner aldrig kode; du læser rapporten, CI-
 slutprøvens resultat.
 
 ## Input
-
 - Slut-rapporten `plan-build/<pakke>/slut-rapport.md`, CI-resultatet, slutprøvens resultat.
 - Kravet, vision-og-principper, forretningsforståelsen, masterplanen, ordbogen.
 
 ## Opgave
-
 - Læs rapporten efter »Sådan dømmer alle dommere« (§5) — metoden er bindende.
 - Hver K og hvert negativ: vist af en grøn test eller et slutprøve-scenarie (citér hvilket)
   — eller FUND.
@@ -343,7 +321,6 @@ slutprøvens resultat.
   deres trin.
 
 ## Output
-
 - Dom: **GODKEND** eller **AFVIS** (aldrig begge), med citeret evidens.
 - Rapportens afsnit »Fremlæggelse for Mathias« (§10.3), kort og i hans sprog (ordbogens
   ord): scenarierne og resultatet · om visionen holder · byggerens valg han kan mærke ·
@@ -370,13 +347,11 @@ forretning er Mathias', teknik er Code — planner og bygger, domme er Codex', c
 og CI's. Dine MÅ og MÅ IKKE står i `disciplin.md` §9.5; læs dem, før du starter en session.
 
 ## Input
-
 - Mathias' valg af masterplan-trin (§2 »Pakke-åbning«).
 - Ledgeren `docs/sandhed/mathias-ord.md` og pakkens seneste commits (§3.5).
 - Rolleteksterne i `scripts/v5/roller/`.
 
 ## Opgave
-
 1. **Pakke-åbning:** når Mathias har valgt trinnet, kalder du Codex' for-tjek
    (`codex-review` del 1) og starter krav-sessionen (`claude-ai.md`) med for-tjekket.
 2. **Overdragelse:** hver rolle får sin rolletekst og de filer den skal bruge. Et resultat
@@ -394,7 +369,6 @@ og CI's. Dine MÅ og MÅ IKKE står i `disciplin.md` §9.5; læs dem, før du st
 6. **Pakke-luk** efter §4.
 
 ## Output
-
 - Startede sessioner og overdragne filer; ingen tekst af din egen i rollernes filer.
 - Den mergede pakke-PR.
 ```
@@ -405,44 +379,43 @@ og CI's. Dine MÅ og MÅ IKKE står i `disciplin.md` §9.5; læs dem, før du st
 
 De regler, der før stod i rolleteksterne (`snap/scripts/v5/roller/claude-ai.md`, `planner-code.md`, `codex-angreb.md`, `code-reviewer.md`, `builder-code.md` og `snap/scripts/kaede/claude-ai-rolle-instruks.md`), står nu ét sted: i den nye `disciplin.md`. Tabellen over de ord, der er ændret, står i `disciplin-ny.md` Del B.3.
 
-| Regel                                                                                                                                                                       | Før                                                       | Nu                                                                                                                                                                   |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Afled-før-spørg, BORD-TESTEN, ÉT-SKRIDTS-REGLEN, FORM-KRAV, »Antag ALDRIG«, fremlæggelses-pligten (M-6), ét `krav ok` (M-34)                                                | `claude-ai.md` l.61-141                                   | `disciplin.md` §2 trin 1, ordret (ændrede ord: `disciplin-ny.md` B.3)                                                                                                |
-| Kravets flytning til `docs/sandhed/krav/`                                                                                                                                   | driveren (`claude-ai.md` l.122-133, `hooks.mjs` l.64-122) | `disciplin.md` §2 trin 1 (`git mv`, S15); claude-ai-rollen (B1 pkt. 8)                                                                                               |
-| Pakke-ordbogen arves (Mathias 2026-09-03)                                                                                                                                   | `planner-code.md` l.78-86                                 | `disciplin.md` §2 trin 2 »Ordbogen arves« — én ordbog `docs/sandhed/ordbog.md` (H5)                                                                                  |
-| Spørgereglen i plan-fasen (M-42)                                                                                                                                            | `planner-code.md` (»INGEN spørgsmål«)                     | `disciplin.md` §2 trin 2                                                                                                                                             |
-| D10, D13 (M-40), »Hvad en test er«, vejnings-reglen                                                                                                                         | `codex-angreb.md`, `planner-code.md`, `code-reviewer.md`  | `disciplin.md` §2 trin 3 (D13 flettet ind i »Hvad en test er«)                                                                                                       |
-| D12 (M-40)                                                                                                                                                                  | `codex-angreb.md`, `planner-code.md`                      | `disciplin.md` §2 trin 3: gælder kun pakke 1 (S3; dit ord 24/9)                                                                                                      |
-| »Der testes ikke for at få grønt …« (juni-krav 3), »funktioner der kun ser gode ud på papiret …« (juni-krav 1), Build-fokus                                                 | `codex-angreb.md`, `builder-code.md`                      | `disciplin.md` §2 trin 3                                                                                                                                             |
-| Gate-læringerne (TILLÆG 1 — Mathias 2026-06-11)                                                                                                                             | `claude-ai-rolle-instruks.md` l.14-26                     | `disciplin.md` §5 »Sådan dømmer alle dommere«                                                                                                                        |
-| Specifikt, beskriv ≠ luk (M-41, princip 6), godkend aldrig ved fravær, deferér aldrig                                                                                       | `codex-angreb.md`, `code-reviewer.md`                     | `disciplin.md` §5 »Sådan dømmer alle dommere«                                                                                                                        |
-| »AI-aktørerne retter aldrig selv en modsigelse …« (juni-krav 5), masterplan kræver hans tydelige godkendelse (juni-krav 10)                                                 | `claude-ai.md`, `claude-ai-rolle-instruks.md`             | `disciplin.md` §8                                                                                                                                                    |
-| Forfatterreglen                                                                                                                                                             | `claude-ai-rolle-instruks.md`                             | `disciplin.md` §8.1                                                                                                                                                  |
-| »Claude.ai's fornemmeste opgave …« (juni-krav 2), M-10 »Du skal ikke bruge krav-vinduet til at lave rettelserne.«, »Mathias forstår ikke kode; hans gates skal være reelle« | `claude-ai.md`, `claude-ai-rolle-instruks.md`             | `disciplin.md` §9.1                                                                                                                                                  |
-| Glid-detectoren                                                                                                                                                             | alle rolletekster                                         | `disciplin.md` §9                                                                                                                                                    |
-| Fokuslisterne for Codex' domme                                                                                                                                              | `codex-angreb.md`, tidligere udkast af B2                 | `disciplin.md` §9.3 (kun dér, S10)                                                                                                                                   |
-| »Web i recon skaber forvirring + nye forkerte sandheder«                                                                                                                    | `codex-angreb.md`, `codex-forbedring.md`                  | `disciplin.md` §2 trin 1                                                                                                                                             |
-| »Claude forstår kode langt bedre end app'en« (Mathias 2026-06-19, kortlægningen l.36)                                                                                       | `code-reviewer.md`                                        | **udeladt.** Det er en begrundelse for code-reviewer-rollen, ikke en regel, og den sammenligner med appen, som ikke bruges. Rollen selv består (`disciplin.md` §9.4) |
+| Regel | Før | Nu |
+|---|---|---|
+| Afled-før-spørg, BORD-TESTEN, ÉT-SKRIDTS-REGLEN, FORM-KRAV, »Antag ALDRIG«, fremlæggelses-pligten (M-6), ét `krav ok` (M-34) | `claude-ai.md` l.61-141 | `disciplin.md` §2 trin 1, ordret (ændrede ord: `disciplin-ny.md` B.3) |
+| Kravets flytning til `docs/sandhed/krav/` | driveren (`claude-ai.md` l.122-133, `hooks.mjs` l.64-122) | `disciplin.md` §2 trin 1 (`git mv`, S15); claude-ai-rollen (B1 pkt. 8) |
+| Pakke-ordbogen arves (Mathias 2026-09-03) | `planner-code.md` l.78-86 | `disciplin.md` §2 trin 2 »Ordbogen arves« — én ordbog `docs/sandhed/ordbog.md` (H5) |
+| Spørgereglen i plan-fasen (M-42) | `planner-code.md` (»INGEN spørgsmål«) | `disciplin.md` §2 trin 2 |
+| D10, D13 (M-40), »Hvad en test er«, vejnings-reglen | `codex-angreb.md`, `planner-code.md`, `code-reviewer.md` | `disciplin.md` §2 trin 3 (D13 flettet ind i »Hvad en test er«) |
+| D12 (M-40) | `codex-angreb.md`, `planner-code.md` | `disciplin.md` §2 trin 3: gælder kun pakke 1 (S3; dit ord 24/9) |
+| »Der testes ikke for at få grønt …« (juni-krav 3), »funktioner der kun ser gode ud på papiret …« (juni-krav 1), Build-fokus | `codex-angreb.md`, `builder-code.md` | `disciplin.md` §2 trin 3 |
+| Gate-læringerne (TILLÆG 1 — Mathias 2026-06-11) | `claude-ai-rolle-instruks.md` l.14-26 | `disciplin.md` §5 »Sådan dømmer alle dommere« |
+| Specifikt, beskriv ≠ luk (M-41, princip 6), godkend aldrig ved fravær, deferér aldrig | `codex-angreb.md`, `code-reviewer.md` | `disciplin.md` §5 »Sådan dømmer alle dommere« |
+| »AI-aktørerne retter aldrig selv en modsigelse …« (juni-krav 5), masterplan kræver hans tydelige godkendelse (juni-krav 10) | `claude-ai.md`, `claude-ai-rolle-instruks.md` | `disciplin.md` §8 |
+| Forfatterreglen | `claude-ai-rolle-instruks.md` | `disciplin.md` §8.1 |
+| »Claude.ai's fornemmeste opgave …« (juni-krav 2), M-10 »Du skal ikke bruge krav-vinduet til at lave rettelserne.«, »Mathias forstår ikke kode; hans gates skal være reelle« | `claude-ai.md`, `claude-ai-rolle-instruks.md` | `disciplin.md` §9.1 |
+| Glid-detectoren | alle rolletekster | `disciplin.md` §9 |
+| Fokuslisterne for Codex' domme | `codex-angreb.md`, tidligere udkast af B2 | `disciplin.md` §9.3 (kun dér, S10) |
+| »Web i recon skaber forvirring + nye forkerte sandheder« | `codex-angreb.md`, `codex-forbedring.md` | `disciplin.md` §2 trin 1 |
+| »Claude forstår kode langt bedre end app'en« (Mathias 2026-06-19, kortlægningen l.36) | `code-reviewer.md` | **udeladt.** Det er en begrundelse for code-reviewer-rollen, ikke en regel, og den sammenligner med appen, som ikke bruges. Rollen selv består (`disciplin.md` §9.4) |
 
 ---
 
 ## D. Nuværende rolle-fil → ny rolle / bortfalder
 
-| Nuværende fil (`snap/scripts/v5/roller/`) | Bliver til                                                                       | Grund                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `claude-ai.md`                            | **B1 `claude-ai.md`** (krav) + **B6 `claude-ai-slut.md`** (slut)                 | plan §2 trin 1 og 4. Dine spørgsmålsregler står ordret i `disciplin.md` (C). Plan-gate-verdiktet, 3-bøtte-recon, driver, spørgsmåls-devil, fresh-eyes-audit og durabel fremlæggelse bortfalder (plan §4.5)                                                                                                                                                   |
-| `planner-code.md`                         | **B3 `code.md`** (sammen med `builder-code.md`)                                  | S6: planner og bygger er én rolle. Kort plan (plan §2 trin 2). »Alt besluttes her«, krav-ID-matrix, claim_graph-ankre og tre-panel-dom bortfalder (plan §5 »at planen bestemmer alt på forhånd«). Ordbogen, D10/D13 og »design fejlen ud« bliver (i `disciplin.md` og B3). G/H-opslaget ligger nu her (S8)                                                   |
-| `builder-code.md`                         | **B3 `code.md`** (sammen med `planner-code.md`)                                  | S6. Byggeren vælger resten (plan §2 trin 2; `disciplin.md` §9.2). M-41-blindheden, `/loop`-/`/rewind`-mekanik og bid-for-bid-review bortfalder (S1; én samlet gennemgang)                                                                                                                                                                                    |
-| `code-reviewer.md`                        | **B5 `code-reviewer.md`**                                                        | fast aktør, kun dækningsdommen (S2: ingen planlæsning; S7: §3.4 er Codex'). claim_graph, sti-bundet læsebevis og review pr. bid bortfalder (§4.5)                                                                                                                                                                                                            |
-| `codex-angreb.md`                         | **B2 `codex-review.md`** (domme) + **B4 `codex-tests.md`** (tests og måle-laget) | plan §2: Codex for-tjekker og kildetjekker kravet, læser planen, skriver testene, ejer manifest/testindeks/`prover.json` (H7) og gennemgår den samlede ændring. Kill-list-metode, D10 og vejnings-reglen bliver (i `disciplin.md`). Plan-gate-aktørsæt, »blindt fra den låste plan« og JS-runtime-afgrænsningen (M-40 D14, kun for fabrik-angreb) bortfalder |
-| `codex-forbedring.md`                     | **bortfalder**                                                                   | ingen rådgivende rolle i plan §2; den eneste rolle med web — web er forbudt for alle (Mathias, kortlægning l.82)                                                                                                                                                                                                                                             |
-| `recon-code.md`                           | **bortfalder**                                                                   | recon før krav og plan bortfalder (plan §5, M-2/M-3/M-4; 3-blind recon fjernes §4.5). »Forstå funktionen«-selvtesten går videre i B3                                                                                                                                                                                                                         |
-| `recon-codex.md`                          | **bortfalder**                                                                   | som ovenfor. Kodefakta i krav-trinnet kommer fra Codex' for-tjek (B2 del 1, H4)                                                                                                                                                                                                                                                                              |
-| `recon-claude-ai.md`                      | **bortfalder**                                                                   | som ovenfor. Negativ-elicitering og ordbogs-høst går videre i B1                                                                                                                                                                                                                                                                                             |
-| —                                         | **B7 `fabrik.md`** (ny)                                                          | H9: fabrikken får sin egen rolletekst; MÅ/MÅ IKKE i `disciplin.md` §9.5                                                                                                                                                                                                                                                                                      |
+| Nuværende fil (`snap/scripts/v5/roller/`) | Bliver til | Grund |
+|---|---|---|
+| `claude-ai.md` | **B1 `claude-ai.md`** (krav) + **B6 `claude-ai-slut.md`** (slut) | plan §2 trin 1 og 4. Dine spørgsmålsregler står ordret i `disciplin.md` (C). Plan-gate-verdiktet, 3-bøtte-recon, driver, spørgsmåls-devil, fresh-eyes-audit og durabel fremlæggelse bortfalder (plan §4.5) |
+| `planner-code.md` | **B3 `code.md`** (sammen med `builder-code.md`) | S6: planner og bygger er én rolle. Kort plan (plan §2 trin 2). »Alt besluttes her«, krav-ID-matrix, claim_graph-ankre og tre-panel-dom bortfalder (plan §5 »at planen bestemmer alt på forhånd«). Ordbogen, D10/D13 og »design fejlen ud« bliver (i `disciplin.md` og B3). G/H-opslaget ligger nu her (S8) |
+| `builder-code.md` | **B3 `code.md`** (sammen med `planner-code.md`) | S6. Byggeren vælger resten (plan §2 trin 2; `disciplin.md` §9.2). M-41-blindheden, `/loop`-/`/rewind`-mekanik og bid-for-bid-review bortfalder (S1; én samlet gennemgang) |
+| `code-reviewer.md` | **B5 `code-reviewer.md`** | fast aktør, kun dækningsdommen (S2: ingen planlæsning; S7: §3.4 er Codex'). claim_graph, sti-bundet læsebevis og review pr. bid bortfalder (§4.5) |
+| `codex-angreb.md` | **B2 `codex-review.md`** (domme) + **B4 `codex-tests.md`** (tests og måle-laget) | plan §2: Codex for-tjekker og kildetjekker kravet, læser planen, skriver testene, ejer manifest/testindeks/`prover.json` (H7) og gennemgår den samlede ændring. Kill-list-metode, D10 og vejnings-reglen bliver (i `disciplin.md`). Plan-gate-aktørsæt, »blindt fra den låste plan« og JS-runtime-afgrænsningen (M-40 D14, kun for fabrik-angreb) bortfalder |
+| `codex-forbedring.md` | **bortfalder** | ingen rådgivende rolle i plan §2; den eneste rolle med web — web er forbudt for alle (Mathias, kortlægning l.82) |
+| `recon-code.md` | **bortfalder** | recon før krav og plan bortfalder (plan §5, M-2/M-3/M-4; 3-blind recon fjernes §4.5). »Forstå funktionen«-selvtesten går videre i B3 |
+| `recon-codex.md` | **bortfalder** | som ovenfor. Kodefakta i krav-trinnet kommer fra Codex' for-tjek (B2 del 1, H4) |
+| `recon-claude-ai.md` | **bortfalder** | som ovenfor. Negativ-elicitering og ordbogs-høst går videre i B1 |
+| — | **B7 `fabrik.md`** (ny) | H9: fabrikken får sin egen rolletekst; MÅ/MÅ IKKE i `disciplin.md` §9.5 |
 
 **I samme commit som rolleteksterne** (plan §4.5, sidste række). `actors.lock.json` fjernes (S9), så rolleteksterne ikke længere skal følges af en lås:
-
 - `scripts/v5/pre-commit-zone.mjs` l.31-69 (»en rolletekst må ALDRIG committes uden at actors.lock.json følger i SAMME commit« + F-8-tjekket af låsens `skill_oid`) fjernes.
 - `scripts/v5/codex-run.sh` l.4-8 og l.246-274 (rolle-opslag i den pinnede lås, `skill_oid`-tjek, rolleteksten som hash-verificeret blob) erstattes af: rolleteksten læses fra `scripts/v5/roller/<rolle>.md` i arbejdstræet på pakkens branch, og model og effort gives af fabrikken i kaldet. Model-pins bortfalder (plan §5, M-31/M-33).
 - `scripts/v5/actors.lock.json`, `actors-lock.mjs`, `actors-lock.selftest.mjs` og `roller.mjs` + `roller.selftest.mjs` fjernes; deres linjer i `package.json` `v5:selftest` (l.31) følger med.
@@ -452,20 +425,20 @@ De regler, der før stod i rolleteksterne (`snap/scripts/v5/roller/claude-ai.md`
 
 ### De 12 modsigelser (B.md §2.11) — sådan er de løst
 
-| #   | Modsigelse                                                                                               | Løsning i teksterne                                                                                                                             |
-| --- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | codex-angreb: Codex ejer måle-laget ↔ disciplin l.22/311 »Codex må ikke skrive kode«                     | Codex skriver tests og ejer måle-laget, aldrig produkt-kode; byggeren skriver aldrig tests (B4, B3; `disciplin.md` §1, §9.2, §9.3)              |
-| 2   | Codex skriver harness blindt fra den låste plan (M-41) ↔ plan: ud fra kravet, før byg, dækningsdom først | B4: tests ud fra kravet + planens navne → dækningsdom (B5) → låsning → byg (B3)                                                                 |
-| 3   | claude-ai: plan-gate-verdikt ↔ plan: kun Codex og code-reviewer; disciplin l.312 »Kun Codex-approval«    | claude-ai har intet plan-trin; planen læses af Codex alene (S2); `plan ok` er Mathias' (M-45). ½ siden skrives af Code — planner og bygger (B3) |
-| 4   | claude-ai: intet verdikt ved slut ↔ plan trin 4: claude-ai dømmer                                        | B6: læser, dømmer GODKEND/AFVIS, skriver fremlæggelsen; Mathias' `slut ok` afgør                                                                |
-| 5   | kanal: Code-terminal (M-5) ↔ disciplin: Claude.ai-appen/connector                                        | Claude Code-session, startet af fabrikken (B1, B6, B7; `disciplin.md` §1, §13). Appen og skillen bruges ikke (A)                                |
-| 6   | krav-gatens aktører = code+codex buildability ↔ plan: ét Codex-kildetjek                                 | B2 del 1-2; ubyggelighed opdages i planlæsningen og går til Codex' afgørelse efter §3.4 (B3 »Hvornår du stopper«)                               |
-| 7   | spørgsmåls-devil, fresh-eyes-audit, durabel fremlæggelse                                                 | fjernet; B1 kører selv bord-test og form-krav (`disciplin.md` §2 trin 1); fremlæggelsen er filens tekst, og ledgeren binder filens blob (H3)    |
-| 8   | planner: »alt besluttes her« ↔ plan: kort plan, byggeren vælger resten                                   | B3 trin 2 pkt. 1-8 + »Resten vælger du, når du bygger«                                                                                          |
-| 9   | builder: ny beslutning → HALT ↔ plan: byggeren vælger resten                                             | B3 »Hvornår du stopper«: HALT kun ved krav/formål/forretnings-mærkbart/masterplan/låst                                                          |
-| 10  | code-reviewer: claim_graph + review pr. bid ↔ plan: dækningsdom + Codex' ene gennemgang                  | B5 (dækning), B2 del 3-4 (planlæsning, samlet gennemgang)                                                                                       |
-| 11  | recon-rollerne har ingen efterfølger                                                                     | bortfalder (tabel D); kodefakta via Codex' for-tjek (B2 del 1)                                                                                  |
-| 12  | codex-forbedring har ingen tilsvarende rolle                                                             | bortfalder (tabel D)                                                                                                                            |
+| # | Modsigelse | Løsning i teksterne |
+|---|---|---|
+| 1 | codex-angreb: Codex ejer måle-laget ↔ disciplin l.22/311 »Codex må ikke skrive kode« | Codex skriver tests og ejer måle-laget, aldrig produkt-kode; byggeren skriver aldrig tests (B4, B3; `disciplin.md` §1, §9.2, §9.3) |
+| 2 | Codex skriver harness blindt fra den låste plan (M-41) ↔ plan: ud fra kravet, før byg, dækningsdom først | B4: tests ud fra kravet + planens navne → dækningsdom (B5) → låsning → byg (B3) |
+| 3 | claude-ai: plan-gate-verdikt ↔ plan: kun Codex og code-reviewer; disciplin l.312 »Kun Codex-approval« | claude-ai har intet plan-trin; planen læses af Codex alene (S2); `plan ok` er Mathias' (M-45). ½ siden skrives af Code — planner og bygger (B3) |
+| 4 | claude-ai: intet verdikt ved slut ↔ plan trin 4: claude-ai dømmer | B6: læser, dømmer GODKEND/AFVIS, skriver fremlæggelsen; Mathias' `slut ok` afgør |
+| 5 | kanal: Code-terminal (M-5) ↔ disciplin: Claude.ai-appen/connector | Claude Code-session, startet af fabrikken (B1, B6, B7; `disciplin.md` §1, §13). Appen og skillen bruges ikke (A) |
+| 6 | krav-gatens aktører = code+codex buildability ↔ plan: ét Codex-kildetjek | B2 del 1-2; ubyggelighed opdages i planlæsningen og går til Codex' afgørelse efter §3.4 (B3 »Hvornår du stopper«) |
+| 7 | spørgsmåls-devil, fresh-eyes-audit, durabel fremlæggelse | fjernet; B1 kører selv bord-test og form-krav (`disciplin.md` §2 trin 1); fremlæggelsen er filens tekst, og ledgeren binder filens blob (H3) |
+| 8 | planner: »alt besluttes her« ↔ plan: kort plan, byggeren vælger resten | B3 trin 2 pkt. 1-8 + »Resten vælger du, når du bygger« |
+| 9 | builder: ny beslutning → HALT ↔ plan: byggeren vælger resten | B3 »Hvornår du stopper«: HALT kun ved krav/formål/forretnings-mærkbart/masterplan/låst |
+| 10 | code-reviewer: claim_graph + review pr. bid ↔ plan: dækningsdom + Codex' ene gennemgang | B5 (dækning), B2 del 3-4 (planlæsning, samlet gennemgang) |
+| 11 | recon-rollerne har ingen efterfølger | bortfalder (tabel D); kodefakta via Codex' for-tjek (B2 del 1) |
+| 12 | codex-forbedring har ingen tilsvarende rolle | bortfalder (tabel D) |
 
 ---
 
