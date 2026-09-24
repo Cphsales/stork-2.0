@@ -168,7 +168,7 @@ export async function producerBevis({ commitSha, root = repoRoot, git = null, ru
 // doemBevis(deps) → { naaet, result, checkRun, artifactOid, envelope, forgaenger } — JOB B (dom): KUN betroet måle-lag mod git + bevis-bytes.
 // Ingen produktkode kører her; dette job må have checks:write. Bytes'ne er artefaktet: oid = hash-object over de RÅ bytes (Buffer fra fil
 // eller producentens UTF-8-streng), body = JSON.parse af den TABSFRIT afkodede tekst — ugyldig UTF-8 er rød, aldrig erstattet (F-C4b-3).
-export async function doemBevis({ commitSha, root = repoRoot, git = null, exists = null, readJson = null, readText = null, hashObject = null, planDom = null, proofBytes, fejl = null, store = null } = {}) {
+export async function doemBevis({ commitSha, root = repoRoot, git = null, exists = null, readJson = null, readText = null, hashObject = null, planDom = null, proofBytes, fejl = null, store = null, undtagelser = FRISK_STORE_UNDTAGELSER } = {}) {
   const { g, json, hashObj, pk } = ctxFor({ commitSha, root, git, exists, readJson, readText, hashObject }); void json;
   if (Array.isArray(fejl) && fejl.length) return failRes(fejl, { store });   // målingen meldte fejl (migration/input/motor) — dømmes rød m. dens grund
   const raw = Buffer.isBuffer(proofBytes) ? proofBytes : typeof proofBytes === "string" && proofBytes.length ? Buffer.from(proofBytes, "utf8") : null;
@@ -186,6 +186,20 @@ export async function doemBevis({ commitSha, root = repoRoot, git = null, exists
   const predecessor = { gate_id: "plan", conclusion: forgaenger?.result?.open === true ? "success" : "failure", artifact_oid: planSnap.artifact?.oid ?? null, bindings_oids: { manifest: planSnap.bindings?.manifest?.oid ?? null } };
   if (predecessor.conclusion !== "success") return failRes([`forgængeren (plan-gaten) er ikke åben @ ${String(forgaenger?.pinned ?? "?").slice(0, 7)}: ${(forgaenger?.result?.reasons ?? ["ikke nået"]).slice(0, 4).join("; ")}`], { store, forgaenger });
 
+  // Trin 0b, Codex-dom 1fb55f9 (P1): store-felterne DØMMES — de må ikke kunne skjules i et grønt bevis. Kræver frisk store (ingen skip),
+  // bootstrap kørt, og PRÆCIS de undtagelser listen giver for commit'ens migrationer (path + blob + grund, samme rækkefølge), og at
+  // antallet anvendte = migrationer @ commit minus undtagne.
+  { const sf = []; const stb = body?.store; const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+    if (!isObj(stb)) sf.push("beviset mangler store"); else {
+      if (stb.skipped_migrations !== false) sf.push("store.skipped_migrations ≠ false — beviset er ikke fra en frisk store");
+      if (stb.frisk_store_bootstrap !== true) sf.push("store.frisk_store_bootstrap ≠ true — bootstrap er ikke dokumenteret kørt");
+      let migs = []; try { migs = String(g("ls-tree", "--name-only", `${commitSha}:supabase/migrations`)).split("\n").filter((f) => /\.sql$/.test(f)).sort().map((f) => `supabase/migrations/${f}`); } catch (e) { sf.push(`migrationer @ commit kan ikke listes: ${e?.message ?? e}`); }
+      const forv = []; for (const u of undtagelser ?? []) { if (!migs.includes(u.path)) continue; let bo = null; try { bo = String(g("rev-parse", `${commitSha}:${u.path}`)).trim(); } catch {} if (bo !== u.blob) sf.push(`undtagelsen ${u.path} er bundet til ${u.blob.slice(0, 8)}, filen @ commit er ${String(bo).slice(0, 8)}`); forv.push({ path: u.path, blob: u.blob, grund: u.grund }); }
+      if (JSON.stringify(stb.undtagne_migrationer) !== JSON.stringify(forv)) sf.push(`store.undtagne_migrationer ≠ den godkendte liste for commit'en (forventet ${forv.length}: ${forv.map((x) => x.path).join(", ") || "ingen"})`);
+      if (stb.migrationer_anvendt !== migs.length - forv.length) sf.push(`store.migrationer_anvendt = ${String(stb.migrationer_anvendt)} ≠ ${migs.length - forv.length} (migrationer @ commit minus undtagne)`);
+    }
+    if (sf.length) return failRes(sf, { store: store ?? stb ?? null });
+  }
   const snapshot = buildSnapshot("build", { git: g, commitSha, pakke: pk, artifact: { path: lay("build", pk), oid: artifactOid, type: "ci-produced" } });
   const envelope = { ...body, ok: body?.engine?.allOk === true, gate_id: "build", proof_kind: "build-proof", artifact_oid: artifactOid, bindings_oids: Object.fromEntries(Object.entries(snapshot.bindings).map(([k, v]) => [k, v?.oid ?? null])) };
   const snap = { ...snapshot, proof_result: envelope, verdicts: [], approval: null, predecessor };

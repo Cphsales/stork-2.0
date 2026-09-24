@@ -87,7 +87,7 @@ eq("BUILD_NAAETHED = plan-approval + angrebs-spec", BUILD_NAAETHED.join(","), "p
 console.log("\nstore — migrationer @ commit som ejer, STOP ved fejl:");
 { const r = mkRunner(); const d = await doemBuild(base({ runner: r })); eq("begge migrationer anvendt i rækkefølge (0001 før 0002)", r.st.migs.join("|"), "-- migration a|-- migration b"); eq("store.anvendt = 2 i beviset", d.envelope?.store?.migrationer_anvendt, 2); }
 { const r = mkRunner({ failMigration: "migration a" }); const d = await doemBuild(base({ runner: r })); eq("første migration fejler → failure m. 'migration … fejlede', den anden køres IKKE (STOP)", d.checkRun.conclusion === "failure" && /migration supabase\/migrations\/0001_a.sql fejlede/.test(d.result.reasons[0]) && r.st.migs.length === 0, true); }
-{ const d = await doemBuild(base({ skipMigrations: true })); eq("--skip-migrations mærkes ærligt i beviset (store.skipped_migrations)", d.envelope?.store?.skipped_migrations, true); }
+{ const d = await doemBuild(base({ skipMigrations: true })); eq("--skip-migrations → RØD dom (ikke en frisk store; Codex-dom 1fb55f9)", d.checkRun.conclusion === "failure" && /skipped_migrations ≠ false/.test(d.result.reasons.join(" ")), true); }
 console.log("\nfrisk store (trin 0b) — bootstrap + blob-bundet undtagelse:");
 { const r = mkRunner(); const d = await doemBuild(base({ runner: r })); eq("bootstrap (Auth-rækker) kører FØR første migration", r.st.bootAt, 0); eq("bootstrap mærkes i beviset (store.frisk_store_bootstrap)", d.envelope?.store?.frisk_store_bootstrap, true); eq("default-undtagelsen (H024) rammer ikke fixturens migrationer → ingen undtaget", JSON.stringify(d.envelope?.store?.undtagne_migrationer), "[]"); }
 { const r = mkRunner({ failBootstrap: true }); const d = await doemBuild(base({ runner: r })); eq("bootstrap fejler → failure m. 'frisk-store-bootstrap fejlede', ingen migration køres", d.checkRun.conclusion === "failure" && /frisk-store-bootstrap fejlede/.test(d.result.reasons.join(" ")) && r.st.migs.length === 0, true); }
@@ -97,7 +97,22 @@ console.log("\nfrisk store (trin 0b) — bootstrap + blob-bundet undtagelse:");
   eq("undtagelsen skrives ind i beviset m. path+blob+grund", JSON.stringify(d.envelope?.store?.undtagne_migrationer), JSON.stringify([{ path: A, blob: bo, grund: "test" }])); }
 { const A = "supabase/migrations/0001_a.sql"; const r = mkRunner(); const d = await doemBuild(base({ runner: r, undtagelser: [{ path: A, blob: "f".repeat(40), grund: "test" }] }));
   eq("undtagelse m. ANDEN blob end filen @ commit → failure (STOP), intet anvendt", d.checkRun.conclusion === "failure" && /undtagelsen gælder ikke/.test(d.result.reasons.join(" ")) && r.st.migs.length === 0, true); }
-{ const r = mkRunner(); const d = await doemBuild(base({ runner: r, bootstrap: null })); eq("bootstrap: null (forberedt store) → ingen bootstrap, mærket false", r.st.bootAt === undefined && d.envelope?.store?.frisk_store_bootstrap === false, true); }
+{ const r = mkRunner(); const d = await doemBuild(base({ runner: r, bootstrap: null })); eq("bootstrap: null → ingen bootstrap kørt OG RØD dom (frisk_store_bootstrap ≠ true)", r.st.bootAt === undefined && d.checkRun.conclusion === "failure" && /frisk_store_bootstrap ≠ true/.test(d.result.reasons.join(" ")), true); }
+console.log("\nstore-felterne DØMMES (Codex-dom 1fb55f9, P1) — kan ikke skjules i et grønt bevis:");
+{ const A = "supabase/migrations/0001_a.sql"; const bo = git("rev-parse", `${COMMIT2}:${A}`); const U = [{ path: A, blob: bo, grund: "test" }];
+  const p = await producerBevis(base({ undtagelser: U })); const ok = await doemBevis(base({ proofBytes: p.proofBytes, undtagelser: U }));
+  eq("kontrol: bevis m. bootstrap + korrekt undtagelse → ÅBEN", ok.result.open, true);
+  const tamp = async (fn) => { const b = JSON.parse(p.proofBytes); fn(b); return doemBevis(base({ proofBytes: JSON.stringify(b, null, 1) + "\n", undtagelser: U })); };
+  const rød = async (navn, fn, re) => { const d = await tamp(fn); eq(navn, d.checkRun.conclusion === "failure" && re.test(d.result.reasons.join(" ")), true); };
+  await rød("store slettet → rød", (b) => { delete b.store; }, /mangler store/);
+  await rød("frisk_store_bootstrap: false → rød", (b) => { b.store.frisk_store_bootstrap = false; }, /frisk_store_bootstrap ≠ true/);
+  await rød("bootstrap-feltet slettet → rød", (b) => { delete b.store.frisk_store_bootstrap; }, /frisk_store_bootstrap ≠ true/);
+  await rød("undtagelseslisten tømt → rød", (b) => { b.store.undtagne_migrationer = []; }, /undtagne_migrationer ≠ den godkendte liste/);
+  await rød("forkert blob i undtagelsen → rød", (b) => { b.store.undtagne_migrationer[0].blob = "f".repeat(40); }, /undtagne_migrationer ≠ den godkendte liste/);
+  await rød("en ANDEN migration påstået undtaget → rød", (b) => { b.store.undtagne_migrationer = [{ path: "supabase/migrations/0002_b.sql", blob: bo, grund: "test" }]; }, /undtagne_migrationer ≠ den godkendte liste/);
+  await rød("migrationer_anvendt forfalsket → rød", (b) => { b.store.migrationer_anvendt = 2; }, /migrationer_anvendt = 2 ≠ 1/);
+  await rød("skipped_migrations: true → rød", (b) => { b.store.skipped_migrations = true; }, /skipped_migrations ≠ false/);
+  const d2 = await doemBevis(base({ proofBytes: p.proofBytes, undtagelser: [{ path: A, blob: "e".repeat(40), grund: "test" }] })); eq("godkendt liste m. anden blob end filen @ commit → rød i dommen", d2.checkRun.conclusion === "failure" && /bundet til eeeeeeee/.test(d2.result.reasons.join(" ")), true); }
 
 console.log("\nforgænger — plan-gaten frisk:");
 { const d = await doemBuild(base({ planDom: planDom(false) })); eq("plan-gaten lukket → build failure m. forgængerens grund", d.checkRun.conclusion === "failure" && /forgængeren \(plan-gaten\) er ikke åben/.test(d.result.reasons[0]) && /approval mangler/.test(d.result.reasons[0]), true); }
