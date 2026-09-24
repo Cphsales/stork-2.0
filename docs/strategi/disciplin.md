@@ -124,7 +124,7 @@ Codex læser planen én gang, og der er én rettelse. Codex genlæser kun rettel
   - **Hvad en test er:** offentlig indgang · rigtig database med en rolle uden bypass · hård slut-effekt (række, tilstand, fejlkode). Det gælder også når planen gør et negativ umuligt (constraint, type, RLS): umuligheden bevises gennem den rigtige indgang med en effekt-test — en constraint erstatter aldrig effekt-testen (D13, M-40). En test der kun tjekker en intern hjælpefunktions svar, tæller ikke. Mutanterne dræbes gennem samme effekt-sti.
   - En test uden forventning er tom og tæller som rød. Hvert dækket negativ skal være forsøgt og afvist netop dér.
   - **Vejnings-reglen:** _"tjener testen et led, og ville en reel falsk-grøn slippe UDEN den?"_ Nej → over-test → skriv den ikke.
-- **Grøn = reel konsekvens, aldrig påstand.** Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt (workflow-kravet juni 2026, krav 3). »funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.« (workflow-kravet juni 2026, krav 1)
+- **Grøn = reel konsekvens, aldrig påstand.** Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt. »funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.«
 - **Byggetjekket** er ét CI-job med fire tjek: (a) testene er grønne · (b) de udpegede mutanter er dræbt · (c) intet låst er ændret (planen, testene, manifestet, testindekset, `prover.json`) · (d) planen og kørselsfladen er dem, `plan ok` og den grønne dækningsdom bandt (blob for blob).
 - **Byggeren vælger det planen ikke afgør** og skriver valgene i slut-rapporten. Bygningen er mekanisk dømt af byggetjekket; der er ingen byg-godkendelse hos Mathias.
 - **Build-fokus: fokus under build SKAL være build.** Opstår der ændringer under byg, er et større issue gæld (G-nummer, løses KORREKT senere, ikke hurtigt/hacket), og et mindre er et bilag til ændringen. Repo-docs røres ikke under byg; de rettes ved trin 4.
@@ -227,7 +227,7 @@ Fuld dømmekrafts-pris hvor dømmekraft kræves; mekanik hvor mekanik beviseligt
 
 **Slettes ved pakke-luk:** alt andet i `plan-build/<pakke>/` (arbejdsfiler, udkast, byggetjekkets input). Byggetjekkets input fjernes først, når ingen kontrol længere læser det.
 
-**Én bevarings-politik.** Hvert dokument har ét formål, ingen dubletter, én sandhed (workflow-kravet juni 2026, krav 8). Arkivet er ikke en voksende kirkegård; iterations-, review- og udkast-filer lever i git-history, ikke som filer på main.
+**Én bevarings-politik.** Hvert dokument har ét formål, ingen dubletter, én sandhed. Arkivet er ikke en voksende kirkegård; iterations-, review- og udkast-filer lever i git-history, ikke som filer på main.
 
 **Pakke-luk-tjek — udtømt formål:** ved hver pakke-luk tjekkes også: docs hvis formål DENNE pakke har udtømt — også uden for pakkens egne filer — slettes/arkiveres med begrundelse. Repo-renhed gælder alt der mister formål, ikke kun pakkens egne artefakter. (Samme princip gælder GitHub-fladen: døde PR'er lukkes med begrundelse; merged branches auto-slettes — `delete_branch_on_merge` aktiv.)
 
@@ -318,7 +318,7 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 
 ### §9.1 claude-ai-rollen
 
-**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. »Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.« (workflow-kravet juni 2026, krav 2)
+**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. »Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.«
 
 **Mathias forstår ikke kode; hans gates skal være reelle.** Alt der fremlægges for ham, står i hans sprog. Konklusionen står først. Hans reelle afgørelser er adskilt fra teknik.
 
