@@ -300,6 +300,8 @@ AI-aktørerne retter aldrig selv en modsigelse mod de styrende dokumenter.
 
 **Masterplanen:** rettelser formuleres som forslag (ordret nuværende → ny tekst) og lægges ind først, når Mathias har godkendt teksten. Ved pakke-slut sker det med `slut ok` (§2 trin 4). Hver post på kravets liste »Afgøres ved senere trin« skrives ind i masterplanen ved det trin, den hører til, så det trins krav-session finder den. Code committer ordret.
 
+**Vagten:** Rettelser i vision, forretningsforståelse og masterplanen vises ordret i chatten, og Mathias' ja til netop den tekst skrives i ledgeren med filen og den nye blob; CI og hooken afviser ellers ændringen (`scripts/v5/sandhed-vagt.mjs`).
+
 ---
 
 ## §9 Rolle-disciplin pr. AI
