@@ -77,3 +77,11 @@ En godkendelse henviser til præcis den fil og version (blob/commit) han så.
 | M-70 | 2026-09-24 | »og det samme er gældende med masterplanen« | — |
 | M-71 | 2026-09-24 | »ja - ja - ja og har jeg ikke godkendt workflow planen?« | ja 1: l.5-rettelserne vist ordret i chatten — vision-og-principper.md → blob 309fc5949ded · forretningsforstaaelse.md → blob cde05276985a · ja 2: at masterplan-rettelserne fremlægges ordret i chatten og først lægges ind efter ja til netop den tekst · ja 3: sætningen »Vagten« i disciplin.md §8.1 |
 | M-72 | 2026-09-24 | »præcis - derfor skal workflowet vel være færdigbygget inden en ny pakke åbnes« | — |
+| M-73 | 2026-09-24 | »lige en rettelse - hvor finder du min regel om  at workflowet ændres mellem pakker?« | disciplin.md §2 regel 2 (AI-forslag i workflow-planen, ikke hans ord) |
+| M-74 | 2026-09-24 | »nej vent - det er præcise alle disse falske sandheder som løbende bliver noteret i vores repo - workflowet danner rammen sammen med det relevante workflows doks. alt andet skaber støj« | — |
+| M-75 | 2026-09-24 | »du har tidligere analyseret vores repo og mit krav til workflowet og repo er at det holdes "rent" for støj« | — |
+| M-76 | 2026-09-24 | »nej du må gerne spørge« | — |
+| M-77 | 2026-09-24 | »er der andre steder hvor samme støj eksistere« | — |
+| M-78 | 2026-09-24 | »men det er vigtigt at støj kun er noget som ikke skaber værdig for workflowet« | — |
+| M-79 | 2026-09-24 | »der kan sagten være forældet krav« | henvisninger i disciplin.md til workflow-kravet juni 2026 |
+| M-80 | 2026-09-24 | »og netop derfor er det vigtigt at der løbende ryttes op - du har selv lige fundet et gammel krav dok som er forældet - vi bygger jo et nyt workflow« | — |
