@@ -25,7 +25,6 @@ recon/
 # fabrikkens egne artefakter er blob-bundne (hærdet-register + actors.lock skill_oid) — blob-stabilitet > formatering
 scripts/v5/
 docs/workflow-faerdiggoerelse/
-docs/workflow-plan/
 # Mathias-godkendte tekster lægges ind ordret (workflow-planen M-67) — ingen omformatering
 docs/strategi/
 docs/teknisk/
