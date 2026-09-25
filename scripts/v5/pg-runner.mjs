@@ -120,7 +120,8 @@ export function makeHttpRunner({ baseUrl, jwtSecret, defaultSchema = null, fetch
     }
     if (typeof res.status !== "number") return dead("http: intet statussvar");
     let json = null; if (text.trim()) { try { json = JSON.parse(text); } catch { json = null; } }
-    if (res.status >= 200 && res.status < 300) return { ok: true, error: null, code: null, detail: null, http_status: res.status, rows: Array.isArray(json) ? json : undefined };
+    const svarHeaders = {}; try { res.headers?.forEach?.((v, k) => { svarHeaders[k] = v; }); } catch {}
+    if (res.status >= 200 && res.status < 300) return { ok: true, error: null, code: null, detail: null, http_status: res.status, rows: Array.isArray(json) ? json : undefined, body: json, headers: svarHeaders };
     const code = json && typeof json.code === "string" && json.code ? json.code : null;
     const message = json && typeof json.message === "string" ? json.message : null;
     if (!code) return dead(`http ${res.status} uden PostgREST-fejlkode i body (${text.slice(0, 120)}) — ikke klassificerbar`);

@@ -24,7 +24,7 @@
 
 ## Testdatabasen
 
-Byggetjekket kører alle migrationer på en tom Supabase-Postgres. To test-brugere indsættes i `auth.users` først (migrationen `t1_bootstrap_admins` peger på dem), og én oprydnings-migration, der kræver data fra driften, springes over — kun præcis den godkendte blob.
+Byggetjekket kører alle migrationer på en tom Supabase-Postgres med styret klokke (start `@2026-04-01 00:00:00`; testene flytter uret fremad). DB-testene i `supabase/tests/` kører i et eget CI-job på en tom database med rigtig tid. To test-brugere indsættes i `auth.users` først (migrationen `t1_bootstrap_admins` peger på dem), og én oprydnings-migration, der kræver data fra driften, springes over — kun præcis den godkendte blob.
 
 ## Fitness checks
 

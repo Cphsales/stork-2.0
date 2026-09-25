@@ -12,6 +12,7 @@
 // Brug:
 //   node scripts/v5/byggetjek.mjs --pg env --rapport <fil>        (CI: frisk testdatabase fra PG*-miljøet)
 //   node scripts/v5/byggetjek.mjs --kun-bindinger                   (ingen database; kun (d))
+//   node scripts/v5/byggetjek.mjs --pg env --kun-migrationer        (kun testdatabasens opstart og migrationer, fx til db:test)
 //   … --base <ref>   en PR der ændrer pakke-kode kræver grønt byggetjek + `slut ok` + kun afslutningsfiler efter prøven
 // Exit 0 = grøn eller ikke nået (se rapporten) · exit 1 = rød.
 
@@ -120,10 +121,10 @@ export function pakkerMedMaalelag(root) {
   return readdirSync(join(root, "plan-build")).filter((p) => existsSync(join(root, "plan-build", p, "angrebs-spec.json"))).sort();
 }
 
-async function koerDatabase({ root, argv, rapport, pakker }) {
-  const { makePgRunner, makeHttpRunner } = await import("./pg-runner.mjs");
+async function koerDatabase({ root, argv, rapport, pakker, kunMigrationer = false }) {
+  const { makePgRunner } = await import("./pg-runner.mjs");
   const { runTestSuite } = await import("./test-runner.mjs");
-  const http = process.env.V5_PGRST_URL ? makeHttpRunner({ baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET, defaultSchema: process.env.V5_PGRST_SCHEMA ?? null }) : null;
+  const http = process.env.V5_PGRST_URL ? { baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET ?? "", defaultSchema: process.env.V5_PGRST_SCHEMA || null } : null;
   const runner = makePgRunner({ argv, http });
   const git = (a) => execFileSync("git", ["-C", root, ...a], { encoding: "utf8" });
   const b = await runner.sql(FRISK_STORE_BOOTSTRAP, {});
@@ -137,6 +138,7 @@ async function koerDatabase({ root, argv, rapport, pakker }) {
     if (!r.ok) return { ok: false, fejl: [`migration ${p} fejlede: ${r.error}`] };
   }
   if (http) { try { await runner.sql("notify pgrst, 'reload schema';", {}); } catch {} }
+  if (kunMigrationer) return { ok: true, fejl: [], pakker: {} };
   // testene kører som brugernes roller; de må ikke kunne omgå rettighederne
   const by = await runner.sql("select rolname from pg_roles where rolname in ('authenticated','anon') and rolbypassrls", {});
   if (!by.ok) return { ok: false, fejl: [`kan ikke tjekke testrollerne: ${by.error}`] };
@@ -187,7 +189,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const argv = pg === "env" ? ["psql", "-X"] : JSON.parse(pg);
     // den åbne pakke køres først, når dens bindinger er grønne; lukkede pakker køres altid (regression)
     const pakker = pakkerMedMaalelag(root).filter((p) => p !== pakke || b.status === "grøn");
-    db = await koerDatabase({ root, argv, rapport: arg("--rapport"), pakker });
+    db = await koerDatabase({ root, argv, rapport: arg("--rapport"), pakker, kunMigrationer: process.argv.includes("--kun-migrationer") });
     console.log(`byggetjek: tests og slutprøve ${db.ok ? "grønne" : "RØDE: " + db.fejl.join(" · ")}`);
   }
   let status = b.status === "rød" || !db.ok ? "rød" : b.status === "grøn" ? "grøn" : "ikke nået";

@@ -103,6 +103,8 @@ console.log("\nlib — exec · session · ur (FA-3):");
   const r = await lib.exec(["node", "x.mjs"]); eq("lib.exec → runner.exec {exit_code, stdout}", r.exit_code === 1 && /klasse=/.test(r.stdout), true);
   eq("lib.session(name) → runner.session", lib.session("A").navn, "A");
   let e = null; try { lib.ur.saet("2026-04-01T00:00:00Z"); } catch (x) { e = x; } eq("ur uden V5_FAKETIME_FILE → Afvist (ærligt rød, ikke stiltiende)", e instanceof Afvist && /ur-driver ikke tilgængelig/.test(e.message), true); eq("ur.tilgaengelig false", lib.ur.tilgaengelig, false); }
+{ const lib = makeLib({ runner: { ...mkRunner(), race: async () => ({ protocolOk: true, a: {}, b: {} }) }, manifest: MANIFEST, pakke: "pk" }); const r = await lib.race({}); eq("lib.race med den rigtige runners svar ({protocolOk} uden ok) → virker", r.protocolOk === true, true); }
+{ const lib = makeLib({ runner: { ...mkRunner(), race: async () => ({ ok: true }) }, manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.race({}); } catch (x) { e = x; } eq("lib.race uden protocolOk → Afvist", e instanceof Afvist && /protocolOk/.test(e.message), true); }
 { const lib = makeLib({ runner: mkRunner(), manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.exec(["x"]); } catch (x) { e = x; } eq("lib.exec uden runner.exec → Afvist", e instanceof Afvist && /runner.exec mangler/.test(e.message), true); }
 { const file = join(ROOT, "faketime.txt"); const ur = urFraMiljoe({ V5_FAKETIME_FILE: file });
   eq("ur.saet skriver libfaketime-format @YYYY-MM-DD HH:MM:SS", ur.saet("2026-04-03T02:29:30Z"), "@2026-04-03 02:29:30"); eq("filen bærer stemplet", readFileSync(file, "utf8"), "@2026-04-03 02:29:30\n");

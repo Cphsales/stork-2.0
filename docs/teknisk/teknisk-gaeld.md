@@ -56,15 +56,11 @@
 - **Risiko hvis glemt:** Mellem før cutover, høj efter.
 - **Løses-i:** før cutover.
 
-### [G077] MELLEM — testbiblioteket: race-tests kaster altid, HTTP-svar tabes, OpenAPI-tjekket rammer driftsprojektet
+### [G077] LAV — testbiblioteket: resten efter rettelserne
 
-- **Beskrivelse:** (1) LIB-RACE: `lib.race` kræver `{ok:boolean}` (`scripts/v5/test-runner.mjs` l.58, 87), men `pg-runner`s `race()` returnerer `{protocolOk,…}` (`pg-runner.mjs` l.211-239), så alle race-tests kaster. (2) LIB-HTTP: et HTTP-svar der ikke er et array, tabes (`rows` kun hvis `Array.isArray`, `pg-runner.mjs` l.125), og headers ignoreres. (3) Kontraktbehov #10: `postgrest-t9-schema-exposure` spørger det eksterne driftsprojekt (`scripts/fitness.mjs` l.1015), ikke test-databasen. (4) 15 datoforløb er ikke testet, fordi den styrede klokke mangler (HALT-FA3-listen i Codex' pas 1). (5) Det er ikke verificeret at en manglende database aldrig giver exit 0 i de beholdte runnere (O-9).
-- **Vision-svækkelse:** Én sandhed — test-grønt kan skyldes et bibliotek der ikke måler.
-- **Introduceret:** Fase 4 (2026-09-21). Står i dag kun i `provenance/angrebs-tests-pas1.leverance.md`, `angrebs-kontraktbehov.leverance.md` og fund-log (fjernes).
-- **Skal løses:** (1)-(2) rettes i test-biblioteket; (3) OpenAPI-tjekket flyttes til test-databasen; (4) styret klokke — også for API- og login-tokens' tid; (5) manglende database = rødt.
-- **Risiko hvis glemt:** Mellem. »Codex færdiggør testene« kan ikke lykkes.
-- **Løses-i:** pakke 1, trin 2 (workflow-planen §3).
-
+- **Beskrivelse:** (1) LØST: `lib.race` tager nu runnerens `{protocolOk}` (`test-runner.mjs`; selvtest). (2) LØST: HTTP-svar afleverer `body` og `headers`, også når svaret ikke er en liste (`pg-runner.mjs`). (3) Bevidst: OpenAPI-tjekket i fitness læser driftsprojektet, fordi det tjekker driftens PostgREST-opsætning; pakkernes API-tests kører mod testdatabasens PostgREST. (4) Den styrede klokke findes nu (`scripts/v5/testdb-start.sh`, libfaketime på Postgres); de datoforløb der kræver den, skrives i pakke 1's tests. JWT-tokens og PostgREST bruger den rigtige tid. (5) LØST: uden database fejler byggetjekkets opstart (rødt).
+- **Skal løses:** (4) datoforløbene i pakke 1.
+- **Løses-i:** pakke 1, trin 3.
 ### [G076] LAV — accepteret restrisiko: godkendelsesordet kommer fra en kanal producenten kan skrive i
 
 - **Beskrivelse:** Mathias' `krav ok`/`plan ok`/`slut ok` falder i chatten og skrives i ledgeren af en AI-session (approval-filerne fjernes, §8.2). Kæden beviser tekst og rækkefølge, ikke hvem der skrev ordet (R-CI-APPROVER-FLOW / R-CI-AUTENTICITET, implementeringsplanen @ 87a877b l.338, 340).
@@ -396,16 +392,6 @@
 - **R7h-håndtering:** Test 2 bruger Strategi A (seed legacy flat-shape direkte i anonymization_state) for at isolere R7a regprocedure-fix. Replay-shape-bug testes IKKE i R7h.
 - **Løses-i:** før første post-cutover replay-kørsel
 
-### [G047] MELLEM — DB-tests kører mod live remote DB (ingen isoleret test-DB)
-
-- **Beskrivelse:** `scripts/run-db-tests.mjs:15` peger på samme Supabase-project som production (`imtxvrymaqbgcvsarlib`). DB-tests kører mod live remote via Management API. Konsekvens under T9-build: 3 admin-merges med rød CI (PR #36-38) fordi DB-tests fejlede chicken-and-egg ved partial T9-deploy (M1 + r7b smoke-tests forventede T9-tabeller der først blev oprettet efter merge + push).
-- **Vision-svækkelse:** Drift-disciplin (§3). CI-rød accepteres som "ventet" hvilket svækker signal-værdi.
-- **Introduceret:** Trin 1 (run-db-tests-script + CI-workflow).
-- **Skal løses:** Før næste større pakke der ændrer schema (T9-supplement, trin 10+).
-- **Risiko hvis glemt:** Mellem. Future bugs i applied migrations manifesterer sig som DB-test-fejl på efterfølgende PRs uden mulighed for at fixe i PR'en.
-- **Plan:** Provisioning af separat Supabase-project (eller Supabase branching-feature på Pro+); CI-step der applier alle migrations til test-DB før db:test; sekret SUPABASE_TEST_PROJECT_REF + SUPABASE_TEST_ACCESS_TOKEN; run-db-tests.mjs udvidet med project-ref-valg.
-- **Løses-i:** pakke 1 (lokations-skabelon), trin 2 — test-database til PR-kontrollerne (workflow-planen §3). `db:test` og fitness' live-tjek rammer i dag driftsprojektet (`scripts/run-db-tests.mjs` l.15).
-
 ### [G048] LAV — Step 3's fil-as-applied indeholder buggy closure-rebuild CTE
 
 - **Beskrivelse:** `supabase/migrations/20260518000002_t9_org_node_closure.sql:71` har `join nodes_now n on n.node_id = ac.descendant_id` (skulle have været `ac.ancestor_id`). Bug fixed via CREATE OR REPLACE i Step 12 (000010_t9_seed_owners.sql). Step 3's fil er applied til remote — append-only-disciplin forhindrer in-place fix.
@@ -470,6 +456,10 @@
 - **Løses-i:** Lag E (RPC-test-mønster — udvid til Mønster D ved behov)
 
 ## Løst gæld (arkiv)
+
+### [G047] LØST 2026-09-25 — DB-tests kørte mod driftsdatabasen
+
+- **Løsning:** CI-jobbet »DB-tests mod testdatabasen« kører alle migrationer på en tom Supabase-Postgres og derefter `supabase/tests/` mod den (`scripts/run-db-tests.mjs` med `DATABASE_URL`). Afprøvet lokalt: 45 af 45 grønne. Fitness' live-tjek læser stadig driftsprojektet med vilje (de tjekker driftens konfiguration).
 
 ### [G063] LØST 2026-09-25 — midlertidig governance-check-allowlist
 
