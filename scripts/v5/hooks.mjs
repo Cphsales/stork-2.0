@@ -18,7 +18,8 @@ const MAALELAG = [
 ];
 const CODEX_DOM = [re(`plan-build/${PAKKE}/(codex-plan|codex-gennemgang)\\.md`)];
 const REVIEWER_DOM = [re(`plan-build/${PAKKE}/daekningsdom\\.json`)];
-const LEDGER = ["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md"];
+// ledgeren og den ældre log over Mathias' afgørelser: kun nye rækker/afsnit må tilføjes
+const LEDGER = ["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md", "docs/sandhed/mathias-afgoerelser-historik.md"];
 const ORDBOG = ["docs/sandhed/ordbog.md", "plan-build/lokations-skabelon/ordbog.md"];
 const KRAV = re(`docs/sandhed/krav/${PAKKE}-krav\\.md`);
 const PRODUKT = ["supabase/migrations", "supabase/functions", "apps", "packages"];

@@ -1,7 +1,0 @@
-{
- "open": true,
- "gate_id": "krav",
- "reasons": [],
- "commit_sha": "efc85d5e7ca70aa1689306ee4bf5e560bed029c5",
- "evalueret": "scripts/v5/krav-gate-run.mjs (pinnet script — M-40 A1; frisk verifyProof+verifyVerdict+recon-forgænger mod rå git); CI-check-run = DEL V-residual"
-}
