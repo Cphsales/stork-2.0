@@ -15,12 +15,12 @@
 | **Mathias** | Tanker, funktioner, logik, vision. Eneste beslutningstager. Giver de tre godkendelses-ord: `krav ok` · `plan ok` · `slut ok`. Vælger masterplan-trinnet der åbnes som pakke |
 | **claude-ai-rollen** | Skriver kravet i dialog med Mathias, i hans sprog (trin 1). Læser slut-rapporten mod kravet og hans dokumenter og skriver fremlæggelsen for ham (trin 4). Formulerer rettelser til hans dokumenter efter §8.1. Kører i en Claude Code-session (M-5). Det er den aktør, de ældre regler i denne fil kalder »Claude.ai« |
 | **Code — planner og bygger** | Én rolle i to trin: skriver den korte plan og afgør teknikken (trin 2); bygger efter planen, vælger det planen ikke afgør og skriver valgene i slut-rapporten, som den også skriver (trin 3). Låsene (`plan ok` og testlåsen) holder plan og byg adskilt |
-| **Codex** | Slår op hvad Mathias' dokumenter og koden allerede siger om masterplan-trinnet, før krav-dialogen, og holder kravet op mod dokumenterne begge veje (trin 1). Læser planen og genlæser den ene rettelse (trin 2). Skriver testene ud fra kravet og ejer manifestet, testindekset og testvalg-filen (trin 3). Gennemser den samlede ændring én gang (trin 3). Afgør om et trin der ikke lukker, skyldes indhold eller teknik (§3.4). Skriver aldrig produktkode |
+| **Codex** | Slår op hvad Mathias' dokumenter og koden allerede siger om masterplan-trinnet, før krav-dialogen, og holder kravet op mod dokumenterne begge veje (trin 1). Læser planen og genlæser den ene rettelse (trin 2). Skriver testene og slutprøven ud fra kravet og ejer manifestet, testindekset, testvalg-filen og slutprøven (trin 3). Gennemser den samlede ændring én gang (trin 3). Afgør om et trin der ikke lukker, skyldes indhold eller teknik (§3.4). Skriver aldrig produktkode |
 | **code-reviewer** | Dømmer at testene dækker hvert krav (trin 3) |
-| **Fabrikken** | Code som orkestrator: starter hver rolles session, overdrager mellem sessionerne og merger pakke-PR'en på betingelserne i §6. Ændrer aldrig indhold og taler aldrig på Mathias' vegne (§9.5) |
+| **Fabrikken** | Den session Mathias taler med. Som orkestrator starter den de øvrige rollers sessioner, overdrager mellem dem og merger pakke-PR'en på betingelserne i §6; som orkestrator ændrer den aldrig indhold og taler aldrig på Mathias' vegne (§9.5). I trin 1 og 4 bærer den claude-ai-rollen (§1 »Sessioner«) |
 | **CI** | Kører byggetjekket (§2 trin 3) og slutdommen. Afviser at pakke-kode merges uden `slut ok` i ledgeren (§6) |
 
-**Sessioner:** fabrikken starter hver rolles session med dens rolletekst og overdrager mellem sessionerne (§3.5, §9.5). Mathias starter ingen sessioner; han taler med den rolle, der er i gang, og giver sine ord i chatten.
+**Sessioner:** Mathias taler med én session: fabrikken. Den bærer claude-ai-rollen i trin 1 og 4 (den læser rolleteksten, når trinnet begynder, og laver ingen workflow-mekanik, mens den bærer rollen) og fremlægger ½-siden i trin 2. De øvrige roller — Code — planner og bygger, Codex og code-reviewer — kører som friske sessioner uden for chatten; fabrikken starter dem med rolleteksten og bringer deres resultater videre som filer (§3.5, §9.5). Codex kaldes kun gennem `scripts/v5/codex-run.sh` (§6). Mathias starter ingen sessioner.
 
 **Ingen AI må:** træffe forretnings-beslutninger på Mathias' vegne · skrive "afgørelser"/"ramme-låsninger" som AI · fortolke retning som specifikation uden bekræftelse · designe datamodel uden Mathias-input (Claude.ai) · skrive produktkode (Codex — Codex skriver kun testene) · påstå repo-/DB-tilstand uden at have verificeret den (alle).
 
@@ -38,16 +38,16 @@ At verificere er at have læst den faktiske database og kode i denne session (fu
 
 Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
-**Pakke-åbning:** Mathias vælger masterplan-trinnet og åbner pakken i chatten. Én pakke ad gangen.
+**Pakke-åbning:** Mathias vælger masterplan-trinnet og åbner pakken i chatten. Én pakke ad gangen. Fabrikken skriver pakkens navn i `launch/launch.json`; byggetjekket og slutdommen læser den.
 
 | Trin | Hvad sker | Hvem dømmer | Mathias |
 | --- | --- | --- | --- |
 | **1. Krav** | Codex slår først op, hvad Mathias' dokumenter og koden allerede siger om trinnet, så der kun spørges om det de ikke besvarer. Dialog med Mathias. Kravet skrives i hans sprog, og hver sætning peger på hans ord (ledgeren) eller hans dokumenter. Codex holder udkastet op mod forretningsforståelsen, visionen og masterplanen — begge veje. Afvigelse = spørgsmål til Mathias | Codex | **`krav ok`** |
-| **2. Plan** | Kort plan. Den indeholder kun det testene og kravet bruger, de valg Mathias kan mærke i forretningen, afvigelser fra masterplanen og det han skal orienteres om (fx tidszone, persondata). Planen disponerer også den tekniske gæld (G/H) der rammer pakken. Byggeren vælger resten og skriver det i slut-rapporten | Codex, én gang; én rettelse, som Codex genlæser | ½ side → **`plan ok`** |
+| **2. Plan** | Kort plan. Den indeholder kun det testene og kravet bruger, de valg Mathias kan mærke i forretningen, afvigelser fra masterplanen og det han skal orienteres om (fx tidszone, persondata). Planen disponerer også den tekniske gæld (G/H) der rammer pakken. Byggeren vælger resten og skriver det i slut-rapporten | Codex (dommen i `codex-plan.md`) | ½ side → **`plan ok`** |
 | **3. Byg** | Codex skriver testene ud fra kravet. Code-reviewer dømmer at testene dækker hvert krav. Planen låses ved `plan ok`. Testene, manifestet, testindekset og filen der vælger hvilke tests der køres, låses ved grøn dækningsdom (dommen binder deres blobs). CI's byggetjek kører testene og mutant-prøven og afviser byggeriet hvis noget låst er ændret. Codex gennemser den samlede ændring én gang | CI + code-reviewer + Codex | — |
 | **4. Slut** | Slutprøve gennem brugernes indgange på testdatabasen med realistiske data — på driftsdata kun når pakken læser data der allerede findes (fx løn). Kort rapport i Mathias' sprog: scenarier, resultat, om visionen holder, og hvad der skal rettes i hans dokumenter. Med `slut ok` rettes de | CI + claude-ai-rollen | **`slut ok`** = det må i drift (CI kræver ordet i ledgeren før merge) |
 
-**Godkendelses-ordene** er de tre ord ovenfor. Hvert ord står ordret i ledgeren (`docs/sandhed/mathias-ord.md`) med nummer og blob-OID for præcis den fil Mathias så:
+**Godkendelses-ordene** er de tre ord ovenfor. Den rolle der taler med Mathias, skriver ordet: claude-ai-rollen ved `krav ok`, fabrikken ved `plan ok`, claude-ai-rollen ved `slut ok`. En række i ledgeren rummer kun hans ord ordret, datoen og hvad han svarede på eller godkendte (fil og blob) — aldrig en tolkning. Hvert ord står i ledgeren (`docs/sandhed/mathias-ord.md`) med nummer og blob-OID for præcis den fil Mathias så:
 - `krav ok` → krav-filen (hele filen er fremlæggelsen)
 - `plan ok` → `plan.md` (afsnittet »Mathias' ½ side« er fremlæggelsen)
 - `slut ok` → `slut-rapport.md` (afsnittet »Fremlæggelse for Mathias« er fremlæggelsen) og den prøvede kodeversion, som rapporten angiver (commit)
@@ -56,7 +56,7 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 
 **To regler:**
 1. **Teknik eller indhold:** reglen står i §3.4.
-2. **Workflowet ændres kun mellem pakker.** Pakke 1 (lokations-skabelonen) er den ene undtagelse: den står mellem plan og byg, og intet er bygget.
+2. **Workflowet ændres kun mellem pakker og kun med Mathias' `ok` til en workflow-plan**, der indeholder den ordrette tekst. Vagten afviser en ændring af denne fil eller rolleteksterne, som ikke har hans ord i ledgeren med filen og den nye blob (§8.1).
 
 ### Trin 1 — Krav
 
@@ -79,7 +79,7 @@ De fem regler nedenfor (afled-før-spørg, bord-testen, ét-skridts-reglen, spø
 
 **ÉT-SKRIDTS-REGLEN (M-33, 2026-09-08):** følger konsekvensen af Mathias' ORDRETTE ord (ledgeren) i ét skridt, er det en **BEKRÆFTELSE** i fremlæggelsen (»dit ord siger X (M-n) → kravet siger Y — står medmindre du siger stop«, batchet, ét samlet ok) — ALDRIG et spørgsmål. Kun ægte åbne punkter (intet M-ord bærer dem i ét skridt) går videre som spørgsmål. INTET loft/takt-budget på spørgsmål (Mathias afviste værn 3) — værnet er kvalitativt, ikke et tal. Teknik-/model-forks noteres i stedet EKSPLICIT som **plan-fase-afgørelser**: planner afgør inden for kravets ramme, Codex læser planen, og Mathias' plan OK dækker dem. De forsvinder ALDRIG tavst — de flytter bord, synligt, på kravets »Flyttet til planen«-liste.
 
-**FORM-KRAV til spørgsmål der BESTÅR bord-testen (M-26 — et uskarpt spørgsmål koster hans svar):**
+**FORM-KRAV til spørgsmål der BESTÅR bord-testen (skærpet efter M-26 »synes stadig ikke de er helt skarpe«):**
 1. **ÉN beslutning pr. spørgsmål.** Del-spørgsmål må ALDRIG gemmes i en parentes/hale (de bliver svaret forbi) — de får eget nummer eller venter.
 2. **SCENARIE-FORM:** stil spørgsmålet som en konkret situation fra HANS forretning med navngivne klienter/steder ("Tryg i Bilka Hundige…"), aldrig meta-sprog ("hvad repræsenterer X kommercielt?" forstår han med rette ikke).
 3. **SVARBART MED ÉT ORD:** giv svarmulighederne (ja/nej eller 2-3 navngivne udfald) + evt. din anbefaling. Svarer han "forstår ikke" → spørgsmålet HALTER og omformuleres — gå ALDRIG videre uden svar.
@@ -113,11 +113,11 @@ Planen skrives efter skabelonen i §10.2 af Code — planner og bygger. Den er k
 - **Fundamentet:** planen skal stå på mål med vision og forretningsforstaaelse. Vil en plan ændre det Mathias' dokumenter siger, fremlægges det i ½-siden før `plan ok` (spørgereglen ovenfor), så han kan godkende det eller sige stop. En plan godkendes ikke stående på fundament den modsiger.
 - Pakke-størrelse: §3.8.
 
-Codex læser planen én gang, og der er én rettelse. Codex genlæser kun rettelsen (deltaen), ikke hele planen. Så får Mathias ½ side i sit sprog: afvigelser fra masterplanen, de valg han kan mærke og orienteringerne. ½-siden er et afsnit i `plan.md` og fremlægges ordret. Han svarer **`plan ok`**, og ledgeren binder ordet til `plan.md`'s blob. Planen ændres herefter aldrig tavst: en ny version kræver et nyt `plan ok`.
+Codex læser planen og skriver sin dom i `plan-build/<pakke>/codex-plan.md` med planens blob. Retter Code planen, vurderer Codex rettelsen og de krav den berører, og dommen opdateres (§5). Så får Mathias ½ side i sit sprog: afvigelser fra masterplanen, de valg han kan mærke og orienteringerne. ½-siden er et afsnit i `plan.md` og fremlægges ordret. Han svarer **`plan ok`**, og ledgeren binder ordet til ½-sidens tekst og planens blob. Planen ændres aldrig tavst: en rent teknisk rettelse, der ikke ændrer ½-siden, kræver en ny Codex-dom i `codex-plan.md`, ikke et nyt ord fra Mathias; ændres ½-siden, kræver det et nyt `plan ok`.
 
 ### Trin 3 — Byg
 
-- **Testene før byg.** Codex skriver testene ud fra kravet og ejer måle-laget: testene, manifestet (`forventnings-manifest.json`), testindekset (`angrebs-spec.json`, der også vælger mutanterne) og filen der vælger hvilke tests der køres (`prover.json`). Codex må skrive disse filer indtil dækningsdommen er grøn; byggeren må aldrig ændre dem (pre-commit-hooken klassificerer dem som Codex' målelag). Code-reviewer dømmer at testene dækker hvert krav. Hver skrivevej skal have mindst én test gennem hele kæden (§3.3). Den grønne dækningsdom binder hele kørselsfladen med blob-OID'er: testene, manifestet, testindekset og `prover.json`. Dermed er de låst. Byggeren kan køre testene, men ikke ændre dem.
+- **Testene før byg.** Codex skriver testene ud fra kravet og ejer måle-laget: testene, manifestet (`forventnings-manifest.json`), testindekset (`angrebs-spec.json`, der også vælger mutanterne) filen der vælger hvilke tests der køres (`prover.json`) og slutprøven (`slutproeve.json`: scenarier gennem brugernes indgange, facit og de realistiske testdata). Codex må skrive disse filer indtil dækningsdommen er grøn; byggeren må aldrig ændre dem (pre-commit-hooken klassificerer dem som Codex' målelag). Code-reviewer dømmer at testene dækker hvert krav. Hver skrivevej skal have mindst én test gennem hele kæden (§3.3). Den grønne dækningsdom skrives i `plan-build/<pakke>/daekningsdom.json` og binder kravets og planens blob og hele kørselsfladen med blob-OID'er: testene, manifestet, testindekset, `prover.json` og `slutproeve.json`. Dermed er de låst. Domsfilerne er beskyttet på samme måde: kun Codex skriver `codex-plan.md` og `codex-gennemgang.md`, kun code-reviewer skriver `daekningsdom.json`, og fabrikken overfører dem uændret (pre-commit-hooken håndhæver det). Er en låst test teknisk forkert, retter Codex den, og code-reviewer afgiver en ny dækningsdom; ændrer rettelsen forretningsindhold, gælder §3.7. Ændres kravet eller planen, kræves en ny dækningsdom. Byggeren kan køre testene, men ikke ændre dem.
 - **Reglerne for testene:**
   - **D10 (M-40):** én meningsfuld dræbt mutant pr. afvisnings-acceptkriterie, når ét værn alene bærer negativet (deklareret med `sole_guard_ref`) — aldrig pr. "konfig-knap". Redundante værn gøres ikke isoleret nødvendige. Gulvet består: ≥1 målrettet dræbt mutant pr. opsætnings-krav.
   - **Testene dækker kravet direkte:** hver test deklarerer hvilke K, acceptkriterier og negativer den dækker (`covers`), og dækningsdommen holder det mod kravet. (D12's opdeling i forudsætnings- og effekt-trin gælder kun pakke 1, hvis manifest bruges som det er.)
@@ -125,18 +125,18 @@ Codex læser planen én gang, og der er én rettelse. Codex genlæser kun rettel
   - En test uden forventning er tom og tæller som rød. Hvert dækket negativ skal være forsøgt og afvist netop dér.
   - **Vejnings-reglen:** _"tjener testen et led, og ville en reel falsk-grøn slippe UDEN den?"_ Nej → over-test → skriv den ikke.
 - **Grøn = reel konsekvens, aldrig påstand.** Der testes ikke for at få grønt: fangsten af fejl er det der afgør om et build er korrekt. »funktioner der kun ser gode ud på papiret er ikke acceptable; de skal virke og være gode.«
-- **Byggetjekket** er ét CI-job med fire tjek: (a) testene er grønne · (b) de udpegede mutanter er dræbt · (c) intet låst er ændret (planen, testene, manifestet, testindekset, `prover.json`) · (d) planen og kørselsfladen er dem, `plan ok` og den grønne dækningsdom bandt (blob for blob).
+- **Byggetjekket** er ét CI-job med fire tjek: (a) testene er grønne · (b) de udpegede mutanter er dræbt · (c) intet låst er ændret (planen, testene, manifestet, testindekset, `prover.json`, `slutproeve.json`) · (d) kravet er det `krav ok` bandt, ½-siden er den `plan ok` bandt, planen er den `codex-plan.md` bandt, og kørselsfladen er den `daekningsdom.json` bandt (blob for blob). Testene i (a) omfatter også alle lukkede pakkers tests, så en ny pakke ikke ødelægger en gammel.
 - **Byggeren vælger det planen ikke afgør** og skriver valgene i slut-rapporten. Bygningen er mekanisk dømt af byggetjekket; der er ingen byg-godkendelse hos Mathias.
 - **Build-fokus: fokus under build SKAL være build.** Opstår der ændringer under byg, er et større issue gæld (G-nummer, løses KORREKT senere, ikke hurtigt/hacket), og et mindre er et bilag til ændringen. Repo-docs røres ikke under byg; de rettes ved trin 4.
 - Afvigelse fra kravet: §3.7. Patch-først: §3.1. Destruktive drops: §3.9.
-- Codex gennemser den samlede ændring én gang, før slutprøven (fokus: §9.3).
+- Codex gennemser den samlede ændring én gang, før slutprøven (fokus: §9.3), og skriver dommen i `plan-build/<pakke>/codex-gennemgang.md` med merge-dommen på sin egen linje (§6 »Merge«).
 
 ### Trin 4 — Slut
 
-- **Top-til-tå: kode = Mathias' sandhed.** Den endelige dom er reel kode kørt mod hans sandhed ved fuld dybde, ikke at ordene/docs findes (doc-grøn ≠ dybde). Derfor køres slutprøven i fuld dybde gennem brugernes indgange: på testdatabasen med realistiske data, og på driftsdata kun når pakken læser data der allerede findes (fx løn).
+- **Top-til-tå: kode = Mathias' sandhed.** Den endelige dom er reel kode kørt mod hans sandhed ved fuld dybde, ikke at ordene/docs findes (doc-grøn ≠ dybde). Derfor kører CI's slutdom slutprøven (`slutproeve.json`) i fuld dybde gennem brugernes indgange: på testdatabasen med realistiske data, og på driftsdata kun når pakken læser data der allerede findes (fx løn).
 - Code skriver slut-rapporten efter §10.3 i `plan-build/<pakke>/slut-rapport.md`.
 - claude-ai-rollen læser rapporten mod kravet, visionen og forretningsforstaaelse efter §5 »Sådan dømmer alle dommere« og skriver rapportens afsnit »Fremlæggelse for Mathias«. Afsnittet fremlægges ordret.
-- **`slut ok`** = pakken må i drift. Ledgeren binder ordet til `slut-rapport.md`'s blob **og** til den prøvede kodeversion: det commit, som slutprøven, Codex' samlede gennemgang og byggetjekket kørte på (rapportens felt »Prøvet kodeversion«). Mellem det commit og det der merges, må kun **afslutningsfilerne** ændres, og hver kontrolleres ét sted: (1) dokumentrettelserne skal have præcis den blob, som rapportens afsnit »Rettelser i Mathias' dokumenter« angiver; (2) slut-rapportens blob står i ledgerens `slut ok`-post; (3) ledgeren skal være sit tidligere indhold uændret plus præcis den nye `slut ok`-post. Rapporten angiver ikke sin egen eller ledgerens blob. Alt andet i repoet skal være uændret. Uden den post kan pakke-PR'en ikke merges (§6). Ændres koden derefter, er slutprøven, gennemgangen, byggetjekket og `slut ok` ugyldige for den nye kode og skal gives på ny. Med samme ord rettes Mathias' dokumenter som rapporten foreslår (ordret nuværende → ny tekst), efter §8.1 — også de poster på kravets liste »Afgøres ved senere trin«, som skrives ind i masterplanen ved deres trin.
+- **`slut ok`** = pakken må i drift. Ledgeren binder ordet til `slut-rapport.md`'s blob **og** til den prøvede kodeversion: det commit, som slutprøven, Codex' samlede gennemgang og byggetjekket kørte på (rapportens felt »Prøvet kodeversion«). Mellem det commit og det der merges, må kun **afslutningsfilerne** ændres, og hver kontrolleres ét sted: (1) dokumentrettelserne skal have præcis den blob, som rapportens afsnit »Rettelser i Mathias' dokumenter« angiver; (2) ledgerens `slut ok`-post nævner slut-rapportens blob og hvert af Mathias' sandhedsdokumenter der ændres, med den nye blob (vagten, §8.1); (3) ledgeren skal være sit tidligere indhold uændret plus præcis den nye `slut ok`-post; (4) `codex-gennemgang.md` skal nævne det prøvede commit. Rapporten angiver ikke sin egen eller ledgerens blob. Alt andet i repoet skal være uændret. Uden den post kan pakke-PR'en ikke merges (§6). Ændres koden derefter, er slutprøven, gennemgangen, byggetjekket og `slut ok` ugyldige for den nye kode og skal gives på ny. Med samme ord rettes Mathias' dokumenter som rapporten foreslår (ordret nuværende → ny tekst), efter §8.1 — også de poster på kravets liste »Afgøres ved senere trin«, som skrives ind i masterplanen ved deres trin.
 - Pakken lukkes efter §4.
 
 ---
@@ -153,7 +153,7 @@ Hver pakke har ét FORMÅL (krav §Formål). Når Mathias har godkendt det, er d
 
 Vi bygger ovenpå, ikke nyt. For hver eksisterende funktion, policy eller tabel der ændres, arbejdes der ud fra den NUVÆRENDE definition i databasen. Intet eksisterende gate, kommentar, kolonne eller audit-spor må tabes uden begrundelse. Tab uden begrundelse = `MANGLENDE-EKSISTERENDE-BEVARELSE` (KRITISK). Planen nævner kort hvilke eksisterende objekter pakken ændrer, og hvad der bevares. Selve tjekket (nuværende definition mod ny, linje for linje) sker i gennemgangen af den samlede ændring (trin 3).
 
-Eksisterende kode/build må ikke ændres uden Mathias' tydelige godkendelse — sker det, stop. Godkendelsen er hans `plan ok` til den plan der nævner ændringen. Ændrer byggeriet eksisterende kode ud over det, gælder §3.7.
+Eksisterende kode/build må ikke ændres uden Mathias' tydelige godkendelse — sker det, stop. Godkendelsen er hans `plan ok` til den plan der nævner ændringen. Kræver byggeriet en yderligere ændring i eksisterende kode uden ændret forretningsadfærd, skrives den ind i planen som en teknisk rettelse med Codex' dom (§2 trin 2); ændrer den forretningsadfærd, gælder §3.7.
 
 ### 3.3 End-to-end-spor pr. skrivevej
 
@@ -174,7 +174,7 @@ Code-reviewer tjekker det i dækningsdommen (trin 3).
 Lukker et trin ikke efter to rettelser, afgør Codex, om årsagen er indhold. Er den det, får Mathias ét spørgsmål:
 - **»Er krav-dok præcist nok?«** — hvis kravet er uklart. Kravet genåbnes med et nyt `krav ok`.
 - **»Dit dokument siger X, kravet siger Y — hvilket gælder?«** — hvis kravet modstrider hans dokumenter (§8).
-- **»Skal pakken deles?«** — hvis pakken er for stor (§3.8). Kravet forbliver ét dokument; implementeringen deles over pakker.
+- **»Skal kravet deles i to pakker?«** — hvis kravet selv er for stort til én pakke. (At dele implementeringen i flere trin inden for samme krav er teknik og afgøres af Code, §3.8.)
 
 Konvergerer vi ikke efter to rettelser, er problemet rammen, ikke "prøv igen". Er årsagen teknisk, retter bygger og reviewer den uden at spørge Mathias.
 
@@ -190,7 +190,7 @@ Build-afvigelse fra kravet kræver Mathias' udtrykkelige godkendelse. Code beslu
 
 ### 3.8 Pakke-størrelses-grænse
 
-Kræver planen mere end 5 migrationer: STOP, foreslå split (spørgsmålet i §3.4). Kravet forbliver ét dokument; implementeringen splittes over pakker.
+Kræver planen mere end 5 migrationer, deler Code implementeringen i flere trin eller PR'er inden for samme krav. Det er teknik og kommer ikke til Mathias.
 
 ### 3.9 Destructive drops kræver preflight (højeste indsats; Stork rører løndata)
 
@@ -221,11 +221,14 @@ Fuld dømmekrafts-pris hvor dømmekraft kræves; mekanik hvor mekanik beviseligt
 - kravet: `docs/sandhed/krav/<pakke>-krav.md`
 - planen: `plan-build/<pakke>/plan.md`
 - slut-rapporten: `plan-build/<pakke>/slut-rapport.md`
+- målelaget som regressionstest: testene, manifestet, testindekset, `prover.json` og `slutproeve.json` — byggetjekket kører dem ved hver ny pakke
 - ledgeren: `docs/sandhed/mathias-ord.md` — én for hele Stork; M-numrene fortsætter på tværs af pakker
 - ordbogen: `docs/sandhed/ordbog.md` — én for hele Stork; hver pakke tilføjer sine navne
 - in-place-opdateringer af vision, forretningsforstaaelse, masterplan og teknisk gæld.
 
-**Slettes ved pakke-luk:** alt andet i `plan-build/<pakke>/` (arbejdsfiler, udkast, byggetjekkets input). Byggetjekkets input fjernes først, når ingen kontrol længere læser det.
+**Slettes ved pakke-luk:** alt andet i `plan-build/<pakke>/` (arbejdsfiler, udkast, `codex-plan.md`, `daekningsdom.json`, `codex-gennemgang.md`). Pakke-luk er én ændring efter det lykkede deploy: `launch/launch.json` sættes til ingen åben pakke, og arbejdsfilerne fjernes i samme commit. Uden en åben pakke kører byggetjekket kun de lukkede pakkers regressionstests og kræver ingen domme.
+
+**Kun workflowet og dets dokumenter.** Repoet indeholder workflowet (denne fil og rolleteksterne), Mathias' dokumenter og de dokumenter workflowet bruger. Ingen AI-planer, bilag, noter eller tolkninger; arbejdspapirer ligger uden for repoet. Kommentarer i kode siger hvad koden gør. Et forældet dokument er aldrig en kilde: det fjernes ved næste pakke-luk, og en regel tilskrives Mathias kun med hans ord i ledgeren eller hans dokumenter.
 
 **Én bevarings-politik.** Hvert dokument har ét formål, ingen dubletter, én sandhed. Arkivet er ikke en voksende kirkegård; iterations-, review- og udkast-filer lever i git-history, ikke som filer på main.
 
@@ -248,7 +251,7 @@ Hvem der retter en fejl, og hvornår Mathias spørges: §3.4.
 4. Dommen DEKLARERER sit grundlag: hvad der er egen læsning, og hvad der hviler på andre domme (Codex/CI) — adskilt og navngivet. En grøn dom citerer hvad der er læst (hvilke K × hvilke tests eller kilder). **Godkend ALDRIG ved fravær af fund.** Tavshed ≠ ja.
 5. ALDRIG fuldstændigheds-garantier. Skriv hvad der er holdt mod hvad — aldrig "alt er dækket". Stikprøver flages som stikprøver.
 6. **Specifikt, aldrig generisk** (K-ID'er, fil:linje). Et forsvar holder KUN hvis det er bundet til en kørt test / en dræbt mutant / en citeret kilde — prosa tæller ikke. Og omvendt: et gyldigt bevist forsvar SKAL accepteres.
-7. **Beskriv ≠ luk:** et fund er lukket KUN som (1) rettet med bevis, (2) inden for et allerede delegeret valg (citeret) eller (3) kræver Mathias' ord. "Residual", "planvalg" og "noteret" lukker intet. Efter en rettelse dømmes helteksten mod den oprindelige K-forpligtelse, ikke lukningslisten.
+7. **Beskriv ≠ luk:** et fund er lukket KUN som (1) rettet med bevis, (2) inden for et allerede delegeret valg (citeret) eller (3) kræver Mathias' ord. "Residual", "planvalg" og "noteret" lukker intet. Efter en rettelse dømmes rettelsen og de krav, den berører, mod den oprindelige K-forpligtelse, ikke mod lukningslisten.
 8. **Deferér aldrig** ("den anden dommer fanger det"): dommerne dømmer uafhængigt.
 
 ---
@@ -258,7 +261,7 @@ Hvem der retter en fejl, og hvornår Mathias spørges: §3.4.
 - **Spærring før drift:** byggetjekket og slutdommen indgår i det krævede samle-tjek i hoved-CI (`Lint, typecheck, test, build`). Samle-tjekket afviser også en pakke-PR (migrationer, app), medmindre ledgeren har en `slut ok`-post der refererer slut-rapportens blob og den prøvede kodeversion, og alt i PR'en er uændret i forhold til det prøvede commit, bortset fra afslutningsfilerne, som kontrolleres efter §2 trin 4, punkt (1)–(3). Samle-tjekket sammenligner hele repoet, så også nye kodestier, `package.json`, låsefil og konfiguration er dækket. En senere kodeændring gør posten ugyldig. Et manglende eller oversprunget tjek tæller som rødt. Dommerne køres fra main's version, så en ændring ikke kan ændre sin egen dommer. *Status: byggetjekket bliver obligatorisk, når det omlagte tjek ligger på main; slutdommen og `slut ok`-kravet, når slutdommens dommer er bygget — før noget kan få `slut ok`. Indtil da merges ingen pakke-kode (migrationer, app) uden grønt byggetjek og Mathias' `slut ok`.*
 - **Merge:** fabrikken merger en pakke-PR kun når tre ting er opfyldt: samle-tjekket er grønt · Codex' samlede gennemgang, som kører uden for PR'en, har bekræftet at PR'en hverken rører `.github/` eller dommerne (merge-dommen) · ledgeren har Mathias' `slut ok` for slut-rapporten og den prøvede kodeversion, og PR'ens kode er stadig den version (§9.5).
 - **Mathias rører ikke GitHub.** Derfor er CI-spærringen værnet før drift, ikke et klik.
-- **Deploy:** `migrations-deploy.yml` deployer til live og regenererer types ved push til main, der rører `supabase/migrations/` (deploy-status ses i Actions).
+- **Deploy:** `migrations-deploy.yml` deployer til live og regenererer types ved push til main, der rører `supabase/migrations/`. Fabrikken følger deployet af det mergede commit til det er lykkedes; fejler det, går fejlen til Code — planner og bygger, og pakken er ikke færdig før deployet er lykkedes. Pakkens types genereres og kontrolleres mod testdatabasen med pakkens migrationer før slutprøven (ikke mod driften, som først får migrationerne efter merge). Opretter deployet alligevel en types-PR, ejer fabrikken den, til den er merget.
 - **Codex kaldes gennem indpakningen** `scripts/v5/codex-run.sh`. Kaldet har sit eget Codex-hjem, så den lokale opsætning aldrig arves. Netværk er slået fra, og domme køres kun-læse.
 - **Kendte grænser (ærligt):** et `ok` i chatten kan i princippet skrives af en AI. Derfor bindes det til filens tekst og står i ledgeren.
 
@@ -288,7 +291,7 @@ Mathias' sandhed er hans dokumenter: forretningsforstaaelse, vision-og-princippe
 | `vision-og-principper.md` | **LÅST** | STOP. KRITISK. Vinder over alt undtagen forretningsforstaaelse (D4: indbyrdes stamme-doc-modsigelse = hul → STOP → Mathias lukker). Dokumentér og argumentér ikke videre |
 | `forretningsforstaaelse.md` | **LÅST** | STOP. KRITISK. Stamme-doc med vision (D4): modsigelse mellem de to er et hul Mathias lukker — ingen trumf |
 | `stork-2-0-master-plan.md` | **SANDHED for det en pakke rører** | En afvigelse er altid Mathias' valg. Den fremlægges som spørgsmål eller som rettelse til masterplanen, som han godkender. Kravet og planen godkendes ikke med en uafklaret afvigelse. Ændringer i master-planen — og modsigelser mod den — kræver Mathias' tydelige godkendelse |
-| krav + plan (efter `krav ok` / `plan ok`) | **PAKKE-KONTRAKT** | STOP. KRITISK indtil Mathias afgør: nyt ok eller justering |
+| krav + plan (efter `krav ok` / `plan ok`) | **PAKKE-KONTRAKT** | STOP. KRITISK indtil Mathias afgør: nyt ok eller justering — undtagen en rent teknisk planrettelse, der ikke ændrer ½-siden; den godkendes af Codex (§2 trin 2) |
 
 AI-aktørerne retter aldrig selv en modsigelse mod de styrende dokumenter.
 
@@ -300,7 +303,7 @@ AI-aktørerne retter aldrig selv en modsigelse mod de styrende dokumenter.
 
 **Masterplanen:** rettelser formuleres som forslag (ordret nuværende → ny tekst) og lægges ind først, når Mathias har godkendt teksten. Ved pakke-slut sker det med `slut ok` (§2 trin 4). Hver post på kravets liste »Afgøres ved senere trin« skrives ind i masterplanen ved det trin, den hører til, så det trins krav-session finder den. Code committer ordret.
 
-**Vagten:** Rettelser i vision, forretningsforståelse og masterplanen vises ordret i chatten, og Mathias' ja til netop den tekst skrives i ledgeren med filen og den nye blob; CI og hooken afviser ellers ændringen (`scripts/v5/sandhed-vagt.mjs`).
+**Vagten:** Rettelser i vision, forretningsforståelse og masterplanen vises ordret i chatten, og Mathias' ja til netop den tekst skrives i ledgeren med filen og den nye blob; CI og hooken afviser ellers ændringen (`scripts/v5/sandhed-vagt.mjs`). Det samme gælder denne fil og rolleteksterne i `scripts/v5/roller/`: de ændres kun med hans `ok` til en workflow-plan med den ordrette tekst (§2 regel 2).
 
 ---
 
@@ -318,7 +321,7 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 
 ### §9.1 claude-ai-rollen
 
-**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. »Claude.ai's fornemmeste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod Mathias' ønsker til fremtiden.«
+**Rolle:** krav-skriver (trin 1) + slut-rapport-læser (trin 4) + sparring. Docs-lag. Rollens vigtigste opgave er at hjælpe Mathias med at skrive krav og forstå det nuværende forretnings-build holdt op mod hans ønsker til fremtiden.
 
 **Mathias forstår ikke kode; hans gates skal være reelle.** Alt der fremlægges for ham, står i hans sprog. Konklusionen står først. Hans reelle afgørelser er adskilt fra teknik.
 
@@ -327,6 +330,7 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 - spørge Mathias direkte i krav-fasen (bord-testen og formen i §2 trin 1)
 - læse slut-rapporten mod kravet, vision og forretningsforstaaelse (§5) og skrive fremlæggelsen (§2 trin 4)
 - afvise rapporten (§7)
+- skrive Mathias' ord i ledgeren ved `krav ok` og `slut ok` (§2 »Godkendelses-ordene«)
 - forfatte stamme-doc-rettelser efter Mathias' forhåndsgodkendelse (§8.1)
 
 **MÅ IKKE:**
@@ -355,7 +359,7 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 - afvige fra kravet uden Mathias' svar (§3.7)
 - genfortolke eksisterende funktioner uden patch-først (§3.1)
 - ændre formål (§3.0)
-- skrive eller ændre testene, manifestet, testindekset eller testvalg-filen (Codex' måle-lag, §2 trin 3)
+- skrive eller ændre testene, manifestet, testindekset, testvalg-filen eller slutprøven (Codex' måle-lag, §2 trin 3)
 - formulere stamme-doc-ændringer (committer kun Mathias-godkendt indhold ordret, §8.1)
 
 **Pre-push-tjek:** formålet matcher kravet, alle leverancer er dækket, og byggerens valg er skrevet i slut-rapporten.
@@ -383,11 +387,11 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 - kilde pr. krav-sætning
 - omvendt: hvert punkt i masterplan-trinnet står i kravet eller under »Ikke i scope«, og masterplanens negativer for trinnet står som negativer
 
-**Fokus i planlæsningen:** hvert K og hvert negativ har et sted i planen · afvigelser fra masterplanen er skrevet ud · G/H-opslaget er gjort og hver post disponeret · de valg Mathias kan mærke, står på ½-siden · navnene følger ordbogen · planen kan bygges. Efter rettelsen: kun deltaen.
+**Fokus i planlæsningen:** hvert K og hvert negativ har et sted i planen · afvigelser fra masterplanen er skrevet ud · G/H-opslaget er gjort og hver post disponeret · de valg Mathias kan mærke, står på ½-siden · navnene følger ordbogen · planen kan bygges. Dommen skrives i `codex-plan.md` med planens blob. Efter en rettelse: rettelsen og de krav, den berører.
 
 **Fokus i gennemgangen af ændringen:**
 - hvert K's HVAD er leveret, ikke kun det testen tjekker
-- intet låst er ændret (planen, testene, manifestet, testindekset, testvalg-filen)
+- intet låst er ændret (planen, testene, manifestet, testindekset, testvalg-filen, slutprøven)
 - PR'en rører hverken `.github/` eller dommerne (merge-dommen, §6)
 - huller i rettigheder/RLS, SQL og sikkerhed
 - patch-først (§3.1)
@@ -415,12 +419,13 @@ Hver rolle har en rolletekst i `scripts/v5/roller/`, som peger på sit afsnit he
 **MÅ:**
 - starte og overdrage sessioner (§3.5)
 - kalde Codex gennem indpakningen (§6)
+- fremlægge planens »Mathias' ½ side« ordret og skrive hans `plan ok` i ledgeren (§2 »Godkendelses-ordene«)
 - merge en pakke-PR, når de tre betingelser i §6 »Merge« er opfyldt: grønt samle-tjek · Codex' merge-dom · Mathias' `slut ok` i ledgeren
 - stoppe og spørge (§1 »Spørg ved uklarhed«)
 
 **MÅ IKKE:**
 - merge uden de tre betingelser
-- ændre låste filer: kravet efter `krav ok`, planen efter `plan ok`, testene, manifestet, testindekset og testvalg-filen efter grøn dækningsdom
+- ændre låste filer: kravet efter `krav ok`, planen efter `plan ok`, testene, manifestet, testindekset, testvalg-filen og slutprøven efter grøn dækningsdom
 - ændre indhold under overdragelse — et resultat bringes videre som fil, aldrig genskrevet (§3.10)
 - tale på Mathias' vegne: skrive et ord i ledgeren han ikke har sagt, eller fremlægge en tekst for ham der ikke er filens tekst (§2 »Chat = fil«)
 - træffe de afgørelser der hører til en rolle (forretning: Mathias; teknik: Code — planner og bygger; domme: Codex, code-reviewer, CI)

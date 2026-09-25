@@ -1,100 +1,60 @@
 #!/usr/bin/env node
-// pre-commit-zone.mjs — commit-zone-hook (plan 2.E, A4 — lokal UX, exit 2).
-//
-// Kaldes fra .husky/pre-commit. Session-rollen deklareres pr. session:
-//   STORK_V5_ROLLE=fabrik|claude-ai|builder-code|codex|recon-*
-// kravUpload-mandatet (kun driver-flytten) deklareres:
-//   STORK_V5_KRAV_UPLOAD="<pakke>:<udkast-blob-oid>:<audit-blob-oid>"  (B1: fresh-eyes-audit påkrævet)
-//
-// Fail-closed-graduering (bevidst): ER rollen sat → fuld zone-håndhævelse.
-// Er rollen IKKE sat → deny KUN commits der rører de beskyttede zoner
-// (docs/sandhed + måle-laget); alm. commits får en advarsel. Det beskytter
-// zonerne uden at brick'e Mathias' egne/manuelle commits — platform-autoriteten
-// er stadig rulesets (DEL V), dette er friktion ved kilden.
+// pre-commit-zone.mjs — kaldes fra .husky/pre-commit. Afviser en commit, hvor rollen
+// (STORK_V5_ROLLE) skriver uden for sine zoner (hooks.mjs), hvor ledgeren får andet end
+// nye rækker, eller hvor et krav i docs/sandhed/krav/ ikke er det flyttede udkast med
+// Mathias' `krav ok` for netop den blob (disciplin.md §2 trin 1).
 
 import { execFileSync } from "node:child_process";
-import { commitZoneDecision, pathZone } from "./hooks.mjs";
+import { beslutning, toRepoRel, zone } from "./hooks.mjs";
 
-const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
-// P2-pas 2026-09-09 F-8: --no-renames (en flyttet rolletekst = delete+add, ikke usynlig) ·
-// -z (rå stier, ingen quotePath-escaping) · name-status så en SLETTET lås ikke tæller som "følger med"
-const statusRaw = execFileSync("git", ["-C", repoRoot, "diff", "--cached", "--no-renames", "--name-status", "-z"], { encoding: "utf8" });
-const stagedStatus = new Map();
-{
-  const parts = statusRaw.split("\0").filter((x) => x.length > 0);
-  for (let i = 0; i + 1 < parts.length; i += 2) stagedStatus.set(parts[i + 1], parts[i]);
-}
-const staged = [...stagedStatus.keys()];
+const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+const repoRoot = git(["rev-parse", "--show-toplevel"]).trim();
+const raw = git(["-C", repoRoot, "diff", "--cached", "--no-renames", "--name-status", "-z"]).split("\0").filter(Boolean);
+const status = new Map();
+for (let i = 0; i + 1 < raw.length; i += 2) status.set(raw[i + 1], raw[i][0]);
+const stier = [...status.keys()];
+if (stier.length === 0) process.exit(0);
 
-if (staged.length === 0) process.exit(0);
-
-// M-41 Trin A4 (fabrik-frys, GRUNDPLAN-v2 princip 8): en rolletekst må ALDRIG
-// committes uden at actors.lock.json følger i SAMME commit — ellers kører næste
-// aktør-kald på en lås der peger på en anden tekst end HEAD (3 stale pins fundet
-// 2026-09-08). Atomisk rolletekst→lock. Registret (hærdet) håndhæves i CI, ikke
-// her: et Codex-pas kræver en commit at referere.
-const rollerStaged = staged.filter((p) => /^scripts\/v5\/roller\/[^/]+\.md$/.test(p));
-const lockStatus = stagedStatus.get("scripts/v5/actors.lock.json");
-const lockFoelgerMed = lockStatus !== undefined && lockStatus !== "D"; // slettet lås = mangler
-if (rollerStaged.length > 0 && !lockFoelgerMed) {
-  console.error("✗ commit-zone (M-41 A4): rolletekst staged uden scripts/v5/actors.lock.json i samme commit:");
-  for (const p of rollerStaged) console.error(`    ${p}`);
-  console.error("  Regenerér låsen (skill_oid = git hash-object af rolleteksten) og stage den sammen med teksten.");
-  process.exit(2);
-}
-// P2 F-8 (runde 2): en STAGED lås skal være gyldig JSON og pege på PRÆCIS de staged rolletekst-blobs —
-// ellers er "lock følger med" en tom gestus (status M med `{}` eller stale OID'er passerede før)
-if (lockFoelgerMed) {
-  let lock;
-  try { lock = JSON.parse(execFileSync("git", ["-C", repoRoot, "show", ":scripts/v5/actors.lock.json"], { encoding: "utf8" })); }
-  catch { console.error("✗ commit-zone (F-8): staged actors.lock.json er ikke gyldig JSON"); process.exit(2); }
-  const roller = Object.values(lock).filter((r) => r && typeof r === "object" && typeof r.skill_path === "string");
-  if (roller.length === 0) { console.error("✗ commit-zone (F-8): staged actors.lock.json indeholder ingen roller"); process.exit(2); }
-  const stagedOid = (p) => { try { return execFileSync("git", ["-C", repoRoot, "rev-parse", "--verify", "--quiet", `:${p}`], { encoding: "utf8" }).trim(); } catch { return null; } };
-  const drift = [];
-  for (const r of roller) {
-    // rolletekst der ER staged → låsen skal pege på den staged blob; ikke-staged → på HEAD-blobben
-    if (stagedStatus.get(r.skill_path) === "D") { drift.push(`${r.skill_path}: rolletekst SLETTES men låsen refererer den stadig (T-F8) — fjern rollen fra låsen i samme commit`); continue; }
-    const staged = stagedStatus.has(r.skill_path);
-    let oid = null;
-    if (staged) oid = stagedOid(r.skill_path);
-    else { try { oid = execFileSync("git", ["-C", repoRoot, "rev-parse", "--verify", "--quiet", `HEAD:${r.skill_path}`], { encoding: "utf8" }).trim(); } catch { oid = null; } }
-    if (oid !== r.skill_oid) drift.push(`${r.skill_path}: lock ${String(r.skill_oid).slice(0, 12)} ≠ ${staged ? "staged" : "HEAD"} ${oid ? oid.slice(0, 12) : "(mangler)"}`);
-  }
-  if (drift.length > 0) {
-    console.error("✗ commit-zone (F-8): staged actors.lock.json matcher ikke rolleteksterne:");
-    for (const d of drift) console.error(`    ${d}`);
-    process.exit(2);
-  }
-}
-
+const fejl = [];
 const rolle = process.env.STORK_V5_ROLLE;
-let kravUpload;
-const mandat = process.env.STORK_V5_KRAV_UPLOAD;
-if (typeof mandat === "string") {
-  const dele = mandat.split(":");
-  if (dele.length === 3) kravUpload = { pakke: dele[0], udkastBlobOid: dele[1], auditBlobOid: dele[2] };
+const b = beslutning({ rolle, stier, repoRoot });
+if (!b.ok) {
+  fejl.push(b.grund);
+  for (const a of b.afviste.slice(0, 10)) fejl.push(`    ${a.sti} (${a.zone})`);
 }
 
-if (rolle === undefined || rolle === "") {
-  const beskyttede = staged.filter((p) => {
-    const z = pathZone(p, repoRoot);
-    return z === "sandhed" || z === "maale-lag";
-  });
-  if (beskyttede.length > 0) {
-    console.error(`✗ commit-zone: rolle ikke sat (STORK_V5_ROLLE) og commit rører beskyttede zoner:`);
-    for (const p of beskyttede.slice(0, 10)) console.error(`    ${p}`);
-    console.error(`  Sæt rollen for sessionen, fx: export STORK_V5_ROLLE=fabrik`);
-    process.exit(2);
+const blob = (spec) => { try { return git(["-C", repoRoot, "rev-parse", spec]).trim(); } catch { return null; } };
+const ledgerTekst = () => {
+  for (const p of ["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md"]) {
+    try { return git(["-C", repoRoot, "show", `:${p}`]); } catch {}
   }
-  console.error("⚠ commit-zone: STORK_V5_ROLLE ikke sat — kun beskyttede zoner håndhæves for denne commit");
-  process.exit(0);
+  return "";
+};
+
+for (const [p, s] of status) {
+  const rel = toRepoRel(p, repoRoot);
+  const z = rel && zone(rel);
+  if (z === "ledger" && s === "M") {
+    const numstat = git(["-C", repoRoot, "diff", "--cached", "--numstat", "--", p]).trim().split(/\s+/);
+    if (Number(numstat[1]) > 0) fejl.push(`ledgeren ${p}: kun nye rækker må tilføjes (${numstat[1]} linje(r) slettet/ændret)`);
+  }
+  if (z === "krav" && s !== "D") {
+    const pakke = rel.slice("docs/sandhed/krav/".length, -"-krav.md".length);
+    const udkast = `plan-build/${pakke}/krav-udkast.md`;
+    const nyBlob = blob(`:${rel}`);
+    const udkastBlob = status.get(udkast) === "D" ? blob(`HEAD:${udkast}`) : null;
+    if (s === "A" && udkastBlob !== nyBlob) fejl.push(`${rel}: kravet skal være det flyttede udkast ${udkast} byte for byte (git mv)`);
+    if (s === "M") fejl.push(`${rel}: et godkendt krav ændres kun med et nyt krav-udkast og et nyt \`krav ok\``);
+    const rader = ledgerTekst().split("\n").filter((l) => /^\|\s*M-\d+\s*\|/.test(l));
+    if (nyBlob && !rader.some((l) => /krav ok/i.test(l) && l.includes(nyBlob.slice(0, 12))))
+      fejl.push(`${rel}: ledgeren har ingen \`krav ok\`-række med kravets blob ${nyBlob.slice(0, 12)}`);
+  }
 }
 
-const r = commitZoneDecision({ rolle, paths: staged, repoRoot, kravUpload });
-if (r.decision !== "allow") {
-  console.error(`✗ commit-zone (rolle '${rolle}'): ${r.reason}`);
-  console.error(`  (git add -A på tværs af zoner er præcis fejlen denne hook forbygger — stage kun din zone)`);
+if (fejl.length) {
+  console.error("✗ commit-zone:");
+  for (const f of fejl) console.error(`  ${f}`);
+  if (!rolle) console.error("  Sæt rollen for sessionen, fx: export STORK_V5_ROLLE=fabrik");
   process.exit(2);
 }
-process.exit(0);
+if (!rolle) console.error("⚠ commit-zone: STORK_V5_ROLLE ikke sat — kun de beskyttede zoner er håndhævet");
