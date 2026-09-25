@@ -1,5 +1,3 @@
-<!-- governance-owns: eksterne-handlinger -->
-
 # Stork 2.0 — Huskeliste (H-numre)
 
 **Formål:** Hjem for **H-numre = eksterne handlinger / ventende beslutninger** — ting der skal gøres eller afgøres uden for koden (sårbarheds-håndtering, eksterne aktiveringer, deadlines, ventende Mathias-afgørelser).
@@ -9,7 +7,7 @@
 - **H = ekstern handling / ventende beslutning** → bor her (`huskeliste.md`).
 - **G = kode-gæld** (vision-svækkelse i koden) → bor i `teknisk-gaeld.md`.
 
-En H-reference andre steder i docs er en _mention_; den kanoniske definition bor som `### [Hxxx]`-entry her. `governance-check.mjs` håndhæver: hver H-ref peger på enten en åben entry herunder eller en kode i historisk-registret.
+En H-reference andre steder i docs er en _mention_; den kanoniske definition bor som `### [Hxxx]`-entry her.
 
 ---
 

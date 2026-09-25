@@ -1,7 +1,5 @@
 # Stork 2.0 — Teknisk gæld
 
-<!-- governance-owns: kode-gaeld -->
-
 **Formål:** Liste af kendt teknisk gæld der svækker visionen (én sandhed, styr på data, eksplicit sammenkobling, stamme=database, beregning over databasen, rettigheder der virker, anonymisering bevarer audit, alt drift styres i UI). Vedligeholdes efter hvert trin. Ny gæld tilføjes ved introduktion; løst gæld flyttes til arkiv.
 
 **Severitet:**
@@ -10,11 +8,17 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 2026-09-24 (oprydningen efter workflow-planen: G018/G029/G036/G037/G038/G041/G046/G058 lukket, G063 lukkes sammen med governance-tjekket, G006 afgrænset, døde henvisninger rettet, G067-G082 rejst)
+**Sidste opdatering:** 2026-09-25 (workflow-planen v44: G018/G029/G036/G037/G038/G041/G046/G058/G063/G075/G078 lukket, G006 afgrænset, G073/G074 opdateret, G067-G083 rejst)
 
 ---
 
 ## Åben gæld
+
+### [G083] LAV — permission-matrixen er ikke regenereret siden 2026-05-15
+
+- **Beskrivelse:** `docs/teknisk/permission-matrix.md` er genereret fra live-databasen 2026-05-15 og mangler RPC'er fra trin 9-10 (fx `has_permission_action`).
+- **Skal løses:** regenereres fra databasen (samme mønster som `supabase/tests/smoke/m1_permission_matrix.sql`).
+- **Løses-i:** næste pakke der ændrer rettigheder.
 
 ### [G082] LAV — migration-gate ser ikke dynamisk DDL; audit-filteret gennemgår ikke jsonb generelt
 
@@ -52,15 +56,6 @@
 - **Risiko hvis glemt:** Mellem før cutover, høj efter.
 - **Løses-i:** før cutover.
 
-### [G078] MELLEM — »Schema drift check« i CI tjekker intet
-
-- **Beskrivelse:** `supabase/schema.sql` er stadig en pladsholder (3 linjer, `-- PLACEHOLDER`), og `scripts/schema-check.sh` l.11-14 slutter med 0 på markøren. Trinnet i `ci.yml` (l.143-145) er derfor grønt uden at tjekke noget. Desuden dumper scriptet kun `--schema public` (l.19), mens alle rigtige tabeller ligger i core_* (dem dækker kun `types:check`).
-- **Vision-svækkelse:** Én sandhed — et grønt trin der intet tjekker.
-- **Introduceret:** Fase 0 (pladsholderen blev aldrig erstattet).
-- **Skal løses:** Gøres reelt (pull + core_*-schemas) eller fjernes.
-- **Risiko hvis glemt:** Mellem. Falsk tryghed om skema-drift.
-- **Løses-i:** pakke 1, trin 2 (workflow-planen §3).
-
 ### [G077] MELLEM — testbiblioteket: race-tests kaster altid, HTTP-svar tabes, OpenAPI-tjekket rammer driftsprojektet
 
 - **Beskrivelse:** (1) LIB-RACE: `lib.race` kræver `{ok:boolean}` (`scripts/v5/test-runner.mjs` l.58, 87), men `pg-runner`s `race()` returnerer `{protocolOk,…}` (`pg-runner.mjs` l.211-239), så alle race-tests kaster. (2) LIB-HTTP: et HTTP-svar der ikke er et array, tabes (`rows` kun hvis `Array.isArray`, `pg-runner.mjs` l.125), og headers ignoreres. (3) Kontraktbehov #10: `postgrest-t9-schema-exposure` spørger det eksterne driftsprojekt (`scripts/fitness.mjs` l.1015), ikke test-databasen. (4) 15 datoforløb er ikke testet, fordi den styrede klokke mangler (HALT-FA3-listen i Codex' pas 1). (5) Det er ikke verificeret at en manglende database aldrig giver exit 0 i de beholdte runnere (O-9).
@@ -79,33 +74,22 @@
 - **Risiko hvis glemt:** Lav.
 - **Løses-i:** ingen handling (accepteret risiko; genovervejes kun hvis godkendelseskanalen ændres).
 
-### [G075] MELLEM — `prover.json` ligger i produkt-zonen, og dens kommando køres uden zone-tjek (R6-2)
+### [G074] LAV — byggetjekkets tillidsgrænser (runneren)
 
-- **Beskrivelse:** `plan-build/<pakke>/prover.json` angiver kommandoen CI kører (`ci-build-dom.mjs` l.131-141). Filen ligger hvor byggeren kan skrive, så byggeren kan pege kommandoen om og ændre hvad der måles.
-- **Vision-svækkelse:** Én sandhed — den der bygger, kan påvirke målingen.
-- **Introduceret:** C4b. Rejst i planreview (plan-slutlaesning-r6 R6-2; verdikt-code-reviewer-plan-r4 neg[6]).
-- **Skal løses:** `prover.json` og `prover-run.mjs` med i låsen på testene (workflow-planen §2 trin 3: »testene + filen der vælger hvilke tests der køres« låses ved grøn dækningsdom). Dækningsdommen binder hele kørselsfladen med blob-OID'er (testene, manifestet, testindekset, `prover.json`), og byggetjekkets tjek 3-4 kontrollerer dem. Hooken klassificerer manifest, testindeks og `prover.json` som Codex' målelag (Codex før låsen, byggeren aldrig; `skill-og-roller.md` D).
-- **Risiko hvis glemt:** Mellem.
-- **Løses-i:** pakke 1 (låsen i trin 3).
-
-### [G074] MELLEM — byggetjekkets tillidsgrænser (runneren)
-
-- **Beskrivelse:** Kendte, ikke lukkede grænser i målingen: (a) migrationer og ejer-kald kører som superuser; det tjekkes ikke at aktørrollerne mangler `BYPASSRLS`/superuser efter producentens migrationer — en test-rolle med bypass giver falsk-grønne RLS-tests; (b) `pg-runner` kører med `ON_ERROR_STOP=0` (`pg-runner.mjs` l.137), så et flersætnings-setup kan være delvist udført; (c) et renset underproces-miljø er ikke isolation: produktkode kan læse forælderens miljø via `/proc/<ppid>/environ`, og `prover.mjs` l.145 merger `process.env`; (d) `COPY TO PROGRAM`/`lo_export` kører i Postgres-servicecontaineren, hvis isolation ikke er attesteret; (e) manglende `meta` i måle-jobbet giver intet check (tavshed), ikke rødt.
+- **Beskrivelse:** (a) LØST: byggetjekket afviser, hvis testrollerne `authenticated`/`anon` kan omgå rettighederne (`rolbypassrls`). (b) `pg-runner` kører med `ON_ERROR_STOP=0`, men en fejl i en tidligere sætning giver protokolfejl, ikke grønt (`pg-runner.selftest.mjs`: »status ok men en ERROR-linje … → protokol«); et delvist udført setup kan stadig efterlade data i testdatabasen. (c) et renset underproces-miljø er ikke isolation: produktkode kan læse forælderens miljø via `/proc`. (d) `COPY TO PROGRAM`/`lo_export` kører i Postgres-servicecontaineren. (e) LØST: samle-tjekket kræver byggetjek-jobbet grønt.
 - **Vision-svækkelse:** Én sandhed — målingen kan i særtilfælde bevise noget andet end det produktet gør.
-- **Introduceret:** C4b (2026-09-16). Navngivet som R-RUNNER-UDFØRELSE/-ATOMARITET/-LIVSCYKLUS/-OVERLAP i implementeringsplanen (@ 87a877b, l.105, 341).
-- **Skal løses:** (a) tjek af rolle-attributter efter migrationerne; (b) atomar udførelse eller eksplicit tjek; (e) samle-tjekket behandler et manglende byggetjek som rødt (workflow-planen §2). (c)/(d) dokumenteres som accepteret, hvis de ikke lukkes.
-- **Risiko hvis glemt:** Mellem.
-- **Løses-i:** (e) 4.1 trin 3 (samle-tjekket); (a)-(d) i Codex-gennemgangen af byggetjekket (G073).
+- **Introduceret:** C4b (2026-09-16).
+- **Skal løses:** (b) atomar udførelse af setup; (c)/(d) accepteret: CI-jobbet har intet token og ingen hemmeligheder.
+- **Risiko hvis glemt:** Lav.
+- **Løses-i:** (b) når en pakke har brug for flersætnings-setup; ellers accepteret.
+### [G073] MELLEM — det nye byggetjek og vagten har ikke haft Codex' gennemgang
 
-### [G073] MELLEM — byggetjekkets moduler har intet gældende Codex-pas
-
-- **Beskrivelse:** De moduler der bevares som byggetjek, er ændret efter Codex' sidste PASS: `scripts/v5/ci-build-dom.mjs` (i dag blob `3acea6d1`), `pg-runner.mjs` (`42531d3a`, inkl. PostgREST/JWT-stien, som aldrig er angrebet), `build-proof.mjs` (`c9a09e61`), `build-harness.mjs` og `test-runner.mjs`. `haerdet-register.json` markerer alle fem `kandidat`.
-- **Vision-svækkelse:** Én sandhed — den dommer der skal spærre før drift, er ikke efterprøvet i sin nuværende form.
-- **Introduceret:** Hurtigt spor 21/9 (kandidat-drift; M-47).
-- **Skal løses:** Én Codex-gennemgang af byggetjekket (ci-build-dom, test-runner, pg-runner) i sin omlagte form.
+- **Beskrivelse:** `scripts/v5/byggetjek.mjs`, `hooks.mjs`, `pre-commit-zone.mjs`, `sandhed-vagt.mjs` og `codex-run.sh` er skrevet 24-25/9 (workflow-planen v44, trin 1-3) og kun afprøvet med egne selvtests.
+- **Vision-svækkelse:** Én sandhed — den dommer der skal spærre før drift, er ikke efterprøvet uafhængigt.
+- **Introduceret:** 2026-09-25.
+- **Skal løses:** Codex' gennemgang af hele det færdige workflow (workflow-planen §4 trin 7).
 - **Risiko hvis glemt:** Mellem. En fejl i dommeren giver falsk grønt for alle pakker.
-- **Løses-i:** pakke 1, trin 2 (workflow-planen §3: »Én Codex-gennemgang af byggetjekket«) og efter omlægningen i 4.1 trin 3.
-
+- **Løses-i:** workflow-planen §4 trin 7.
 ### [G072] LAV — `gdpr_responsible_employee_id` er erklæret, men ikke koblet; migrations-kommentaren er forkert
 
 - **Beskrivelse:** Kolonnen `core_compliance.superadmin_settings.gdpr_responsible_employee_id` sættes (`20260515110000_p0_gdpr_responsible_employee.sql` l.48, 76), men ingen RPC læser den; aktivering af anonymiserings-strategier kræver kun rettigheden (`20260515110100_p1a_anonymization_strategies.sql` l.293). Kolonnens COMMENT (samme p0-fil l.50-51) siger "Refereret af anonymization-RPCs" — det passer ikke.
@@ -170,15 +154,6 @@
 - **Skal løses (slutbillede, master-plan-låst):** **Entra ID som eneste auth-provider, ingen backdoor** — ved auth-trinnet deaktiveres Email-provideren helt; DET er lukke-handlingen for denne G. Undervejs: API-config-check (G040) + public.\*-legacy-oprydningsverdikt i supabase-flade-vagt.
 - **Risiko hvis glemt:** Mellem. Klik-drift opdages først når noget knækker.
 - **Løses-i:** Lag F/auth-trinnet (lukke-handling: Entra eneste provider + Email-provider deaktiveret); delmål undervejs i supabase-flade-vagt (gov-5-nabo)
-
-### [G063] LAV — midlertidig governance-check-allowlist for v4-slettede-docs
-
-- **Beskrivelse:** `scripts/governance-check.mjs` `MISSING_PATH_ALLOWLIST` har en entry for `docs/coordination/v4-slettede-docs` (klasse `scope-excluded-local`). Tilføjet i gov-docs-housekeeping så clean-checkout `governance:check` er grøn, mens dir'en stadig ligger untracked og afventer fold i gov-6.
-- **Vision-svækkelse:** Marginal — en "midlertidig" allowlist kan blive permanent (drift) hvis ikke sporet.
-- **Introduceret:** gov-docs-housekeeping (2026-06-05).
-- **Skal løses:** Når **gov-6** folder `docs/coordination/v4-slettede-docs/` til git-history → **fjern allowlist-entryen igen**. Ejer: Code (i gov-6). Gov-6-krav-dok §6 dækker selve foldningen; denne G sporer allowlist-oprydningen.
-- **Risiko hvis glemt:** Lav. Entryen er eksplicit dokumenteret med grund + gov-6-trigger.
-- **Løses-i:** gov-6 (UDSKUDT 2026-06-11; pakkenavn/form afgøres i krav-dok-dialog — se docs/coordination/gov-6-forslag-og-udskudte.md)
 
 ### [G062] LAV — recurring types-drift fra månedlige audit-partitioner
 
@@ -495,6 +470,18 @@
 - **Løses-i:** Lag E (RPC-test-mønster — udvid til Mønster D ved behov)
 
 ## Løst gæld (arkiv)
+
+### [G063] LØST 2026-09-25 — midlertidig governance-check-allowlist
+
+- **Løsning:** governance-tjekket er fjernet sammen med det gamle workflow; allowlisten findes ikke længere.
+
+### [G075] LØST 2026-09-25 — `prover.json` lå i produkt-zonen
+
+- **Løsning:** hooken klassificerer `prover.json` (og manifest, testindeks og slutprøve) som Codex' målelag, som byggeren ikke kan skrive (`scripts/v5/hooks.mjs`); dækningsdommen binder filen, og byggetjekket kører kun `node scripts/v5/<pakke>/prover-run.mjs` (`scripts/v5/byggetjek.mjs`).
+
+### [G078] LØST 2026-09-25 — »Schema drift check« i CI tjekkede intet
+
+- **Løsning:** trinnet er fjernet sammen med `scripts/schema-check.sh` og pladsholderen `supabase/schema.sql`. Typerne tjekkes i stedet mod testdatabasen med pakkens migrationer (CI-jobbet »Byggetjek og slutdom«).
 
 ### [G029] LØST 2026-05-15 — C001-backfill bruger legal retention mod master-plan-reservation
 

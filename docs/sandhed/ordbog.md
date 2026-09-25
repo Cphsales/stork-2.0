@@ -1,9 +1,6 @@
-# ordbog — lokations-skabelon (Mathias' ord ↔ systemord)
+# Ordbog (Mathias' ord ↔ systemord)
 
-Regler (plan Fase 1/B3): al Mathias-flade bruger HANS ord; planen/koden ARVER
-navnene eller mapper eksplicit her — en navne-afvigelse uden ordbogs-entry er
-en FAIL ved plan-gaten. Vedligeholdes af driveren; kandidater høstes af
-recon-Claude.ai (fra pakke 2) og af krav-dialogen.
+Én ordbog for hele Stork (disciplin.md §2 trin 2 »Ordbogen arves«): alt Mathias ser, bruger hans ord; planen og koden arver navnene eller mapper dem her. En navne-afvigelse uden række er et fund i Codex' planlæsning. Krav-rollen høster kandidater i krav-dialogen; Code tilføjer planens rækker.
 
 | Mathias' ord | systemord (recon/masterplan) | kilde |
 |---|---|---|

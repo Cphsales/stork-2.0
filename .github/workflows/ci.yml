@@ -1,13 +1,7 @@
 name: CI
 
-# Rette-til 2026-06-11 (Mathias-go, 1b+1d): trappe + split.
-# - 1b CI-trappe: ren docs-diff (kun *.md under docs/) springer kode- og
-#   DB-jobs over — format/governance kører ALTID (kvalitets-hegnet: samme
-#   checks, anden orkestrering; klassifikationen er mekanisk afgørbar).
-# - 1d split: tre parallelle jobs (vægtid = max, ikke sum).
-# - Aggregatoren bærer det HISTORISKE check-navn "Lint, typecheck, test, build"
-#   så gov-4-branch-protection (required check) består URØRT — intet
-#   admin-indgreb (M2 i rette-til-oplægget).
+# En ren docs-diff (kun *.md under docs/) springer kode- og DB-jobs over; format, vagten og
+# byggetjekket kører altid. Samle-tjekket »Lint, typecheck, test, build« er det krævede statustjek på main.
 
 on:
   pull_request:
@@ -48,8 +42,8 @@ jobs:
           echo "Ændrede filer:"; echo "$FILER"
 
   sandhed:
-    # Mathias' sandhedsdokumenter (vision, forretningsforståelse, masterplan) ændres kun med hans
-    # ord for netop den tekst i ledgeren (workflow-planen M-67 + 24/9; disciplin.md §8.1). Kører altid.
+    # Vision, forretningsforståelse, masterplan, disciplin.md og rolleteksterne ændres kun med
+    # Mathias' godkendelse af netop den tekst i ledgeren (disciplin.md §8.1). Kører altid.
     name: Sandhedsdokumenter kun med Mathias' ord
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -233,15 +227,12 @@ jobs:
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
-      - name: Schema drift check
-        if: env.SUPABASE_ACCESS_TOKEN != ''
-        run: pnpm schema:check
       - name: DB tests
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm db:test
 
   ci:
-    # Aggregator — bærer det required-check-navn gov-4-protection kræver.
+    # Samle-tjekket — det krævede statustjek på main.
     # skipped (docs-only-trappen) tæller som OK; failure/cancelled gør ikke.
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest

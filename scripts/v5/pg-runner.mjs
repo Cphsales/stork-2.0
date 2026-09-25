@@ -1,10 +1,8 @@
 #!/usr/bin/env node
-// pg-runner.mjs — v5's RIGTIGE Postgres-runner for sandheds-motoren (build-harness.mjs's runner-kontrakt), v2 (C4b · plan 2.C/2.E ·
-// udtrukket af build-harness.integration.mjs v2.8 efter Codex C1-runde 1-8: F-17 · F-27 · F-32 · F-33 · F-36 · F-38 · F-39 · F-40 ·
-// Codex C4b-runde: F-C4b-1 (miljø-isolation) · F-C4b-2 (aktørens settings i race)).
+// pg-runner.mjs — database-runneren for testene og byggetjekket: kalder Postgres (psql) og PostgREST og tolker fejl entydigt.
 //
 // makePgRunner({ argv, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
-//   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform (Codex HALT H1, 2026-09-21): handlinger via PostgREST som aktøren.
+//   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform: handlinger via PostgREST som aktøren.
 //   http(req, actor): minter HS256-JWT {role: actor.role, exp, ...claims fra actor.settings (request.jwt.claim.<x> → x; request.jwt.claims
 //   → JSON merges)}, kalder {baseUrl}{req.path} m. req.method/body (+ Accept-/Content-Profile ved req.schema), og afleverer et KALD-UDFALD
 //   i samme kontrakt som sql(): {ok (2xx), code = body.code (PostgREST videregiver Postgres' SQLSTATE), detail:{message: body.message,
@@ -14,21 +12,21 @@
 //   session (race: to sessions + et tredje vidne).
 //   env = det MILJØ alle underprocesser (psql · exit-kontroller) får — default `producentMiljoe(process.env)`: process.env UDEN
 //   credentials (GITHUB_TOKEN · GH_TOKEN · ACTIONS_* · INPUT_* · RUNNER_TOKEN · NODE_AUTH_TOKEN). Produktkode (migrationer, exit-kommandoer,
-//   psql-værtskommandoer) må ALDRIG kunne nå dommerens emissions-token (F-C4b-1) — emissionen sker i et andet job uden produktkode.
-//   race(scenario) anvender aktørens {role, settings} i BEGGE sessions før handlingerne (F-C4b-2): en forkert tenant-kontekst ville ellers
+//   psql-værtskommandoer) må ALDRIG kunne nå et token.
+//   race(scenario) anvender aktørens {role, settings} i BEGGE sessions før handlingerne: en forkert tenant-kontekst ville ellers
 //   bevise den forkerte tenant; fejlet opsætning lukker forløbet (protocolOk:false).
 //
-// KONTRAKT (koden er sandheden — se build-harness.mjs header):
+// KONTRAKT (koden er sandheden):
 //   sql(text, {role, settings}) → {ok, error, code, detail:{message, routine}, rows?}   — observe-queries (select/with/table) pakkes i json_agg
 //   race(scenario) → {protocolOk, a:{pid,ok,code,detail,commit}, b:{…}, overlap:{observed, witness_pid, a_pid, b_pid}, blocking, invariantRows}
 //   exec(cmd[]) → {exit_code, stdout}   — exit-kanalens kontrol; manglende binær → 127 (processen fungerer ikke), stdout altid streng
 //
-// DIAGNOSTIK (F-32/F-36/F-38/F-39/F-40): status + SQLSTATE + HELE primærmeddelelsen tages STRUKTURELT fra psql's egne variable
+// DIAGNOSTIK: status + SQLSTATE + HELE primærmeddelelsen tages STRUKTURELT fra psql's egne variable
 // (:ERROR :SQLSTATE :LAST_ERROR_SQLSTATE :LAST_ERROR_MESSAGE) udskrevet mellem nonce-markører på stdout EFTER sætningen; stderr bruges
 // kun til at tælle ERROR-linjer, krydstjekke SQLSTATE og læse afvisningsstedet (CONTEXT) — og kun når blokken er entydig. Data (stdout)
 // og diagnostik (stderr) holdes adskilt; produktdata der ligner »ERROR:« er data. Flertydig diagnostik er protokol (aldrig et valg);
 // status=succes m. ERROR-linje er protokol (gamle fejlvariable klassificerer aldrig). Tomt/ikke-array query-output = fejlet måling.
-// OVERLAP (F-22): et UAFHÆNGIGT tredje backend ser A og B inde i deres skrivende transaktion samtidigt før nogen commit —
+// OVERLAP: et UAFHÆNGIGT tredje backend ser A og B inde i deres skrivende transaktion samtidigt før nogen commit —
 // pg_stat_activity: xact_start sat ∧ (backend_xid ∨ wait_event_type=Lock) — uafhængigt af produktlåsen. pg_blocking_pids er kun
 // en produkt-observation (blocking), ikke dom.
 
@@ -73,7 +71,7 @@ export function frame(stdout, stderr, S, M, E) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// producentMiljoe(env) → kopi uden credentials/CI-tokens (F-C4b-1). Fail-closed: mønstrene er brede — hellere for lidt miljø end et token.
+// producentMiljoe(env) → kopi uden credentials/CI-tokens. Fail-closed: mønstrene er brede — hellere for lidt miljø end et token.
 export const CREDENTIAL_ENV_RE = /^(GITHUB_TOKEN|GH_TOKEN|GITHUB_PAT|ACTIONS_[A-Z0-9_]*|INPUT_[A-Z0-9_]*|RUNNER_TOKEN|NODE_AUTH_TOKEN|NPM_TOKEN|AWS_[A-Z0-9_]*|AZURE_[A-Z0-9_]*|GOOGLE_APPLICATION_CREDENTIALS|SUPABASE_ACCESS_TOKEN|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY)$/;
 export function producentMiljoe(env = process.env) {
   const out = {}; for (const [k, v] of Object.entries(env)) if (!CREDENTIAL_ENV_RE.test(k) && typeof v === "string") out[k] = v; return out;
@@ -210,7 +208,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
     try {
       if (s.setup) return { protocolOk: false, error: "race.setup skal udføres af motoren som ejer (F-20) — runneren modtager ikke setup" };
       if (!settingsGyldige(s.actor?.settings)) return { protocolOk: false, error: "aktør-settings har ugyldige nøgler (kun identifier.identifier)" };
-      // F-C4b-2: aktørens KONTEKST (rolle + settings) anvendes i BEGGE sessions før handlingerne — ellers måles den forkerte tenant
+      // aktørens KONTEKST (rolle + settings) anvendes i BEGGE sessions før handlingerne — ellers måles den forkerte tenant
       const pre = (nm) => `\\set VERBOSITY verbose\nset application_name = '${nm}';\n${s.actor?.role ? `set role ${s.actor.role};\n` : ""}${setSql(s.actor?.settings)}`;
       const pa0 = await A.run(pre("v5race_A")); const pb0 = await B.run(pre("v5race_B"));
       if (!pa0.ok || !pb0.ok) return { protocolOk: false, error: `rolle-/sessions-/settings-opsætning fejlede (A ok=${pa0.ok} ${pa0.code ?? ""}, B ok=${pb0.ok} ${pb0.code ?? ""})` };

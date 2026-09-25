@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-// forventnings-manifest.mjs — B2-manifestet: den KANONISKE, maskinlæsbare K/ac/struktur/negativ-mængde
-// (M-41 Trin C1; Codex' adapter-krav-liste B2 2026-09-10 »frit pas«: verifieren skal udlede den
-// forventede mængde fra en versionsbundet kilde — ALDRIG fra proof.ks i beviset selv).
+// forventnings-manifest.mjs — manifestet: den maskinlæsbare K/ac/struktur/negativ-mængde en pakke skal
+// bevise. Den forventede mængde udledes af manifestet, aldrig af det beviset selv påstår.
 //
-// Manifestet skrives af driveren/planneren ud fra plan v3's matrix efter forventningslistens
-// ID-regler (§5 pkt. 6) og valideres her; build-proof.mjs binder det (path+oid @ gated commit),
-// udleder forventningen og afviser udeladelser, dubletter og ukendte referencer.
+// Codex skriver manifestet ud fra kravet og planen (målelaget, disciplin.md §2 trin 3); det valideres her
+// og bindes af dækningsdommen. Udeladelser, dubletter og ukendte referencer afvises.
 //
 //   manifest = {
 //     schema_version: 1, pakke,

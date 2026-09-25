@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// test-runner.mjs — v5's angrebs-TEST-runner (kursændring 2026-09-21, Mathias: »vi overkompliserer opgaven«): Codex skriver angrebs-testene
+// test-runner.mjs — kører en pakkes tests og mutanter. Codex skriver testene
 // som KODE i måle-laget (scripts/v5/<pakke>/tests/*.test.mjs), ikke som en JSON-DSL verifieren skal genudlede. Beskyttelsen mod falsk-grøn
-// er PROCESSEN: der måler ≠ der bygger (hooks: byggeren kan ikke skrive i scripts/v5/**) · CI kører testene mod den friske store · hver
-// mutant skal få Codex' navngivne tests til at FEJLE (mutant-kill) · build-gaten læser RAPPORTEN (ikke selvrapporterede flag).
+// er processen: der måler ≠ der bygger (hooken: byggeren kan ikke skrive i målelaget) · byggetjekket kører testene mod testdatabasen · hver
+// mutant skal få de navngivne tests til at FEJLE · byggetjekket læser rapporten, ikke selvrapporterede flag.
 //
-// INDEKS (angrebs-spec.json, gate-binding, skema 2 — angrebs-spec.mjs validerer komplethed mod manifestet):
+// INDEKS (angrebs-spec.json, skema 2 — angrebs-indeks.mjs validerer det mod manifestet):
 //   { schema_version: 2, pakke, bindings:{manifest, plan}, bids:[…],
 //     tests:   [{ id, file: "scripts/v5/<pakke>/tests/<navn>.test.mjs", oid, covers: ["K-n/ac-m:UT", "K-n/ac-m/neg-k", "K-n/ac-m|<delbevis-id>", …] }],
 //     mutants: [{ mutant_id, guard_ref | locus_ref, apply, restore, target_test_ids:[…], control_test_ids:[…] }] }   (locus_ref = planbundet I-locus uden manifest-værn)
 // TESTFIL: `export const tests = [{ id, covers, run: async (lib) => { … kast ved fejl … } }]` — id'er og covers SKAL være indeksets (mismatch = rød).
-// BINDING (Mathias 2026-09-21 »sandhed = krav = plan = byg … uden at overteste«): en test der afgiver ingen forventning er VAKUUM (rød);
-// dækker den et negativ, SKAL den have kaldt forvent.afvist(…, netop det negativ) — ellers rød. Billigt, mekanisk, ingen ny runde.
+// BINDING: en test der afgiver ingen forventning er tom (rød);
+// dækker den et negativ, SKAL den have kaldt forvent.afvist(…, netop det negativ) — ellers rød.
 // LIB (det Codex' tests får — alt andet er kode i testen):
 //   lib.ejer.sql(text)                       → kald-udfald som ejer            lib.som(actor).sql(text) / .http(req) → som aktør {role, settings}
 //   lib.race(scenario)                       → pg-runner race (overlap-vidne)  lib.kontrakt(negative_id) → manifestets reject_contract
@@ -51,7 +51,7 @@ export function urFraMiljoe(env = process.env) {
 // makeLib({runner, manifest, pakke, ur?}) → lib til testene
 export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
   const F = expectedSet(manifest);
-  // Mathias 2026-09-21: »sandhed = krav = plan = byg … uden at overteste« → billig BINDING mellem covers og faktisk håndhævelse:
+  // binding mellem covers og faktisk håndhævelse:
   // hver test skal afgive ≥1 forventning, og hvert negativ testen dækker SKAL være håndhævet m. forvent.afvist(…, <netop det negativ>).
   const spor = { n: 0, nids: new Set() }; const tael = (nid) => { spor.n++; if (nid) spor.nids.add(nid); };
   const NID = Symbol.for("v5.negativ_id");
