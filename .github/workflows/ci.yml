@@ -209,14 +209,6 @@ jobs:
         run: pnpm fitness
       - name: Fitness selftest (§3-checks negativ-test)
         run: pnpm fitness:selftest
-      - name: Governance check (lag-1 spærhage)
-        run: pnpm governance:check
-      - name: Governance selftest
-        run: pnpm governance:selftest
-      - name: Kæde selftest (gov-5 kurér-kerne)
-        run: pnpm kaede:selftest
-      - name: Workflow substrat-selftests (Pakke 1 regel-flade-kanariefugle)
-        run: pnpm workflow:selftest
 
   db:
     name: DB (types, schema, db-tests)

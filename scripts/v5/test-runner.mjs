@@ -27,7 +27,7 @@ import { resolve, isAbsolute, normalize } from "node:path";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { expectedSet } from "./forventnings-manifest.mjs";
-import { matchExpect, grundEffektiv } from "./build-harness.mjs";
+import { matchExpect, grundEffektiv } from "./forvent.mjs";
 
 const isPlain = (v) => v !== null && typeof v === "object" && !Array.isArray(v) && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
 const isStr = (v) => typeof v === "string" && v.length > 0;

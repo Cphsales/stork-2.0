@@ -15,7 +15,7 @@
 //   … --base <ref>   en PR der ændrer pakke-kode kræver grønt byggetjek + `slut ok` + kun afslutningsfiler efter prøven
 // Exit 0 = grøn eller ikke nået (se rapporten) · exit 1 = rød.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -137,6 +137,10 @@ async function koerDatabase({ root, argv, rapport, pakker }) {
     if (!r.ok) return { ok: false, fejl: [`migration ${p} fejlede: ${r.error}`] };
   }
   if (http) { try { await runner.sql("notify pgrst, 'reload schema';", {}); } catch {} }
+  // testene kører som brugernes roller; de må ikke kunne omgå rettighederne
+  const by = await runner.sql("select rolname from pg_roles where rolname in ('authenticated','anon') and rolbypassrls", {});
+  if (!by.ok) return { ok: false, fejl: [`kan ikke tjekke testrollerne: ${by.error}`] };
+  if (by.rows.length) return { ok: false, fejl: [`testrolle kan omgå rettighederne: ${by.rows.map((x) => x.rolname).join(", ")}`] };
   const ud = { ok: true, fejl: [], pakker: {} };
   for (const pakke of pakker) {
     const P = `plan-build/${pakke}`;
@@ -149,6 +153,17 @@ async function koerDatabase({ root, argv, rapport, pakker }) {
       const alleOk = res.tests.every((t) => t.ok === true) && res.mutants.every((m) => m.killed === true);
       ud.pakker[pakke][navn] = res.summary;
       if (!alleOk) { ud.ok = false; ud.fejl.push(`${pakke}: ${navn} ikke grøn (${JSON.stringify(res.summary)})`); }
+    }
+    // testvalg-filen: kun pakkens egen prover-run.mjs må køres
+    if (existsSync(join(root, P, "prover.json"))) {
+      const pj = JSON.parse(readFileSync(join(root, P, "prover.json"), "utf8"));
+      const tilladt = ["node", `scripts/v5/${pakke}/prover-run.mjs`];
+      if (JSON.stringify(pj.cmd) !== JSON.stringify(tilladt)) { ud.ok = false; ud.fejl.push(`${pakke}: prover.json må kun køre ${tilladt.join(" ")}`); continue; }
+      const { producentMiljoe } = await import("./pg-runner.mjs");
+      const k = spawnSync(tilladt[0], tilladt.slice(1), { cwd: root, encoding: "utf8", env: producentMiljoe(process.env), timeout: 600000 });
+      let res = null; try { res = JSON.parse(readFileSync(join(root, pj.resultRelPath), "utf8")); } catch {}
+      ud.pakker[pakke].prover = res;
+      if (k.status !== 0 || !res || res.failed !== 0 || !(res.total >= 1)) { ud.ok = false; ud.fejl.push(`${pakke}: prover-kørslen ikke grøn (rc ${k.status}, ${JSON.stringify(res)})`); }
     }
   }
   if (rapport) writeFileSync(rapport, JSON.stringify(ud, null, 1) + "\n");
