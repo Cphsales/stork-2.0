@@ -29,7 +29,7 @@ const beskyttet = (sti) => SANDHEDS_DOK.includes(sti) || (sti.startsWith(ROLLE_M
 const GODKENDELSE = /^»\s*(ja|ok|krav ok|plan ok|slut ok)\b/i;
 
 // rækker → [{ ord, maal }] for M-rækkerne (| M-n | dato | »ord« | svar på / godkender |)
-function raekker(ledger) {
+export function raekker(ledger) {
   return String(ledger ?? "").split("\n").filter((l) => /^\|\s*M-\d+\s*\|/.test(l)).map((l) => {
     const c = l.split("|").map((x) => x.trim());
     return { ord: c[3] ?? "", maal: c.slice(4).join("|") };

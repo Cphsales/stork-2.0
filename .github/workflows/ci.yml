@@ -65,6 +65,92 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then base="origin/${{ github.base_ref }}"; else base="${{ github.event.before }}"; fi
           node scripts/v5/sandhed-vagt.mjs --base "$base"
 
+  byggetjek:
+    # Byggetjekket og slutdommen (disciplin.md §2 trin 3-4, §6). Kører altid; en PR der ændrer pakke-kode
+    # kræver grønt byggetjek, Mathias' `slut ok` og kun afslutningsfiler efter prøven. Dommeren hentes fra
+    # base-branchen, så en PR ikke kan ændre sin egen dommer.
+    name: Byggetjek og slutdom
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: public.ecr.aws/supabase/postgres:17.6.1.121
+        env:
+          POSTGRES_PASSWORD: byggetjek
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://authenticator:byggetjek@postgres:5432/postgres
+          PGRST_DB_SCHEMAS: core_identity,core_compliance,public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: byggetjek-jwt-secret-for-the-ephemeral-test-database
+          PGRST_DB_CHANNEL_ENABLED: "true"
+        ports:
+          - 3000:3000
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: byggetjek
+      PGDATABASE: postgres
+      DATABASE_URL: postgres://postgres:byggetjek@localhost:5432/postgres
+      V5_PGRST_URL: http://localhost:3000
+      V5_PGRST_JWT_SECRET: byggetjek-jwt-secret-for-the-ephemeral-test-database
+      V5_PGRST_SCHEMA: core_identity
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: psql-klient
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+      - name: PostgREST's forbindelsesrolle
+        run: psql -U supabase_admin -v ON_ERROR_STOP=1 -c "alter role authenticator with login password 'byggetjek';"
+      - name: Dommeren fra base-branchen
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then REF="origin/${{ github.base_ref }}"; git fetch --quiet origin "${{ github.base_ref }}"; else REF=HEAD; fi
+          mkdir -p "$RUNNER_TEMP/dommer"
+          if git cat-file -e "$REF:scripts/v5/byggetjek.mjs" 2>/dev/null; then git archive "$REF" scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; else git archive HEAD scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; fi
+          echo "DOMMER=$RUNNER_TEMP/dommer/scripts/v5/byggetjek.mjs" >> "$GITHUB_ENV"
+      - name: Byggetjek og slutdom
+        run: |
+          BASE=""; [ "${{ github.event_name }}" = "pull_request" ] && BASE="--base origin/${{ github.base_ref }}"
+          STORK_V5_REPO="$GITHUB_WORKSPACE" node "$DOMMER" --pg env --rapport byggetjek-rapport.json $BASE
+      - name: Pakke-kode ændret?
+        id: pakke
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then F=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD); else F=$(git diff --name-only "${{ github.event.before }}" HEAD 2>/dev/null || true); fi
+          echo "$F" | grep -qE '^supabase/migrations/' && echo "migrationer=true" >> "$GITHUB_OUTPUT" || echo "migrationer=false" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v6
+        if: steps.pakke.outputs.migrationer == 'true'
+        with:
+          version: 10.33.0
+      - name: Types mod testdatabasen (pakkens migrationer er kørt dér, ikke i driften endnu)
+        if: steps.pakke.outputs.migrationer == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec supabase gen types typescript --db-url "$DATABASE_URL" --schema public,core_identity,core_compliance,core_money | pnpm exec prettier --parser typescript > /tmp/types.ts
+          diff -u packages/types/src/database.ts /tmp/types.ts || { echo "::error::packages/types/src/database.ts passer ikke med pakkens migrationer — kør types-genereringen mod testdatabasen og commit"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: byggetjek-${{ github.sha }}
+          path: byggetjek-rapport.json
+          if-no-files-found: ignore
+          retention-days: 90
+
   kode:
     name: Kode (lint, typecheck, test, build)
     runs-on: ubuntu-latest
@@ -155,9 +241,6 @@ jobs:
       - name: Supabase link
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm supabase:link
-      - name: Types drift check
-        if: env.SUPABASE_ACCESS_TOKEN != ''
-        run: pnpm types:check
       - name: Schema drift check
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: pnpm schema:check
@@ -171,7 +254,7 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [klassificer, sandhed, kode, governance, db]
+    needs: [klassificer, sandhed, byggetjek, kode, governance, db]
     if: always()
     steps:
       - name: Saml verdikt
@@ -179,11 +262,13 @@ jobs:
           ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
           echo "klassificer: ${{ needs.klassificer.result }}"
           echo "sandhed:     ${{ needs.sandhed.result }}"
+          echo "byggetjek:   ${{ needs.byggetjek.result }}"
           echo "kode:        ${{ needs.kode.result }}"
           echo "governance:  ${{ needs.governance.result }}"
           echo "db:          ${{ needs.db.result }}"
           [ "${{ needs.klassificer.result }}" = "success" ] || { echo "klassificer fejlede"; exit 1; }
           [ "${{ needs.sandhed.result }}" = "success" ] || { echo "sandhed-vagt fejlede"; exit 1; }
+          [ "${{ needs.byggetjek.result }}" = "success" ] || { echo "byggetjek fejlede"; exit 1; }
           [ "${{ needs.governance.result }}" = "success" ] || { echo "governance fejlede"; exit 1; }
           ok "${{ needs.kode.result }}" || { echo "kode fejlede"; exit 1; }
           ok "${{ needs.db.result }}" || { echo "db fejlede"; exit 1; }
