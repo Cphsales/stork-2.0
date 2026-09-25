@@ -1,4 +1,4 @@
-name: v5 gate-dommer selftests
+name: Workflow-selvtests
 
 # Kører hele v5-dommer-suiten (falsk-grøn-fri red-team) ved hvert push + PR.
 # Minimal-privilegeret (contents:read) — dette er IKKE gate-dommer-CI'en der
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   v5-selftest:
-    name: v5 dommer-selftests (falsk-grøn-fri)
+    name: Workflow-selvtests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
