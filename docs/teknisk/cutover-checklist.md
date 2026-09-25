@@ -1,10 +1,9 @@
 # Cutover-checklist
 
-<!-- governance-owns: cutover-flade -->
 
 Pre-cutover-blockers samlet ét sted. Ingen cutover til produktion uden hver række er kvitteret. Master-plan-blockers er autoritative; tabel her er destilleret og holdt synkron med `docs/strategi/stork-2-0-master-plan.md` cutover-blocker-sektion.
 
-**Kilde-flag (H010.6):** Den oprindelige reference "plan v1 sektion 4" kunne ikke lokaliseres som distinkt artefakt i repo'et. Indholdet nedenfor er destilleret fra (a) master-plan §X cutover-blockers, (b) `docs/teknisk/permission-matrix.md` pre-cutover lifecycle-state, og (c) G039 i `docs/teknisk/teknisk-gaeld.md`. Hvis "plan v1 sektion 4" var en anden konkret kilde: send referencen, så afstemmes indholdet ordret.
+**Kilder:** (a) masterplanens afsnit »Cutover-blockers (rettelse 28)«, som er autoritativ, (b) `docs/teknisk/permission-matrix.md` pre-cutover lifecycle-state, (c) G039 i `docs/teknisk/teknisk-gaeld.md`.
 
 ---
 
@@ -18,13 +17,13 @@ Autoritativ kilde: `docs/strategi/stork-2-0-master-plan.md` (Hard cutover-blocke
 | 2   | G001 audit_filter_values strict-flip aktiveret | `stork.audit_filter_strict='true'` som DB-default; negativ test: INSERT på syntetisk tabel uden klassifikation → exception                                                   | åben   |
 | 3   | GDPR-compliance audit gennemført               | `docs/gdpr-compliance.md` signeret af `gdpr_responsible` lister Art. 15/17/18/30 + formålsbegrænsning + dataminimering + behandlingsgrundlag                                 | åben   |
 | 4   | PITR aktiveret                                 | Supabase Management API verificerer `pitr_enabled=true`                                                                                                                      | åben   |
-| 5   | Backup-retention verificeret                   | Antal dage dokumenteret i denne fil + Supabase Management API verificerer faktisk værdi                                                                                      | åben   |
-| 6   | Test-artefakter ryddet (G017)                  | `select count(*) from core_money.pay_periods where start_date < '2000-01-01'` = 0 OG `select count(*) from core_money.salary_corrections where description='smoke test'` = 0 | åben   |
+| 5   | Backup-retention verificeret                   | Antal dage dokumenteret i `CLAUDE.md` (som masterplanen siger) + Supabase Management API verificerer faktisk værdi                                                                                      | åben   |
+| 6   | Test-artefakter ryddet (G017)                  | `select count(*) from core_money.pay_periods where start_date < '2000-01-01'` = 0 OG `select count(*) from core_money.salary_corrections where description='smoke test'` = 0 | migration kørt (`20260516200000_h024_test_artifact_cleanup.sql`); afventer live-kvittering |
 | 7   | Scope-rensning verificeret                     | `pnpm scope:check` returnerer 0 hits                                                                                                                                         | åben   |
 | 8   | Dependabot-sårbarheder håndteret (H001)        | 0 høj/kritisk-sårbarheder på default branch                                                                                                                                  | åben   |
 | 9   | GHAS-beslutning (H002)                         | Aktiveret eller eksplicit Mathias-godkendt undtagelse                                                                                                                        | åben   |
 | 10  | CodeQL-beslutning (H003)                       | Aktiveret eller eksplicit Mathias-godkendt undtagelse                                                                                                                        | åben   |
-| 11  | Migration TODO-markører løst (H006)            | 0 TODO-markører i migration-filer                                                                                                                                            | åben   |
+| 11  | Migration TODO-markører løst (H006)            | 0 TODO-markører i `scripts/migration/employees/1_discovery.sql` og `2_extract.sql` (1.0-udtræk; `supabase/migrations/` har 0)                                                                                                                                            | åben   |
 
 ---
 
@@ -41,9 +40,9 @@ Autoritativ kilde: `docs/teknisk/permission-matrix.md` "Pre-cutover lifecycle-st
 Yderligere UI-konfiguration der skal være sat før første cutover-relevante drift:
 
 - `core_identity.employee_active_config` — definition af "aktiv" (Q1-leverance)
-- `core_identity.role_page_permissions` — superadmin-rows seedet via Q-pakke; andre roller skal seedes via UI
+- `core_identity.role_permission_grants` — superadmin-grants seedet i T9 (`20260518000010_t9_seed_owners.sql`); andre roller skal seedes via UI
 - `core_compliance.data_field_definitions` — PII/retention pr. kolonne klassificeret (default = intet — kræver aktivt valg)
-- `core_compliance.gdpr_responsible` valgt via UI
+- GDPR-ansvarlig (`core_compliance.superadmin_settings.gdpr_responsible_employee_id`) valgt via UI (`gdpr_responsible_set`); ved oprettelsen sat til ældste aktive superadmin
 
 ---
 
@@ -65,7 +64,7 @@ Procedure post-aktivering: kør `pnpm db:test` mod aktiv-state og verificér at 
 
 ## V1 PostgREST set_config eksponerings-test (HÅRD DEADLINE før cutover)
 
-Reference: G039 i `docs/teknisk/teknisk-gaeld.md`. H012 sporer hård deadline.
+Reference: G039 i `docs/teknisk/teknisk-gaeld.md`. H012 sporer deadlinen: før cutover (der er ikke sat en dato).
 
 **Hvorfor:** Session-var-baseret RLS (Variant B) hviler på at `set_config` ikke kan kaldes via PostgREST. Hvis det ER eksponeret, har vi en bypass-vektor for alle RLS-policies der bruger session-vars.
 

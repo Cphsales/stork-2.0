@@ -1,17 +1,20 @@
 #!/usr/bin/env node
-// DB-level test runner. Itererer supabase/tests/**/*.sql, sender hver til
-// Supabase Management API som én query, fail-fast ved første test-fejl.
+// DB-level test runner. Itererer supabase/tests/**/*.sql og kører hver fil mod testdatabasen
+// (DATABASE_URL, via psql med ON_ERROR_STOP) eller — uden DATABASE_URL — mod projektet via
+// Supabase Management API. Fail-fast ved første test-fejl.
 //
 // Konvention: hver test er en SQL-fil med DO-block der RAISE EXCEPTION ved
 // assertion-failure. Filer med side-effekter (employees/audit) bruger
 // BEGIN/ROLLBACK så prod-DB ikke forurenes.
 
 import { readdir, readFile, stat } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
 const TESTS_DIR = "supabase/tests";
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+const DATABASE_URL = process.env.DATABASE_URL;
 const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
 
 function parseArgs() {
@@ -37,6 +40,10 @@ async function walk(dir) {
 }
 
 async function runQuery(query) {
+  if (DATABASE_URL) {
+    const r = spawnSync("psql", [DATABASE_URL, "-X", "-q", "-v", "ON_ERROR_STOP=1"], { input: query, encoding: "utf8" });
+    return r.status === 0 ? { ok: true, body: r.stdout } : { ok: false, status: r.status, body: String(r.stderr).slice(0, 2000) };
+  }
   const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
     method: "POST",
     headers: {
@@ -54,8 +61,8 @@ async function runQuery(query) {
 }
 
 async function main() {
-  if (!TOKEN) {
-    console.error("SUPABASE_ACCESS_TOKEN env-var er påkrævet for test:db");
+  if (!TOKEN && !DATABASE_URL) {
+    console.error("DATABASE_URL (testdatabasen) eller SUPABASE_ACCESS_TOKEN er påkrævet for db:test");
     process.exit(2);
   }
 
@@ -75,7 +82,7 @@ async function main() {
     return;
   }
 
-  console.log(`Kører ${files.length} DB-test(s) mod project ${PROJECT_REF}`);
+  console.log(`Kører ${files.length} DB-test(s) mod ${DATABASE_URL ? "testdatabasen" : `project ${PROJECT_REF}`}`);
   console.log("");
 
   let passed = 0;

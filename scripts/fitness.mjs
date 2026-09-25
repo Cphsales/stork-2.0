@@ -157,7 +157,7 @@ const LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS = new Set([
   // ingen status-kolonne. R7d-pattern (dual-column employees) gælder ikke.
   "core_identity.client_field_definitions_list",
   "core_identity.clients_validate_fields",
-  // T9-supplement-2 (V11 Mathias-fund B3): permission_actions har kun
+  // permission_actions har kun
   // is_active-kolonne (samme T9-pattern som permission_pages/tabs).
   // R7d-pattern (dual-column employees) gælder ikke.
   "core_identity.has_permission_action",

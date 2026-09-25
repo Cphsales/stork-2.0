@@ -21,18 +21,18 @@ $test$;
 rollback;
 ```
 
-`BEGIN ... ROLLBACK` sikrer at side-effekter (employees, audit-rows, etc.) ikke persisterer i prod-DB. Hvis testen RAISE EXCEPTION'er → runner ser fejl → CI fejler.
+`BEGIN ... ROLLBACK` sikrer at side-effekter (employees, audit-rows, etc.) ikke persisterer. Testene kører i dag mod driftsdatabasen (G047), så en test uden ROLLBACK efterlader data dér. Hvis testen RAISE EXCEPTION'er → runner ser fejl → CI fejler.
 
 Tests uden side-effekter (rene queries / regprocedure-cast) behøver ikke explicit BEGIN/ROLLBACK.
 
 ## Mapper
 
-- `smoke/` — happy-path admin-vej-tests
+- `smoke/` — happy-path-tests, også service-role-paths (fx `r7a_retention_cleanup_cron_e2e.sql`, `r7a_replay_anonymization_e2e.sql`)
 - `negative/` — RLS/permission blokering (verificer at uberettigede caller fejler)
-- `cron/` — service-role-paths (retention, replay, auto-lock-cron)
 - `break_glass/` — request/approve/execute flow + regprocedure-allowlist
 - `classification/` — retention NOT NULL + permanent + admin-floor
-- `benchmark/` — performance SLA-tests (lock-pipeline)
+
+Der findes ingen benchmark-tests (lock-pipeline-benchmarket er G031).
 
 ## Runner
 
@@ -40,7 +40,7 @@ Tests uden side-effekter (rene queries / regprocedure-cast) behøver ikke explic
 
 ```bash
 pnpm db:test                    # kør alle tests
-pnpm db:test -- --dir benchmark # kun benchmark-tests
+pnpm db:test -- --dir smoke     # kun én mappe
 ```
 
 Kræver `SUPABASE_ACCESS_TOKEN` env-var (samme som fitness `db-rls-policies`-check). I CI: secret i workflow.
