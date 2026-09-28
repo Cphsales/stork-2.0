@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # codex-run.sh — den eneste vej til Codex (disciplin.md §6).
 #
+# En dom kræver en ren git-checkout som workdir; det læste commit sendes med i prompten.
 # Isolation: Codex får et privat Codex-hjem med kun en kopi af login (auth.json) og ingen
 # config.toml, så den lokale opsætning aldrig arves. Miljøet er en allowlist. Netværk er slået
 # fra; /tmp og $TMPDIR er ikke skrivbare. Domme kører kun-læse; test-produktion må skrive i workdir.
@@ -23,6 +24,12 @@ ROLLETEKST="$REPO/scripts/v5/roller/$ROLLE.md"
 [ -f "$ROLLETEKST" ] || fejl "rolleteksten findes ikke: $ROLLETEKST"
 [ -d "$WORKDIR" ] || fejl "workdir findes ikke: $WORKDIR"
 [ -f "$PROMPTFIL" ] || fejl "promptfilen findes ikke: $PROMPTFIL"
+# en dom læser en ren checkout (disciplin.md §13): kun committet indhold, og det læste commit står i prompten og loggen
+LAEST=""
+if [ "$AKT" = dom ]; then
+  LAEST=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null) || fejl "workdir er ikke en git-checkout: $WORKDIR"
+  [ -z "$(git -C "$WORKDIR" status --porcelain 2>/dev/null)" ] || fejl "workdir er ikke en ren checkout — commit eller ryd op først: $WORKDIR"
+fi
 CODEX=$(command -v codex) || fejl "codex findes ikke på PATH"
 AUTH_SRC="$HOME/.codex/auth.json"
 [ -f "$AUTH_SRC" ] && [ ! -L "$AUTH_SRC" ] || fejl "log ind med 'codex login' først ($AUTH_SRC mangler)"
@@ -36,7 +43,9 @@ auth_tilbage() { cmp -s "$RUNDIR/codex-home/auth.json" "$AUTH_SRC" || cp -- "$RU
 PROMPT="$(cat -- "$ROLLETEKST")
 
 ---
-
+${LAEST:+
+Du læser commit $LAEST.
+}
 $(cat -- "$PROMPTFIL")"
 
 kald() {
@@ -55,7 +64,7 @@ for forsoeg in 1 2; do
   auth_tilbage
   if [ "$rc" -eq 0 ] && [ -s "$RUNDIR/svar" ] && [ ! -L "$RUNDIR/svar" ]; then
     mv -f -- "$RUNDIR/svar" "$OUT" || fejl "kan ikke skrive $OUT"
-    echo "codex-run: rolle=$ROLLE aktivitet=$AKT model=$MODEL effort=$EFFORT sandbox=$SANDBOX forsøg=$forsoeg ok" >> "$OUT.log"
+    echo "codex-run: rolle=$ROLLE aktivitet=$AKT model=$MODEL effort=$EFFORT sandbox=$SANDBOX${LAEST:+ commit=$LAEST} forsøg=$forsoeg ok" >> "$OUT.log"
     exit 0
   fi
   echo "codex-run: forsøg $forsoeg uden svar (rc=$rc)" >> "$OUT.log"

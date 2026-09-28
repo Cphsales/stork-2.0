@@ -86,7 +86,8 @@ export const CREDENTIAL_ENV_RE = /^(GITHUB_TOKEN|GH_TOKEN|GITHUB_PAT|ACTIONS_[A-
 export function producentMiljoe(env = process.env) {
   const out = {}; for (const [k, v] of Object.entries(env)) if (!CREDENTIAL_ENV_RE.test(k) && typeof v === "string") out[k] = v; return out;
 }
-const settingsGyldige = (settings) => settings === undefined || settings === null || (settings !== null && typeof settings === "object" && !Array.isArray(settings) && Object.keys(settings).every((k) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i.test(k)));
+// aktør-settings er kun egne (punkterede) variable som request.jwt.claims — aldrig role, session_authorization eller andre servervariable
+const settingsGyldige = (settings) => settings === undefined || settings === null || (settings !== null && typeof settings === "object" && !Array.isArray(settings) && Object.keys(settings).every((k) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$/i.test(k)));
 const setSql = (settings) => Object.entries(settings ?? {}).map(([k, v]) => `set ${k} = '${String(v).replace(/'/g, "''")}';`).join("\n");
 
 // ---------- API-transport (PostgREST) ----------
@@ -153,7 +154,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
     const nonce = randomBytes(8).toString("hex"); const S = `V5S-${nonce}`, M = `V5M-${nonce}`, E = `V5E-${nonce}`;
     const prelude = ["\\set VERBOSITY verbose"];
     if (opts.role) prelude.push(`set role ${opts.role};`);
-    if (!settingsGyldige(opts.settings)) return { ok: false, error: "aktør-settings har ugyldige nøgler (kun identifier.identifier)", code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined };
+    if (!settingsGyldige(opts.settings)) return { ok: false, error: "aktør-settings har ugyldige nøgler (kun punkterede variable som request.jwt.claims — aldrig role)", code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined };
     if (opts.settings) prelude.push(setSql(opts.settings));
     const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
     const input = `${prelude.join("\n")}\n${body}\n\\echo ${S} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${M}\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${E}\n`;

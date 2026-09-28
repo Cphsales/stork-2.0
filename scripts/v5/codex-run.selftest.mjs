@@ -18,6 +18,9 @@ t("ukendt aktivitet → afvist", kald(["codex-review", "angreb", d, "10", join(d
 t("ugyldigt rollenavn → afvist", kald(["../x", "dom", d, "10", join(d, "o"), prompt]).status !== 0);
 t("ukendt rolle (ingen rolletekst) → afvist", kald(["findes-ikke", "dom", d, "10", join(d, "o"), prompt]).status !== 0);
 t("timeout 0 → afvist", kald(["codex-review", "dom", d, "0", join(d, "o"), prompt]).status !== 0);
+t("dom på en mappe der ikke er en git-checkout → afvist", /ikke en git-checkout/.test(kald(["codex-review", "dom", d, "10", join(d, "o"), prompt]).stderr));
+{ const g = mkdtempSync(join(tmpdir(), "codex-run-git-")); spawnSync("git", ["init", "-q", g]); spawnSync("git", ["-C", g, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "x"]); writeFileSync(join(g, "beskidt.txt"), "x");
+  t("dom på en beskidt checkout → afvist", /ikke en ren checkout/.test(kald(["codex-review", "dom", g, "10", join(d, "o"), prompt]).stderr)); }
 t("dom kører kun-læse", /dom\) SANDBOX=read-only/.test(src));
 t("netværk slået fra", src.includes("sandbox_workspace_write.network_access=false"));
 t("privat Codex-hjem uden brugerens config", src.includes('CODEX_HOME="$RUNDIR/codex-home"') && !/config\.toml"/.test(src.replace(/#.*$/gm, "")));

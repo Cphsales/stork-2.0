@@ -40,19 +40,26 @@ export function halvside(planTekst) {
 }
 export const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 
-// seneste(ledger, ordet, stier) → { raekke, par } for den seneste række, hvor hans ord er `ordet` og en fil → blob passer til en af stierne
-export function seneste(ledger, ordet, stier) {
+// seneste(ledger, ordet, passerFil) → { raekke, par } for den seneste række, hvor hans ord er `ordet` og en fil → blob passer
+export function seneste(ledger, ordet, passerFil) {
   const r = raekker(ledger).filter((x) => erGodkendelse(x.ord, ordet));
   for (let i = r.length - 1; i >= 0; i--) {
-    const par = filBlobPar(r[i].maal).find((p) => stier.some((s) => passer(p.fil, s)));
+    const par = filBlobPar(r[i].maal).find((p) => passerFil(p.fil));
     if (par) return { raekke: r[i], par };
   }
   return null;
 }
+// pakkens egne filer nævnes med fuld sti (plan.md og slut-rapport.md findes i alle pakker); kravet har pakkens navn i filnavnet
+const erKravFil = (pakke) => (f) => f === `docs/sandhed/krav/${pakke}-krav.md` || f === `${pakke}-krav.md` || f === `plan-build/${pakke}/krav-udkast.md`;
+const erFil = (sti) => (f) => f === sti;
+
+// målelaget: pakkemapperne i scripts/v5/ (ikke rolleteksterne), manifest/testindeks/testvalg/slutprøve og databasens tests
+export const erMaalelag = (s) => /^scripts\/v5\/(?!roller\/)[^/]+\/./.test(s) || /^plan-build\/[^/]+\/(forventnings-manifest|angrebs-spec|prover|slutproeve)\.json$/.test(s) || (/^supabase\/tests\//.test(s) && !/\.md$/.test(s));
+const egenPakke = (pakke, s) => s.startsWith(`scripts/v5/${pakke}/`) || s.startsWith(`plan-build/${pakke}/`);
 
 // bindinger({pakke, blob, tekst, findes, ledger, blobTekst, liste, aendret?}) → { status: "ikke nået"|"grøn"|"rød", fejl: [] }
 //   blobTekst(oid) → indholdet af en blob i repoet eller null · liste(mappe) → de sporede filer under mappen
-//   aendret = stierne PR'en ændrer (med --base): hver ændret fil under supabase/tests/ skal være bundet
+//   aendret = stierne PR'en ændrer (med --base): hver ændret målelagsfil (også en lukket pakkes og supabase/tests/) skal være bundet
 export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste, aendret = [] }) {
   const P = `plan-build/${pakke}`;
   const fejl = [];
@@ -62,7 +69,7 @@ export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste
   // kravet mod seneste krav ok
   if (!findes(krav)) fejl.push(`${krav} findes ikke`);
   else {
-    const k = seneste(ledger, "krav ok", [krav, `${P}/krav-udkast.md`]);
+    const k = seneste(ledger, "krav ok", erKravFil(pakke));
     if (!k) fejl.push(`ledgeren har intet \`krav ok\`, der binder ${pakke}-krav.md → blob`);
     else if (!blob(krav).startsWith(k.par.blob)) fejl.push(`kravet (blob ${blob(krav).slice(0, 12)}) er ikke den blob, ${k.raekke.nr} bandt (${k.par.blob})`);
   }
@@ -70,9 +77,9 @@ export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste
   if (!findes(plan)) fejl.push(`${plan} findes ikke`);
   else {
     const hs = halvside(tekst(plan));
-    const g = seneste(ledger, "plan ok", [plan]);
+    const g = seneste(ledger, "plan ok", erFil(plan));
     if (!hs) fejl.push("planen har intet afsnit »## Mathias' ½ side«");
-    else if (!g) fejl.push(`ledgeren har intet \`plan ok\`, der binder plan.md → blob`);
+    else if (!g) fejl.push(`ledgeren har intet \`plan ok\`, der binder ${plan} → blob`);
     else {
       const godkendt = blobTekst(g.par.blob);
       if (godkendt === null) fejl.push(`planen, ${g.raekke.nr} godkendte (blob ${g.par.blob}), findes ikke i repoet`);
@@ -96,7 +103,7 @@ export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste
     if (findes(plan) && d.plan !== blob(plan)) fejl.push("dækningsdommen gælder en anden plan (feltet plan = planens fulde blob)");
     const filer = isPlain(d.filer) ? d.filer : {};
     if (!isPlain(d.filer)) fejl.push("dækningsdommen har intet objekt filer {sti: blob}");
-    const noedvendige = [...MAALELAG_JSON.map((f) => `${P}/${f}`), ...liste(`scripts/v5/${pakke}/`), ...aendret.filter((s) => s.startsWith("supabase/tests/") && findes(s))];
+    const noedvendige = [...MAALELAG_JSON.map((f) => `${P}/${f}`), ...liste(`scripts/v5/${pakke}/`), ...aendret.filter((s) => erMaalelag(s) && findes(s))];
     for (const sti of new Set(noedvendige)) if (!(sti in filer)) fejl.push(`dækningsdommen binder ikke ${sti}`);
     for (const [sti, oid] of Object.entries(filer)) {
       if (typeof oid !== "string" || !OID.test(oid)) fejl.push(`dækningsdommens blob for ${sti} er ikke 40 tegn hex`);
@@ -110,10 +117,39 @@ export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste
 // pakke-kode = det der kommer i drift: migrationer, funktioner, app, pakker og den konfiguration de bygges og køres med.
 // Afhængigheder ændres kun sammen med låsefilen (CI installerer med --frozen-lockfile).
 const PRODUKT_RE = /^(supabase\/(migrations|functions)\/|supabase\/config\.toml$|apps\/|packages\/|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|tsconfig\.base\.json$|\.npmrc$|\.nvmrc$)/;
-export const erPakkePr = (stier) => stier.some((p) => PRODUKT_RE.test(p));
+// Rod-package.json er pakke-kode, når andet end workflowets egne scripts ændres: afhængigheder, livscyklus-scripts
+// (fx postinstall), build-scripts og de scripts deployet kalder (migrations-deploy.yml: pnpm <script>).
+const LIVSCYKLUS = ["preinstall", "install", "postinstall", "prepare", "prepublish", "prepublishOnly", "prepack", "postpack", "build", "dev", "start"];
+export function packageJsonErProdukt(foer, efter, deployTekst = "") {
+  let a, b; try { a = JSON.parse(foer); b = JSON.parse(efter); } catch { return true; }
+  const stabil = (v) => (v && typeof v === "object" && !Array.isArray(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stabil(v[k])}`).join(",")}}` : JSON.stringify(v));
+  const uden = (o) => { const { scripts, ...rest } = o ?? {}; return stabil(rest); };
+  if (uden(a) !== uden(b)) return true;
+  const deploy = new Set([...String(deployTekst).matchAll(/\bpnpm (?:run )?([a-z0-9:_-]+)/gi)].map((m) => m[1]));
+  const drift = (n) => LIVSCYKLUS.includes(n) || deploy.has(n);
+  const navne = new Set([...Object.keys(a.scripts ?? {}), ...Object.keys(b.scripts ?? {})]);
+  return [...navne].some((n) => drift(n) && (a.scripts ?? {})[n] !== (b.scripts ?? {})[n]);
+}
+export const erPakkePr = (stier, { packageJsonProdukt = true } = {}) => stier.some((p) => PRODUKT_RE.test(p) || (p === "package.json" && packageJsonProdukt));
 
 // afsnit(tekst, overskrift) → teksten under »## <overskrift>« til næste »## «
 const afsnit = (t, o) => { const l = String(t).split("\n"); const i = l.findIndex((x) => x.trim() === `## ${o}`); if (i < 0) return null; let j = l.findIndex((x, k) => k > i && /^## /.test(x)); if (j < 0) j = l.length; return l.slice(i + 1, j).join("\n"); };
+
+// rettelserFra(afsnit) → [{fil, blob}] fra skabelonens tabel (disciplin.md §10.3):
+//   | Dokument + afsnit | Nuværende tekst | Ny tekst | Forventet blob efter rettelsen |
+export function rettelserFra(t) {
+  const ud = [];
+  for (const l of String(t).split("\n")) {
+    if (!/^\s*\|/.test(l) || /^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;
+    const c = l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((x) => x.trim());
+    const fil = (c[0].match(/`?([A-Za-z0-9_./-]+\.md)`?/) ?? [])[1];
+    const blob = (c[c.length - 1].match(/(?<![0-9a-f])([0-9a-f]{12,40})(?![0-9a-f])/) ?? [])[1];
+    if (fil && blob) ud.push({ fil, blob });
+  }
+  return ud;
+}
+// dokumenter der kan rettes med `slut ok`: docs/**.md — ikke workflowets disciplin.md, kravene eller ledgeren
+const erDokument = (s) => /^docs\/.+\.md$/.test(s) && s !== "docs/strategi/disciplin.md" && !s.startsWith("docs/sandhed/krav/") && s !== LEDGER;
 
 // mergeKontrol({pakke, ledger, blob, tekst, findes, aendretSiden, ledgerDiff}) → fejl[]
 // Efter `slut ok` må kun afslutningsfilerne ændres, og hver kontrolleres ét sted (disciplin.md §2 trin 4 punkt 1-4).
@@ -121,27 +157,27 @@ const afsnit = (t, o) => { const l = String(t).split("\n"); const i = l.findInde
 //   ledgerDiff(commit) → { slettet: antal, tilfoejet: [linjer] } for ledgeren fra commit til HEAD
 export function mergeKontrol({ pakke, ledger, blob, tekst, findes, aendretSiden, ledgerDiff }) {
   const P = `plan-build/${pakke}`, R = `${P}/slut-rapport.md`, G = `${P}/codex-gennemgang.md`;
-  const s = seneste(ledger, "slut ok", [R]);
-  if (!s) return [`ledgeren har intet \`slut ok\`, der binder ${pakke}'s slut-rapport.md → blob`];
+  const s = seneste(ledger, "slut ok", erFil(R));
+  if (!s) return [`ledgeren har intet \`slut ok\`, der binder ${R} → blob`];
   const commit = (s.raekke.maal.match(/(?<![0-9a-z])commit ([0-9a-f]{7,40})(?![0-9a-f])/) ?? [])[1];
   if (!commit) return [`\`slut ok\`-rækken (${s.raekke.nr}) skal nævne »commit <sha>« — den prøvede kodeversion`];
   const fejl = [];
   if (!findes(R) || !blob(R).startsWith(s.par.blob)) return [`slut-rapporten er ændret efter \`slut ok\` (${s.raekke.nr} bandt ${s.par.blob})`];
   const rapport = tekst(R);
-  const pk = (rapport.match(/Prøvet kodeversion\W*([0-9a-f]{7,40})(?![0-9a-f])/i) ?? [])[1];
+  const pk = (rapport.match(/Prøvet kodeversion\W*(?:commit\s+)?`?([0-9a-f]{7,40})(?![0-9a-f])/i) ?? [])[1];
   if (!pk || !(pk.startsWith(commit) || commit.startsWith(pk))) fejl.push(`slut-rapportens »Prøvet kodeversion« (${pk ?? "mangler"}) er ikke det commit, \`slut ok\` bandt (${commit})`);
   // (4) Codex' gennemgang nævner det prøvede commit
   if (!findes(G)) fejl.push("Codex' gennemgang (codex-gennemgang.md) mangler");
   else if (!tekst(G).includes(commit)) fejl.push(`Codex' gennemgang nævner ikke det prøvede commit ${commit}`);
   const aendret = aendretSiden(commit);
   if (aendret === null) return [...fejl, `det prøvede commit ${commit} findes ikke`];
-  // (1) dokumentrettelserne har præcis den blob, rapporten angiver
-  const rettelser = filBlobPar(afsnit(rapport, "Rettelser i Mathias' dokumenter") ?? "");
+  // (1) dokumentrettelserne har præcis den blob, rapporten angiver — og kun dokumenter kan være afslutningsfiler
+  const rettelser = rettelserFra(afsnit(rapport, "Rettelser i Mathias' dokumenter") ?? "");
   for (const sti of aendret) {
     if (sti === R || sti === G || sti === LEDGER) continue;
-    const r = rettelser.find((p) => passer(p.fil, sti));
+    const r = erDokument(sti) ? rettelser.find((p) => passer(p.fil, sti)) : null;
     if (r && findes(sti) && blob(sti).startsWith(r.blob)) continue;
-    fejl.push(`${sti} er ændret efter den prøvede version (commit ${commit}) og er ikke en afslutningsfil med den blob, slut-rapporten angiver`);
+    fejl.push(`${sti} er ændret efter den prøvede version (commit ${commit}) og er ikke et dokument med den blob, slut-rapportens rettelser angiver`);
   }
   // (3) ledgeren er sit tidligere indhold uændret plus præcis den nye `slut ok`-post
   const ld = ledgerDiff(commit);
@@ -236,7 +272,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`byggetjek: tests og slutprøve ${db.ok ? "grønne" : "RØDE: " + db.fejl.join(" · ")}`);
   }
   let status = b.status === "rød" || !db.ok ? "rød" : b.status === "grøn" ? "grøn" : "ikke nået";
-  if (base && erPakkePr(aendret)) {
+  if (base) {
+    // en lukket pakkes målelag forsvinder aldrig, og ændret målelag uden for den åbne pakke skal være bundet af dens dækningsdom
+    const fra = new Set(git(["ls-tree", "-r", "--name-only", base, "--", "plan-build"]).split("\n").map((f) => (f.match(/^plan-build\/([^/]+)\/angrebs-spec\.json$/) ?? [])[1]).filter(Boolean));
+    const nu = new Set(pakkerMedMaalelag(root));
+    const vaek = [...fra].filter((p) => !nu.has(p));
+    const ubundet = b.status === "grøn" ? [] : aendret.filter((s) => erMaalelag(s) && !(pakke && egenPakke(pakke, s)));
+    for (const p of vaek) console.log(`byggetjek: RØD — den lukkede pakke ${p}'s målelag er fjernet (regressionstestene skal blive)`);
+    if (ubundet.length) console.log(`byggetjek: RØD — målelaget er ændret uden en dækningsdom, der binder det: ${ubundet.join(", ")}`);
+    if (vaek.length || ubundet.length) status = "rød";
+  }
+  const pjProdukt = aendret.includes("package.json") ? packageJsonErProdukt((() => { try { return git(["show", `${base}:package.json`]); } catch { return "{}"; } })(), findes("package.json") ? tekst("package.json") : "{}", findes(".github/workflows/migrations-deploy.yml") ? tekst(".github/workflows/migrations-deploy.yml") : "") : false;
+  if (base && erPakkePr(aendret, { packageJsonProdukt: pjProdukt })) {
     const mk = pakke ? mergeKontrol({ pakke, ledger, blob, tekst, findes,
       aendretSiden: (c) => { try { return git(["diff", "--name-only", c, "HEAD"]).split("\n").filter(Boolean); } catch { return null; } },
       ledgerDiff: (c) => { const l = git(["diff", "--unified=0", c, "HEAD", "--", LEDGER]).split("\n"); return { slettet: l.filter((x) => x.startsWith("-") && !x.startsWith("---")).length, tilfoejet: l.filter((x) => x.startsWith("+") && !x.startsWith("+++")).map((x) => x.slice(1)) }; } })

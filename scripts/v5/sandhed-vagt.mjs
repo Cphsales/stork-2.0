@@ -4,7 +4,7 @@
 //
 // En ændring i vision-og-principper.md, forretningsforstaaelse.md, masterplanen, disciplin.md
 // eller en rolletekst i scripts/v5/roller/ er kun gyldig, hvis ledgeren har en M-række, hvor
-// hans ord er en godkendelse, og hvor kolonnen »Svar på / godkender« binder netop den fil til
+// hans ord er netop et godkendelses-ord, og hvor kolonnen »Svar på / godkender« binder netop den fil til
 // den nye blob (`<fil> → blob <mindst 12 tegn>`). Sletning kræver en sådan række, hvor filen
 // står i et afsnit, der ender med »slettes«. Formaterne: scripts/README.md »Formater«.
 //
@@ -34,16 +34,23 @@ export function raekker(ledger) {
   });
 }
 
-// erGodkendelse(ord, ordet?) → hans citat begynder med godkendelses-ordet (uden `ordet`: ja · ok · krav ok ·
-// plan ok · slut ok) og rummer intet forbehold (men · bortset · undtagen · dog · nej · vent · stop).
-const FORBEHOLD = /(?<!\p{L})(men|bortset|undtagen|dog|nej|vent|stop)(?!\p{L})/iu;
+// erGodkendelse(ord, ordet?) → hans citat er netop godkendelses-ordet (uden `ordet`: ja · ok · krav ok · plan ok · slut ok),
+// evt. efterfulgt af »tak« og/eller »til <hvad>« og et punktum — og intet forbehold eller nægtelse.
+const FORM = /^(ja|ok|krav ok|plan ok|slut ok)( tak)?( til [\p{L}\p{N} ._-]+)?[.!]?$/u;
+const FORBEHOLD = /(?<!\p{L})(men|bortset|undtagen|dog|nej|ikke|ej|vent|stop)(?!\p{L})/iu;
 export function erGodkendelse(ord, ordet) {
   const m = String(ord ?? "").trim().match(/^»([\s\S]*)«$/);
   if (!m) return false;
-  const t = m[1].trim().toLowerCase();
-  const start = ordet ? new RegExp(`^${ordet}(?!\\p{L})`, "u") : /^(ja|ok|krav ok|plan ok|slut ok)(?!\p{L})/u;
-  return start.test(t) && !FORBEHOLD.test(t);
+  const t = m[1].trim().toLowerCase().replace(/\s+/g, " ");
+  const f = t.match(FORM);
+  return !!f && (!ordet || f[1] === ordet) && !FORBEHOLD.test(t);
 }
+// M-71 (2026-09-24) er hans ja til de to l.5-linjer, men citatet fortsætter med et spørgsmål og har derfor ikke den rene form.
+// Rækken godkender kun netop disse to blobs.
+const HISTORISKE_GODKENDELSER = Object.freeze([
+  { nr: "M-71", ord: "»ja - ja - ja og har jeg ikke godkendt workflow planen?«", par: [{ fil: "vision-og-principper.md", blob: "309fc5949ded" }, { fil: "forretningsforstaaelse.md", blob: "cde05276985a" }] },
+]);
+const historisk = (r) => HISTORISKE_GODKENDELSER.find((h) => h.nr === r.nr && h.ord === r.ord.trim())?.par ?? null;
 
 // filBlobPar(tekst) → [{ fil, blob }] for hvert `<fil> → blob <12-40 hex>` (filen evt. i backticks)
 export function filBlobPar(tekst) {
@@ -58,13 +65,15 @@ export const passer = (fil, sti) => fil === sti || sti.endsWith("/" + fil);
 
 // ændringer: [{ sti, status: "M"|"A"|"D", blob }] · ledger: tekst · → liste af fejl
 export function dom(aendringer, ledger) {
-  const godkendt = raekker(ledger).filter((r) => erGodkendelse(r.ord));
+  const alle = raekker(ledger);
+  const godkendt = alle.filter((r) => erGodkendelse(r.ord));
+  const par = [...godkendt.flatMap((r) => filBlobPar(r.maal)), ...alle.flatMap((r) => historisk(r) ?? [])];
   const fejl = [];
   for (const a of aendringer) {
     if (!beskyttet(a.sti)) continue;
     const ok = a.status === "D"
       ? godkendt.some((r) => slettes(r.maal).some((f) => passer(f, a.sti)))
-      : typeof a.blob === "string" && godkendt.some((r) => filBlobPar(r.maal).some((p) => passer(p.fil, a.sti) && a.blob.startsWith(p.blob)));
+      : typeof a.blob === "string" && par.some((p) => passer(p.fil, a.sti) && a.blob.startsWith(p.blob));
     if (!ok) fejl.push(`${a.sti}: ${a.status === "D" ? "slettes" : `ny blob ${String(a.blob).slice(0, 12)}`} uden en M-række, hvor Mathias godkender netop denne tekst`);
   }
   return fejl;

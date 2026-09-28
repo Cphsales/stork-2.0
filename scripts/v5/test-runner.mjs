@@ -13,8 +13,8 @@
 // dækker den et negativ, SKAL den have kaldt forvent.afvist(…, netop det negativ) — ellers rød.
 // LIB (det Codex' tests får — alt andet er kode i testen):
 //   lib.ejer.sql(text)                       → kald-udfald som ejer            lib.som(actor).sql(text) / .http(req) → som aktør {role, settings} (rollen tjekkes for bypass)
-//   lib.race(scenario)                       → pg-runner race (overlap-vidne)  lib.kontrakt(negative_id) → manifestets reject_contract
-//   lib.exec(cmd[])                          → {exit_code, stdout} (exit-kanal)  lib.session(name) → én psql-backend (pg-runner session)
+//   lib.race(scenario)                       → pg-runner race (overlap-vidne; aktør kræves)  lib.kontrakt(negative_id) → manifestets reject_contract
+//   lib.exec(cmd[])                          → {exit_code, stdout} (exit-kanal)  lib.session(name) → én psql-backend som ejer (setup, ikke aktør)
 //   lib.ur.saet(iso) / lib.ur.frem(sek)      → FA-3-ur (libfaketime-fil, fremad-kun) — Afvist hvis måle-jobbet ikke har ur-driver
 //   lib.forvent.afvist(kald, negative_id|kontrakt, {subst?})  UT: code + grund (+ sted når observerbart)   lib.forvent.ok(kald)
 //   lib.forvent.lig(rows, expect)  (matchExpect: rows|count|scalar|empty|null)  lib.forvent.sandt(x, detail)
@@ -56,6 +56,8 @@ export const ROLLE_SQL = (rolle) => `select (r.rolsuper or r.rolbypassrls
              and n.nspname not in ('pg_catalog','information_schema') and pg_has_role(r.oid, c.relowner, 'USAGE'))) as omgaar
 from pg_roles r where r.rolname = '${rolle}'`;
 
+const ROLLESKIFT = /\b(set|reset)\s+(local\s+|session\s+)?(role|session\s+authorization)\b|\bset_config\s*\(\s*'role'/i;
+
 // makeLib({runner, manifest, pakke, ur?}) → lib til testene
 export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
   const F = expectedSet(manifest);
@@ -79,7 +81,7 @@ export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
   const som = (actor) => {
     if (!isPlain(actor) || !isStr(actor.role)) throw new Error("lib.som(actor): {role, settings?} kræves");
     const opts = { role: actor.role, settings: isPlain(actor.settings) ? actor.settings : undefined };
-    return { sql: async (text) => { await rolleTjek(actor.role); return kald(runner.sql, text, opts); },
+    return { sql: async (text) => { if (ROLLESKIFT.test(String(text))) fejl("en aktørs SQL må ikke skifte rolle (set/reset role · session authorization)"); await rolleTjek(actor.role); return kald(runner.sql, text, opts); },
       http: async (req) => { if (typeof runner.http !== "function") fejl("runner.http mangler (PostgREST-transport ikke tilgængelig i dette måle-job)"); await rolleTjek(actor.role); return kald(runner.http, req, actor); } };
   };
   const kontrakt = (nid) => { const n = F.negatives.get(nid); if (!n) throw new Error(`negativ '${nid}' findes ikke i manifestet`); return Object.defineProperty({ ...n.reject_contract }, NID, { value: nid }); };
@@ -105,7 +107,7 @@ export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
   const session = (name) => { if (typeof runner.session !== "function") fejl("runner.session mangler (samme-backend-forløb ikke tilgængeligt)"); return runner.session(name); };   // én interaktiv psql (pg-runner.mjs session(name)) — flere sætninger i SAMME backend (tx over UTC-midnat, P:526/534)
   // bindingsdom efter en test: covers ↔ håndhævelse (kaldes af runneren med testens covers; nulstiller sporet)
   const bindingsFejl = (covers) => { const n = spor.n, nids = new Set(spor.nids); spor.n = 0; spor.nids.clear(); if (n === 0) return "VAKUUM: testen afgav ingen forventning (lib.forvent.*) — dækker intet"; for (const c of covers) if (F.negatives.has(c) && !nids.has(c)) return `dækker negativet '${c}' uden at håndhæve dets kontrakt (forvent.afvist(…, "${c}") blev ikke kaldt)`; return null; };
-  return { pakke, manifest, forventning: F, ejer: { sql: (text) => kald(runner.sql, text, {}) }, som, race: async (s) => { if (isPlain(s?.actor) && isStr(s.actor.role)) await rolleTjek(s.actor.role); let r; try { r = await runner.race(s); } catch (e) { fejl(`runner kastede: ${e?.message ?? e}`); } if (!isPlain(r) || typeof r.protocolOk !== "boolean") fejl("runner.race leverede ikke {protocolOk:boolean}"); tael(); return r; }, http: runner.http ? async (req, actor) => { if (!isPlain(actor) || !isStr(actor.role)) fejl("lib.http(req, actor): {role} kræves"); await rolleTjek(actor.role); return kald(runner.http, req, actor); } : undefined, exec, session, ur, kontrakt, forvent, Afvist, _bindingsFejl: bindingsFejl };
+  return { pakke, manifest, forventning: F, ejer: { sql: (text) => kald(runner.sql, text, {}) }, som, race: async (s) => { if (!isPlain(s?.actor) || !isStr(s.actor.role)) fejl("lib.race kræver en aktør {role}"); if ([s.a?.sql, s.b?.sql].some((x) => ROLLESKIFT.test(String(x ?? "")))) fejl("en aktørs SQL må ikke skifte rolle (set/reset role · session authorization)"); await rolleTjek(s.actor.role); let r; try { r = await runner.race(s); } catch (e) { fejl(`runner kastede: ${e?.message ?? e}`); } if (!isPlain(r) || typeof r.protocolOk !== "boolean") fejl("runner.race leverede ikke {protocolOk:boolean}"); tael(); return r; }, http: runner.http ? async (req, actor) => { if (!isPlain(actor) || !isStr(actor.role)) fejl("lib.http(req, actor): {role} kræves"); await rolleTjek(actor.role); return kald(runner.http, req, actor); } : undefined, exec, session, ur, kontrakt, forvent, Afvist, _bindingsFejl: bindingsFejl };
 }
 
 // loadTests(index, root) → Map(id → {id, file, covers, run}) — filerne SKAL være indeksets (sti under scripts/v5/<pakke>/tests/, blob-oid == indeks)

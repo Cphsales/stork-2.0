@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // byggetjek.selftest.mjs — bindingerne og merge-kontrollen.
-import { bindinger, mergeKontrol, halvside, erPakkePr } from "./byggetjek.mjs";
+import { bindinger, mergeKontrol, halvside, erPakkePr, packageJsonErProdukt, rettelserFra } from "./byggetjek.mjs";
 
 let ok = 0, fail = 0;
 const t = (navn, c) => { if (c) { ok++; console.log(`  ✓ ${navn}`); } else { fail++; console.log(`  ✗ ${navn}`); } };
@@ -37,7 +37,9 @@ const plan2 = plan.replace("x", "y"); // teknisk rettelse: ½-siden uændret
 t("plan ændret teknisk (½-side uændret) med ny Codex-dom → grøn", mk({ filer: { [`${P}/plan.md`]: oid("f") }, plan: plan2, codexPlan: `dom: grøn\nplan.md → blob ${oid("f").slice(0, 12)}\n`, dom: { ...dom, plan: oid("f") } }).status === "grøn");
 t("plan ændret uden ny Codex-dom → rød", mk({ filer: { [`${P}/plan.md`]: oid("f") }, plan: plan2, dom: { ...dom, plan: oid("f") } }).status === "rød");
 const HS3 = plan.replace("To afvigelser.", "Tre afvigelser.");
-t("nyeste plan ok gælder: ½-siden tilbage til den ældre godkendte → rød", mk({ ledger: ledger(`| M-95 | d | »plan ok« | plan.md → blob ${oid("9").slice(0, 12)} |`), repo: { [oid("9")]: HS3 } }).status === "rød");
+t("nyeste plan ok gælder: ½-siden tilbage til den ældre godkendte → rød", mk({ ledger: ledger(`| M-95 | d | »plan ok« | plan-build/p2/plan.md → blob ${oid("9").slice(0, 12)} |`), repo: { [oid("9")]: HS3 } }).status === "rød");
+t("en anden pakkes plan ok (samme ½-side) godkender ikke → rød", mk({ ledger: ledger().replace("plan-build/p2/plan.md", "plan-build/p1/plan.md") }).status === "rød" && mk({ ledger: ledger().replace("plan-build/p2/plan.md", "plan.md") }).status === "rød");
+t("ændret målelag i en lukket pakke uden binding → rød; med binding → grøn", mk({ filer: { "scripts/v5/p1/tests/a.test.mjs": oid("5") }, aendret: ["scripts/v5/p1/tests/a.test.mjs"] }).status === "rød" && mk({ filer: { "scripts/v5/p1/tests/a.test.mjs": oid("5") }, aendret: ["scripts/v5/p1/tests/a.test.mjs"], dom: { ...dom, filer: { ...laast, "scripts/v5/p1/tests/a.test.mjs": oid("5") } } }).status === "grøn");
 t("Codex' plan-dom ikke grøn → rød", mk({ codexPlan: `dom: rød\nplan.md → blob ${oid("b").slice(0, 12)}\n` }).status === "rød");
 t("låst test ændret efter dækningsdommen → rød", mk({ filer: { [`${P}/angrebs-spec.json`]: oid("9") } }).status === "rød");
 t("dækningsdom gælder andet krav → rød", mk({ dom: { ...dom, krav: oid("7") } }).status === "rød");
@@ -51,10 +53,17 @@ t("dækningsdom = [] → rød", mk({ domTekst: "[]" }).status === "rød");
 t("ændret DB-test i PR'en uden binding → rød", mk({ filer: { "supabase/tests/smoke/t10b_x.sql": oid("4") }, aendret: ["supabase/tests/smoke/t10b_x.sql"] }).status === "rød");
 t("ændret DB-test i PR'en med binding → grøn", mk({ filer: { "supabase/tests/smoke/t10b_x.sql": oid("4") }, aendret: ["supabase/tests/smoke/t10b_x.sql"], dom: { ...dom, filer: { ...laast, "supabase/tests/smoke/t10b_x.sql": oid("4") } } }).status === "grøn");
 
-t("migration og låsefil er pakke-kode", erPakkePr(["supabase/migrations/x.sql"]) && erPakkePr(["pnpm-lock.yaml"]) && !erPakkePr(["docs/x.md", "scripts/v5/x.mjs", "package.json"]));
+t("migration og låsefil er pakke-kode; docs og scripts er ikke", erPakkePr(["supabase/migrations/x.sql"]) && erPakkePr(["pnpm-lock.yaml"]) && !erPakkePr(["docs/x.md", "scripts/v5/x.mjs"]));
+const pj = (o) => JSON.stringify({ name: "stork", scripts: { build: "turbo run build", "supabase:link": "supabase link", "v5:selftest": "node a.mjs", ...o.scripts }, devDependencies: { x: "1", ...o.dev } });
+const DEPLOY = "run: pnpm supabase:link\n run: pnpm types:generate";
+t("package.json: kun workflowets scripts ændret → ikke pakke-kode", !packageJsonErProdukt(pj({}), pj({ scripts: { "v5:selftest": "node b.mjs", "kaede:x": undefined } }), DEPLOY) && !erPakkePr(["package.json"], { packageJsonProdukt: false }));
+t("package.json: build-, deploy- eller livscyklus-script ændret → pakke-kode", packageJsonErProdukt(pj({}), pj({ scripts: { build: "evil" } }), DEPLOY) && packageJsonErProdukt(pj({}), pj({ scripts: { "supabase:link": "supabase link --project-ref andet" } }), DEPLOY) && packageJsonErProdukt(pj({}), pj({ scripts: { postinstall: "curl x" } }), DEPLOY));
+t("package.json: afhængighed ændret → pakke-kode", packageJsonErProdukt(pj({}), pj({ dev: { x: "2" } }), DEPLOY));
 const R = `${P}/slut-rapport.md`, G = `${P}/codex-gennemgang.md`, MP = "docs/strategi/stork-2-0-master-plan.md";
-const rapport = `# Slut\n\nPrøvet kodeversion: abcdef1\n\n## Rettelser i Mathias' dokumenter\n\n- stork-2-0-master-plan.md → blob ${oid("6").slice(0, 12)}\n\n## Fremlæggelse for Mathias\n\nx\n`;
-const sl = (ord = "»slut ok«", maal = `slut-rapport.md → blob ${oid("5").slice(0, 12)} · commit abcdef1 · stork-2-0-master-plan.md → blob ${oid("6").slice(0, 12)}`) => `| M-99 | d | ${ord} | ${maal} |`;
+// slut-rapporten efter skabelonen i disciplin.md §10.3
+const rapport = `# p2 — Slut-rapport\n\n**Dato:** 2026-09-28 · **Prøvet kodeversion:** commit abcdef1 (den version slutprøven, Codex' samlede gennemgang og byggetjekket kørte på) · **Krav:** @ blob · **Plan:** v1 @ blob\n\n## Rettelser i Mathias' dokumenter\n\n| Dokument + afsnit | Nuværende tekst | Ny tekst | Forventet blob efter rettelsen |\n| --- | --- | --- | --- |\n| \`docs/strategi/stork-2-0-master-plan.md\` §4.1 | gammel | ny | ${oid("6").slice(0, 12)} |\n\n## Fremlæggelse for Mathias\n\nx\n`;
+const sl = (ord = "»slut ok«", maal = `plan-build/p2/slut-rapport.md → blob ${oid("5").slice(0, 12)} · commit abcdef1 · stork-2-0-master-plan.md → blob ${oid("6").slice(0, 12)}`) => `| M-99 | d | ${ord} | ${maal} |`;
+t("skabelonens rettelsestabel læses", JSON.stringify(rettelserFra(rapport)) === JSON.stringify([{ fil: "docs/strategi/stork-2-0-master-plan.md", blob: oid("6").slice(0, 12) }]));
 const mkK = ({ ledg = sl(), aendret = [R, G, "docs/sandhed/mathias-ord.md", MP], blobs = {}, cg = "commit abcdef1", rap = rapport, ld } = {}) => {
   const b = { [R]: oid("5"), [MP]: oid("6"), [G]: oid("7"), ...blobs }; const tx = { [R]: rap, [G]: cg };
   return mergeKontrol({ pakke: "p2", ledger: ledg, blob: (p) => b[p] ?? oid("0"), tekst: (p) => tx[p], findes: (p) => p in tx || p in b,
@@ -67,7 +76,9 @@ t("kode ændret efter prøven → afvist", mkK({ aendret: [R, "supabase/migratio
 t("package.json ændret efter prøven → afvist", mkK({ aendret: ["package.json"] }).length === 1);
 t("slut-rapporten ændret efter slut ok → afvist", mkK({ blobs: { [R]: oid("4") } }).length === 1);
 t("dokumentrettelse med anden blob → afvist", mkK({ blobs: { [MP]: oid("8") } }).length === 1);
-t("dokumentrettelse der ikke står i rapportens rettelser → afvist", mkK({ rap: rapport.replace(/- stork-2-0-master-plan\.md.*\n/, "") }).length === 1);
+t("dokumentrettelse der ikke står i rapportens rettelser → afvist", mkK({ rap: rapport.replace(/\| `docs\/strategi.*\n/, "") }).length === 1);
+t("en migration opført som »rettelse« i rapporten → afvist", mkK({ aendret: [R, "supabase/migrations/20260928000000_x.sql"], blobs: { "supabase/migrations/20260928000000_x.sql": oid("6") }, rap: rapport.replace("`docs/strategi/stork-2-0-master-plan.md` §4.1", "`supabase/migrations/20260928000000_x.sql`") }).length === 1);
+t("en anden pakkes slut ok godkender ikke", mkK({ ledg: sl(undefined, `plan-build/p1/slut-rapport.md → blob ${oid("5").slice(0, 12)} · commit abcdef1`) }).length === 1);
 t("rapportens prøvede kodeversion ≠ slut ok's commit → afvist", mkK({ rap: rapport.replace("abcdef1", "1234567") }).length === 1);
 t("ledgerens rækker ændret → afvist", mkK({ ld: { slettet: 2, tilfoejet: [sl()] } }).length === 1);
 t("ekstra ledgerpost efter prøven → afvist", mkK({ ld: { slettet: 0, tilfoejet: ["| M-98 | d | »hm« | — |", sl()] } }).length === 1);

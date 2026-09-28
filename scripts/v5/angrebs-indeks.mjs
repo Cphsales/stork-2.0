@@ -2,7 +2,7 @@
 // angrebs-indeks.mjs — validator for angrebs-spec.json SKEMA 2 = INDEKS over Codex-skrevne test-filer + mutanter (kursændring 2026-09-21).
 // Erstatter DSL-validatoren (angrebs-spec.mjs skema 1) som build-gatens spec-dommer. Komplethed mod manifestet:
 //   hver forpligtelse×form  ← ≥1 test m. covers "<oid>:<FORM>"        hvert negativ ← ≥1 test m. covers "<nid>"
-//   hvert navngivet delbevis ← ≥1 test m. covers "<oid>|<delbevis-id>"  bids = den låste D12-graf (covers = manifestets effekt_bid)
+//   hvert navngivet delbevis ← ≥1 test m. covers "<oid>|<delbevis-id>"  bids = den låste D12-graf (covers = manifestets effekt_bid) — kun når manifestet bruger D12
 //   D10: hvert eneste-værn g → en mutant m. guard_ref g hvis target_test_ids dækker en test der covers netop det negativ (SA-tests tæller)
 //   K-gulv: hvert K → ≥1 mutant hvis targets dækker en test på en af K's forpligtelser
 // Tests: id entydige · file under scripts/v5/<pakke>/tests/ · oid (blob) · covers kun manifest-kendte referencer. Mutanter: guard_ref
@@ -28,9 +28,11 @@ export function validateAngrebsIndeks(idx, manifest) {
   if (!isPlain(b)) fail("bindings mangler"); else for (const k of ["manifest", "plan"]) { const r = own(b, k); if (!isPlain(r) || !isStr(own(r, "path")) || !OID_RE.test(String(own(r, "oid")))) fail(`bindings.${k} skal være {path, oid}`); }
   if (isPlain(b) && isPlain(own(b, "plan")) && own(own(b, "plan"), "oid") !== manifest.bindings.plan.oid) fail("bindings.plan ≠ manifestets plan-binding");
 
-  // ---- bids (D12) — uændret fra skema 1 ----
+  // ---- bids (D12) — kun når manifestet bruger D12 (effekt_bid); disciplin.md §2 trin 3: D12 gælder kun pakke 1's manifest ----
   const bids = own(idx, "bids"); const bidById = new Map();
-  if (!isDense(bids, isPlain) || bids.length === 0) fail("bids skal være et ikke-tomt, tæt array");
+  const d12 = [...F.obligations.values()].some((o) => o.effekt_bid);
+  if (!d12 && bids === undefined) { /* ingen D12 */ }
+  else if (!isDense(bids, isPlain) || bids.length === 0) fail("bids skal være et ikke-tomt, tæt array (manifestet bruger D12: effekt_bid)");
   else {
     for (const x of bids) { const id = own(x, "bid_id"); if (!isStr(id) || !ID_RE.test(id)) { fail(`bid uden gyldigt bid_id`); continue; } if (bidById.has(id)) { fail(`dublet bid_id ${id}`); continue; } const kind = own(x, "kind"); if (kind !== "forudsaetning" && kind !== "effekt") fail(`${id}: kind skal være forudsaetning|effekt`); bidById.set(id, { kind, depends_on: isDense(own(x, "depends_on"), isStr) ? own(x, "depends_on") : [], covers: isDense(own(x, "covers"), isStr) ? own(x, "covers") : [] }); if (kind === "forudsaetning" && bidById.get(id).covers.length) fail(`${id}: forudsætning dækker ikke forpligtelser`); if (kind === "effekt" && !bidById.get(id).covers.length) fail(`${id}: effekt-bid skal dække ≥1 forpligtelse`); }
     const dependedOn = new Set(); for (const [id, x] of bidById) for (const d of x.depends_on) { if (d === id) fail(`${id}: afhænger af sig selv`); else if (!bidById.has(d)) fail(`${id}: depends_on '${d}' findes ikke`); else dependedOn.add(d); }

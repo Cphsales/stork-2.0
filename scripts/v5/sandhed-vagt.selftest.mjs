@@ -31,6 +31,13 @@ t("»ja, men …« godkender ikke", dom([{ sti: V, status: "M", blob }], "| M-9 
 t("filnavnet parret med et andet dokuments blob tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja« | vision-og-principper.md → blob ffffffffffff · forretningsforstaaelse.md → blob 0123456789ab |").length === 1);
 t("filnavn og blob uden → blob-par tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja« | vision-og-principper.md, 0123456789ab |").length === 1);
 t("»slettes« i et andet afsnit end filen tæller ikke", dom([{ sti: MP, status: "D", blob: null }], "| M-9 | d | »ja« | stork-2-0-master-plan.md → blob 0123456789ab · code.md slettes |").length === 1);
+t("»ja, ikke denne ændring« godkender ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja, ikke denne ændring« | vision-og-principper.md → blob 0123456789ab |").length === 1);
+t("»plan ok er ikke givet« godkender ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »plan ok er ikke givet« | vision-og-principper.md → blob 0123456789ab |").length === 1);
+t("»ok til planen« og »ja tak.« godkender", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ok til planen« | vision-og-principper.md → blob 0123456789ab |").length === 0 && dom([{ sti: V, status: "M", blob }], "| M-9 | d | »Ja tak.« | vision-og-principper.md → blob 0123456789ab |").length === 0);
+const M71 = "| M-71 | 2026-09-24 | »ja - ja - ja og har jeg ikke godkendt workflow planen?« | ja 1: vision-og-principper.md → blob 309fc5949ded · forretningsforstaaelse.md → blob cde05276985a · stork-2-0-master-plan.md → blob 0123456789ab |";
+t("M-71 godkender præcis sine to l.5-blobs", dom([{ sti: V, status: "M", blob: "309fc5949ded" + "0".repeat(28) }], M71).length === 0);
+t("M-71 godkender ikke en tredje fil i samme række", dom([{ sti: MP, status: "M", blob }], M71).length === 1);
+t("en anden række med nummeret M-71 arver ikke undtagelsen", dom([{ sti: V, status: "M", blob: "309fc5949ded" + "0".repeat(28) }], "| M-71 | d | »ja, men« | vision-og-principper.md → blob 309fc5949ded |").length === 1);
 t("filnavn og blob kun i ord-kolonnen tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja vision-og-principper.md 0123456789ab« | — |").length === 1);
 console.log(`\nsandhed-vagt: ${ok} ok${fail ? `, ${fail} FEJL` : ""}`);
 process.exit(fail ? 1 : 0);

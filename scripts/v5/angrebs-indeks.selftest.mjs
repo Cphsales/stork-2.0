@@ -33,6 +33,9 @@ const V = (f) => { const i = IDX(); f(i); return validateAngrebsIndeks(i, MANIFE
 const t = (i) => IDX().tests[i];
 console.log("grøn:");
 green("komplet indeks → grøn", V(() => {}));
+{ const m = JSON.parse(JSON.stringify(MANIFEST)); for (const o of m.obligations) delete o.effekt_bid; const i = IDX(); delete i.bids;
+  green("manifest uden D12 (ingen effekt_bid) og indeks uden bids → grøn (D12 gælder kun pakke 1)", validateAngrebsIndeks(i, m)); }
+red("manifest med D12 (effekt_bid) og indeks uden bids → rød", V((i) => delete i.bids), "bids skal være");
 console.log("\nskema/bindings:");
 red("schema_version 1 (DSL) → rød", V((i) => (i.schema_version = 1)), "schema_version ≠ 2");
 red("pakke ≠ manifestets", V((i) => (i.pakke = "anden")), "pakke ≠");
