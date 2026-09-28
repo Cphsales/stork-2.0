@@ -79,14 +79,11 @@
 - **Risiko hvis glemt:** Lav.
 - **Løses-i:** ingen handling (genovervejes hvis byggetjek-jobbet får hemmeligheder).
 
-### [G073] MELLEM — det nye byggetjek og vagten har ikke haft Codex' gennemgang
+### [G073] LØST 2026-09-28 — det nye byggetjek og vagten har haft Codex' gennemgang
 
-- **Beskrivelse:** `scripts/v5/byggetjek.mjs`, `hooks.mjs`, `pre-commit-zone.mjs`, `sandhed-vagt.mjs` og `codex-run.sh` er skrevet 24-25/9 (workflow-planen v44, trin 1-3) og kun afprøvet med egne selvtests.
-- **Vision-svækkelse:** Én sandhed — den dommer der skal spærre før drift, er ikke efterprøvet uafhængigt.
-- **Introduceret:** 2026-09-25.
-- **Skal løses:** Codex' gennemgang af hele det færdige workflow (workflow-planen §4 trin 7).
-- **Risiko hvis glemt:** Mellem. En fejl i dommeren giver falsk grønt for alle pakker.
-- **Løses-i:** workflow-planen §4 trin 7.
+- **Beskrivelse:** Byggetjekket, vagten, hooken, runneren og testbiblioteket blev skrevet 24-25/9 (workflow-planen v44, trin 1-6). Codex gennemgik hele workflowet i trin 7 i syv runder og en delta-dom (26/9-28/9). 37 fund er rettet i koden, og ét er trukket tilbage med bevis. Merge-dom: klar på `4607cf8`. Lokalt kørte en syntetisk pakke gennem alle trin på testdatabasen og var grøn. Hvert forsøg på falsk grønt gav rødt.
+- **Løst:** 2026-09-28. Afgrænsning: testtokens bærer ingen tid; tokenudløb kan ikke prøves (G077).
+
 ### [G072] LAV — `gdpr_responsible_employee_id` er erklæret, men ikke koblet; migrations-kommentaren er forkert
 
 - **Beskrivelse:** Kolonnen `core_compliance.superadmin_settings.gdpr_responsible_employee_id` sættes (`20260515110000_p0_gdpr_responsible_employee.sql` l.48, 76), men ingen RPC læser den; aktivering af anonymiserings-strategier kræver kun rettigheden (`20260515110100_p1a_anonymization_strategies.sql` l.293). Kolonnens COMMENT (samme p0-fil l.50-51) siger "Refereret af anonymization-RPCs" — det passer ikke.
