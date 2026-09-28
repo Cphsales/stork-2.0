@@ -35,10 +35,7 @@ supabase/.branches/
 *.sln
 *.sw?
 
-# Windows alternate-data-stream artefakter (overført fra NTFS via WSL)
-*:Zone.Identifier
-
-# Windows NTFS Alternate Data Streams
+# Windows NTFS Alternate Data Streams (overført via WSL)
 *:Zone.Identifier
 
 # Claude Code lokal arbejds-mappe
@@ -47,14 +44,5 @@ supabase/.branches/
 # MS Office lock-filer (utilsigtet åbnet i Word/Excel)
 ~$*
 
-# Lokale V4-gennemgangs-kopier — aldrig committet; foldes/fjernes i gov-6 (G063)
-docs/coordination/v4-slettede-docs/
-
-# Kædens runtime-filer (gov-5): dispatch-log + instans-lås — aldrig committet
-scripts/kaede/.dispatch-log.jsonl
-scripts/kaede/.dirigent.lock
-scripts/kaede/.selftest-tmp/
-# Persistent stop-fil (rette-til punkt 11a) + adapters' atomiske tmp-skrivninger (punkt 3)
-scripts/kaede/.kaede-stop
-docs/coordination/*.tmp
-docs/coordination/codex-reviews/*.tmp
+# prøve-runnerens resultat (skrives af byggetjekket, committes aldrig)
+plan-build/*/prover-result.json

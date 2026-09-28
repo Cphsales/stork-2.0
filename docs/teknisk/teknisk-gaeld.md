@@ -8,7 +8,7 @@
 - **Mellem** — kompromis med dokumenteret plan
 - **Lav** — kosmetisk/strukturel, ufuldstændig på en acceptabel måde
 
-**Sidste opdatering:** 2026-09-25 (workflow-planen v44: G018/G029/G036/G037/G038/G041/G046/G058/G063/G075/G078 lukket, G006 afgrænset, G073/G074 opdateret, G067-G083 rejst)
+**Sidste opdatering:** 2026-09-28 (G074/G077 efter Codex' gennemgang af workflowet) · 2026-09-25 (workflow-planen v44: G018/G029/G036/G037/G038/G041/G046/G058/G063/G075/G078 lukket, G006 afgrænset, G073/G074 opdateret, G067-G083 rejst)
 
 ---
 
