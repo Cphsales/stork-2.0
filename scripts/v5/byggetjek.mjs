@@ -201,6 +201,16 @@ const AKTOER_SQL = `select b.rolname from pg_roles a join pg_roles b on pg_has_r
 where a.rolname = current_user and (b.rolsuper or b.rolbypassrls or exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
   where c.relkind in ('r','p') and c.relrowsecurity and not c.relforcerowsecurity and n.nspname not in ('pg_catalog','information_schema') and c.relowner = b.oid))`;
 
+// mutantAarsag(m) → hvorfor en mutant ikke blev dræbt: apply, en target der bestod, en kontroltest der fejlede, restore eller efter restore
+export function mutantAarsag(m) {
+  if (!m.applied_ok) return m.detail ?? "apply fejlede";
+  const t = (m.targets ?? []).filter((x) => !x.failed); if (!(m.targets ?? []).length) return "ingen target-tests"; if (t.length) return `target-test bestod under mutanten: ${t.map((x) => x.id).join(", ")}`;
+  const c = (m.controls ?? []).filter((x) => !x.ok); if (c.length) return `kontroltest fejlede under mutanten: ${c.map((x) => x.id).join(", ")}`;
+  if (!m.restore_ok) return "restore fejlede";
+  const r = (m.restored ?? []).filter((x) => !x.ok); if (r.length) return `test fejlede efter restore: ${r.map((x) => x.id).join(", ")}`;
+  return "mutanten blev ikke dræbt";
+}
+
 async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrationer = false }) {
   const { makePgRunner, producentMiljoe } = await import("./pg-runner.mjs");
   const { runTestSuite } = await import("./test-runner.mjs");
@@ -245,7 +255,7 @@ async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrat
       let res;
       try { res = await runTestSuite({ index, indexOid: git(["hash-object", `${P}/${fil}`]).trim(), runner, manifest, root, runId: `byggetjek-${pakke}-${navn}` }); }
       catch (e) { rod(pakke, `${navn} kunne ikke køres: ${e?.message ?? e}`); continue; }
-      const roede = [...res.tests.filter((t) => t.ok !== true).map((t) => ({ id: t.id, covers: t.covers, detail: t.detail })), ...res.mutants.filter((m) => m.killed !== true).map((m) => ({ id: m.mutant_id, detail: m.detail ?? "mutanten blev ikke dræbt" }))];
+      const roede = [...res.tests.filter((t) => t.ok !== true).map((t) => ({ id: t.id, covers: t.covers, detail: t.detail })), ...res.mutants.filter((m) => m.killed !== true).map((m) => ({ id: m.mutant_id, detail: mutantAarsag(m), mutant: m }))];
       ud.pakker[pakke][navn] = { ...res.summary, roede };
       const alleOk = res.tests.length >= 1 && roede.length === 0;
       if (!alleOk) rod(pakke, `${navn} ikke grøn (${JSON.stringify(res.summary)}${roede.length ? `; ${roede.slice(0, 3).map((x) => `${x.id}: ${String(x.detail).slice(0, 120)}`).join(" | ")}` : ""})`);

@@ -151,11 +151,11 @@ export async function runTestSuite({ index, indexOid, runner, manifest, root, ru
     res.applied_ok = ap?.ok === true; if (!res.applied_ok) { res.detail = `apply fejlede: ${ap?.code ?? ""} ${ap?.error ?? ap?.detail?.message ?? ""}`.trim(); }
     if (res.applied_ok) {
       for (const id of m.target_test_ids) { const r = await koer(tests.get(id), lib, timeoutMs); res.targets.push({ id, failed: r.ok === false, detail: r.detail }); }
-      for (const id of m.control_test_ids) { const r = await koer(tests.get(id), lib, timeoutMs); res.controls.push({ id, ok: r.ok }); }
+      for (const id of m.control_test_ids) { const r = await koer(tests.get(id), lib, timeoutMs); res.controls.push({ id, ok: r.ok, detail: r.detail }); }
     }
-    let rs; try { rs = await runner.sql(m.restore, {}); } catch (e) { rs = { ok: false }; }
-    res.restore_ok = rs?.ok === true;
-    if (res.restore_ok) for (const id of [...m.target_test_ids, ...m.control_test_ids]) { const r = await koer(tests.get(id), lib, timeoutMs); res.restored.push({ id, ok: r.ok }); }
+    let rs; try { rs = await runner.sql(m.restore, {}); } catch (e) { rs = { ok: false, error: String(e?.message ?? e) }; }
+    res.restore_ok = rs?.ok === true; if (!res.restore_ok) res.restore_detail = `${rs?.code ?? ""} ${rs?.error ?? ""}`.trim();
+    if (res.restore_ok) for (const id of [...m.target_test_ids, ...m.control_test_ids]) { const r = await koer(tests.get(id), lib, timeoutMs); res.restored.push({ id, ok: r.ok, detail: r.detail }); }
     res.killed = res.applied_ok && res.targets.length > 0 && res.targets.every((t) => t.failed) && res.controls.every((c) => c.ok) && res.restore_ok && res.restored.every((r) => r.ok);
     rapport.mutants.push(res);
   }

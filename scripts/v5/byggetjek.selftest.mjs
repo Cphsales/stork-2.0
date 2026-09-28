@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // byggetjek.selftest.mjs — bindingerne og merge-kontrollen.
-import { bindinger, mergeKontrol, halvside, erPakkePr, packageJsonErProdukt, rettelserFra } from "./byggetjek.mjs";
+import { bindinger, mergeKontrol, halvside, erPakkePr, packageJsonErProdukt, rettelserFra, mutantAarsag } from "./byggetjek.mjs";
 
 let ok = 0, fail = 0;
 const t = (navn, c) => { if (c) { ok++; console.log(`  ✓ ${navn}`); } else { fail++; console.log(`  ✗ ${navn}`); } };
@@ -87,5 +87,7 @@ t("ekstra ledgerpost efter prøven → afvist", mkK({ ld: { slettet: 0, tilfoeje
 t("Codex' gennemgang uden det prøvede commit → afvist", mkK({ cg: "commit 1234567" }).length === 1);
 t("Codex' gennemgang mangler → afvist", mergeKontrol({ pakke: "p2", ledger: sl(), blob: (p) => (p === R ? oid("5") : oid("6")), tekst: () => rapport, findes: (p) => p === R || p === MP, aendretSiden: () => [R, MP], ledgerDiff: () => ({ slettet: 0, tilfoejet: [sl()] }) }).length === 1);
 
+const M = { applied_ok: true, targets: [{ id: "t1", failed: true }], controls: [{ id: "c1", ok: true }], restore_ok: true, restored: [{ id: "t1", ok: true }] };
+t("mutantens årsag: target bestod · kontrol fejlede · restore fejlede · efter restore", /target-test bestod.*t1/.test(mutantAarsag({ ...M, targets: [{ id: "t1", failed: false }] })) && /kontroltest fejlede.*c1/.test(mutantAarsag({ ...M, controls: [{ id: "c1", ok: false }] })) && /restore fejlede/.test(mutantAarsag({ ...M, restore_ok: false })) && /efter restore.*t1/.test(mutantAarsag({ ...M, restored: [{ id: "t1", ok: false }] })));
 console.log(`\nbyggetjek: ${ok} ok${fail ? `, ${fail} FEJL` : ""}`);
 process.exit(fail ? 1 : 0);
