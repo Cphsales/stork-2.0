@@ -8,7 +8,7 @@ const V = "docs/strategi/vision-og-principper.md";
 const MP = "docs/strategi/stork-2-0-master-plan.md";
 const blob = "0123456789abcdef0123456789abcdef01234567";
 const ledger = [
-  "| M-70 | 2026-09-25 | »ja« | vision-og-principper.md l.5 → blob 0123456789ab |",
+  "| M-70 | 2026-09-25 | »ja« | l.5: vision-og-principper.md → blob 0123456789ab |",
   "| M-71 | 2026-09-25 | »ok til planen« | stork-2-0-master-plan.md slettes · code.md → blob 0123456789ab |",
   "| M-72 | 2026-09-25 | »nej« | forretningsforstaaelse.md → blob 0123456789ab |",
 ].join("\n");
@@ -27,6 +27,10 @@ t("»nej« godkender ikke", dom([{ sti: "docs/strategi/forretningsforstaaelse.md
 t("rolletekst er beskyttet og godkendt med ok-rækken", dom([{ sti: "scripts/v5/roller/code.md", status: "M", blob }], ledger).length === 0);
 t("rolletekst uden godkendelse → rød", dom([{ sti: "scripts/v5/roller/fabrik.md", status: "M", blob }], ledger).length === 1);
 t("disciplin.md er beskyttet", dom([{ sti: "docs/strategi/disciplin.md", status: "M", blob }], ledger).length === 1);
+t("»ja, men …« godkender ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja, men ikke til denne ændring« | vision-og-principper.md → blob 0123456789ab |").length === 1);
+t("filnavnet parret med et andet dokuments blob tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja« | vision-og-principper.md → blob ffffffffffff · forretningsforstaaelse.md → blob 0123456789ab |").length === 1);
+t("filnavn og blob uden → blob-par tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja« | vision-og-principper.md, 0123456789ab |").length === 1);
+t("»slettes« i et andet afsnit end filen tæller ikke", dom([{ sti: MP, status: "D", blob: null }], "| M-9 | d | »ja« | stork-2-0-master-plan.md → blob 0123456789ab · code.md slettes |").length === 1);
 t("filnavn og blob kun i ord-kolonnen tæller ikke", dom([{ sti: V, status: "M", blob }], "| M-9 | d | »ja vision-og-principper.md 0123456789ab« | — |").length === 1);
 console.log(`\nsandhed-vagt: ${ok} ok${fail ? `, ${fail} FEJL` : ""}`);
 process.exit(fail ? 1 : 0);

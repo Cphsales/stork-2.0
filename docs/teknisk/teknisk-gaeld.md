@@ -56,10 +56,10 @@
 - **Risiko hvis glemt:** Mellem før cutover, høj efter.
 - **Løses-i:** før cutover.
 
-### [G077] LAV — testbiblioteket: resten efter rettelserne
+### [G077] LAV — testbiblioteket: datoforløbene i pakke 1
 
-- **Beskrivelse:** (1) LØST: `lib.race` tager nu runnerens `{protocolOk}` (`test-runner.mjs`; selvtest). (2) LØST: HTTP-svar afleverer `body` og `headers`, også når svaret ikke er en liste (`pg-runner.mjs`). (3) Bevidst: OpenAPI-tjekket i fitness læser driftsprojektet, fordi det tjekker driftens PostgREST-opsætning; pakkernes API-tests kører mod testdatabasens PostgREST. (4) Den styrede klokke findes nu (`scripts/v5/testdb-start.sh`, libfaketime på Postgres); de datoforløb der kræver den, skrives i pakke 1's tests. JWT-tokens og PostgREST bruger den rigtige tid. (5) LØST: uden database fejler byggetjekkets opstart (rødt).
-- **Skal løses:** (4) datoforløbene i pakke 1.
+- **Beskrivelse:** (1) LØST: `lib.race` tager runnerens `{protocolOk}`. (2) LØST: HTTP-svar afleverer `body` og `headers`. (3) LØST 2026-09-28: OpenAPI-tjekket kører også mod testdatabasen efter kandidatens migrationer (byggetjek-jobbet: `fitness.mjs --kun postgrestT9SchemaExposure`, som `authenticated`); i governance-jobbet tjekker det fortsat driftens PostgREST-opsætning. (4) Den styrede klokke er databasens (libfaketime, `testdb-start.sh`). Testenes tokens bærer ingen tid (ingen `exp`/`iat`), så PostgREST læser ingen klokke, og databasens klokke er den eneste i systemet under test. Tokenudløb kan derfor ikke prøves; ingen Stork-regel afhænger af det (ingen migration læser tokenets tid). PostgREST-binæren er statisk og kan ikke få libfaketime. (5) LØST: uden database fejler byggetjekkets opstart (rødt).
+- **Skal løses:** (4) de datoforløb pakke 1 kræver, skrives i pakke 1's tests.
 - **Løses-i:** pakke 1, trin 3.
 ### [G076] LAV — accepteret restrisiko: godkendelsesordet kommer fra en kanal producenten kan skrive i
 
@@ -70,14 +70,15 @@
 - **Risiko hvis glemt:** Lav.
 - **Løses-i:** ingen handling (accepteret risiko; genovervejes kun hvis godkendelseskanalen ændres).
 
-### [G074] LAV — byggetjekkets tillidsgrænser (runneren)
+### [G074] LAV — byggetjekkets tillidsgrænser (runneren): accepteret restrisiko
 
-- **Beskrivelse:** (a) LØST: byggetjekket afviser, hvis testrollerne `authenticated`/`anon` kan omgå rettighederne (`rolbypassrls`). (b) `pg-runner` kører med `ON_ERROR_STOP=0`, men en fejl i en tidligere sætning giver protokolfejl, ikke grønt (`pg-runner.selftest.mjs`: »status ok men en ERROR-linje … → protokol«); et delvist udført setup kan stadig efterlade data i testdatabasen. (c) et renset underproces-miljø er ikke isolation: produktkode kan læse forælderens miljø via `/proc`. (d) `COPY TO PROGRAM`/`lo_export` kører i Postgres-servicecontaineren. (e) LØST: samle-tjekket kræver byggetjek-jobbet grønt.
-- **Vision-svækkelse:** Én sandhed — målingen kan i særtilfælde bevise noget andet end det produktet gør.
+- **Beskrivelse:** (a) LØST 2026-09-28: hver rolle en test kalder som (`lib.som`, `lib.http`, `lib.race`), tjekkes før kaldet: superuser, BYPASSRLS, arvet fra en sådan rolle eller ejer af en tabel med RLS → testen er rød (`test-runner.mjs`, `ROLLE_SQL`). (b) LØST 2026-09-28: `pg-runner`s `sql()` stopper ved første SQL-fejl (`ON_ERROR_STOP=1`), så intet efter fejlen udføres i migrationer og setup; sessionerne (`race`, `lib.session`) kører sætning for sætning og læser status efter hver. (c) et renset underproces-miljø er ikke isolation: produktkode kan læse forælderens miljø via `/proc`. (d) `COPY TO PROGRAM`/`lo_export` kører i Postgres-containeren. (e) LØST: samle-tjekket kræver byggetjek-jobbet grønt.
+- **Vision-svækkelse:** Ingen direkte for (c)/(d) — CI-jobbet har intet token og ingen hemmeligheder.
 - **Introduceret:** C4b (2026-09-16).
-- **Skal løses:** (b) atomar udførelse af setup; (c)/(d) accepteret: CI-jobbet har intet token og ingen hemmeligheder.
+- **Skal løses:** Ingen aktiv handling; (c)/(d) er accepteret.
 - **Risiko hvis glemt:** Lav.
-- **Løses-i:** (b) når en pakke har brug for flersætnings-setup; ellers accepteret.
+- **Løses-i:** ingen handling (genovervejes hvis byggetjek-jobbet får hemmeligheder).
+
 ### [G073] MELLEM — det nye byggetjek og vagten har ikke haft Codex' gennemgang
 
 - **Beskrivelse:** `scripts/v5/byggetjek.mjs`, `hooks.mjs`, `pre-commit-zone.mjs`, `sandhed-vagt.mjs` og `codex-run.sh` er skrevet 24-25/9 (workflow-planen v44, trin 1-3) og kun afprøvet med egne selvtests.

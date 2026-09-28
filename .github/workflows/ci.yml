@@ -43,21 +43,32 @@ jobs:
 
   sandhed:
     # Vision, forretningsforståelse, masterplan, disciplin.md og rolleteksterne ændres kun med
-    # Mathias' godkendelse af netop den tekst i ledgeren (disciplin.md §8.1). Kører altid.
+    # Mathias' godkendelse af netop den tekst i ledgeren (disciplin.md §8.1). Kører altid. Vagten hentes fra
+    # base, så en PR ikke kan ændre sin egen vagt; kun når base endnu ingen vagt har (førstegangsinstallationen),
+    # køres PR'ens.
     name: Sandhedsdokumenter kun med Mathias' ord
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
-      - name: Sandhed-vagt
+      - name: Sandhed-vagt (fra base)
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then base="origin/${{ github.base_ref }}"; else base="${{ github.event.before }}"; fi
-          node scripts/v5/sandhed-vagt.mjs --base "$base"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then git fetch --quiet origin "${{ github.base_ref }}"; base="origin/${{ github.base_ref }}"; else base="${{ github.event.before }}"; fi
+          if git cat-file -e "$base:scripts/v5/sandhed-vagt.mjs" 2>/dev/null; then
+            git show "$base:scripts/v5/sandhed-vagt.mjs" > "$RUNNER_TEMP/sandhed-vagt.mjs"
+          else
+            echo "::notice::Førstegangsinstallation: base har ingen vagt — PR'ens egen vagt køres"
+            cp scripts/v5/sandhed-vagt.mjs "$RUNNER_TEMP/sandhed-vagt.mjs"
+          fi
+          node "$RUNNER_TEMP/sandhed-vagt.mjs" --base "$base"
 
   byggetjek:
     # Byggetjekket og slutdommen (disciplin.md §2 trin 3-4, §6). Kører altid; en PR der ændrer pakke-kode
@@ -90,12 +101,14 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then REF="origin/${{ github.base_ref }}"; git fetch --quiet origin "${{ github.base_ref }}"; else REF=HEAD; fi
           mkdir -p "$RUNNER_TEMP/dommer"
-          if git cat-file -e "$REF:scripts/v5/byggetjek.mjs" 2>/dev/null; then git archive "$REF" scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; else git archive HEAD scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; fi
+          if git cat-file -e "$REF:scripts/v5/byggetjek.mjs" 2>/dev/null; then git archive "$REF" scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; else echo "::notice::Førstegangsinstallation: base har intet byggetjek — PR'ens eget køres"; git archive HEAD scripts/v5 | tar -x -C "$RUNNER_TEMP/dommer"; fi
           echo "DOMMER=$RUNNER_TEMP/dommer/scripts/v5/byggetjek.mjs" >> "$GITHUB_ENV"
       - name: Byggetjek og slutdom
         run: |
           BASE=""; [ "${{ github.event_name }}" = "pull_request" ] && BASE="--base origin/${{ github.base_ref }}"
           STORK_V5_REPO="$GITHUB_WORKSPACE" node "$DOMMER" --pg env --rapport byggetjek-rapport.json $BASE
+      - name: OpenAPI mod testdatabasen (kandidatens migrationer er kørt dér)
+        run: node scripts/fitness.mjs --kun postgrestT9SchemaExposure
       - name: Pakke-kode ændret?
         id: pakke
         run: |

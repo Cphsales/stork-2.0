@@ -12,15 +12,18 @@ const under = (p, prefix) => p === prefix || p.startsWith(prefix + "/");
 const PAKKE = "[a-z][a-z0-9-]*";
 const re = (s) => new RegExp(`^${s}$`);
 
+// målelaget = alt testene består af: pakkens mappe i scripts/v5/ (tests, prøve-runner), manifest, testindeks, testvalg-fil,
+// slutprøve og databasens egne tests (supabase/tests/), som en pakkes prøve-runner kan køre
 const MAALELAG = [
-  re(`scripts/v5/${PAKKE}/tests/.+`),
+  re(`scripts/v5/(?!roller/)${PAKKE}/.+`),
   re(`plan-build/${PAKKE}/(forventnings-manifest|angrebs-spec|prover|slutproeve)\\.json`),
+  re(`supabase/tests/.+`),
 ];
 const CODEX_DOM = [re(`plan-build/${PAKKE}/(codex-plan|codex-gennemgang)\\.md`)];
 const REVIEWER_DOM = [re(`plan-build/${PAKKE}/daekningsdom\\.json`)];
 // ledgeren og den ældre log over Mathias' afgørelser: kun nye rækker/afsnit må tilføjes
-const LEDGER = ["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md", "docs/sandhed/mathias-afgoerelser-historik.md"];
-const ORDBOG = ["docs/sandhed/ordbog.md", "plan-build/lokations-skabelon/ordbog.md"];
+const LEDGER = ["docs/sandhed/mathias-ord.md", "docs/sandhed/mathias-afgoerelser-historik.md"];
+const ORDBOG = ["docs/sandhed/ordbog.md"];
 const KRAV = re(`docs/sandhed/krav/${PAKKE}-krav\\.md`);
 const PRODUKT = ["supabase/migrations", "supabase/functions", "apps", "packages"];
 const WORKFLOW = ["docs/strategi/disciplin.md", "scripts/v5/roller", ".github", ".husky", "scripts"];

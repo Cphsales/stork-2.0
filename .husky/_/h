@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# minimal husky-v9-kompatibel shim (worktree uden pnpm install): kør .husky/<hook>
+n=$(basename "$0"); s="$(dirname "$0")/../$n"
+[ -f "$s" ] || exit 0
+sh -e "$s" "$@"

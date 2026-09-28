@@ -1010,9 +1010,45 @@ async function dbTestNoT9SeedUserFixtures() {
   return { name: "db-test-no-t9-seed-user-fixtures", violations };
 }
 
+// Sentinel-RPCs der skal være i OpenAPI-spec'en for at bevise schema + cache er friske.
+const T9_RPCS = [
+  "/rpc/org_tree_read",
+  "/rpc/permission_elements_read",
+  "/rpc/employee_placement_read",
+  "/rpc/client_placement_read",
+  "/rpc/pending_changes_read",
+];
+
 async function postgrestT9SchemaExposure() {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
+
+  // Testdatabasen (byggetjek-jobbet, V5_PGRST_*): kandidatens migrationer er kørt dér og ikke i driften endnu.
+  // RPC'erne skal være eksponeret for brugernes rolle (authenticated).
+  if (process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET) {
+    const name = "postgrest-t9-schema-exposure (testdatabasen)";
+    const { mintJwt } = await import("./v5/pg-runner.mjs");
+    try {
+      const res = await fetch(`${process.env.V5_PGRST_URL.replace(/\/$/, "")}/`, {
+        headers: {
+          Authorization: `Bearer ${mintJwt(process.env.V5_PGRST_JWT_SECRET, { role: "authenticated" })}`,
+          "Accept-Profile": "core_identity",
+          Accept: "application/openapi+json",
+        },
+      });
+      if (!res.ok) return { name, violations: [`OpenAPI mod testdatabasen: HTTP ${res.status}`] };
+      const paths = (await res.json())?.paths ?? {};
+      const missing = T9_RPCS.filter((p) => !(p in paths));
+      return {
+        name,
+        violations: missing.length
+          ? [`core_identity-RPC'er mangler i testdatabasens OpenAPI for authenticated: ${missing.join(", ")}`]
+          : [],
+      };
+    } catch (err) {
+      return { name, violations: [`OpenAPI mod testdatabasen: ${err.message}`] };
+    }
+  }
 
   // T9-supplement Step 5 + Codex runde 2 follow-up: deterministisk schema-exposure-
   // canary via PostgREST OpenAPI-introspection (ikke RPC-call). Service_role har
@@ -1063,15 +1099,7 @@ async function postgrestT9SchemaExposure() {
   // kræver ingen tabel-SELECT-grant på service_role (modsat tidligere RPC-call —
   // service_role har bevidst ingen direkte data-grants på core_identity, så et
   // RPC-call med security invoker ville fejle med 42501 selv ved korrekt exposure).
-  //
-  // Sentinel-RPCs der skal være i spec'en for at bevise schema + cache er friske.
-  const expectedRpcs = [
-    "/rpc/org_tree_read",
-    "/rpc/permission_elements_read",
-    "/rpc/employee_placement_read",
-    "/rpc/client_placement_read",
-    "/rpc/pending_changes_read",
-  ];
+  const expectedRpcs = T9_RPCS;
 
   try {
     const specRes = await fetch(`https://${projectRef}.supabase.co/rest/v1/`, {
@@ -1838,7 +1866,14 @@ const checks = [
 
 async function main() {
   let total = 0;
-  for (const check of checks) {
+  // --kun <funktionsnavn>: kør én check (fx postgrestT9SchemaExposure mod testdatabasen i byggetjek-jobbet)
+  const i = process.argv.indexOf("--kun");
+  const valgte = i > 0 ? checks.filter((c) => c.name === process.argv[i + 1]) : checks;
+  if (i > 0 && valgte.length === 0) {
+    console.error(`Fitness: ukendt check '${process.argv[i + 1]}'`);
+    process.exit(1);
+  }
+  for (const check of valgte) {
     const result = await check();
     const { name, violations, skipped, soft } = result;
     if (skipped) {

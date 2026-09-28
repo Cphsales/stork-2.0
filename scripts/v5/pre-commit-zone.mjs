@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // pre-commit-zone.mjs — kaldes fra .husky/pre-commit. Afviser en commit, hvor rollen
-// (STORK_V5_ROLLE) skriver uden for sine zoner (hooks.mjs), hvor ledgeren får andet end
-// nye rækker, eller hvor et krav i docs/sandhed/krav/ ikke er det flyttede udkast med
+// (STORK_V5_ROLLE) skriver uden for sine zoner (hooks.mjs), hvor ledgeren slettes eller får
+// andet end nye rækker, eller hvor et krav i docs/sandhed/krav/ ikke er det flyttede udkast med
 // Mathias' `krav ok` for netop den blob (disciplin.md §2 trin 1).
 
 import { execFileSync } from "node:child_process";
 import { beslutning, toRepoRel, zone } from "./hooks.mjs";
+import { LEDGER, erGodkendelse, filBlobPar, passer, raekker } from "./sandhed-vagt.mjs";
 
 const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 const repoRoot = git(["rev-parse", "--show-toplevel"]).trim();
@@ -24,30 +25,25 @@ if (!b.ok) {
 }
 
 const blob = (spec) => { try { return git(["-C", repoRoot, "rev-parse", spec]).trim(); } catch { return null; } };
-const ledgerTekst = () => {
-  for (const p of ["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md"]) {
-    try { return git(["-C", repoRoot, "show", `:${p}`]); } catch {}
-  }
-  return "";
-};
+const ledger = () => { try { return git(["-C", repoRoot, "show", `:${LEDGER}`]); } catch { return ""; } };
 
 for (const [p, s] of status) {
   const rel = toRepoRel(p, repoRoot);
   const z = rel && zone(rel);
+  if (z === "ledger" && s === "D") fejl.push(`ledgeren ${p} må ikke slettes`);
   if (z === "ledger" && s === "M") {
     const numstat = git(["-C", repoRoot, "diff", "--cached", "--numstat", "--", p]).trim().split(/\s+/);
     if (Number(numstat[1]) > 0) fejl.push(`ledgeren ${p}: kun nye rækker må tilføjes (${numstat[1]} linje(r) slettet/ændret)`);
   }
+  // et krav (nyt eller revideret) er det flyttede udkast byte for byte, og ledgeren har et `krav ok`, der binder netop den blob
   if (z === "krav" && s !== "D") {
     const pakke = rel.slice("docs/sandhed/krav/".length, -"-krav.md".length);
     const udkast = `plan-build/${pakke}/krav-udkast.md`;
     const nyBlob = blob(`:${rel}`);
     const udkastBlob = status.get(udkast) === "D" ? blob(`HEAD:${udkast}`) : null;
-    if (s === "A" && udkastBlob !== nyBlob) fejl.push(`${rel}: kravet skal være det flyttede udkast ${udkast} byte for byte (git mv)`);
-    if (s === "M") fejl.push(`${rel}: et godkendt krav ændres kun med et nyt krav-udkast og et nyt \`krav ok\``);
-    const rader = ledgerTekst().split("\n").filter((l) => /^\|\s*M-\d+\s*\|/.test(l));
-    if (nyBlob && !rader.some((l) => /krav ok/i.test(l) && l.includes(nyBlob.slice(0, 12))))
-      fejl.push(`${rel}: ledgeren har ingen \`krav ok\`-række med kravets blob ${nyBlob.slice(0, 12)}`);
+    if (!nyBlob || udkastBlob !== nyBlob) fejl.push(`${rel}: kravet skal være det flyttede udkast ${udkast} byte for byte (git mv; ved en revision git mv -f)`);
+    const godkendt = raekker(ledger()).some((r) => erGodkendelse(r.ord, "krav ok") && filBlobPar(r.maal).some((x) => (passer(x.fil, rel) || passer(x.fil, udkast)) && nyBlob?.startsWith(x.blob)));
+    if (nyBlob && !godkendt) fejl.push(`${rel}: ledgeren har intet \`krav ok\`, der binder ${pakke}-krav.md → blob ${nyBlob.slice(0, 12)}`);
   }
 }
 

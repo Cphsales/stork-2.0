@@ -6,4 +6,5 @@ Greenfield-rebuild. Workflowet står i `docs/strategi/disciplin.md`; hver rolle 
 
 - Commits og PR'er forfattes som `stork-code-bot`. Botten har i dag admin-rolle (nedgradering til write kræver admin-login, huskeliste H030). Tjek konto med `gh auth status` ved tvivl.
 - Sessionens rolle sættes med `STORK_V5_ROLLE` (fabrik · claude-ai · code · codex · code-reviewer); pre-commit-hooken afviser skrivning uden for rollens zoner.
+- Formaterne for ledger-rækker, domme og målelagets filer står i `scripts/README.md` »Formater«; giv afsnittet til rollen sammen med rolleteksten.
 - **Læs ikke:** `/home/mathias/sales-commission-hub/` (1.0, anti-mønstre) · `copenhagensales/*`-repos.

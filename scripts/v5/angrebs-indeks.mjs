@@ -80,3 +80,26 @@ export function validateAngrebsIndeks(idx, manifest) {
   for (const k of F.ks) if (!ksWithMutant.has(k)) fail(`K '${k}' har ingen mutant (mutant-kill-gulv)`);
   return { ok: reasons.length === 0, reasons };
 }
+
+// validateSlutproeve(sp, manifest) — slutproeve.json: samme testfil-form som indekset (tests i scripts/v5/<pakke>/tests/, blob-oid,
+// covers = manifest-referencer), mindst ét scenarie og ingen mutanter; komplethed mod manifestet dømmer code-reviewer.
+export function validateSlutproeve(sp, manifest) {
+  const reasons = []; const fail = (r) => reasons.push(r);
+  if (!isPlain(sp)) return { ok: false, reasons: ["slutprøven er ikke et plain object"] };
+  const mv = validateManifest(manifest); if (!mv.ok) return { ok: false, reasons: ["manifestet er ugyldigt: " + mv.reasons.join("; ")] };
+  const F = expectedSet(manifest);
+  if (own(sp, "schema_version") !== 2) fail("schema_version ≠ 2");
+  if (own(sp, "pakke") !== manifest.pakke) fail("pakke ≠ manifestets pakke");
+  const tests = own(sp, "tests"); const ids = new Set();
+  if (!isDense(tests, isPlain) || tests.length === 0) fail("slutprøven skal have mindst ét scenarie (tests)");
+  else for (const t of tests) {
+    const id = own(t, "id"); if (!isStr(id) || !ID_RE.test(id) || ids.has(id)) { fail(`scenarie uden gyldigt, entydigt id`); continue; } ids.add(id);
+    const file = own(t, "file"); if (!isStr(file) || !file.startsWith(`scripts/v5/${manifest.pakke}/tests/`) || !/\.test\.mjs$/.test(file) || file.includes("..")) fail(`${id}: file skal ligge under scripts/v5/${manifest.pakke}/tests/ og hedde *.test.mjs`);
+    if (!OID_RE.test(String(own(t, "oid")))) fail(`${id}: oid (blob af testfilen) mangler`);
+    const cov = own(t, "covers");
+    if (!isDense(cov, isStr) || cov.length === 0) fail(`${id}: covers skal være et ikke-tomt array`);
+    else for (const c of cov) { const m = c.match(/^(.+):(UT|FS|MH|SA)$/) ?? c.match(/^(.+)\|(.+)$/); if (!F.negatives.has(c) && !(m && F.obligations.has(m[1]))) fail(`${id}: covers '${c}' er ikke en manifest-reference`); }
+  }
+  const mutants = own(sp, "mutants"); if (!isDense(mutants) || mutants.length !== 0) fail("slutprøven har ingen mutanter (mutants: [])");
+  return { ok: reasons.length === 0, reasons };
+}

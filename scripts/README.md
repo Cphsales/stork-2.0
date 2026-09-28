@@ -22,9 +22,25 @@
 | `roller/`                                         | Rolleteksterne.                                                                                                                                          |
 | `<pakke>/`                                        | Pakkens tests (Codex' målelag).                                                                                                                          |
 
+## Formater
+
+Hooken, vagten og byggetjekket læser filerne sådan. Fabrikken giver afsnittet til rollen sammen med rolleteksten. Tjek bindingerne før commit med `node scripts/v5/byggetjek.mjs --kun-bindinger`.
+
+- **Ledger-række** (`docs/sandhed/mathias-ord.md`, kun nye rækker): `| M-n | ÅÅÅÅ-MM-DD | »hans ord ordret« | hvad han svarede på / godkender |`. Hans ord er en godkendelse, når citatet begynder med `ja`, `ok`, `krav ok`, `plan ok` eller `slut ok` og intet forbehold rummer (men · bortset · undtagen · dog · nej · vent · stop). En fil bindes som `<fil> → blob <mindst 12 tegn>`; flere adskilles med `·`. Sletning: `<fil>, <fil> slettes` i sit eget afsnit.
+  - `krav ok`: `<pakke>-krav.md → blob <krav-udkastets blob>`
+  - `plan ok`: `plan-build/<pakke>/plan.md → blob <planens blob>` — ½-siden i den blob er den godkendte
+  - `slut ok`: `slut-rapport.md → blob <…> · commit <prøvet commit> · <dokument> → blob <ny blob> …`
+  - ændring i vision, forretningsforståelse, masterplan, `disciplin.md` eller en rolletekst: `<fil> → blob <ny blob>`
+- **`codex-plan.md`:** linjen `dom: grøn` (eller `dom: rød` med fund) og `plan.md → blob <planens blob>`.
+- **`daekningsdom.json`:** `{"dom": "grøn", "krav": "<kravets blob, 40 tegn>", "plan": "<planens blob, 40 tegn>", "filer": {"<sti>": "<blob, 40 tegn>", …}}`. `filer` binder mindst `forventnings-manifest.json`, `angrebs-spec.json`, `prover.json` og `slutproeve.json` i `plan-build/<pakke>/`, hver fil under `scripts/v5/<pakke>/` og hver fil under `supabase/tests/`, som pakkens PR ændrer.
+- **`prover.json`:** `{"cmd": ["node", "scripts/v5/<pakke>/prover-run.mjs"], "resultRelPath": "plan-build/<pakke>/prover-result.json"}`; resultatet er `{"total", "passed", "failed", "skipped"}`.
+- **`slutproeve.json`:** som testindekset (`schema_version: 2`, `pakke`, `tests: [{id, file, oid, covers}]`) med mindst ét scenarie og `mutants: []`.
+- **`codex-gennemgang.md`:** `commit <det læste commit>` og merge-dommen på sin egen linje.
+- **`slut-rapport.md`:** `Prøvet kodeversion: <commit>` og afsnittet `## Rettelser i Mathias' dokumenter` med `<dokument> → blob <ny blob>` pr. rettelse.
+
 ## Testdatabasen
 
-Byggetjekket kører alle migrationer på en tom Supabase-Postgres med styret klokke (start `@2026-04-01 00:00:00`; testene flytter uret fremad). DB-testene i `supabase/tests/` kører i et eget CI-job på en tom database med rigtig tid. To test-brugere indsættes i `auth.users` først (migrationen `t1_bootstrap_admins` peger på dem), og én oprydnings-migration, der kræver data fra driften, springes over — kun præcis den godkendte blob.
+Byggetjekket kører alle migrationer på en tom Supabase-Postgres med styret klokke (start `@2026-04-01 00:00:00`; testene flytter uret fremad). PostgREST kører mod samme database; testenes tokens bærer ingen tid, så databasens klokke er den eneste i systemet under test. DB-testene i `supabase/tests/` kører i et eget CI-job på en tom database med rigtig tid. To test-brugere indsættes i `auth.users` først (migrationen `t1_bootstrap_admins` peger på dem), og én oprydnings-migration, der kræver data fra driften, springes over — kun præcis den godkendte blob.
 
 ## Fitness checks
 

@@ -3,7 +3,7 @@
 //
 // makePgRunner({ argv, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
 //   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform: handlinger via PostgREST som aktøren.
-//   http(req, actor): minter HS256-JWT {role: actor.role, exp, ...claims fra actor.settings (request.jwt.claim.<x> → x; request.jwt.claims
+//   http(req, actor): minter HS256-JWT {role: actor.role, ...claims fra actor.settings (request.jwt.claim.<x> → x; request.jwt.claims
 //   → JSON merges)}, kalder {baseUrl}{req.path} m. req.method/body (+ Accept-/Content-Profile ved req.schema), og afleverer et KALD-UDFALD
 //   i samme kontrakt som sql(): {ok (2xx), code = body.code (PostgREST videregiver Postgres' SQLSTATE), detail:{message: body.message,
 //   routine: null}, http_status}. Afvisningsstedet (routine) er IKKE observerbart via API — dommen springer det over for via=api.
@@ -34,7 +34,6 @@ import { spawn, spawnSync } from "node:child_process";
 import { randomBytes, createHmac } from "node:crypto";
 
 const FELT = /^(ERROR|NOTICE|WARNING|INFO|LOG|DEBUG\d?|DETAIL|HINT|CONTEXT|LOCATION|QUERY|STATEMENT|SCHEMA NAME|TABLE NAME|COLUMN NAME|DATA TYPE|CONSTRAINT NAME):\s/;
-void FELT;
 
 // parseErr(stderr) → { errLines, ctxLines, code, routine, flertydig, error }
 export function parseErr(stderr) {
@@ -69,6 +68,17 @@ export function frame(stdout, stderr, S, M, E) {
   return { ok: false, code: sqlstate, message, routine: pe.routine, data };
 }
 
+// stoppet(stderr, isQuery) → kald-udfaldet, når psql stoppede ved en SQL-fejl (rc 3): præcis én ERROR-blok, ellers protokol
+export function stoppet(stderr, isQuery = false) {
+  const rows = isQuery ? null : undefined;
+  const pe = parseErr(stderr);
+  if (pe.flertydig || pe.errLines !== 1 || !pe.code) return { ok: false, error: `psql stoppede ved en fejl, men diagnostikken er ikke entydig (${pe.flertydig || `${pe.errLines} ERROR-linjer`}) — ikke klassificerbar`, code: null, detail: { message: null, routine: null }, rows, protokol_fejl: true };
+  const lines = String(stderr).split(/\r?\n/); const i = lines.findIndex((l) => /^ERROR:\s+[0-9A-Z]{5}:/.test(l));
+  const msg = [lines[i].replace(/^ERROR:\s+[0-9A-Z]{5}:\s*/, "")]; for (let k = i + 1; k < lines.length && lines[k] && !FELT.test(lines[k]); k++) msg.push(lines[k]);
+  const message = msg.join("\n");
+  return { ok: false, error: `${pe.code}: ${message}`.slice(0, 200), code: pe.code, detail: { message, routine: pe.routine }, rows };
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // producentMiljoe(env) → kopi uden credentials/CI-tokens. Fail-closed: mønstrene er brede — hellere for lidt miljø end et token.
@@ -87,9 +97,9 @@ export function mintJwt(secret, claims) {
   return `${h}.${p}.${b64url(createHmac("sha256", secret).update(`${h}.${p}`).digest())}`;
 }
 // claimsFraAktoer(actor) → JWT-claims fra actor.role + actor.settings (ctx-A: request.jwt.claim.sub → sub; request.jwt.claims (JSON) merges)
-export function claimsFraAktoer(actor, nowSec = Math.floor(Date.now() / 1000)) {
+export function claimsFraAktoer(actor) {
   if (!actor || typeof actor.role !== "string" || !actor.role) throw new Error("http: actor.role kræves (JWT-rollen)");
-  const claims = { role: actor.role, exp: nowSec + 300, iat: nowSec };
+  const claims = { role: actor.role };   // ingen exp/iat: PostgREST læser da ingen klokke, og databasens styrede klokke er den eneste
   for (const [k, v] of Object.entries(actor.settings ?? {})) {
     if (k === "request.jwt.claims") { let o; try { o = JSON.parse(String(v)); } catch { throw new Error("http: request.jwt.claims er ikke JSON"); } if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error("http: request.jwt.claims skal være et objekt"); Object.assign(claims, o); }
     else if (k.startsWith("request.jwt.claim.")) claims[k.slice("request.jwt.claim.".length)] = String(v);
@@ -133,7 +143,10 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
   if (!Array.isArray(argv) || argv.length === 0 || !argv.every((a) => typeof a === "string")) throw new Error("makePgRunner: argv (psql-kommandopræfiks) kræves");
   if (env === null || typeof env !== "object") throw new Error("makePgRunner: env skal være et objekt");
   for (const k of Object.keys(env)) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`makePgRunner: env indeholder credential '${k}' — produktkode må ikke få den (F-C4b-1)`);
-  const PSQL = [...argv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"];
+  // sql() stopper ved første SQL-fejl (ON_ERROR_STOP=1: psql afslutter med rc 3, og intet efter fejlen udføres); fejlen læses da fra
+  // stderr, hvor den er den eneste ERROR-blok. Sessionerne (race, lib.session) kører sætning for sætning og læser status efter hver.
+  const PSQL = [...argv, "-v", "ON_ERROR_STOP=1", "-q", "-tA"];
+  const SESSION_PSQL = [...argv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"];
 
   function sql(sqlText, opts = {}) {
     const isQuery = /^\s*(select|with|table)\b/i.test(sqlText);
@@ -146,6 +159,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
     const input = `${prelude.join("\n")}\n${body}\n\\echo ${S} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${M}\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${E}\n`;
     const r = spawnSync(PSQL[0], PSQL.slice(1), { input, encoding: "utf8", env });
     const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined });
+    if (!r.error && r.status === 3) return stoppet(String(r.stderr ?? ""), isQuery);
     if (r.error || r.status !== 0) return dead(`psql-transport fejlede (rc ${r.status ?? r.error?.message}): ${String(r.stderr ?? "").slice(0, 200)}`);
     const fr = frame(String(r.stdout ?? ""), String(r.stderr ?? ""), S, M, E);
     if (fr.protokol) return dead(fr.protokol);
@@ -162,7 +176,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
   const q1 = (sqlText) => { const r = spawnSync(argv[0], [...argv.slice(1), "-tAc", sqlText], { encoding: "utf8", env }); if (r.error || r.status !== 0) throw new Error(`q1 fejlede: ${String(r.stderr ?? r.error?.message).slice(0, 200)}`); return String(r.stdout).trim(); };
 
   // session(name, spawnFn?) — én interaktiv psql; stdout (data) og stderr (diagnostik) adskilt; pr. sætning nonce-markør på begge strømme
-  function session(name, spawnFn = () => spawn(PSQL[0], PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env })) {
+  function session(name, spawnFn = () => spawn(SESSION_PSQL[0], SESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env })) {
     const p = spawnFn();
     let out = "", err = "", n = 0; const nonce = randomBytes(12).toString("hex");
     p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));

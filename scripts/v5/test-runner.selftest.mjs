@@ -50,7 +50,8 @@ const R = (okv, code = null, message = null, routine = null, rows) => ({ ok: okv
 function mkRunner(over = {}) {
   const st = { navn: true, audit: true, mutable: true, applyOk: true, restoreOk: true, calls: [], ...over };
   return { st,
-    sql(t, opts) { st.calls.push([t, opts?.role ?? "ejer"]); switch (t) {
+    sql(t, opts) { if (t.includes("pg_has_role")) { const r = (t.match(/rolname = '([a-z_0-9]+)'/) ?? [])[1]; return R(true, null, null, null, r === "findes_ikke" ? [] : [{ omgaar: r === "service_role" }]); }
+      st.calls.push([t, opts?.role ?? "ejer"]); switch (t) {
       case "POS": return R(true); case "NEG": return st.navn ? R(false, "22023", "navn_blank", "f.lokation_opret") : R(true); case "ACT_MH": return R(true); case "ACT": return R(true);
       case "AUDIT": return R(true, null, null, null, st.audit ? [{ id: 1 }] : []); case "OBS": return R(true, null, null, null, [{ pris: 100 }]); case "OBS_HIST": return R(true, null, null, null, [{ pris: 80 }]);
       case "M_NAVN_OFF": if (!st.applyOk) return R(false, "42601", "apply syntax"); if (st.mutable) st.navn = false; return R(true); case "M_NAVN_ON": if (!st.restoreOk) return R(false, "42601", "restore syntax"); st.navn = true; return R(true);
@@ -105,6 +106,9 @@ console.log("\nlib — exec · session · ur (FA-3):");
   let e = null; try { lib.ur.saet("2026-04-01T00:00:00Z"); } catch (x) { e = x; } eq("ur uden V5_FAKETIME_FILE → Afvist (ærligt rød, ikke stiltiende)", e instanceof Afvist && /ur-driver ikke tilgængelig/.test(e.message), true); eq("ur.tilgaengelig false", lib.ur.tilgaengelig, false); }
 { const lib = makeLib({ runner: { ...mkRunner(), race: async () => ({ protocolOk: true, a: {}, b: {} }) }, manifest: MANIFEST, pakke: "pk" }); const r = await lib.race({}); eq("lib.race med den rigtige runners svar ({protocolOk} uden ok) → virker", r.protocolOk === true, true); }
 { const lib = makeLib({ runner: { ...mkRunner(), race: async () => ({ ok: true }) }, manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.race({}); } catch (x) { e = x; } eq("lib.race uden protocolOk → Afvist", e instanceof Afvist && /protocolOk/.test(e.message), true); }
+{ const lib = makeLib({ runner: mkRunner(), manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.som({ role: "service_role" }).sql("POS"); } catch (x) { e = x; } eq("aktør med bypass (service_role) → Afvist før kaldet", e instanceof Afvist && /omgå rettighederne/.test(e.message), true);
+  let e2 = null; try { await lib.som({ role: "findes_ikke" }).sql("POS"); } catch (x) { e2 = x; } eq("aktørrolle der ikke findes → Afvist", e2 instanceof Afvist && /findes ikke/.test(e2.message), true);
+  let e3 = null; try { await lib.race({ actor: { role: "service_role" } }); } catch (x) { e3 = x; } eq("race som bypass-rolle → Afvist", e3 instanceof Afvist && /omgå/.test(e3.message), true); }
 { const lib = makeLib({ runner: mkRunner(), manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.exec(["x"]); } catch (x) { e = x; } eq("lib.exec uden runner.exec → Afvist", e instanceof Afvist && /runner.exec mangler/.test(e.message), true); }
 { const file = join(ROOT, "faketime.txt"); const ur = urFraMiljoe({ V5_FAKETIME_FILE: file });
   eq("ur.saet skriver libfaketime-format @YYYY-MM-DD HH:MM:SS", ur.saet("2026-04-03T02:29:30Z"), "@2026-04-03 02:29:30"); eq("filen bærer stemplet", readFileSync(file, "utf8"), "@2026-04-03 02:29:30\n");

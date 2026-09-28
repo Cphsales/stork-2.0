@@ -14,6 +14,7 @@ IMAGE=public.ecr.aws/supabase/postgres:17.6.1.121
 PGRST_IMAGE=postgrest/postgrest:v12.2.3
 PW=byggetjek; JWT=byggetjek-jwt-secret-for-the-ephemeral-test-database
 FT_COMMIT=9fdda43
+FT_SHA256=b60ace1e88ab1b49540d761c0962fd851d104607951a092e3e1aa5b8f2342f56
 FT_SO="$WORK/ft/libfaketime.so.1"
 NET=stork-testdb
 
@@ -21,8 +22,9 @@ if [ ! -f "$FT_SO" ]; then
   docker run --rm -v "$WORK/ft:/out" debian:bookworm-slim sh -c "
     apt-get update -qq >/dev/null && apt-get install -y -qq git build-essential ca-certificates >/dev/null &&
     git clone -q https://github.com/wolfcw/libfaketime /src && cd /src && git checkout -q $FT_COMMIT &&
-    make -s -C src >/dev/null && cp src/libfaketime.so.1 /out/"
+    make -s -C src libfaketime.so.1 >/dev/null && cp src/libfaketime.so.1 /out/"
 fi
+echo "$FT_SHA256  $FT_SO" | sha256sum -c --quiet - || { echo "libfaketime: forkert sha256"; exit 1; }
 echo "@2026-04-01 00:00:00" > "$WORK/ft/faketime.txt"
 chmod 666 "$WORK/ft/faketime.txt"
 

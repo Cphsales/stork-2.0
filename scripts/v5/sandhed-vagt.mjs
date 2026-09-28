@@ -4,9 +4,9 @@
 //
 // En ændring i vision-og-principper.md, forretningsforstaaelse.md, masterplanen, disciplin.md
 // eller en rolletekst i scripts/v5/roller/ er kun gyldig, hvis ledgeren har en M-række, hvor
-// hans ord er en godkendelse (»ja«, »ok«, »krav ok«, »plan ok«, »slut ok« …), og hvor kolonnen
-// »Svar på / godkender« nævner filen og den nye blob (første 12 tegn). Sletning kræver en sådan
-// række med filen og »slettes«.
+// hans ord er en godkendelse, og hvor kolonnen »Svar på / godkender« binder netop den fil til
+// den nye blob (`<fil> → blob <mindst 12 tegn>`). Sletning kræver en sådan række, hvor filen
+// står i et afsnit, der ender med »slettes«. Formaterne: scripts/README.md »Formater«.
 //
 // Brug:
 //   node scripts/v5/sandhed-vagt.mjs --staged            (pre-commit: index mod HEAD)
@@ -22,30 +22,49 @@ export const SANDHEDS_DOK = Object.freeze([
   "docs/strategi/disciplin.md",
 ]);
 export const ROLLE_MAPPE = "scripts/v5/roller/";
-export const LEDGER_STIER = Object.freeze(["docs/sandhed/mathias-ord.md", "plan-build/lokations-skabelon/mathias-ord.md"]);
+export const LEDGER = "docs/sandhed/mathias-ord.md";
 
 const beskyttet = (sti) => SANDHEDS_DOK.includes(sti) || (sti.startsWith(ROLLE_MAPPE) && sti.endsWith(".md"));
-// hans ord er en godkendelse, når citatet begynder med ja/ok eller et af de tre godkendelses-ord
-const GODKENDELSE = /^»\s*(ja|ok|krav ok|plan ok|slut ok)\b/i;
 
-// rækker → [{ ord, maal }] for M-rækkerne (| M-n | dato | »ord« | svar på / godkender |)
+// raekker(ledger) → [{ nr, ord, maal, linje }] for M-rækkerne (| M-n | dato | »ord« | svar på / godkender |)
 export function raekker(ledger) {
   return String(ledger ?? "").split("\n").filter((l) => /^\|\s*M-\d+\s*\|/.test(l)).map((l) => {
-    const c = l.split("|").map((x) => x.trim());
-    return { ord: c[3] ?? "", maal: c.slice(4).join("|") };
+    const c = l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((x) => x.trim());
+    return { nr: c[0], ord: c[2] ?? "", maal: c.slice(3).join("|"), linje: l };
   });
 }
 
+// erGodkendelse(ord, ordet?) → hans citat begynder med godkendelses-ordet (uden `ordet`: ja · ok · krav ok ·
+// plan ok · slut ok) og rummer intet forbehold (men · bortset · undtagen · dog · nej · vent · stop).
+const FORBEHOLD = /(?<!\p{L})(men|bortset|undtagen|dog|nej|vent|stop)(?!\p{L})/iu;
+export function erGodkendelse(ord, ordet) {
+  const m = String(ord ?? "").trim().match(/^»([\s\S]*)«$/);
+  if (!m) return false;
+  const t = m[1].trim().toLowerCase();
+  const start = ordet ? new RegExp(`^${ordet}(?!\\p{L})`, "u") : /^(ja|ok|krav ok|plan ok|slut ok)(?!\p{L})/u;
+  return start.test(t) && !FORBEHOLD.test(t);
+}
+
+// filBlobPar(tekst) → [{ fil, blob }] for hvert `<fil> → blob <12-40 hex>` (filen evt. i backticks)
+export function filBlobPar(tekst) {
+  return [...String(tekst ?? "").matchAll(/`?([A-Za-z0-9_./-]+\.[A-Za-z0-9]{1,5})`?\s+→\s+blob\s+([0-9a-f]{12,40})(?![0-9a-f])/g)].map((x) => ({ fil: x[1], blob: x[2] }));
+}
+// slettes(maal) → filerne i de afsnit (adskilt af ·), der ender med »slettes«
+export function slettes(maal) {
+  return String(maal ?? "").split("·").filter((a) => /(?<!\p{L})slettes\s*$/u.test(a.trim())).flatMap((a) => [...a.matchAll(/`?([A-Za-z0-9_./-]+\.[A-Za-z0-9]{1,5})`?/g)].map((x) => x[1]));
+}
+// passer(fil, sti) → filnavnet i rækken er stien eller dens slutning (fx `code.md` for scripts/v5/roller/code.md)
+export const passer = (fil, sti) => fil === sti || sti.endsWith("/" + fil);
+
 // ændringer: [{ sti, status: "M"|"A"|"D", blob }] · ledger: tekst · → liste af fejl
 export function dom(aendringer, ledger) {
-  const godkendt = raekker(ledger).filter((r) => GODKENDELSE.test(r.ord));
+  const godkendt = raekker(ledger).filter((r) => erGodkendelse(r.ord));
   const fejl = [];
   for (const a of aendringer) {
     if (!beskyttet(a.sti)) continue;
-    const navn = a.sti.split("/").pop();
     const ok = a.status === "D"
-      ? godkendt.some((r) => r.maal.includes(navn) && /slettes/i.test(r.maal))
-      : typeof a.blob === "string" && a.blob.length >= 12 && godkendt.some((r) => r.maal.includes(navn) && r.maal.includes(a.blob.slice(0, 12)));
+      ? godkendt.some((r) => slettes(r.maal).some((f) => passer(f, a.sti)))
+      : typeof a.blob === "string" && godkendt.some((r) => filBlobPar(r.maal).some((p) => passer(p.fil, a.sti) && a.blob.startsWith(p.blob)));
     if (!ok) fejl.push(`${a.sti}: ${a.status === "D" ? "slettes" : `ny blob ${String(a.blob).slice(0, 12)}`} uden en M-række, hvor Mathias godkender netop denne tekst`);
   }
   return fejl;
@@ -65,8 +84,7 @@ function aendringerFra(diffArgs, blobAf) {
 }
 
 function laesLedger(spec) {
-  for (const s of LEDGER_STIER) { try { return git(["show", `${spec}${s}`]); } catch {} }
-  return "";
+  try { return git(["show", `${spec}${LEDGER}`]); } catch { return ""; }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -41,8 +41,13 @@ async function walk(dir) {
 
 async function runQuery(query) {
   if (DATABASE_URL) {
-    const r = spawnSync("psql", [DATABASE_URL, "-X", "-q", "-v", "ON_ERROR_STOP=1"], { input: query, encoding: "utf8" });
-    return r.status === 0 ? { ok: true, body: r.stdout } : { ok: false, status: r.status, body: String(r.stderr).slice(0, 2000) };
+    const r = spawnSync("psql", [DATABASE_URL, "-X", "-q", "-v", "ON_ERROR_STOP=1"], {
+      input: query,
+      encoding: "utf8",
+    });
+    return r.status === 0
+      ? { ok: true, body: r.stdout }
+      : { ok: false, status: r.status, body: String(r.stderr).slice(0, 2000) };
   }
   const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
     method: "POST",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // pg-runner.selftest.mjs — database-runnerens fejltolkning (rene funktioner; runneren selv køres af byggetjekket i CI).
-import { parseErr, frame, makePgRunner } from "./pg-runner.mjs";
+import { parseErr, frame, makePgRunner, stoppet, claimsFraAktoer } from "./pg-runner.mjs";
 
 let ok = 0, fail = 0;
 const t = (navn, c) => { if (c) { ok++; console.log(`  ✓ ${navn}`); } else { fail++; console.log(`  ✗ ${navn}`); } };
@@ -23,6 +23,11 @@ t("én reel fejl → ikke ok med SQLSTATE", fr.ok === false && fr.code === "P000
 const fr2 = frame(`${S} false 00000 P0001\n${M}\nmin_en_stand\n${E}\n`, "ERROR:  P0001: min_en_stand\n", S, M, E);
 t("status ok men en ERROR-linje på stderr (tidligere sætning fejlede) → protokol", !!fr2.protokol);
 
+const st = stoppet("ERROR:  22023: navn_blank\nCONTEXT:  PL/pgSQL function f.lokation_opret(text) line 3 at RAISE\nLOCATION:  exec_stmt_raise, pl_exec.c:3894\n");
+t("psql stoppet ved fejl (rc 3) → kode, grund og sted fra den ene ERROR-blok", st.ok === false && st.code === "22023" && st.detail.message === "navn_blank" && st.detail.routine === "f.lokation_opret");
+t("stoppet med to ERROR-blokke (fx forfalsket i en notice) → protokol", stoppet("NOTICE:  00000: x\nERROR:  42501: falsk\nERROR:  22012: division by zero\n").protokol_fejl === true);
+t("stoppet uden ERROR-linje → protokol", stoppet("FATAL:  noget\n").protokol_fejl === true);
+t("testtokens bærer ingen tid (databasens klokke er den eneste)", (() => { const c = claimsFraAktoer({ role: "authenticated", settings: { "request.jwt.claim.sub": "u" } }); return c.role === "authenticated" && c.sub === "u" && !("exp" in c) && !("iat" in c); })());
 let kast = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (e) { kast = e.message; }
 t("runneren afviser et miljø med credentials", /credential/.test(kast ?? ""));
 
