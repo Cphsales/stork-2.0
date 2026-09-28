@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // pg-runner.mjs — database-runneren for testene og byggetjekket: kalder Postgres (psql) og PostgREST og tolker fejl entydigt.
 //
-// makePgRunner({ argv, aktoerArgv?, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
+// makePgRunner({ argv, aktoerArgv?, env?, http? }) → { sql(text, opts), ren(text), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
 //   aktoerArgv = psql-præfiks for AKTØRKALD (sql med opts.role, race): login som en rolle, der kun er medlem af aktørrollerne
 //   (testdatabasen: v5_aktoer → authenticated, anon), så testens SQL ikke kan skifte til en privilegeret rolle. Uden den afvises aktørkald.
 //   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform: handlinger via PostgREST som aktøren.
@@ -79,22 +79,6 @@ export function stoppet(stderr, isQuery = false) {
   const msg = [lines[i].replace(/^ERROR:\s+[0-9A-Z]{5}:\s*/, "")]; for (let k = i + 1; k < lines.length && lines[k] && !FELT.test(lines[k]); k++) msg.push(lines[k]);
   const message = msg.join("\n");
   return { ok: false, error: `${pe.code}: ${message}`.slice(0, 200), code: pe.code, detail: { message, routine: pe.routine }, rows };
-}
-
-// psqlKommando(sql) → positionen af den første psql-klientkommando (et »\« uden for citater, dollar-citater og kommentarer — der hvor
-// psql selv ville læse en kommando som \! eller \connect), eller -1. Bruges på migrationerne: byggerens kode må ikke køre på CI-maskinen.
-export function psqlKommando(sql) {
-  const t = String(sql); const idtegn = /[A-Za-z0-9_$\u0080-\uffff]/;
-  for (let i = 0; i < t.length; i++) {
-    const c = t[i], n = t[i + 1];
-    if (c === "\\") return i;
-    if (c === "-" && n === "-") { const j = t.indexOf("\n", i); if (j < 0) return -1; i = j; continue; }
-    if (c === "/" && n === "*") { let d = 1; i += 2; while (i < t.length && d > 0) { if (t[i] === "/" && t[i + 1] === "*") { d++; i += 2; } else if (t[i] === "*" && t[i + 1] === "/") { d--; i += 2; } else i++; } i--; continue; }
-    if (c === "'") { const e = i > 0 && /[eE]/.test(t[i - 1]) && !(i > 1 && idtegn.test(t[i - 2])); i++; while (i < t.length) { if (e && t[i] === "\\") i += 2; else if (t[i] === "'" && t[i + 1] === "'") i += 2; else if (t[i] === "'") break; else i++; } continue; }
-    if (c === '"') { i++; while (i < t.length) { if (t[i] === '"' && t[i + 1] === '"') i += 2; else if (t[i] === '"') break; else i++; } continue; }
-    if (c === "$" && !(i > 0 && idtegn.test(t[i - 1]))) { const m = t.slice(i).match(/^\$([A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/); if (m) { const j = t.indexOf(m[0], i + m[0].length); if (j < 0) return -1; i = j + m[0].length - 1; } continue; }
-  }
-  return -1;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -203,6 +187,22 @@ export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(pr
     return { ok: true, error: null, code: null };
   }
 
+  // ren(sqlText) → hele teksten som ÉN forespørgsel til serveren (psql -c): psql læser ingen klientkommandoer (\! \connect …) og
+  // substituerer ingen variable, så teksten kan ikke køre noget på maskinen. Én implicit transaktion, som når Supabase anvender en migration.
+  const MAX_REN = 120000;   // under Linux' grænse for ét argument (128 KiB)
+  function ren(sqlText) {
+    const t = String(sqlText);
+    const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null } });
+    if (Buffer.byteLength(t, "utf8") > MAX_REN) return dead(`teksten er for stor til én forespørgsel (${Buffer.byteLength(t, "utf8")} > ${MAX_REN} bytes) — del migrationen`);
+    const r = spawnSync(argv[0], [...argv.slice(1), "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose", "-q", "-c", "\n" + t], { encoding: "utf8", env, maxBuffer: 64 * 1024 * 1024 });
+    if (r.error) return dead(`psql-transport fejlede: ${r.error.message}`);
+    if (r.status === 0) return { ok: true, error: null, code: null };
+    const pe = parseErr(String(r.stderr ?? ""));
+    if (pe.errLines !== 1 || !pe.code) return dead(`psql fejlede (rc ${r.status}): ${String(r.stderr ?? "").slice(0, 200)}`);
+    const linje = String(r.stderr).split(/\r?\n/).find((l) => /^ERROR:\s+[0-9A-Z]{5}:/.test(l)).replace(/^ERROR:\s+[0-9A-Z]{5}:\s*/, "");
+    return { ok: false, error: `${pe.code}: ${linje}`.slice(0, 200), code: pe.code, detail: { message: linje, routine: pe.routine } };
+  }
+
   const q1 = (sqlText) => { const r = spawnSync(argv[0], [...argv.slice(1), "-tAc", sqlText], { encoding: "utf8", env }); if (r.error || r.status !== 0) throw new Error(`q1 fejlede: ${String(r.stderr ?? r.error?.message).slice(0, 200)}`); return String(r.stdout).trim(); };
 
   // session(name, spawnFn?) — én interaktiv psql; stdout (data) og stderr (diagnostik) adskilt; pr. sætning nonce-markør på begge strømme
@@ -294,7 +294,7 @@ export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(pr
     return { exit_code: typeof r.status === "number" ? r.status : 128, stdout: typeof r.stdout === "string" ? r.stdout : "" };
   }
 
-  const out = { sql, race, exec, session, q1 };
+  const out = { sql, ren, race, exec, session, q1 };
   if (http) out.http = makeHttpRunner(http);
   return out;
 }

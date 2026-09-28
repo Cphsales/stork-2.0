@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // pg-runner.selftest.mjs — database-runnerens fejltolkning (rene funktioner; runneren selv køres af byggetjekket i CI).
-import { parseErr, frame, makePgRunner, stoppet, claimsFraAktoer, psqlKommando } from "./pg-runner.mjs";
+import { parseErr, frame, makePgRunner, stoppet, claimsFraAktoer } from "./pg-runner.mjs";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 let ok = 0, fail = 0;
 const t = (navn, c) => { if (c) { ok++; console.log(`  ✓ ${navn}`); } else { fail++; console.log(`  ✗ ${navn}`); } };
@@ -31,9 +34,17 @@ t("testtokens bærer ingen tid (databasens klokke er den eneste)", (() => { cons
 { const r = makePgRunner({ argv: ["false"], aktoerArgv: ["false"], env: { PATH: "/usr/bin" } });
   t("aktørens SQL med en psql-kommando (\\connect) → afvist før psql", /psql-kommandoer/.test(r.sql("select 1;\n\\connect postgres postgres", { role: "authenticated" }).error));
   t("aktør-setting med \\ → afvist", /psql-kommandoer/.test(r.sql("select 1", { role: "authenticated", settings: { "request.jwt.claims": "{\"x\":\"\\\\!id\"}" } }).error)); }
-t("psql-kommando uden for citater findes (\\!, \\gexec, efter en streng)", psqlKommando("\\! id") === 0 && psqlKommando("select 1 \\gexec") === 9 && psqlKommando("select 'x' \\! id") === 11);
-t("\\ i strenge, E-strenge, dollar-citater, identifikatorer og kommentarer er ikke kommandoer", ["select 'a\\b'", "select E'\\n'", "select $q$\\! x$q$", "select $$ \\! $$", 'select "a\\b"', "-- \\! x\nselect 1", "/* \\! /* indlejret */ */ select 1", "select a$b$c"].every((q) => psqlKommando(q) === -1));
-t("E-streng med escaped citationstegn efterfulgt af en kommando findes", psqlKommando("select E'\\'\\! ' \\! x") === 16);
+{ const d = mkdtempSync(join(tmpdir(), "pgr-")); const fake = join(d, "psql.cjs"), log = join(d, "kald.json");
+  writeFileSync(fake, `const fs = require("fs"); const a = process.argv.slice(2); let stdin = ""; try { stdin = fs.readFileSync(0, "utf8"); } catch {}
+fs.writeFileSync(process.env.KALD, JSON.stringify({ a, stdin }));
+if (a[a.length - 1].includes("fejl")) { process.stderr.write("ERROR:  42601: syntax error at or near \\"x\\"\\n"); process.exit(1); }`);
+  const r = makePgRunner({ argv: [process.execPath, fake], env: { PATH: process.env.PATH, KALD: log } });
+  const tekst = "select 1;\n\\! id\n";
+  const ok1 = r.ren(tekst); const k = JSON.parse(readFileSync(log, "utf8"));
+  t("ren(): exit 0 → ok", ok1.ok === true);
+  t("ren(): hele teksten er ét -c-argument og intet går over stdin (psql læser ingen klientkommandoer)", k.a[k.a.length - 2] === "-c" && k.a[k.a.length - 1] === "\n" + tekst && k.stdin === "");
+  const f1 = r.ren("fejl"); t("ren(): serverfejl → kode og besked", f1.ok === false && f1.code === "42601");
+  t("ren(): for stor tekst → afvist før psql", /for stor/.test(r.ren("x".repeat(130000)).error)); }
 let kast = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (e) { kast = e.message; }
 t("runneren afviser et miljø med credentials", /credential/.test(kast ?? ""));
 

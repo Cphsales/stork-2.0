@@ -202,7 +202,7 @@ where a.rolname = current_user and (b.rolsuper or b.rolbypassrls or exists (sele
   where c.relkind in ('r','p') and c.relrowsecurity and not c.relforcerowsecurity and n.nspname not in ('pg_catalog','information_schema') and c.relowner = b.oid))`;
 
 async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrationer = false }) {
-  const { makePgRunner, producentMiljoe, psqlKommando } = await import("./pg-runner.mjs");
+  const { makePgRunner, producentMiljoe } = await import("./pg-runner.mjs");
   const { runTestSuite } = await import("./test-runner.mjs");
   const { validateAngrebsIndeks, validateSlutproeve } = await import("./angrebs-indeks.mjs");
   const http = process.env.V5_PGRST_URL ? { baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET ?? "", defaultSchema: process.env.V5_PGRST_SCHEMA || null } : null;
@@ -215,10 +215,8 @@ async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrat
     const p = `supabase/migrations/${f}`;
     const u = FRISK_STORE_UNDTAGELSER.find((x) => x.path === p);
     if (u) { if (git(["hash-object", p]).trim() !== u.blob) return { ok: false, fejl: [`${p} er ændret; undtagelsen gælder kun blob ${u.blob.slice(0, 8)}`] }; continue; }
-    const tekst = readFileSync(join(root, p), "utf8");
-    const k = psqlKommando(tekst);
-    if (k >= 0) return { ok: false, fejl: [`migration ${p} indeholder en psql-klientkommando (tegn ${k}: »${tekst.slice(k, k + 20).split("\n")[0]}«) — en migration er ren SQL`] };
-    const r = await runner.sql(tekst, {});
+    // byggerens migration sendes som én forespørgsel til serveren: psql-klientkommandoer (\! …) kan ikke køre på CI-maskinen
+    const r = runner.ren(readFileSync(join(root, p), "utf8"));
     if (!r.ok) return { ok: false, fejl: [`migration ${p} fejlede: ${r.error}`] };
   }
   if (http) { try { await runner.sql("notify pgrst, 'reload schema';", {}); } catch {} }
@@ -247,9 +245,10 @@ async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrat
       let res;
       try { res = await runTestSuite({ index, indexOid: git(["hash-object", `${P}/${fil}`]).trim(), runner, manifest, root, runId: `byggetjek-${pakke}-${navn}` }); }
       catch (e) { rod(pakke, `${navn} kunne ikke køres: ${e?.message ?? e}`); continue; }
-      ud.pakker[pakke][navn] = res.summary;
-      const alleOk = res.tests.length >= 1 && res.tests.every((t) => t.ok === true) && res.mutants.every((m) => m.killed === true);
-      if (!alleOk) rod(pakke, `${navn} ikke grøn (${JSON.stringify(res.summary)})`);
+      const roede = [...res.tests.filter((t) => t.ok !== true).map((t) => ({ id: t.id, covers: t.covers, detail: t.detail })), ...res.mutants.filter((m) => m.killed !== true).map((m) => ({ id: m.mutant_id, detail: m.detail ?? "mutanten blev ikke dræbt" }))];
+      ud.pakker[pakke][navn] = { ...res.summary, roede };
+      const alleOk = res.tests.length >= 1 && roede.length === 0;
+      if (!alleOk) rod(pakke, `${navn} ikke grøn (${JSON.stringify(res.summary)}${roede.length ? `; ${roede.slice(0, 3).map((x) => `${x.id}: ${String(x.detail).slice(0, 120)}`).join(" | ")}` : ""})`);
     }
     // testvalg-filen: kun pakkens egen prover-run.mjs må køres, og kun dens egen resultatfil læses
     const pj = laes(`${P}/prover.json`);
