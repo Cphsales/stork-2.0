@@ -110,8 +110,7 @@ console.log("\nlib — exec · session · ur (FA-3):");
   let e2 = null; try { await lib.som({ role: "findes_ikke" }).sql("POS"); } catch (x) { e2 = x; } eq("aktørrolle der ikke findes → Afvist", e2 instanceof Afvist && /findes ikke/.test(e2.message), true);
   let e3 = null; try { await lib.race({ actor: { role: "service_role" } }); } catch (x) { e3 = x; } eq("race som bypass-rolle → Afvist", e3 instanceof Afvist && /omgå/.test(e3.message), true);
   let e4 = null; try { await lib.race({}); } catch (x) { e4 = x; } eq("race uden aktør → Afvist", e4 instanceof Afvist && /kræver en aktør/.test(e4.message), true);
-  let e5 = null; try { await lib.som({ role: "authenticated" }).sql("set role service_role; select 1"); } catch (x) { e5 = x; } eq("aktørens SQL skifter rolle → Afvist", e5 instanceof Afvist && /skifte rolle/.test(e5.message), true);
-  let e6 = null; try { await lib.som({ role: "authenticated" }).sql("select set_config('role', 'service_role', false)"); } catch (x) { e6 = x; } eq("rolleskift via set_config → Afvist", e6 instanceof Afvist, true); }
+}
 { const lib = makeLib({ runner: mkRunner(), manifest: MANIFEST, pakke: "pk" }); let e = null; try { await lib.exec(["x"]); } catch (x) { e = x; } eq("lib.exec uden runner.exec → Afvist", e instanceof Afvist && /runner.exec mangler/.test(e.message), true); }
 { const file = join(ROOT, "faketime.txt"); const ur = urFraMiljoe({ V5_FAKETIME_FILE: file });
   eq("ur.saet skriver libfaketime-format @YYYY-MM-DD HH:MM:SS", ur.saet("2026-04-03T02:29:30Z"), "@2026-04-03 02:29:30"); eq("filen bærer stemplet", readFileSync(file, "utf8"), "@2026-04-03 02:29:30\n");

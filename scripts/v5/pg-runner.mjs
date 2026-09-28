@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // pg-runner.mjs — database-runneren for testene og byggetjekket: kalder Postgres (psql) og PostgREST og tolker fejl entydigt.
 //
-// makePgRunner({ argv, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
+// makePgRunner({ argv, aktoerArgv?, env?, http? }) → { sql(text, opts), race(scenario), exec(cmd), session(name), q1(sql), http?(req, actor) }
+//   aktoerArgv = psql-præfiks for AKTØRKALD (sql med opts.role, race): login som en rolle, der kun er medlem af aktørrollerne
+//   (testdatabasen: v5_aktoer → authenticated, anon), så testens SQL ikke kan skifte til en privilegeret rolle. Uden den afvises aktørkald.
 //   http = { baseUrl, jwtSecret, defaultSchema? } → API-bevisform: handlinger via PostgREST som aktøren.
 //   http(req, actor): minter HS256-JWT {role: actor.role, ...claims fra actor.settings (request.jwt.claim.<x> → x; request.jwt.claims
 //   → JSON merges)}, kalder {baseUrl}{req.path} m. req.method/body (+ Accept-/Content-Profile ved req.schema), og afleverer et KALD-UDFALD
@@ -140,14 +142,18 @@ export function makeHttpRunner({ baseUrl, jwtSecret, defaultSchema = null, fetch
   };
 }
 
-export function makePgRunner({ argv, env = producentMiljoe(process.env), http = null } = {}) {
+export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(process.env), http = null } = {}) {
   if (!Array.isArray(argv) || argv.length === 0 || !argv.every((a) => typeof a === "string")) throw new Error("makePgRunner: argv (psql-kommandopræfiks) kræves");
+  if (aktoerArgv !== null && (!Array.isArray(aktoerArgv) || aktoerArgv.length === 0 || !aktoerArgv.every((a) => typeof a === "string"))) throw new Error("makePgRunner: aktoerArgv skal være et psql-kommandopræfiks");
   if (env === null || typeof env !== "object") throw new Error("makePgRunner: env skal være et objekt");
   for (const k of Object.keys(env)) if (CREDENTIAL_ENV_RE.test(k)) throw new Error(`makePgRunner: env indeholder credential '${k}' — produktkode må ikke få den (F-C4b-1)`);
   // sql() stopper ved første SQL-fejl (ON_ERROR_STOP=1: psql afslutter med rc 3, og intet efter fejlen udføres); fejlen læses da fra
   // stderr, hvor den er den eneste ERROR-blok. Sessionerne (race, lib.session) kører sætning for sætning og læser status efter hver.
   const PSQL = [...argv, "-v", "ON_ERROR_STOP=1", "-q", "-tA"];
   const SESSION_PSQL = [...argv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"];
+  const APSQL = aktoerArgv ? [...aktoerArgv, "-v", "ON_ERROR_STOP=1", "-q", "-tA"] : null;
+  const ASESSION_PSQL = aktoerArgv ? [...aktoerArgv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"] : null;
+  const UDEN_AKTOER = "aktørkald kræver en aktørforbindelse (login der kun er medlem af aktørrollerne) — ikke sat i dette måle-job";
 
   function sql(sqlText, opts = {}) {
     const isQuery = /^\s*(select|with|table)\b/i.test(sqlText);
@@ -158,8 +164,10 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
     if (opts.settings) prelude.push(setSql(opts.settings));
     const body = isQuery ? `select coalesce(json_agg(t), '[]'::json) from (${sqlText.replace(/;\s*$/, "")}) t;` : sqlText;
     const input = `${prelude.join("\n")}\n${body}\n\\echo ${S} :ERROR :SQLSTATE :LAST_ERROR_SQLSTATE\n\\echo ${M}\n\\echo :LAST_ERROR_MESSAGE\n\\echo ${E}\n`;
-    const r = spawnSync(PSQL[0], PSQL.slice(1), { input, encoding: "utf8", env });
     const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined });
+    const cmd = opts.role ? APSQL : PSQL;
+    if (!cmd) return dead(UDEN_AKTOER);
+    const r = spawnSync(cmd[0], cmd.slice(1), { input, encoding: "utf8", env });
     if (!r.error && r.status === 3) return stoppet(String(r.stderr ?? ""), isQuery);
     if (r.error || r.status !== 0) return dead(`psql-transport fejlede (rc ${r.status ?? r.error?.message}): ${String(r.stderr ?? "").slice(0, 200)}`);
     const fr = frame(String(r.stdout ?? ""), String(r.stderr ?? ""), S, M, E);
@@ -177,7 +185,7 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
   const q1 = (sqlText) => { const r = spawnSync(argv[0], [...argv.slice(1), "-tAc", sqlText], { encoding: "utf8", env }); if (r.error || r.status !== 0) throw new Error(`q1 fejlede: ${String(r.stderr ?? r.error?.message).slice(0, 200)}`); return String(r.stdout).trim(); };
 
   // session(name, spawnFn?) — én interaktiv psql; stdout (data) og stderr (diagnostik) adskilt; pr. sætning nonce-markør på begge strømme
-  function session(name, spawnFn = () => spawn(SESSION_PSQL[0], SESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env })) {
+  function session(name, spawnFn = () => spawn(SESSION_PSQL[0], SESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env })) {   // som ejer (setup)
     const p = spawnFn();
     let out = "", err = "", n = 0; const nonce = randomBytes(12).toString("hex");
     p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
@@ -220,7 +228,9 @@ export function makePgRunner({ argv, env = producentMiljoe(process.env), http = 
   const blockedBy = (bpid, apid) => q1(`select ${apid} = any(pg_blocking_pids(${bpid}));`) === "t";
 
   async function race(s) {
-    const A = session("A"), B = session("B");
+    if (!ASESSION_PSQL) return { protocolOk: false, error: UDEN_AKTOER };
+    const aktoerSession = () => spawn(ASESSION_PSQL[0], ASESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env });
+    const A = session("A", aktoerSession), B = session("B", aktoerSession);
     try {
       if (s.setup) return { protocolOk: false, error: "race.setup skal udføres af motoren som ejer (F-20) — runneren modtager ikke setup" };
       if (!settingsGyldige(s.actor?.settings)) return { protocolOk: false, error: "aktør-settings har ugyldige nøgler (kun identifier.identifier)" };

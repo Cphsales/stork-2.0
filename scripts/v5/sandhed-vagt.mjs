@@ -35,15 +35,16 @@ export function raekker(ledger) {
 }
 
 // erGodkendelse(ord, ordet?) → hans citat er netop godkendelses-ordet (uden `ordet`: ja · ok · krav ok · plan ok · slut ok),
-// evt. efterfulgt af »tak« og/eller »til <hvad>« og et punktum — og intet forbehold eller nægtelse.
-const FORM = /^(ja|ok|krav ok|plan ok|slut ok)( tak)?( til [\p{L}\p{N} ._-]+)?[.!]?$/u;
-const FORBEHOLD = /(?<!\p{L})(men|bortset|undtagen|dog|nej|ikke|ej|vent|stop)(?!\p{L})/iu;
+// evt. med »tak« og punktum — eller den afgrænsede form »ok til planen« (M-81). Alt andet er ikke en godkendelse.
+const FORM = /^(ja|ok|krav ok|plan ok|slut ok)( tak)?[.!]?$/u;
+const AFGRAENSET = /^ok til planen[.!]?$/u;
 export function erGodkendelse(ord, ordet) {
   const m = String(ord ?? "").trim().match(/^»([\s\S]*)«$/);
   if (!m) return false;
   const t = m[1].trim().toLowerCase().replace(/\s+/g, " ");
   const f = t.match(FORM);
-  return !!f && (!ordet || f[1] === ordet) && !FORBEHOLD.test(t);
+  if (f) return !ordet || f[1] === ordet;
+  return !ordet && AFGRAENSET.test(t);
 }
 // M-71 (2026-09-24) er hans ja til de to l.5-linjer, men citatet fortsætter med et spørgsmål og har derfor ikke den rene form.
 // Rækken godkender kun netop disse to blobs.

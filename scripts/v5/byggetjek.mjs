@@ -10,7 +10,8 @@
 // Uden dækningsdom for den åbne pakke er den »ikke nået«: kun de lukkede pakkers regressionstests køres.
 //
 // Brug:
-//   node scripts/v5/byggetjek.mjs --pg env --rapport <fil>        (CI: frisk testdatabase fra PG*-miljøet)
+//   node scripts/v5/byggetjek.mjs --pg env --rapport <fil>        (CI: frisk testdatabase fra PG*-miljøet; aktørforbindelsen fra
+//                                                                   V5_AKTOER_DATABASE_URL eller --pg-aktoer <json-argv>)
 //   node scripts/v5/byggetjek.mjs --kun-bindinger                   (ingen database; kun (d))
 //   node scripts/v5/byggetjek.mjs --pg env --kun-migrationer        (kun testdatabasens opstart og migrationer, fx til db:test)
 //   … --base <ref>   en pakke-PR kræver grønt byggetjek + `slut ok` + kun afslutningsfiler efter prøven
@@ -103,10 +104,12 @@ export function bindinger({ pakke, blob, tekst, findes, ledger, blobTekst, liste
     if (findes(plan) && d.plan !== blob(plan)) fejl.push("dækningsdommen gælder en anden plan (feltet plan = planens fulde blob)");
     const filer = isPlain(d.filer) ? d.filer : {};
     if (!isPlain(d.filer)) fejl.push("dækningsdommen har intet objekt filer {sti: blob}");
-    const noedvendige = [...MAALELAG_JSON.map((f) => `${P}/${f}`), ...liste(`scripts/v5/${pakke}/`), ...aendret.filter((s) => erMaalelag(s) && findes(s))];
+    // også en slettet målelagsfil uden for pakken skal stå i dommen (som null = dommen godkender sletningen)
+    const noedvendige = [...MAALELAG_JSON.map((f) => `${P}/${f}`), ...liste(`scripts/v5/${pakke}/`), ...aendret.filter((s) => erMaalelag(s) && (!egenPakke(pakke, s) || findes(s)))];
     for (const sti of new Set(noedvendige)) if (!(sti in filer)) fejl.push(`dækningsdommen binder ikke ${sti}`);
     for (const [sti, oid] of Object.entries(filer)) {
-      if (typeof oid !== "string" || !OID.test(oid)) fejl.push(`dækningsdommens blob for ${sti} er ikke 40 tegn hex`);
+      if (oid === null) { if (findes(sti)) fejl.push(`dækningsdommen godkender sletning af ${sti}, men filen findes`); }
+      else if (typeof oid !== "string" || !OID.test(oid)) fejl.push(`dækningsdommens blob for ${sti} er ikke 40 tegn hex (eller null for en slettet fil)`);
       else if (!findes(sti)) fejl.push(`låst fil mangler: ${sti}`);
       else if (blob(sti) !== oid) fejl.push(`låst fil ændret efter dækningsdommen: ${sti}`);
     }
@@ -193,12 +196,17 @@ export function pakkerMedMaalelag(root) {
   return readdirSync(join(root, "plan-build")).filter((p) => existsSync(join(root, "plan-build", p, "angrebs-spec.json"))).sort();
 }
 
-async function koerDatabase({ root, argv, rapport, pakker, kunMigrationer = false }) {
+// AKTOER_SQL → de roller aktørforbindelsens login kan blive (MEMBER, transitivt), som kan omgå rettighederne
+const AKTOER_SQL = `select b.rolname from pg_roles a join pg_roles b on pg_has_role(a.oid, b.oid, 'MEMBER')
+where a.rolname = current_user and (b.rolsuper or b.rolbypassrls or exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where c.relkind in ('r','p') and c.relrowsecurity and not c.relforcerowsecurity and n.nspname not in ('pg_catalog','information_schema') and c.relowner = b.oid))`;
+
+async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrationer = false }) {
   const { makePgRunner, producentMiljoe } = await import("./pg-runner.mjs");
   const { runTestSuite } = await import("./test-runner.mjs");
   const { validateAngrebsIndeks, validateSlutproeve } = await import("./angrebs-indeks.mjs");
   const http = process.env.V5_PGRST_URL ? { baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET ?? "", defaultSchema: process.env.V5_PGRST_SCHEMA || null } : null;
-  const runner = makePgRunner({ argv, http });
+  const runner = makePgRunner({ argv, aktoerArgv, http });
   const git = (a) => execFileSync("git", ["-C", root, ...a], { encoding: "utf8" });
   const b = await runner.sql(FRISK_STORE_BOOTSTRAP, {});
   if (!b.ok) return { ok: false, fejl: [`testdatabasens opstart fejlede: ${b.error}`] };
@@ -212,6 +220,13 @@ async function koerDatabase({ root, argv, rapport, pakker, kunMigrationer = fals
   }
   if (http) { try { await runner.sql("notify pgrst, 'reload schema';", {}); } catch {} }
   if (kunMigrationer) return { ok: true, fejl: [], pakker: {} };
+  if (pakker.length) {
+    // aktørkald går over en forbindelse, der ikke kan blive en rolle med bypass (testens SQL kan ikke skifte til service_role m.fl.)
+    if (!aktoerArgv) return { ok: false, fejl: ["aktørforbindelsen mangler (V5_AKTOER_DATABASE_URL eller --pg-aktoer)"] };
+    const a = makePgRunner({ argv: aktoerArgv }).sql(AKTOER_SQL, {});
+    if (!a.ok) return { ok: false, fejl: [`kan ikke tjekke aktørforbindelsen: ${a.error}`] };
+    if (a.rows.length) return { ok: false, fejl: [`aktørforbindelsen kan blive en rolle, der omgår rettighederne: ${a.rows.map((x) => x.rolname).join(", ")}`] };
+  }
   const ud = { ok: true, fejl: [], pakker: {} };
   const rod = (pakke, f) => { ud.ok = false; ud.fejl.push(`${pakke}: ${f}`); };
   const laes = (p) => { try { return JSON.parse(readFileSync(join(root, p), "utf8")); } catch { return undefined; } };
@@ -266,9 +281,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (!process.argv.includes("--kun-bindinger")) {
     const pg = arg("--pg") ?? "env";
     const argv = pg === "env" ? ["psql", "-X"] : JSON.parse(pg);
+    const aktoerArgv = arg("--pg-aktoer") ? JSON.parse(arg("--pg-aktoer")) : process.env.V5_AKTOER_DATABASE_URL ? ["psql", "-X", process.env.V5_AKTOER_DATABASE_URL] : null;
     // den åbne pakke køres først, når dens bindinger er grønne; lukkede pakker køres altid (regression)
     const pakker = pakkerMedMaalelag(root).filter((p) => p !== pakke || b.status === "grøn");
-    db = await koerDatabase({ root, argv, rapport: arg("--rapport"), pakker, kunMigrationer: process.argv.includes("--kun-migrationer") });
+    db = await koerDatabase({ root, argv, aktoerArgv, rapport: arg("--rapport"), pakker, kunMigrationer: process.argv.includes("--kun-migrationer") });
     console.log(`byggetjek: tests og slutprøve ${db.ok ? "grønne" : "RØDE: " + db.fejl.join(" · ")}`);
   }
   let status = b.status === "rød" || !db.ok ? "rød" : b.status === "grøn" ? "grøn" : "ikke nået";

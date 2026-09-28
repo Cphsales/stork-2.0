@@ -7,7 +7,7 @@
 # statisk /bin/sh, så LD_PRELOAD ikke rammer dem. PostgREST og JWT-tokens bruger den rigtige tid.
 #
 # Brug: scripts/v5/testdb-start.sh <arbejdsmappe>
-# Skriver <arbejdsmappe>/testdb.env med PG*, DATABASE_URL, V5_PGRST_* og V5_FAKETIME_FILE.
+# Skriver <arbejdsmappe>/testdb.env med PG*, DATABASE_URL, V5_AKTOER_DATABASE_URL (aktørforbindelsen), V5_PGRST_* og V5_FAKETIME_FILE.
 set -euo pipefail
 WORK="$1"; mkdir -p "$WORK/ft"
 IMAGE=public.ecr.aws/supabase/postgres:17.6.1.121
@@ -53,6 +53,8 @@ done
 docker exec stork-testdb pg_isready -U postgres >/dev/null || { docker logs stork-testdb | tail -30; exit 1; }
 sleep 3
 docker exec -e PGPASSWORD=$PW stork-testdb psql -h localhost -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -qc "alter role authenticator with login password '$PW';"
+# testenes aktørforbindelse: kun medlem af aktørrollerne, så testens SQL ikke kan skifte til en privilegeret rolle
+docker exec -e PGPASSWORD=$PW stork-testdb psql -h localhost -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -qc "create role v5_aktoer login noinherit password '$PW'; grant authenticated, anon to v5_aktoer;"
 
 docker run -d --name stork-testdb-pgrst --network "$NET" -p 53000:3000 \
   -e PGRST_DB_URI="postgres://authenticator:$PW@stork-testdb:5432/postgres" -e PGRST_DB_SCHEMAS=core_identity,core_compliance,public \
@@ -65,6 +67,7 @@ PGUSER=postgres
 PGPASSWORD=$PW
 PGDATABASE=postgres
 DATABASE_URL=postgres://postgres:$PW@localhost:55432/postgres
+V5_AKTOER_DATABASE_URL=postgres://v5_aktoer:$PW@localhost:55432/postgres
 V5_FAKETIME_FILE=$WORK/ft/faketime.txt
 V5_PGRST_URL=http://localhost:53000
 V5_PGRST_JWT_SECRET=$JWT

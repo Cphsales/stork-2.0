@@ -12,5 +12,5 @@ const læs = (f) => { try { return JSON.parse(readFileSync(f, "utf8")); } catch 
 const idx = læs(idxFil), manifest = læs(manFil); const root = resolve(rootArg ?? process.cwd());
 const v = validateAngrebsIndeks(idx, manifest);
 if (!v.ok) { console.error(`✗ indekset er UGYLDIGT/UKOMPLET mod manifestet (${v.reasons.length}):`); for (const r of v.reasons) console.error("  - " + r); process.exit(1); }
-try { const t = await loadTests(idx, root); console.log(`✓ indeks komplet mod manifestet og konsistent m. ${t.size} testfunktioner på disk · ${idx.tests.length} tests · ${idx.mutants.length} mutanter · ${idx.bids.length} bids`); }
+try { const t = await loadTests(idx, root); console.log(`✓ indeks komplet mod manifestet og konsistent m. ${t.size} testfunktioner på disk · ${idx.tests.length} tests · ${idx.mutants.length} mutanter · ${idx.bids?.length ?? 0} bids`); }
 catch (e) { console.error(`✗ testfilerne matcher ikke indekset: ${e.message}`); process.exit(1); }
