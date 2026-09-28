@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // pg-runner.selftest.mjs — database-runnerens fejltolkning (rene funktioner; runneren selv køres af byggetjekket i CI).
-import { parseErr, frame, makePgRunner, stoppet, claimsFraAktoer } from "./pg-runner.mjs";
+import { parseErr, frame, makePgRunner, stoppet, claimsFraAktoer, psqlKommando } from "./pg-runner.mjs";
 
 let ok = 0, fail = 0;
 const t = (navn, c) => { if (c) { ok++; console.log(`  ✓ ${navn}`); } else { fail++; console.log(`  ✗ ${navn}`); } };
@@ -31,6 +31,9 @@ t("testtokens bærer ingen tid (databasens klokke er den eneste)", (() => { cons
 { const r = makePgRunner({ argv: ["false"], aktoerArgv: ["false"], env: { PATH: "/usr/bin" } });
   t("aktørens SQL med en psql-kommando (\\connect) → afvist før psql", /psql-kommandoer/.test(r.sql("select 1;\n\\connect postgres postgres", { role: "authenticated" }).error));
   t("aktør-setting med \\ → afvist", /psql-kommandoer/.test(r.sql("select 1", { role: "authenticated", settings: { "request.jwt.claims": "{\"x\":\"\\\\!id\"}" } }).error)); }
+t("psql-kommando uden for citater findes (\\!, \\gexec, efter en streng)", psqlKommando("\\! id") === 0 && psqlKommando("select 1 \\gexec") === 9 && psqlKommando("select 'x' \\! id") === 11);
+t("\\ i strenge, E-strenge, dollar-citater, identifikatorer og kommentarer er ikke kommandoer", ["select 'a\\b'", "select E'\\n'", "select $q$\\! x$q$", "select $$ \\! $$", 'select "a\\b"', "-- \\! x\nselect 1", "/* \\! /* indlejret */ */ select 1", "select a$b$c"].every((q) => psqlKommando(q) === -1));
+t("E-streng med escaped citationstegn efterfulgt af en kommando findes", psqlKommando("select E'\\'\\! ' \\! x") === 16);
 let kast = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (e) { kast = e.message; }
 t("runneren afviser et miljø med credentials", /credential/.test(kast ?? ""));
 

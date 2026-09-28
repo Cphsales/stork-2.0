@@ -81,6 +81,22 @@ export function stoppet(stderr, isQuery = false) {
   return { ok: false, error: `${pe.code}: ${message}`.slice(0, 200), code: pe.code, detail: { message, routine: pe.routine }, rows };
 }
 
+// psqlKommando(sql) → positionen af den første psql-klientkommando (et »\« uden for citater, dollar-citater og kommentarer — der hvor
+// psql selv ville læse en kommando som \! eller \connect), eller -1. Bruges på migrationerne: byggerens kode må ikke køre på CI-maskinen.
+export function psqlKommando(sql) {
+  const t = String(sql); const idtegn = /[A-Za-z0-9_$\u0080-\uffff]/;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i], n = t[i + 1];
+    if (c === "\\") return i;
+    if (c === "-" && n === "-") { const j = t.indexOf("\n", i); if (j < 0) return -1; i = j; continue; }
+    if (c === "/" && n === "*") { let d = 1; i += 2; while (i < t.length && d > 0) { if (t[i] === "/" && t[i + 1] === "*") { d++; i += 2; } else if (t[i] === "*" && t[i + 1] === "/") { d--; i += 2; } else i++; } i--; continue; }
+    if (c === "'") { const e = i > 0 && /[eE]/.test(t[i - 1]) && !(i > 1 && idtegn.test(t[i - 2])); i++; while (i < t.length) { if (e && t[i] === "\\") i += 2; else if (t[i] === "'" && t[i + 1] === "'") i += 2; else if (t[i] === "'") break; else i++; } continue; }
+    if (c === '"') { i++; while (i < t.length) { if (t[i] === '"' && t[i + 1] === '"') i += 2; else if (t[i] === '"') break; else i++; } continue; }
+    if (c === "$" && !(i > 0 && idtegn.test(t[i - 1]))) { const m = t.slice(i).match(/^\$([A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/); if (m) { const j = t.indexOf(m[0], i + m[0].length); if (j < 0) return -1; i = j + m[0].length - 1; } continue; }
+  }
+  return -1;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // producentMiljoe(env) → kopi uden credentials/CI-tokens. Fail-closed: mønstrene er brede — hellere for lidt miljø end et token.

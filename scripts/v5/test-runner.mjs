@@ -16,7 +16,8 @@
 //   lib.race(scenario)                       → pg-runner race (overlap-vidne; aktør kræves)  lib.kontrakt(negative_id) → manifestets reject_contract
 //   lib.exec(cmd[])                          → {exit_code, stdout} (exit-kanal)  lib.session(name) → én psql-backend som ejer (setup, ikke aktør)
 //   lib.ur.saet(iso) / lib.ur.frem(sek)      → FA-3-ur (libfaketime-fil, fremad-kun) — Afvist hvis måle-jobbet ikke har ur-driver
-//   lib.forvent.afvist(kald, negative_id|kontrakt, {subst?})  UT: code + grund (+ sted når observerbart)   lib.forvent.ok(kald)
+//   lib.forvent.afvist(kald, negative_id|kontrakt, {subst?})  sqlstate: code + grund (+ sted når observerbart) · exit: exitkode + linjen
+//                                                           »klasse=<klasse>« i stdout (lib.exec-udfaldet)   lib.forvent.ok(kald)
 //   lib.forvent.lig(rows, expect)  (matchExpect: rows|count|scalar|empty|null)  lib.forvent.sandt(x, detail)
 // RAPPORT (bevisets body): { schema_version: 3, pakke, run_id, index_oid, tests:[{id, file, covers, ok, ms, detail}],
 //   mutants:[{mutant_id, guard_ref, applied_ok, targets:[{id, failed, detail}], controls:[{id, ok}], restored:[{id, ok}], killed}], summary }
@@ -88,8 +89,15 @@ export function makeLib({ runner, manifest, pakke, ur = urFraMiljoe() }) {
     ok: (k, hvad = "kaldet") => { tael(); if (k?.ok !== true) fejl(`${hvad} blev afvist: ${k?.code ?? "?"} ${k?.detail?.message ?? k?.error ?? ""}`); return k; },
     afvist: (k, nidEllerKontrakt, { subst } = {}) => {
       const rc = isStr(nidEllerKontrakt) ? kontrakt(nidEllerKontrakt) : nidEllerKontrakt;
-      if (!isPlain(rc) || rc.kanal !== "sqlstate") throw new Error("forvent.afvist kræver en sqlstate-kontrakt");
+      if (!isPlain(rc) || (rc.kanal !== "sqlstate" && rc.kanal !== "exit")) throw new Error("forvent.afvist kræver en sqlstate- eller exit-kontrakt");
       tael(isStr(nidEllerKontrakt) ? nidEllerKontrakt : rc[NID]);
+      if (rc.kanal === "exit") {   // exit-kanalen (lib.exec): exitkoden og en linje »klasse=<klasse>« i stdout
+        if (!isPlain(k) || !Number.isInteger(k.exit_code) || typeof k.stdout !== "string") fejl("exit-kontrakten kræver et lib.exec-udfald {exit_code, stdout}");
+        if (k.exit_code === 0) fejl(`FORBUDT HANDLING TILLADT (exit 0; kontrakt exit ${rc.exit_code}/${rc.klasse})`);
+        if (k.exit_code !== rc.exit_code) fejl(`afvist m. exit ${k.exit_code} ≠ kontraktens ${rc.exit_code}`);
+        if (!k.stdout.split(/\r?\n/).includes(`klasse=${rc.klasse}`)) fejl(`stdout har ingen linje »klasse=${rc.klasse}«`);
+        return k;
+      }
       if (k?.ok !== false) fejl(`FORBUDT HANDLING TILLADT (kontrakt ${rc.sqlstate}/${rc.grund})`);
       if (k.code !== rc.sqlstate) fejl(`afvist m. ${k.code} ≠ kontraktens ${rc.sqlstate} (${k?.detail?.message ?? ""})`);
       const ge = grundEffektiv(rc.grund, subst); if (ge.fejl) fejl(`substitution: ${ge.fejl}`);

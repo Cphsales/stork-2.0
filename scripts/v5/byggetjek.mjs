@@ -202,7 +202,7 @@ where a.rolname = current_user and (b.rolsuper or b.rolbypassrls or exists (sele
   where c.relkind in ('r','p') and c.relrowsecurity and not c.relforcerowsecurity and n.nspname not in ('pg_catalog','information_schema') and c.relowner = b.oid))`;
 
 async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrationer = false }) {
-  const { makePgRunner, producentMiljoe } = await import("./pg-runner.mjs");
+  const { makePgRunner, producentMiljoe, psqlKommando } = await import("./pg-runner.mjs");
   const { runTestSuite } = await import("./test-runner.mjs");
   const { validateAngrebsIndeks, validateSlutproeve } = await import("./angrebs-indeks.mjs");
   const http = process.env.V5_PGRST_URL ? { baseUrl: process.env.V5_PGRST_URL, jwtSecret: process.env.V5_PGRST_JWT_SECRET ?? "", defaultSchema: process.env.V5_PGRST_SCHEMA || null } : null;
@@ -215,7 +215,10 @@ async function koerDatabase({ root, argv, aktoerArgv, rapport, pakker, kunMigrat
     const p = `supabase/migrations/${f}`;
     const u = FRISK_STORE_UNDTAGELSER.find((x) => x.path === p);
     if (u) { if (git(["hash-object", p]).trim() !== u.blob) return { ok: false, fejl: [`${p} er ændret; undtagelsen gælder kun blob ${u.blob.slice(0, 8)}`] }; continue; }
-    const r = await runner.sql(readFileSync(join(root, p), "utf8"), {});
+    const tekst = readFileSync(join(root, p), "utf8");
+    const k = psqlKommando(tekst);
+    if (k >= 0) return { ok: false, fejl: [`migration ${p} indeholder en psql-klientkommando (tegn ${k}: »${tekst.slice(k, k + 20).split("\n")[0]}«) — en migration er ren SQL`] };
+    const r = await runner.sql(tekst, {});
     if (!r.ok) return { ok: false, fejl: [`migration ${p} fejlede: ${r.error}`] };
   }
   if (http) { try { await runner.sql("notify pgrst, 'reload schema';", {}); } catch {} }

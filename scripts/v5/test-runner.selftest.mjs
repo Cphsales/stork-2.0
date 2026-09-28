@@ -102,6 +102,11 @@ console.log("\nlib — kontrakten håndhæves i koden:");
 console.log("\nlib — exec · session · ur (FA-3):");
 { const lib = makeLib({ runner: { ...mkRunner(), exec: async (cmd) => ({ exit_code: 1, stdout: "klasse=klassifikation\n", cmd }), session: (n) => ({ navn: n }) }, manifest: MANIFEST, pakke: "pk", ur: urFraMiljoe({}) });
   const r = await lib.exec(["node", "x.mjs"]); eq("lib.exec → runner.exec {exit_code, stdout}", r.exit_code === 1 && /klasse=/.test(r.stdout), true);
+  const ex = (exit_code, klasse) => ({ kanal: "exit", exit_code, klasse, afvisningssted: "ci", fase: "ci", aktoer: "ci" });
+  eq("exit-kontrakt: rigtig exitkode + klasse-linje → ok", lib.forvent.afvist(r, ex(1, "klassifikation")).exit_code, 1);
+  let x1 = null; try { lib.forvent.afvist({ exit_code: 0, stdout: "klasse=klassifikation\n" }, ex(1, "klassifikation")); } catch (e) { x1 = e.message; } eq("exit-kontrakt: exit 0 → FORBUDT HANDLING TILLADT", /FORBUDT/.test(x1 ?? ""), true);
+  let x2 = null; try { lib.forvent.afvist(r, ex(2, "klassifikation")); } catch (e) { x2 = e.message; } eq("exit-kontrakt: anden exitkode → Afvist", /exit 1 ≠/.test(x2 ?? ""), true);
+  let x3 = null; try { lib.forvent.afvist(r, ex(1, "anden-klasse")); } catch (e) { x3 = e.message; } eq("exit-kontrakt: anden klasse → Afvist", /klasse=anden-klasse/.test(x3 ?? ""), true);
   eq("lib.session(name) → runner.session", lib.session("A").navn, "A");
   let e = null; try { lib.ur.saet("2026-04-01T00:00:00Z"); } catch (x) { e = x; } eq("ur uden V5_FAKETIME_FILE → Afvist (ærligt rød, ikke stiltiende)", e instanceof Afvist && /ur-driver ikke tilgængelig/.test(e.message), true); eq("ur.tilgaengelig false", lib.ur.tilgaengelig, false); }
 { const lib = makeLib({ runner: { ...mkRunner(), race: async () => ({ protocolOk: true, a: {}, b: {} }) }, manifest: MANIFEST, pakke: "pk" }); const r = await lib.race({ actor: { role: "app_role" } }); eq("lib.race med den rigtige runners svar ({protocolOk} uden ok) → virker", r.protocolOk === true, true); }
