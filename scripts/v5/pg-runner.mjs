@@ -154,6 +154,10 @@ export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(pr
   const APSQL = aktoerArgv ? [...aktoerArgv, "-v", "ON_ERROR_STOP=1", "-q", "-tA"] : null;
   const ASESSION_PSQL = aktoerArgv ? [...aktoerArgv, "-v", "ON_ERROR_STOP=0", "-q", "-tA"] : null;
   const UDEN_AKTOER = "aktørkald kræver en aktørforbindelse (login der kun er medlem af aktørrollerne) — ikke sat i dette måle-job";
+  // aktørprocesserne får ingen af ejerens forbindelsesoplysninger, og aktørens tekst må ikke rumme psql-kommandoer (\connect, \! …)
+  const aktoerEnv = Object.fromEntries(Object.entries(env).filter(([k]) => !/^(PG[A-Z]*|DATABASE_URL|V5_.*)$/.test(k)));
+  const psqlKommando = (...tekster) => tekster.some((t) => String(t ?? "").includes("\\"));
+  const IKKE_PSQL = "aktørens SQL og settings må ikke indeholde \\ (psql-kommandoer som \\connect)";
 
   function sql(sqlText, opts = {}) {
     const isQuery = /^\s*(select|with|table)\b/i.test(sqlText);
@@ -167,7 +171,8 @@ export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(pr
     const dead = (error) => ({ ok: false, error, code: null, detail: { message: null, routine: null }, rows: isQuery ? null : undefined });
     const cmd = opts.role ? APSQL : PSQL;
     if (!cmd) return dead(UDEN_AKTOER);
-    const r = spawnSync(cmd[0], cmd.slice(1), { input, encoding: "utf8", env });
+    if (opts.role && psqlKommando(sqlText, ...Object.values(opts.settings ?? {}))) return dead(IKKE_PSQL);
+    const r = spawnSync(cmd[0], cmd.slice(1), { input, encoding: "utf8", env: opts.role ? aktoerEnv : env });
     if (!r.error && r.status === 3) return stoppet(String(r.stderr ?? ""), isQuery);
     if (r.error || r.status !== 0) return dead(`psql-transport fejlede (rc ${r.status ?? r.error?.message}): ${String(r.stderr ?? "").slice(0, 200)}`);
     const fr = frame(String(r.stdout ?? ""), String(r.stderr ?? ""), S, M, E);
@@ -229,7 +234,8 @@ export function makePgRunner({ argv, aktoerArgv = null, env = producentMiljoe(pr
 
   async function race(s) {
     if (!ASESSION_PSQL) return { protocolOk: false, error: UDEN_AKTOER };
-    const aktoerSession = () => spawn(ASESSION_PSQL[0], ASESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env });
+    if (psqlKommando(s?.a?.sql, s?.b?.sql, ...Object.values(s?.actor?.settings ?? {}))) return { protocolOk: false, error: IKKE_PSQL };
+    const aktoerSession = () => spawn(ASESSION_PSQL[0], ASESSION_PSQL.slice(1), { stdio: ["pipe", "pipe", "pipe"], env: aktoerEnv });
     const A = session("A", aktoerSession), B = session("B", aktoerSession);
     try {
       if (s.setup) return { protocolOk: false, error: "race.setup skal udføres af motoren som ejer (F-20) — runneren modtager ikke setup" };

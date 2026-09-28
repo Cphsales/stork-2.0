@@ -161,7 +161,7 @@ jobs:
         run: pnpm build
 
   governance:
-    name: Governance (format, gates, selftests)
+    name: Governance (format, gates, selvtests)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -190,6 +190,11 @@ jobs:
         run: pnpm fitness
       - name: Fitness selftest (§3-checks negativ-test)
         run: pnpm fitness:selftest
+      - name: Workflow-selvtests (byggetjek, vagt, hook, runner, test-bibliotek)
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@users.noreply.github.com"
+          pnpm v5:selftest
 
   db:
     # Databasens egne tests (supabase/tests) mod en tom testdatabase med alle migrationer — ikke mod driften.

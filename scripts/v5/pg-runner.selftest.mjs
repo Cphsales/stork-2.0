@@ -28,6 +28,9 @@ t("psql stoppet ved fejl (rc 3) → kode, grund og sted fra den ene ERROR-blok",
 t("stoppet med to ERROR-blokke (fx forfalsket i en notice) → protokol", stoppet("NOTICE:  00000: x\nERROR:  42501: falsk\nERROR:  22012: division by zero\n").protokol_fejl === true);
 t("stoppet uden ERROR-linje → protokol", stoppet("FATAL:  noget\n").protokol_fejl === true);
 t("testtokens bærer ingen tid (databasens klokke er den eneste)", (() => { const c = claimsFraAktoer({ role: "authenticated", settings: { "request.jwt.claim.sub": "u" } }); return c.role === "authenticated" && c.sub === "u" && !("exp" in c) && !("iat" in c); })());
+{ const r = makePgRunner({ argv: ["false"], aktoerArgv: ["false"], env: { PATH: "/usr/bin" } });
+  t("aktørens SQL med en psql-kommando (\\connect) → afvist før psql", /psql-kommandoer/.test(r.sql("select 1;\n\\connect postgres postgres", { role: "authenticated" }).error));
+  t("aktør-setting med \\ → afvist", /psql-kommandoer/.test(r.sql("select 1", { role: "authenticated", settings: { "request.jwt.claims": "{\"x\":\"\\\\!id\"}" } }).error)); }
 let kast = null; try { makePgRunner({ argv: ["psql"], env: { PATH: "/usr/bin", GITHUB_TOKEN: "x" } }); } catch (e) { kast = e.message; }
 t("runneren afviser et miljø med credentials", /credential/.test(kast ?? ""));
 
