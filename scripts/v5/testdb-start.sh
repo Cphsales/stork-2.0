@@ -10,8 +10,10 @@
 # Skriver <arbejdsmappe>/testdb.env med PG*, DATABASE_URL, V5_AKTOER_DATABASE_URL (aktørforbindelsen), V5_PGRST_* og V5_FAKETIME_FILE.
 set -euo pipefail
 WORK="$1"; mkdir -p "$WORK/ft"
-IMAGE=public.ecr.aws/supabase/postgres:17.6.1.121
-PGRST_IMAGE=postgrest/postgrest:v12.2.3
+# billederne er pinnet på digest (linux/amd64). supabase/postgres 17.6.1.121 hentes fra GHCR: samme digest som på public.ecr.aws og
+# docker.io, men uden ECR's datakvote for anonyme hentninger fra GitHubs delte runnere. postgrest v12.2.3 findes kun på docker.io.
+IMAGE=ghcr.io/supabase/postgres@sha256:d47ea5650400dacaa0cb2026517c95e891d2ec1dfd5f79fcfbf26b551054fa4f
+PGRST_IMAGE=postgrest/postgrest@sha256:bd918a7d03c801d03802e27c19e589b53fd71ab181a5ec942705551c7dbc3d53
 PW=byggetjek; JWT=byggetjek-jwt-secret-for-the-ephemeral-test-database
 FT_COMMIT=9fdda43
 FT_SHA256=b60ace1e88ab1b49540d761c0962fd851d104607951a092e3e1aa5b8f2342f56
