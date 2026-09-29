@@ -10,12 +10,6 @@ import { spawnSync } from "node:child_process";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Produktets lister (SECDEF-markører, immutable-guards, TRUNCATE-blok, T9-RPC'er) står i supabase/fitness-lister.json, så byggeren kan
-// udvide dem i pakkens PR; reglerne står her.
-const LISTER = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../supabase/fitness-lister.json", import.meta.url)), "utf8"),
-);
-
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", ".git", "coverage"]);
 const MIGRATIONS_DIR = "supabase/migrations";
@@ -83,7 +77,14 @@ const GRANDFATHERED_NO_DEDUP_KEY = new Set([
 // H024: pay_periods tilføjet (Codex sidefund #3 — pay_periods har
 // `DELETE altid blokeret` via lock_and_delete_check, men manglede TRUNCATE-
 // blok-check).
-const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = LISTER.immutable_tables_require_truncate_block;
+const IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK = [
+  "core_compliance.audit_log",
+  "core_compliance.anonymization_state",
+  "core_money.commission_snapshots",
+  "core_money.salary_corrections",
+  "core_money.cancellations",
+  "core_money.pay_periods",
+];
 
 // H024: Tabeller hvor DB-tests der INSERT'er skal bruge BEGIN/ROLLBACK wrap.
 // Strict immutability + conditional immutability + lifecycle-DELETE-restricted.
@@ -928,16 +929,33 @@ async function dbTestNoT9SeedUserFixtures() {
   return { name: "db-test-no-t9-seed-user-fixtures", violations };
 }
 
-// Sentinel-RPCs der skal være i OpenAPI-spec'en for at bevise schema + cache er friske.
-const T9_RPCS = LISTER.t9_rpcs;
+// Driftens vagt-RPC'er: beviser at core_identity er eksponeret og cachen frisk i driften. Listen er fast — pakker udvider T9_RPCS,
+// som kun kontrolleres mod kandidaten, så en ny RPC ikke giver rødt i driften før deploy.
+const DRIFT_SENTINELS = [
+  "/rpc/org_tree_read",
+  "/rpc/permission_elements_read",
+  "/rpc/employee_placement_read",
+  "/rpc/client_placement_read",
+  "/rpc/pending_changes_read",
+];
+// RPC'er der skal være i kandidatens OpenAPI-spec (testdatabasen med PR'ens migrationer).
+const T9_RPCS = [
+  "/rpc/org_tree_read",
+  "/rpc/permission_elements_read",
+  "/rpc/employee_placement_read",
+  "/rpc/client_placement_read",
+  "/rpc/pending_changes_read",
+];
 
 async function postgrestT9SchemaExposure() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-
-  // Testdatabasen (byggetjek-jobbet, V5_PGRST_*): kandidatens migrationer er kørt dér og ikke i driften endnu.
-  // RPC'erne skal være eksponeret for brugernes rolle (authenticated).
-  if (process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET) {
+  // Kandidaten (byggetjek-jobbet, V5_PGRST_*): PR'ens migrationer er kørt i testdatabasen; RPC'erne skal være eksponeret for
+  // brugernes rolle (authenticated).
+  if (!(process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET))
+    return {
+      name: "postgrest-t9-schema-exposure (testdatabasen)",
+      violations: ["testdatabasens PostgREST mangler (V5_PGRST_URL/V5_PGRST_JWT_SECRET)"],
+    };
+  {
     const name = "postgrest-t9-schema-exposure (testdatabasen)";
     const { mintJwt } = await import("./v5/pg-runner.mjs");
     try {
@@ -961,19 +979,12 @@ async function postgrestT9SchemaExposure() {
       return { name, violations: [`OpenAPI mod testdatabasen: ${err.message}`] };
     }
   }
+}
 
-  // T9-supplement Step 5 + Codex runde 2 follow-up: deterministisk schema-exposure-
-  // canary via PostgREST OpenAPI-introspection (ikke RPC-call). Service_role har
-  // ingen direkte data-grants på core_identity-tabeller — en security-invoker RPC
-  // ville fejle med 42501 uanset om schemaet er korrekt eksponeret. OpenAPI-spec
-  // verificerer schema + cache-state uden at kræve tabel-access.
-  // Hard-fail hvis SUPABASE_ACCESS_TOKEN mangler i CI; skip lokalt for udvikler-flow.
-  if (process.env.FITNESS_DATABASE_URL && !(process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET)) {
-    return {
-      name: "postgrest-t9-schema-exposure",
-      violations: ["kandidat-tilstand uden testdatabasens PostgREST (V5_PGRST_URL/V5_PGRST_JWT_SECRET)"],
-    };
-  }
+// Driften: core_identity er eksponeret, og cachen er frisk (faste vagt-RPC'er). Fail-closed i CI.
+async function postgrestDriftExposure() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
   if (!token) {
     if (process.env.CI)
       return {
@@ -986,7 +997,6 @@ async function postgrestT9SchemaExposure() {
       skipped: "SUPABASE_ACCESS_TOKEN ikke sat (lokal udvikler-mode)",
     };
   }
-
   let serviceRoleKey;
   try {
     const apiKeysRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/api-keys`, {
@@ -1022,7 +1032,7 @@ async function postgrestT9SchemaExposure() {
   // kræver ingen tabel-SELECT-grant på service_role (modsat tidligere RPC-call —
   // service_role har bevidst ingen direkte data-grants på core_identity, så et
   // RPC-call med security invoker ville fejle med 42501 selv ved korrekt exposure).
-  const expectedRpcs = T9_RPCS;
+  const expectedRpcs = DRIFT_SENTINELS;
 
   try {
     const specRes = await fetch(`https://${projectRef}.supabase.co/rest/v1/`, {
@@ -1108,8 +1118,17 @@ async function dbTestNoT9SkipGuards() {
 // netop guard-triggeren dækker update+delete — IKKE union af alle before-triggere (en almindelig
 // before-update som *_set_updated_at må ikke "dække" UPDATE-immutabilitet). flags: felter der MÅ
 // muteres (kun conditional felt-guard); null = strict eller lock-and-delete (intet felt-guard, #7 skipper).
-const IMMUTABLE_GUARDS = LISTER.immutable_guards;
-
+const IMMUTABLE_GUARDS = {
+  "core_compliance.audit_log": { guardFn: "audit_log_immutability_check", flags: null },
+  "core_compliance.anonymization_state": { guardFn: "anonymization_state_immutability_check", flags: null },
+  "core_money.cancellations": { guardFn: "cancellations_immutability_check", flags: null },
+  "core_money.salary_corrections": { guardFn: "salary_corrections_immutability_check", flags: null },
+  "core_money.pay_periods": { guardFn: "pay_periods_lock_and_delete_check", flags: null },
+  "core_money.commission_snapshots": {
+    guardFn: "commission_snapshots_immutability_check",
+    flags: ["is_candidate", "candidate_run_id"],
+  },
+};
 // #17: tilladte cross-schema-FK-mål (grund pr. entry). Nye mål → flag (review/migration-kommentar).
 const CROSS_SCHEMA_FK_ALLOWED_TARGETS = {
   "core_identity.employees":
@@ -1508,7 +1527,139 @@ async function indexPerPolicy() {
 // Markør = reviewet allowlist-entry ("hvidliste vs marker = Code's valg", master-plan §3:168-169;
 // FK_COVERAGE_EXEMPTIONS-præcedens). Kategori-tag pr. entry = begrundelse.
 // Seed (81 ikke-trigger SECDEF) = DB-state-dump 2026-06-05; de 7 trigger-fns auto-OK (ikke listet).
-const SECDEF_SANCTIONED = LISTER.secdef_sanctioned;
+const SECDEF_SANCTIONED = {
+  // ── core_compliance ──
+  "core_compliance.anonymization_mapping_activate(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_approve(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_test_run(p_mapping_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymization_mapping_upsert(p_entity_type text, p_table_schema text, p_table_name text, p_field_strategies jsonb, p_anonymized_check_column text, p_retention_event_column text, p_internal_rpc_anonymize text, p_internal_rpc_apply text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.anonymization_state_read(p_entity_type text, p_entity_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_limit integer)":
+    "laese-rpc",
+  "core_compliance.anonymization_strategy_activate(p_strategy_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.anonymize_generic_apply(p_entity_type text, p_entity_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.audit_filter_values(p_schema text, p_table text, p_values jsonb)": "laese-rpc",
+  "core_compliance.audit_log_read(p_table_schema text, p_table_name text, p_record_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_limit integer)":
+    "laese-rpc",
+  "core_compliance.break_glass_approve(p_request_id uuid, p_approval_notes text)": "write-rpc",
+  "core_compliance.break_glass_execute(p_request_id uuid)": "write-rpc",
+  "core_compliance.break_glass_operation_type_activate(p_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.break_glass_operation_type_approve(p_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.break_glass_operation_type_upsert(p_operation_type text, p_display_name text, p_description text, p_internal_rpc text, p_required_payload_schema jsonb, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.break_glass_reject(p_request_id uuid, p_rejection_reason text)": "write-rpc",
+  "core_compliance.break_glass_request(p_operation_type text, p_target_id uuid, p_target_payload jsonb, p_reason text)":
+    "write-rpc",
+  "core_compliance.break_glass_requests_read(p_status text, p_operation_type text, p_limit integer)": "laese-rpc",
+  "core_compliance.cron_heartbeat_record(p_job_name text, p_schedule text, p_status text, p_error text, p_duration_ms integer)":
+    "cron-rpc",
+  "core_compliance.cron_heartbeats_export()": "laese-rpc",
+  "core_compliance.cron_heartbeats_read()": "laese-rpc",
+  "core_compliance.data_field_definition_delete(p_table_schema text, p_table_name text, p_column_name text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.data_field_definition_upsert(p_table_schema text, p_table_name text, p_column_name text, p_category text, p_pii_level text, p_purpose text, p_retention_type text, p_retention_value jsonb, p_match_role text, p_change_reason text)":
+    "write-rpc",
+  "core_compliance.ensure_audit_partition(p_months_ahead integer)": "cron-rpc",
+  "core_compliance.gdpr_responsible_set(p_employee_id uuid, p_change_reason text)": "write-rpc",
+  "core_compliance.healthcheck()": "laese-rpc",
+  "core_compliance.replay_anonymization(p_entity_type text, p_dry_run boolean)": "laese-rpc",
+  "core_compliance.superadmin_settings_update(p_min_admin_count integer, p_change_reason text)": "write-rpc",
+  "core_compliance.verify_anonymization_consistency()": "laese-rpc",
+  // ── core_identity ──
+  "core_identity._anonymize_employee_apply(p_employee_id uuid, p_strategies jsonb, p_reason text)": "intern-helper",
+  "core_identity._anonymize_employee_log_state(p_employee_id uuid, p_reason text, p_strategies jsonb, p_strategy_version integer)":
+    "intern-helper",
+  "core_identity._apply_client_close(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_client_place(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_employee_place(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_employee_remove(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_org_node_deactivate(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_org_node_upsert(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._apply_team_close(p_payload jsonb, p_pending_change_id uuid)": "intern-helper",
+  "core_identity._org_node_closure_rebuild()": "intern-helper",
+  "core_identity.anonymize_employee(p_employee_id uuid, p_reason text)": "write-rpc",
+  "core_identity.anonymize_employee_internal(p_employee_id uuid, p_reason text)": "intern-helper",
+  "core_identity.client_field_definition_set_active(p_field_id uuid, p_is_active boolean, p_change_reason text)":
+    "write-rpc",
+  "core_identity.client_field_definition_upsert(p_key text, p_display_name text, p_field_type text, p_pii_level text, p_change_reason text, p_required boolean, p_display_order integer, p_is_active boolean, p_field_id uuid)":
+    "write-rpc",
+  "core_identity.client_logo_clear(p_client_id uuid, p_change_reason text)": "write-rpc",
+  "core_identity.client_logo_set(p_client_id uuid, p_logo_bytes bytea, p_logo_content_type text, p_logo_filename text, p_change_reason text)":
+    "write-rpc",
+  "core_identity.client_node_close(p_client_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.client_node_place(p_client_id uuid, p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.client_set_active(p_client_id uuid, p_is_active boolean, p_change_reason text)": "write-rpc",
+  "core_identity.client_upsert(p_name text, p_fields jsonb, p_change_reason text, p_is_active boolean, p_client_id uuid)":
+    "write-rpc",
+  "core_identity.employee_active_config_update(p_post_termination_grace_days integer, p_treat_anonymized_as_active boolean, p_change_reason text)":
+    "write-rpc",
+  "core_identity.employee_place(p_employee_id uuid, p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.employee_remove_from_node(p_employee_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.employee_terminate(p_employee_id uuid, p_termination_date date, p_change_reason text)": "write-rpc",
+  "core_identity.employee_upsert(p_id uuid, p_auth_user_id uuid, p_first_name text, p_last_name text, p_email text, p_hire_date date, p_termination_date date, p_role_id uuid, p_change_reason text)":
+    "write-rpc",
+  "core_identity.org_node_deactivate(p_node_id uuid, p_effective_from date)": "write-rpc",
+  "core_identity.org_node_upsert(p_id uuid, p_name text, p_parent_id uuid, p_node_type text, p_is_active boolean, p_effective_from date)":
+    "write-rpc",
+  "core_identity.pending_change_apply(p_change_id uuid)": "write-rpc",
+  "core_identity.role_page_permission_upsert(p_role_id uuid, p_page_key text, p_tab_key text, p_can_view boolean, p_can_edit boolean, p_scope text, p_change_reason text)":
+    "intern-helper",
+  "core_identity.role_upsert(p_id uuid, p_name text, p_description text, p_change_reason text)": "write-rpc",
+  "core_identity.team_close(p_node_id uuid, p_effective_from date)": "write-rpc",
+  // gov-3b-3a: T9 permission-tree RPC'er konverteret INVOKER→SECDEF (#18 retning A, forbereder REVOKE i 3b)
+  "core_identity.permission_action_upsert(p_id uuid, p_tab_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_action_deactivate(p_action_id uuid)": "write-rpc",
+  "core_identity.permission_action_set_approver_type(p_action_id uuid, p_type text)": "write-rpc",
+  "core_identity.permission_area_upsert(p_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_area_deactivate(p_area_id uuid)": "write-rpc",
+  "core_identity.permission_page_upsert(p_id uuid, p_area_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_page_deactivate(p_page_id uuid)": "write-rpc",
+  "core_identity.permission_tab_upsert(p_id uuid, p_page_id uuid, p_name text, p_is_active boolean, p_sort_order integer)":
+    "write-rpc",
+  "core_identity.permission_tab_deactivate(p_tab_id uuid)": "write-rpc",
+  // gov-3b-3b: resterende T9-write-RPC'er konverteret INVOKER→SECDEF (#18 retning A, lukker G065)
+  "core_identity.pending_change_approve(p_change_id uuid)": "write-rpc",
+  "core_identity.pending_change_undo(p_change_id uuid)": "write-rpc",
+  "core_identity.role_permission_grant_set(p_role_id uuid, p_element_type text, p_element_id uuid, p_can_access boolean, p_can_write boolean, p_visibility text)":
+    "write-rpc",
+  "core_identity.role_permission_grant_remove(p_role_id uuid, p_element_type text, p_element_id uuid)": "write-rpc",
+  "core_identity.undo_setting_update(p_change_type text, p_undo_period_seconds integer)": "write-rpc",
+  // ── core_money ──
+  "core_money._compute_period_data_checksum(p_period_id uuid)": "intern-helper",
+  "core_money._pay_period_compute_candidate_internal(p_period_id uuid, p_change_reason text)": "intern-helper",
+  "core_money._pay_period_lock_internal(p_period_id uuid, p_change_reason text)": "intern-helper",
+  "core_money.pay_period_compute_candidate(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.pay_period_compute_candidate_via_cron(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_for_date(p_date date)": "laese-rpc",
+  "core_money.pay_period_lock(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.pay_period_lock_attempt(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_lock_via_cron(p_period_id uuid)": "cron-rpc",
+  "core_money.pay_period_settings_update(p_start_day_of_month integer, p_recommended_lock_date_rule text, p_auto_lock_enabled boolean, p_change_reason text)":
+    "write-rpc",
+  "core_money.pay_period_unlock_via_break_glass(p_period_id uuid, p_change_reason text)": "write-rpc",
+  "core_money.period_recommended_lock_date(p_period_id uuid)": "laese-rpc",
+  // ── public (API-overflade; sanktioneret write-vej §1.1:55/:603) ──
+  "public.client_assign_to_team(p_client_id uuid, p_team_id uuid, p_change_reason text, p_from_date date)": "write-rpc",
+  "public.client_field_definition_upsert(p_key text, p_display_name text, p_field_type text, p_pii_level text, p_change_reason text, p_required boolean, p_match_role text, p_display_order integer, p_is_active boolean, p_field_id uuid)":
+    "write-rpc",
+  "public.client_upsert(p_name text, p_fields jsonb, p_change_reason text, p_client_id uuid)": "write-rpc",
+  "public.data_field_definition_upsert(p_table_schema text, p_table_name text, p_column_name text, p_category text, p_pii_level text, p_purpose text, p_retention_type text, p_retention_value jsonb, p_match_role text, p_change_reason text)":
+    "write-rpc",
+  "public.employee_assign_to_team(p_employee_id uuid, p_team_id uuid, p_change_reason text, p_from_date date)":
+    "write-rpc",
+  "public.employee_upsert(p_auth_user_id uuid, p_first_name text, p_last_name text, p_email text, p_hire_date date, p_change_reason text, p_employee_id uuid, p_termination_date date)":
+    "write-rpc",
+  "public.org_unit_upsert(p_name text, p_change_reason text, p_org_unit_id uuid, p_parent_id uuid, p_is_active boolean)":
+    "write-rpc",
+  "public.role_page_permission_upsert(p_role_id uuid, p_page_key text, p_can_view boolean, p_can_edit boolean, p_scope text, p_change_reason text, p_tab_key text)":
+    "write-rpc",
+  "public.role_upsert(p_name text, p_change_reason text, p_role_id uuid, p_description text)": "write-rpc",
+  "public.team_upsert(p_name text, p_org_unit_id uuid, p_change_reason text, p_team_id uuid, p_is_active boolean)":
+    "write-rpc",
+};
 
 // ren helper (unit-testet i selftest, INGEN live-DB): returnér ALLE violations givet live-rows +
 // allowlist. row = { key: "schema.name(identity_args)", returnsTrigger: bool }. Dækker både
@@ -1669,6 +1820,7 @@ const checks = [
   dbTestNoT9SeedUserFixtures,
   dbTestNoT9SkipGuards,
   postgrestT9SchemaExposure,
+  postgrestDriftExposure,
   immutabilityTriggerCoverage,
   snapshotFieldProtection,
   schemaOwnership,
@@ -1681,9 +1833,9 @@ const checks = [
 ];
 
 // Kandidat-tjek: sammenligner repoets lister og migrationer med databasens katalog. De kører mod kandidaten — testdatabasen med
-// PR'ens migrationer (byggetjek-jobbet, --kandidat med FITNESS_DATABASE_URL) — så en PR, der tilføjer fx en SECDEF-funktion og
-// dens markør, er grøn både før og efter deploy. Resten kører i governance-jobbet; write-policy-session-var-consistency læser
-// data (aktive mappings) og derfor driften.
+// PR'ens migrationer (byggetjek-jobbet: --kandidat med FITNESS_DATABASE_URL) — så en PR, der tilføjer fx en SECDEF-funktion og
+// dens markør, er grøn både før og efter deploy. Resten kører i governance-jobbet mod repoet og driften.
+// legacy-is-active-readers kører begge steder: funktionerne i kandidaten, cron-jobbene (data) også i driften.
 const KANDIDAT = new Set([
   dbRlsPolicies,
   legacyIsActiveReaders,
@@ -1696,10 +1848,11 @@ const KANDIDAT = new Set([
   appWriteRevokeDiscipline,
   advisorBaseline,
 ]);
+const BEGGE = new Set([legacyIsActiveReaders]);
 
 async function main() {
   let total = 0;
-  // --kandidat: kun kandidat-tjekkene (kræver FITNESS_DATABASE_URL) · --kun <funktionsnavn>: én check · uden flag: alle andre
+  // --kandidat: kandidat-tjekkene (kræver FITNESS_DATABASE_URL) · --kun <funktionsnavn>: én check · uden flag: governance
   const kandidat = process.argv.includes("--kandidat");
   if (kandidat && !process.env.FITNESS_DATABASE_URL) {
     console.error("Fitness: --kandidat kræver FITNESS_DATABASE_URL (testdatabasen med kandidatens migrationer)");
@@ -1707,7 +1860,9 @@ async function main() {
   }
   const i = process.argv.indexOf("--kun");
   const valgte =
-    i > 0 ? checks.filter((c) => c.name === process.argv[i + 1]) : checks.filter((c) => KANDIDAT.has(c) === kandidat);
+    i > 0
+      ? checks.filter((c) => c.name === process.argv[i + 1])
+      : checks.filter((c) => (kandidat ? KANDIDAT.has(c) : !KANDIDAT.has(c) || BEGGE.has(c)));
   if (i > 0 && valgte.length === 0) {
     console.error(`Fitness: ukendt check '${process.argv[i + 1]}'`);
     process.exit(1);

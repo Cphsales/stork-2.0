@@ -211,7 +211,7 @@
 ### [G006] LØST 2026-09-29 — fire ældre live-fitness-tjek kunne give grønt uden at have tjekket
 
 - **Beskrivelse:** `db-rls-policies`, `write-policy-session-var-consistency`, `legacy-is-active-readers` og `postgrest-t9-schema-exposure` sprang over med 0 fund uden token eller ved API-fejl, også i CI.
-- **Løst:** Alle live-tjek går gennem `liveQuery()`/`liveGuard()`: manglende token, API- eller databasefejl er rødt i CI og springes kun over lokalt. Katalog-tjekkene (SECDEF-markører, FK, RLS, rettigheder, OpenAPI m.fl.) kører nu mod kandidaten (`node scripts/fitness.mjs --kandidat` mod testdatabasen i byggetjek-jobbet), så en pakke, der tilføjer en SECDEF-funktion og dens markør, er grøn både før og efter deploy. Produktets lister står i `supabase/fitness-lister.json`, som byggeren udvider i pakkens PR. `write-policy-session-var-consistency` læser data (aktive mappings) og kører fortsat mod driften i governance-jobbet.
+- **Løst:** Alle live-tjek går gennem `liveQuery()`/`liveGuard()`: manglende token, API- eller databasefejl er rødt i CI og springes kun over lokalt. Katalog-tjekkene (SECDEF-markører, FK, RLS, rettigheder, OpenAPI m.fl.) kører nu mod kandidaten (`node scripts/fitness.mjs --kandidat` mod testdatabasen i byggetjek-jobbet), så en pakke, der tilføjer fx en SECDEF-funktion og dens markør i listerne, er grøn både før og efter deploy. Listerne bliver i `scripts/fitness.mjs` (fabrikkens zone), og fabrikken skriver pakkens poster ind efter planen. Driften tjekkes fortsat for data og konfiguration: `write-policy-session-var-consistency`, cron-delen af `legacy-is-active-readers` og OpenAPI-eksponeringen med faste vagt-RPC'er.
 
 ### [G007] MELLEM — Migration-scripts har TODO-markører for 1.0-skema
 
