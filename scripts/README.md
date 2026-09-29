@@ -26,7 +26,7 @@
 
 Hooken, vagten og byggetjekket læser filerne sådan. Fabrikken giver afsnittet til rollen sammen med rolleteksten. Tjek bindingerne før commit med `node scripts/v5/byggetjek.mjs --kun-bindinger`.
 
-- **Ledger-række** (`docs/sandhed/mathias-ord.md`, kun nye rækker): `| M-n | ÅÅÅÅ-MM-DD | »hans ord ordret« | hvad han svarede på / godkender |`. Hans ord er en godkendelse, når citatet er netop `ja`, `ok`, `krav ok`, `plan ok` eller `slut ok` (evt. med `tak` og punktum) eller `ok til planen`. Svarer han med flere ord, beder rollen om det rene ord. En fil bindes som `<fil> → blob <mindst 12 tegn>`; flere adskilles med `·`. Sletning: `<fil>, <fil> slettes` i sit eget afsnit.
+- **Ledger-række** (`docs/sandhed/mathias-ord.md`, kun nye rækker): `| M-n | ÅÅÅÅ-MM-DD | »hans ord ordret« | hvad han svarede på / godkender |`. Hans ord er en godkendelse, når citatet er netop `ja`, `ok`, `krav ok`, `plan ok` eller `slut ok` (evt. med et punktnummer foran som svar på et nummereret spørgsmål, fx `1. ja`, og med `tak` og punktum) eller `ok til planen`. Svarer han med flere ord, beder rollen om det rene ord. En fil bindes som `<fil> → blob <mindst 12 tegn>`; flere adskilles med `·`. Sletning: `<fil>, <fil> slettes` i sit eget afsnit.
   - `krav ok`: `<pakke>-krav.md → blob <krav-udkastets blob>`
   - `plan ok`: `plan-build/<pakke>/plan.md → blob <planens blob>` — fuld sti; ½-siden i den blob er den godkendte
   - `slut ok`: `plan-build/<pakke>/slut-rapport.md → blob <…> · commit <prøvet commit> · <dokument> → blob <ny blob> …`
