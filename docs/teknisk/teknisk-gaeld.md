@@ -208,15 +208,10 @@
 - **Plan:** Cleanup-commit der DELETE'er fase 0-filer + sletter deres rows i `supabase_migrations.schema_migrations`
 - **Løses-i:** Trin 8+ (efter strict-aktivering har kørt stabilt)
 
-### [G006] MELLEM — fire ældre live-fitness-tjek kan give grønt uden at have tjekket (delvist løst)
+### [G006] LØST 2026-09-29 — fire ældre live-fitness-tjek kunne give grønt uden at have tjekket
 
-- **Beskrivelse:** De egentlige fund er nu hårde fejl (`db-rls-policies` returnerer fund uden `soft`, `scripts/fitness.mjs` l.622). Tilbage er at fire ældre live-tjek ikke bruger `liveGuard()` (l.1249-1263, fail-closed i CI): (1) uden `SUPABASE_ACCESS_TOKEN` returnerer `db-rls-policies` (l.564-566), `write-policy-session-var-consistency` (l.760-766), `legacy-is-active-readers` (l.843-849) og `postgrest-t9-schema-exposure` (l.1022-1028) `skipped` med 0 fund — også i CI; (2) ved API- eller netværksfejl returnerer de tre første `soft: true` (l.590-599 m.fl.), og soft-fund tæller ikke (l.1859).
-- **Vision-svækkelse:** "Rettigheder der virker" — et manglende token eller et API-udfald giver grønt uden at tjekket er kørt.
-- **Introduceret:** Trin 1 (`db-rls-policies`); de tre andre fulgte samme mønster.
-- **Delvist løst:** fund er hårde; tokenet er sat i CI (`.github/workflows/ci.yml` l.87).
-- **Skal løses:** Manglende token, API-fejl og netværksfejl skal give rødt i CI for alle fire (samme adfærd som `liveGuard()`); lokal udvikler-kørsel må fortsat springe over.
-- **Risiko hvis glemt:** Mellem. Et udfald ser ud som et bestået tjek.
-- **Løses-i:** pakke 1 (lokations-skabelon), trin 2 — sammen med test-databasen (G047), workflow-planen §3.
+- **Beskrivelse:** `db-rls-policies`, `write-policy-session-var-consistency`, `legacy-is-active-readers` og `postgrest-t9-schema-exposure` sprang over med 0 fund uden token eller ved API-fejl, også i CI.
+- **Løst:** Alle live-tjek går gennem `liveQuery()`/`liveGuard()`: manglende token, API- eller databasefejl er rødt i CI og springes kun over lokalt. Katalog-tjekkene (SECDEF-markører, FK, RLS, rettigheder, OpenAPI m.fl.) kører nu mod kandidaten (`node scripts/fitness.mjs --kandidat` mod testdatabasen i byggetjek-jobbet), så en pakke, der tilføjer fx en SECDEF-funktion og dens markør i listerne, er grøn både før og efter deploy. Listerne bliver i `scripts/fitness.mjs` (fabrikkens zone), og fabrikken skriver pakkens poster ind efter planen. Driften tjekkes fortsat for data og konfiguration: `write-policy-session-var-consistency`, cron-delen af `legacy-is-active-readers` og OpenAPI-eksponeringen med faste vagt-RPC'er.
 
 ### [G007] MELLEM — Migration-scripts har TODO-markører for 1.0-skema
 

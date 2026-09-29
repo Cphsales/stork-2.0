@@ -6,6 +6,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { readFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -559,12 +560,6 @@ async function cronChangeReason() {
 // skip-force-rls-marker. Skip hvis SUPABASE_ACCESS_TOKEN ikke er sat
 // (lokal udvikling uden Supabase-link).
 async function dbRlsPolicies() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-  if (!token) {
-    return { name: "db-rls-policies", violations: [], skipped: "SUPABASE_ACCESS_TOKEN ikke sat" };
-  }
-
   // R7f: udvidet fra kun 'public' til alle stork-schemas
   const query = `
     SELECT n.nspname AS schema, c.relname AS table_name,
@@ -577,27 +572,9 @@ async function dbRlsPolicies() {
     ORDER BY 1, 2;
   `;
 
-  let body;
-  try {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) {
-      return {
-        name: "db-rls-policies",
-        violations: [`Management API returned ${res.status}; check skipped`],
-        soft: true,
-      };
-    }
-    body = await res.json();
-  } catch (err) {
-    return { name: "db-rls-policies", violations: [`Network fejl: ${err.message}; check skipped`], soft: true };
-  }
+  const r = await liveQuery(query);
+  const g = liveGuard("db-rls-policies", r);
+  if (g) return g;
 
   // Tabeller med 0 policies = default deny. Det er OK hvis dokumenteret
   // via "-- skip-force-rls:" eller "-- default-deny:" markør i nogen
@@ -605,7 +582,7 @@ async function dbRlsPolicies() {
   const migrations = await readMigrationFiles();
   const allSql = migrations.map((x) => x.sql).join("\n");
   const violations = [];
-  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  const rows = r.rows;
   for (const row of rows) {
     if (row.policy_count > 0) continue;
     const qualified = `${row.schema}.${row.table_name}`;
@@ -755,16 +732,6 @@ async function migrationOnConflictDiscipline() {
 // Live-query via Management API. Skip-when-no-token (samme pattern som
 // db-rls-policies). Polcmd ∈ {a,w,d,*} = INSERT/UPDATE/DELETE/ALL.
 async function writePolicySessionVarConsistency() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-  if (!token) {
-    return {
-      name: "write-policy-session-var-consistency",
-      violations: [],
-      skipped: "SUPABASE_ACCESS_TOKEN ikke sat",
-    };
-  }
-
   const query = `
     WITH active_mappings AS (
       SELECT table_schema, table_name
@@ -795,30 +762,11 @@ async function writePolicySessionVarConsistency() {
       ON tp.schema_name = m.table_schema AND tp.table_name = m.table_name;
   `;
 
-  let body;
-  try {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) {
-      return {
-        name: "write-policy-session-var-consistency",
-        violations: [`Management API returned ${res.status}; check skipped`],
-        soft: true,
-      };
-    }
-    body = await res.json();
-  } catch (err) {
-    return {
-      name: "write-policy-session-var-consistency",
-      violations: [`Network fejl: ${err.message}; check skipped`],
-      soft: true,
-    };
-  }
+  const r = await liveQuery(query);
+  const g = liveGuard("write-policy-session-var-consistency", r);
+  if (g) return g;
 
-  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  const rows = r.rows;
   const violations = [];
   for (const row of rows) {
     if (!row.has_expected_var) {
@@ -838,16 +786,6 @@ async function writePolicySessionVarConsistency() {
 // også indeholde `status = 'active'`. False-positives accepteret hvis
 // patterns lever i samme function-body — per-occurrence-detection er G035.
 async function legacyIsActiveReaders() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-  if (!token) {
-    return {
-      name: "legacy-is-active-readers",
-      violations: [],
-      skipped: "SUPABASE_ACCESS_TOKEN ikke sat",
-    };
-  }
-
   const query = `
     WITH functions AS (
       SELECT n.nspname || '.' || p.proname AS site,
@@ -871,30 +809,11 @@ async function legacyIsActiveReaders() {
       AND body !~* 'status\\s*=\\s*''active''';
   `;
 
-  let body;
-  try {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) {
-      return {
-        name: "legacy-is-active-readers",
-        violations: [`Management API returned ${res.status}; check skipped`],
-        soft: true,
-      };
-    }
-    body = await res.json();
-  } catch (err) {
-    return {
-      name: "legacy-is-active-readers",
-      violations: [`Network fejl: ${err.message}; check skipped`],
-      soft: true,
-    };
-  }
+  const r = await liveQuery(query);
+  const g = liveGuard("legacy-is-active-readers", r);
+  if (g) return g;
 
-  const rows = Array.isArray(body) ? body : body.result || body.rows || [];
+  const rows = r.rows;
   const violations = rows
     .filter((r) => !LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS.has(r.site))
     .map((r) => `${r.site}(${r.args}): is_active=true reader uden status='active'-check (R7d-pattern)`);
@@ -1010,7 +929,16 @@ async function dbTestNoT9SeedUserFixtures() {
   return { name: "db-test-no-t9-seed-user-fixtures", violations };
 }
 
-// Sentinel-RPCs der skal være i OpenAPI-spec'en for at bevise schema + cache er friske.
+// Driftens vagt-RPC'er: beviser at core_identity er eksponeret og cachen frisk i driften. Listen er fast — pakker udvider T9_RPCS,
+// som kun kontrolleres mod kandidaten, så en ny RPC ikke giver rødt i driften før deploy.
+const DRIFT_SENTINELS = [
+  "/rpc/org_tree_read",
+  "/rpc/permission_elements_read",
+  "/rpc/employee_placement_read",
+  "/rpc/client_placement_read",
+  "/rpc/pending_changes_read",
+];
+// RPC'er der skal være i kandidatens OpenAPI-spec (testdatabasen med PR'ens migrationer).
 const T9_RPCS = [
   "/rpc/org_tree_read",
   "/rpc/permission_elements_read",
@@ -1020,12 +948,14 @@ const T9_RPCS = [
 ];
 
 async function postgrestT9SchemaExposure() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
-
-  // Testdatabasen (byggetjek-jobbet, V5_PGRST_*): kandidatens migrationer er kørt dér og ikke i driften endnu.
-  // RPC'erne skal være eksponeret for brugernes rolle (authenticated).
-  if (process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET) {
+  // Kandidaten (byggetjek-jobbet, V5_PGRST_*): PR'ens migrationer er kørt i testdatabasen; RPC'erne skal være eksponeret for
+  // brugernes rolle (authenticated).
+  if (!(process.env.V5_PGRST_URL && process.env.V5_PGRST_JWT_SECRET))
+    return {
+      name: "postgrest-t9-schema-exposure (testdatabasen)",
+      violations: ["testdatabasens PostgREST mangler (V5_PGRST_URL/V5_PGRST_JWT_SECRET)"],
+    };
+  {
     const name = "postgrest-t9-schema-exposure (testdatabasen)";
     const { mintJwt } = await import("./v5/pg-runner.mjs");
     try {
@@ -1049,21 +979,24 @@ async function postgrestT9SchemaExposure() {
       return { name, violations: [`OpenAPI mod testdatabasen: ${err.message}`] };
     }
   }
+}
 
-  // T9-supplement Step 5 + Codex runde 2 follow-up: deterministisk schema-exposure-
-  // canary via PostgREST OpenAPI-introspection (ikke RPC-call). Service_role har
-  // ingen direkte data-grants på core_identity-tabeller — en security-invoker RPC
-  // ville fejle med 42501 uanset om schemaet er korrekt eksponeret. OpenAPI-spec
-  // verificerer schema + cache-state uden at kræve tabel-access.
-  // Hard-fail hvis SUPABASE_ACCESS_TOKEN mangler i CI; skip lokalt for udvikler-flow.
+// Driften: core_identity er eksponeret, og cachen er frisk (faste vagt-RPC'er). Fail-closed i CI.
+async function postgrestDriftExposure() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
   if (!token) {
+    if (process.env.CI)
+      return {
+        name: "postgrest-t9-schema-exposure",
+        violations: ["SUPABASE_ACCESS_TOKEN mangler i CI — required live-check kan ikke køre (fail-closed)"],
+      };
     return {
       name: "postgrest-t9-schema-exposure",
       violations: [],
       skipped: "SUPABASE_ACCESS_TOKEN ikke sat (lokal udvikler-mode)",
     };
   }
-
   let serviceRoleKey;
   try {
     const apiKeysRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/api-keys`, {
@@ -1099,7 +1032,7 @@ async function postgrestT9SchemaExposure() {
   // kræver ingen tabel-SELECT-grant på service_role (modsat tidligere RPC-call —
   // service_role har bevidst ingen direkte data-grants på core_identity, så et
   // RPC-call med security invoker ville fejle med 42501 selv ved korrekt exposure).
-  const expectedRpcs = T9_RPCS;
+  const expectedRpcs = DRIFT_SENTINELS;
 
   try {
     const specRes = await fetch(`https://${projectRef}.supabase.co/rest/v1/`, {
@@ -1257,7 +1190,41 @@ function lastFunctionBody(allSql, fnName) {
   while ((m = re.exec(allSql))) if (new RegExp(`\\b${fnName}\\b`, "i").test(m[1])) last = m[3];
   return last;
 }
+// liveQuery(query) → { rows } | { noToken } | { apiError }. Med FITNESS_DATABASE_URL læses kandidaten (testdatabasen med PR'ens
+// migrationer, byggetjek-jobbet) via psql; ellers driften via Management API (SUPABASE_ACCESS_TOKEN).
+// FITNESS_PSQL = psql-præfiks som JSON-argv (standard ["psql"]), fx docker exec lokalt.
 async function liveQuery(query) {
+  const db = process.env.FITNESS_DATABASE_URL;
+  if (db) {
+    const psql = process.env.FITNESS_PSQL ? JSON.parse(process.env.FITNESS_PSQL) : ["psql"];
+    const q = query.trim().replace(/;\s*$/, "");
+    const r = spawnSync(
+      psql[0],
+      [
+        ...psql.slice(1),
+        "-X",
+        "-q",
+        "-tA",
+        "-v",
+        "ON_ERROR_STOP=1",
+        db,
+        "-c",
+        `select coalesce(json_agg(t), '[]'::json) from (${q}) t`,
+      ],
+      { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+    );
+    if (r.error || r.status !== 0)
+      return {
+        apiError: `testdatabasen: ${String(r.stderr || r.error?.message || "")
+          .trim()
+          .slice(0, 200)}`,
+      };
+    try {
+      return { rows: JSON.parse(r.stdout.trim()) };
+    } catch {
+      return { apiError: "testdatabasen: svaret er ikke JSON" };
+    }
+  }
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF || "imtxvrymaqbgcvsarlib";
   if (!token) return { noToken: true };
@@ -1853,6 +1820,7 @@ const checks = [
   dbTestNoT9SeedUserFixtures,
   dbTestNoT9SkipGuards,
   postgrestT9SchemaExposure,
+  postgrestDriftExposure,
   immutabilityTriggerCoverage,
   snapshotFieldProtection,
   schemaOwnership,
@@ -1864,11 +1832,37 @@ const checks = [
   advisorBaseline,
 ];
 
+// Kandidat-tjek: sammenligner repoets lister og migrationer med databasens katalog. De kører mod kandidaten — testdatabasen med
+// PR'ens migrationer (byggetjek-jobbet: --kandidat med FITNESS_DATABASE_URL) — så en PR, der tilføjer fx en SECDEF-funktion og
+// dens markør, er grøn både før og efter deploy. Resten kører i governance-jobbet mod repoet og driften.
+// legacy-is-active-readers kører begge steder: funktionerne i kandidaten, cron-jobbene (data) også i driften.
+const KANDIDAT = new Set([
+  dbRlsPolicies,
+  legacyIsActiveReaders,
+  postgrestT9SchemaExposure,
+  schemaOwnership,
+  crossSchemaFkDiscipline,
+  fkCoverage,
+  indexPerPolicy,
+  secdefMarkerDiscipline,
+  appWriteRevokeDiscipline,
+  advisorBaseline,
+]);
+const BEGGE = new Set([legacyIsActiveReaders]);
+
 async function main() {
   let total = 0;
-  // --kun <funktionsnavn>: kør én check (fx postgrestT9SchemaExposure mod testdatabasen i byggetjek-jobbet)
+  // --kandidat: kandidat-tjekkene (kræver FITNESS_DATABASE_URL) · --kun <funktionsnavn>: én check · uden flag: governance
+  const kandidat = process.argv.includes("--kandidat");
+  if (kandidat && !process.env.FITNESS_DATABASE_URL) {
+    console.error("Fitness: --kandidat kræver FITNESS_DATABASE_URL (testdatabasen med kandidatens migrationer)");
+    process.exit(1);
+  }
   const i = process.argv.indexOf("--kun");
-  const valgte = i > 0 ? checks.filter((c) => c.name === process.argv[i + 1]) : checks;
+  const valgte =
+    i > 0
+      ? checks.filter((c) => c.name === process.argv[i + 1])
+      : checks.filter((c) => (kandidat ? KANDIDAT.has(c) : !KANDIDAT.has(c) || BEGGE.has(c)));
   if (i > 0 && valgte.length === 0) {
     console.error(`Fitness: ukendt check '${process.argv[i + 1]}'`);
     process.exit(1);

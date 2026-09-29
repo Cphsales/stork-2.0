@@ -111,8 +111,8 @@ jobs:
         run: |
           BASE=""; [ "${{ github.event_name }}" = "pull_request" ] && BASE="--base origin/${{ github.base_ref }}"
           STORK_V5_REPO="$GITHUB_WORKSPACE" node "$DOMMER" --pg env --rapport byggetjek-rapport.json $BASE
-      - name: OpenAPI mod testdatabasen (kandidatens migrationer er kørt dér)
-        run: node scripts/fitness.mjs --kun postgrestT9SchemaExposure
+      - name: Fitness mod kandidaten (katalog-tjek og OpenAPI på testdatabasen med PR'ens migrationer)
+        run: FITNESS_DATABASE_URL="$DATABASE_URL" node scripts/fitness.mjs --kandidat
       - name: Pakke-kode ændret?
         id: pakke
         run: |
