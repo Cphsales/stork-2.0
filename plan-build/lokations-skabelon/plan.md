@@ -1,8 +1,10 @@
 # lokations-skabelon — Plan v3.8
 
-**Krav:** docs/sandhed/krav/lokations-skabelon-krav.md (@ blob cee4d8192cfa, M-89) · **Ordbog:** docs/sandhed/ordbog.md · **Målelag (bruges som det er; i trin 3 opdateres kun bindingerne til krav og plan):** `forventnings-manifest.json` @ 4e84481d6df1 · `angrebs-spec.json` @ dd6cec8da39f · `prover.json` @ 88c45f7bc323 · **Masterplan-rettelser:** `masterplan-rettelser-del-b-c.md` @ 57c906230985 (Del B følger med `slut ok`)
+**Krav:** docs/sandhed/krav/lokations-skabelon-krav.md (@ blob cee4d8192cfa, M-89) · **Ordbog:** docs/sandhed/ordbog.md · **Målelag (bruges som det er; i trin 3 opdateres bindingerne til krav og plan, og Codex tilføjer G001's post — eneste undtagelse, se G/H-opslaget):** `forventnings-manifest.json` @ 4e84481d6df1 · `angrebs-spec.json` @ dd6cec8da39f · `prover.json` @ 88c45f7bc323 · **Masterplan-rettelser:** `masterplan-rettelser-del-b-c.md` @ 57c906230985 (Del B følger med `slut ok`)
 
 v3.8 afløser v3.7 (blob 934291780be9). v3.7's tekniske afgørelser står, medmindre denne plan siger andet. Fundamentet er læst i `supabase/migrations/` 29/9; seneste migration er `20260610190000`, og alle definitioner planen bygger på er de seneste (angivet ved fil nedenfor).
+
+**Leverancerækkefølge:** workflow-PR #188 (grenen `claude/fitness-kandidat`: fitness' katalog-tjek med `--kandidat` mod testdatabasen i byggetjek-jobbet, G006) merges til main → pakkens byg begynder.
 
 ## Formål
 
@@ -40,7 +42,7 @@ Fælles for alle 9: `id uuid` PK og `created_at`. Master- og relationstabellerne
 Triggere på tabellerne:
 - `_stamp_utc` BEFORE INSERT på de 3 logs.
 - `_historik_immutabel` BEFORE UPDATE/DELETE (række) og BEFORE TRUNCATE (sætning) på de 3 logs.
-- `_kobling_historik_guard` på koblinger og fravalg, række og TRUNCATE. Den tillader kun at lukke en åben række: `gaeldende_til` sættes, og de øvrige kolonner er uændrede.
+- `_kobling_historik_guard` på koblinger og fravalg, række og TRUNCATE. Den tillader kun at lukke en åben række: `gaeldende_til` sættes, og alle øvrige kolonner end `updated_at` er uændrede.
 - `_pris_historik_lokation`, `_pris_historik_stand` og `_lokation_gruppe_historik` er AFTER INSERT/UPDATE OF og skriver kun ved ændring. En stand, der sættes til NULL, giver en arv-række.
 
 Begge guards afviser med P0001 `<tabel>_immutabel (operation <op>)`.
@@ -183,6 +185,8 @@ Deres afvisninger er fundamentets og står ordret i manifestet. De er holdt mod 
 | `antal skal vaere 1..1000` | 22023 | liste-indgange |
 | `direct_kolonne_uden_strategi` · `strategi_ikke_active` | P0001 · P0002 | I6, I8 |
 
+Audit-filteret (G001) afviser med P0001 `audit_filter_values: ingen klassificering for <s>.<t>` (tabel uden klassifikation) og `audit_filter_values: ukendt kolonne <s>.<t>.<k> i input` (kolonne uden klassifikation). Afvisningsstedet er `core_compliance.audit_filter_values`, og hele skrivningen rulles tilbage.
+
 Direkte DML fra en app-rolle rammer privilegielaget: 42501 `permission denied for table <tabel>`. EXECUTE på en intern funktion eller på `anonymize_generic_apply` giver 42501 `permission denied for function <fn>`.
 
 ### Audit pr. skrivevej
@@ -251,8 +255,99 @@ Numrene er dem, manifestet og testindekset bruger som `effekt_bid`. Migrationern
 | `core_compliance.anonymization_mappings` | to triggere (dækning og delta) + 2 rækker i `draft` | eksisterende mappings. Dæknings-vagten gælder alle mappings, delta kun pakkens to tabeller |
 | `core_compliance.audit_filter_values(text,text,jsonb)` (`20260521000004`), G001 | altid strict: tabel uden klassifikation og ukendt kolonne giver P0001 i stedet for WARNING; `stork.audit_filter_strict` har ingen virkning mere. Migrationen fejler, hvis en tabel med audit-trigger har en kolonne uden klassifikation | hashing af `direct`, specialtilfældet `clients.fields`, NULL-håndteringen, signaturen |
 | rettigheds-træet | nye sider og faner (se »Fælles regler«) | ingen eksisterende rækker ændres |
-| `scripts/fitness.mjs` | `SECDEF_SANCTIONED` for pakkens SECDEF-funktioner · `IMMUTABLE_GUARDS` og `IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK` for de 5 historik-tabeller · `T9_RPCS` + `/rpc/gruppe_hent`, `/rpc/lokation_hent` · G006. Filen ligger i fabrikkens zone (`scripts/v5/hooks.mjs`); ændringen laves af fabrikken | alle eksisterende tjek og lister |
-| `packages/types/src/database.ts` | regenereres (`pnpm types:generate`) | — |
+| `scripts/fitness.mjs` (efter PR #188) | poster i `SECDEF_SANCTIONED`, `IMMUTABLE_GUARDS`, `IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK` og `T9_RPCS`, præcis som listet nedenfor. Filen er fabrikkens zone (`scripts/v5/hooks.mjs`), så fabrikken skriver posterne ordret ind i pakkens PR | alle eksisterende tjek, poster og lister; `DRIFT_SENTINELS` (driftens OpenAPI-tjek) udvides ikke |
+| `supabase/advisor-baseline.json` | `secdef_exposed`: de 35 offentlige indgange tilføjes med samme nøgler som i `SECDEF_SANCTIONED` (W1-W18, R1-R17). `core_compliance.anonymize_generic_apply(p_entity_type text, p_entity_id uuid, p_change_reason text)` fjernes, fordi den revokes fra authenticated. Byggeren skriver den (tjekket bider begge veje) | `rls_no_policy` og øvrige poster |
+| `packages/types/src/database.ts` | genereres fra testdatabasen med pakkens migrationer, med samme kommando som CI-trinnet »Types mod testdatabasen«: `pnpm exec supabase gen types typescript --db-url "$DATABASE_URL" --schema public,core_identity,core_compliance,core_money \| pnpm exec prettier --parser typescript > packages/types/src/database.ts`. `pnpm types:generate` bruges ikke, fordi den læser driften (`--linked`) | — |
+
+### Poster i `scripts/fitness.mjs` (fabrikken skriver dem ordret i pakkens PR)
+
+Katalog-tjekkene kører med `--kandidat` mod testdatabasen med pakkens migrationer (PR #188), så posterne passer både før og efter deploy. Nøglerne er `schema.navn(pg_get_function_identity_arguments)`.
+
+**`SECDEF_SANCTIONED`**, 43 poster. Trigger-funktionen `core_compliance._mapping_delta_apply` er SECDEF, men trigger-funktioner godkendes automatisk og listes ikke. `dags_dato_utc` og de øvrige hjælpere er ikke SECDEF.
+
+```js
+  "core_identity.gruppe_upsert(p_navn text, p_change_reason text, p_type text, p_gruppe_id uuid)": "write-rpc",
+  "core_identity.gruppe_saet_aktiv(p_gruppe_id uuid, p_is_active boolean, p_change_reason text)": "write-rpc",
+  "core_identity.gruppe_kontakt_upsert(p_gruppe_id uuid, p_navn text, p_change_reason text, p_email text, p_telefon text, p_kontakt_id uuid)": "write-rpc",
+  "core_identity.gruppe_kontakt_saet_aktiv(p_kontakt_id uuid, p_is_active boolean, p_change_reason text)": "write-rpc",
+  "core_identity.lokation_opret(p_navn text, p_type text, p_dagspris numeric, p_gruppe_id uuid, p_foerste_stand_navn text, p_change_reason text, p_adresse text, p_hviledage integer, p_foerste_stand_dagspris numeric)": "write-rpc",
+  "core_identity.lokation_rediger(p_lokation_id uuid, p_navn text, p_type text, p_dagspris numeric, p_change_reason text, p_adresse text)": "write-rpc",
+  "core_identity.lokation_saet_gruppe(p_lokation_id uuid, p_gruppe_id uuid, p_change_reason text)": "write-rpc",
+  "core_identity.lokation_saet_hviledage(p_lokation_id uuid, p_hviledage integer, p_change_reason text)": "write-rpc",
+  "core_identity.stand_opret(p_lokation_id uuid, p_navn text, p_change_reason text, p_dagspris numeric)": "write-rpc",
+  "core_identity.stand_rediger(p_stand_id uuid, p_navn text, p_dagspris numeric, p_change_reason text)": "write-rpc",
+  "core_identity.stand_saet_aktiv(p_stand_id uuid, p_is_active boolean, p_change_reason text)": "write-rpc",
+  "core_identity.lokation_saet_status(p_lokation_id uuid, p_status text, p_change_reason text, p_dvale_ophoer date)": "write-rpc",
+  "core_identity.gruppe_klient_kobl(p_gruppe_id uuid, p_klient_id uuid, p_gaeldende_fra date, p_change_reason text)": "write-rpc",
+  "core_identity.gruppe_klient_frakobl(p_gruppe_id uuid, p_klient_id uuid, p_gaeldende_fra date, p_change_reason text)": "write-rpc",
+  "core_identity.lokation_klient_fravaelg(p_lokation_id uuid, p_klient_id uuid, p_gaeldende_fra date, p_change_reason text)": "write-rpc",
+  "core_identity.lokation_klient_fravalg_ophaev(p_lokation_id uuid, p_klient_id uuid, p_gaeldende_fra date, p_change_reason text)": "write-rpc",
+  "core_identity.anonymiser_gruppe_kontakt(p_kontakt_id uuid, p_change_reason text)": "write-rpc",
+  "core_identity.anonymiser_lokation(p_lokation_id uuid, p_change_reason text)": "write-rpc",
+  "core_identity.gruppe_hent(p_gruppe_id uuid)": "laese-rpc",
+  "core_identity.grupper_liste(p_antal integer, p_efter_navn text, p_efter_id uuid)": "laese-rpc",
+  "core_identity.gruppe_kontakter_liste(p_gruppe_id uuid, p_antal integer, p_efter_navn text, p_efter_id uuid)": "laese-rpc",
+  "core_identity.lokation_status_paa(p_lokation_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.lokation_er_bookbar(p_lokation_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.stand_er_bookbar(p_stand_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.lokation_dagspris_paa(p_lokation_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.stand_dagspris_paa(p_stand_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.lokation_hent(p_lokation_id uuid)": "laese-rpc",
+  "core_identity.lokationer_liste(p_antal integer, p_efter_navn text, p_efter_id uuid)": "laese-rpc",
+  "core_identity.stande_liste(p_lokation_id uuid, p_antal integer, p_efter_navn text, p_efter_id uuid)": "laese-rpc",
+  "core_identity.lokation_status_historik(p_lokation_id uuid, p_antal integer, p_efter_seq bigint)": "laese-rpc",
+  "core_identity.klient_maa_staa_paa(p_klient_id uuid, p_lokation_id uuid, p_dato date)": "laese-rpc",
+  "core_identity.lokation_klienter(p_lokation_id uuid, p_dato date, p_antal integer, p_efter_klient_id uuid)": "laese-rpc",
+  "core_identity.gruppe_koblinger_liste(p_gruppe_id uuid, p_dato date, p_antal integer, p_efter_klient_id uuid, p_efter_fra date, p_efter_id uuid)": "laese-rpc",
+  "core_identity.lokation_fravalg_liste(p_lokation_id uuid, p_dato date, p_antal integer, p_efter_klient_id uuid, p_efter_fra date, p_efter_id uuid)": "laese-rpc",
+  "core_identity.lokation_pending_hent(p_pending_id uuid)": "laese-rpc",
+  "core_identity._apply_gruppe_klient_kobl(p_payload jsonb, p_change_id uuid)": "intern-helper",
+  "core_identity._apply_gruppe_klient_frakobl(p_payload jsonb, p_change_id uuid)": "intern-helper",
+  "core_identity._apply_lokation_klient_fravalg(p_payload jsonb, p_change_id uuid)": "intern-helper",
+  "core_identity._apply_lokation_klient_fravalg_ophaev(p_payload jsonb, p_change_id uuid)": "intern-helper",
+  "core_identity._anonymiser_gruppe_kontakt_internal(p_kontakt_id uuid, p_reason text)": "intern-helper",
+  "core_identity._gruppe_kontakt_apply(p_kontakt_id uuid, p_snapshot jsonb, p_reason text)": "intern-helper",
+  "core_identity._anonymiser_lokation_internal(p_lokation_id uuid, p_reason text)": "intern-helper",
+  "core_identity._lokation_apply(p_lokation_id uuid, p_snapshot jsonb, p_reason text)": "intern-helper",
+```
+
+**`IMMUTABLE_GUARDS`**, 5 poster. Koblings-guarden sammenligner rækkerne som `(to_jsonb(new) - 'gaeldende_til' - 'updated_at') is distinct from (to_jsonb(old) - 'gaeldende_til' - 'updated_at')` koblet til `raise`, så `snapshot-field-protection` finder præcis de to undtagne felter.
+
+```js
+  "core_identity.lokation_status_skift": { guardFn: "_historik_immutabel", flags: null },
+  "core_identity.pris_historik": { guardFn: "_historik_immutabel", flags: null },
+  "core_identity.lokation_gruppe_historik": { guardFn: "_historik_immutabel", flags: null },
+  "core_identity.gruppe_klient_koblinger": { guardFn: "_kobling_historik_guard", flags: ["gaeldende_til", "updated_at"] },
+  "core_identity.lokation_klient_fravalg": { guardFn: "_kobling_historik_guard", flags: ["gaeldende_til", "updated_at"] },
+```
+
+**`IMMUTABLE_TABLES_REQUIRE_TRUNCATE_BLOCK`**, 5 poster. Hver TRUNCATE-trigger skrives som `create trigger <navn> before truncate on core_identity.<tabel> …`, som tjekkets mønster kræver.
+
+```js
+  "core_identity.lokation_status_skift",
+  "core_identity.pris_historik",
+  "core_identity.lokation_gruppe_historik",
+  "core_identity.gruppe_klient_koblinger",
+  "core_identity.lokation_klient_fravalg",
+```
+
+**`T9_RPCS`**, 35 nye stier. De kontrolleres kun i kandidatens OpenAPI-tjek. De interne I1-I8 er ikke eksponerede og listes ikke.
+
+```js
+  "/rpc/gruppe_upsert", "/rpc/gruppe_saet_aktiv", "/rpc/gruppe_kontakt_upsert", "/rpc/gruppe_kontakt_saet_aktiv",
+  "/rpc/lokation_opret", "/rpc/lokation_rediger", "/rpc/lokation_saet_gruppe", "/rpc/lokation_saet_hviledage",
+  "/rpc/stand_opret", "/rpc/stand_rediger", "/rpc/stand_saet_aktiv", "/rpc/lokation_saet_status",
+  "/rpc/gruppe_klient_kobl", "/rpc/gruppe_klient_frakobl", "/rpc/lokation_klient_fravaelg", "/rpc/lokation_klient_fravalg_ophaev",
+  "/rpc/anonymiser_gruppe_kontakt", "/rpc/anonymiser_lokation",
+  "/rpc/gruppe_hent", "/rpc/grupper_liste", "/rpc/gruppe_kontakter_liste", "/rpc/lokation_status_paa", "/rpc/lokation_er_bookbar",
+  "/rpc/stand_er_bookbar", "/rpc/lokation_dagspris_paa", "/rpc/stand_dagspris_paa", "/rpc/lokation_hent", "/rpc/lokationer_liste",
+  "/rpc/stande_liste", "/rpc/lokation_status_historik", "/rpc/klient_maa_staa_paa", "/rpc/lokation_klienter",
+  "/rpc/gruppe_koblinger_liste", "/rpc/lokation_fravalg_liste", "/rpc/lokation_pending_hent",
+```
+
+Ingen andre lister udvides: `AUDIT_EXEMPT_SNAPSHOT_TABLES`, `CROSS_SCHEMA_FK_ALLOWED_TARGETS`, `FK_COVERAGE_EXEMPTIONS`, `POLICY_INDEX_EXEMPTIONS`, `LEGACY_IS_ACTIVE_EXEMPT_FUNCTIONS`, `TX_WRAP_REQUIRED_FOR_TEST_INSERT` og `DRIFT_SENTINELS` får ingen poster. Det kræver to ting af pakken:
+- Alle `*_id`-kolonner har FK.
+- Ingen pakke-funktion skriver `… is_active = true` i en WHERE- eller AND-betingelse (`legacy-is-active-readers`); brug `is_active` alene.
 
 Alle signaturer på de fire fundament-funktioner bevares med samme argumentnavne og defaults. CASE beholder alle eksisterende grene og `else` (G049, G051). Fundamentets egne tests og de lukkede pakkers tests skal forblive grønne. Bliver de røde, stopper byggeriet (HALT), og der tilføjes ingen undtagelse.
 
@@ -260,8 +355,8 @@ Alle signaturer på de fire fundament-funktioner bevares med samme argumentnavne
 
 | G/H | Løses-i | Håndtering |
 | --- | --- | --- |
-| G001 (HØJ) audit-filteret er lempeligt som standard | pakke 1, plan v3.8 | **Tages med**, byggetrin 1.0 (se ovenfor). Mangler en auditeret kolonne klassifikation, vælges der ikke klassifikation i byggeriet; byggeriet stopper (HALT). Den negative test er Codex'; manifestet har i dag ingen post for G001 |
-| G006 (MELLEM) fire live-fitness-tjek kan give grønt uden at køre | pakke 1, trin 2 | **Tages med:** `db-rls-policies`, `write-policy-session-var-consistency`, `legacy-is-active-readers` og `postgrest-t9-schema-exposure` får `liveGuard`-adfærd. Manglende token eller API-fejl er rødt i CI og springes over lokalt. Laves af fabrikken (`scripts/` er dens zone) |
+| G001 (HØJ) audit-filteret er lempeligt som standard | pakke 1, plan v3.8 | **Tages med**, byggetrin 1.0 (se ovenfor). Undtagelse fra »kun bindinger« i trin 3: Codex tilføjer én manifestpost og den negative test for G001 under K-7 (»uklassificeret kolonne«). Forløbet: en ikke-persondata-klassifikation på en pakke-kolonne slettes via `data_field_definition_delete` (fx `core_identity.lokationer.adresse`), og derefter afvises næste skrivning på tabellen gennem en pakke-indgang med P0001 `audit_filter_values: ukendt kolonne core_identity.lokationer.adresse i input` (afvisningssted `core_compliance.audit_filter_values`); intet skrives. Tjekket før byg (29/9): testdatabasen med fundamentets fulde migrationskæde har 30 auditerede tabeller og 0 kolonner uden klassifikation. Byggetrin 1.0's katalog-tjek bevarer værnet: findes en sådan kolonne ved byg eller deploy, stopper byggeriet (HALT), og klassifikationen vælges ikke i byggeriet |
+| G006 (MELLEM) fire live-fitness-tjek kan give grønt uden at køre | pakke 1, trin 2 | **Løst i workflow-PR #188** (merges før pakkens byg): alle live-tjek er fail-closed i CI, og katalog-tjekkene kører mod kandidaten. Pakken gør intet ud over at levere sine poster i listerne |
 | G049 (MELLEM) mønstret for at udvide dispatcheren er ikke skrevet ned | næste pakke der udvider dispatcheren | **Tages med for pakkens egne ændringer:** signatur, alle eksisterende grene og `else` bevares (§3.1-tabellen). Tjeklisten i §10.2 er en workflow-ændring og venter til mellem pakker |
 | G051 (LAV) funktioner redefineret uden signatur-diff | næste pakke der ændrer funktioner | **Tages med:** de fire fundament-funktioner bevarer signatur og defaults; gennemgangen tjekker linje for linje (§3.1). Fitness-tjekket i G051's plan ligger i `scripts/` og er udskudt |
 | G083 (LAV) permission-matrixen er forældet | næste pakke der ændrer rettigheder | **Tages med ved trin 4:** `docs/teknisk/permission-matrix.md` regenereres (repo-docs rettes ved trin 4) |
@@ -302,7 +397,7 @@ Ingen: ingen DROP TABLE/COLUMN, TRUNCATE eller DELETE. Den eneste DROP er policy
 - **SM-2, SM-3** En gruppe taget ud af brug kan ikke få nye lokationer, gruppeskift eller klient-koblinger; det bestående består. En inaktiv klient kan ikke kobles på. Superadmin er undtaget i begge.
 - **D-4** Gruppeskift sker straks med rettighed og årsag. Klienternes ret følger den nye gruppe fra samme dag.
 - **V10, B-1** Kobling, frakobling, fravalg og ophævelse går gennem godkendelse og en fortrydelsesfrist på 24 timer, som kan ændres i UI (0-30 døgn). Ændringen gælder fra den ønskede dato, eller fra den dag den gennemføres, hvis det er senere. Aldrig bagud.
-- **B-4, B-2, D-6** Et fravalg kræver, at klienten er koblet på gruppen på datoen. Et fravalg består gennem nedlæggelse og genåbning. En kobling og et fravalg varer mindst én dag.
+- **B-4, B-2, D-6** Et fravalg kræver, at klienten er koblet på gruppen på datoen. Et fravalg består gennem nedlæggelse og genåbning. En kobling og et fravalg varer mindst én dag: frakobling og ophævelse samme dag som starten afvises, også med nul timers fortrydelsesfrist.
 - **D-7** Dvale »til 5. oktober« betyder bookbar igen 5. oktober.
 - **D-9** Godkenderen skriver ingen ny årsag; anmoderens årsag følger ændringen.
 - **D-3** Grupper og lokationer ligger under rettigheds-området »organisation«. Adgang til siden giver adgang til alle grupper hhv. lokationer; der er ingen afgrænsning pr. team.
@@ -343,25 +438,29 @@ Kravets øvrige plan-mekanik (K-6: gældende dato og versionering) er afgjort s�
 ## Mathias' ½ side
 
 **Afvigelser fra masterplanen** (rettes i masterplanen med `slut ok`):
-1. Stande er egne rækker under lokationen, så under-stande ikke kan opstå.
-2. Aktiv, dvale og nedlagt gemmes som dateret historik.
-3. Klienter kobles på gruppen og fravælges pr. lokation (dit valg i kravet), ikke en liste klient × lokation.
+1. En stand hører altid til én lokation og har aldrig stande under sig.
+2. Aktiv, dvale og nedlagt gemmes med dato, så det, der gjaldt, altid kan ses.
+3. Klienter kobles på gruppen og fravælges pr. lokation (dit valg i kravet) i stedet for at blive tilladt lokation for lokation.
 4. Hvile er antal hviledage på lokationen; selve hvilen er dvale med slutdato.
 5. Gruppe og leverandør er én ting: gruppen.
 6. Migration fra 1.0 er udskudt (M-25).
-7. **Systemets dag følger UTC.** Den skifter kl. 01 om vinteren og kl. 02 om sommeren, så et skift kl. 00.30 dateres dagen før. Dine dokumenter peger på dansk kalenderdag. Siger du stop, bliver det dansk kalenderdag.
+7. **Systemets dag følger UTC.** Den skifter kl. 01 om vinteren og kl. 02 om sommeren dansk tid, så et skift kl. 00.30 dateres dagen før. Dine dokumenter peger på dansk kalenderdag. Siger du stop, bliver det den.
 
 **Valg du kan mærke:**
-- En ny lokation er aktiv fra start. Type og dagspris er krævet (0 kr. er en pris), adresse er valgfri. En stand uden egen pris følger lokationens.
+- En ny lokation er aktiv fra start. Type og dagspris er krævet (0 kr. er en pris), adresse er valgfri.
 - En gruppe har faste felter: navn, type (valgfri) og kontaktpersoner. Et nyt felt, fx CVR, kræver en udvikler. Kravets udgangspunkt var »som for klienter«.
-- En lokations navn og adresse kan markeres som persondata i UI og kan så altid anonymiseres. Andre felter på lokation og gruppe kan ikke.
-- En stand slettes aldrig, og den sidste i brug kan ikke tages ud af brug. En nedlagt lokation får først nye stande efter genåbning.
+- Kun en lokations navn og adresse kan markeres som persondata i UI, og de kan så altid anonymiseres.
+- Den sidste stand i brug kan ikke tages ud af brug. En nedlagt lokation får først nye stande efter genåbning.
 - En gruppe taget ud af brug får ingen nye lokationer, gruppeskift eller klienter, og en inaktiv klient kobles ikke på. Superadmin kan alligevel.
 - Gruppeskift sker straks, og klienternes ret følger den nye gruppe fra samme dag.
-- Kobling, frakobling og fravalg har 24 timers fortrydelsesfrist, som kan ændres i UI. Ønskes Tryg frakoblet Coop fra 1/10, men gennemføres det 4/10, gælder det fra 4/10. Intet ændres bagud.
-- Et fravalg kræver, at klienten er koblet på gruppen på datoen, og det består gennem nedlæggelse. En kobling varer mindst én dag.
+- Kobling, frakobling og fravalg har 24 timers fortrydelsesfrist, som kan ændres i UI. En ændring gælder fra den ønskede dato, eller fra gennemførelsen, hvis den er senere.
+- Et fravalg kræver, at klienten er koblet på gruppen på datoen, og det består gennem nedlæggelse.
+- Kobling og fravalg varer mindst én dag. Samme dag kan en klient hverken kobles fra efter en kobling eller vælges til igen efter et fravalg, heller ikke med nul timers frist.
 - Dvale »til 5. oktober« betyder bookbar igen 5. oktober.
 - Den, der godkender, skriver ingen ny årsag; anmoderens årsag følger ændringen.
 - Adgang til siden for lokationer eller grupper giver adgang til dem alle.
 
-**Orienteringer:** Ved levering er kun kontaktpersonernes navn, e-mail og telefon persondata, og loggen afviser felter uden klassifikation. Tre grænser i fundamentet ændres ikke af pakken. En godkendt ændring, der ikke kan gennemføres, står som »godkendt«. En tidsregel for anonymisering virker kun som »N dage efter at en kontaktperson er taget ud af brug«. Enhver indlogget kan sætte en godkendt, forfalden ændring i gang.
+**Orienteringer:** Ved levering er kun kontaktpersonernes navn, e-mail og telefon persondata, og loggen afviser felter uden klassifikation. Uændrede grænser i fundamentet:
+- En godkendt ændring, der ikke kan gennemføres, står som »godkendt«.
+- Tidsregler for anonymisering virker kun efter at en kontaktperson er taget ud af brug.
+- Enhver indlogget kan sætte en godkendt, forfalden ændring i gang.
