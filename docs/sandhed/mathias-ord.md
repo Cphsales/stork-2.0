@@ -89,3 +89,5 @@ En godkendelse henviser til præcis den fil og version (blob/commit) han så.
 | M-82 | 2026-09-28 | »fortsæt« | genoptagelse af workflow-planens trin 7 (Codex-gennemgangen) |
 | M-83 | 2026-09-29 | »fortsæt« | svar på »Er det ja?« efter fremlæggelsen af syv tekstrettelser: disciplin.md §1 (Codex), §2 trin 1 (»Del B.3«-sætningen), §4 (princippet), §6 (statussætningen) og linje 3 (`governance-owns`) i vision-og-principper.md, forretningsforstaaelse.md og stork-2-0-master-plan.md |
 | M-84 | 2026-09-29 | »Jeg godkender på GitHub« | valgt svar på »GitHub kræver din godkendelse (kodeejer @mgrubak) af PR #183, før den kan merges. Hvordan vil du have det?« (alternativet var admin-merge og at fjerne kravet) |
+| M-85 | 2026-09-29 | »er den klar?« | spørgsmål om PR #183 efter hans godkendelse på GitHub |
+| M-86 | 2026-09-29 | »1. ja« | svar på punkt 1 »Dit ja til de 32 tekstrettelser i beskeden ovenfor« (trin 10, fremlagt ordret i chatten 29/9): stork-2-0-master-plan.md → blob c6c2ed255b45 · disciplin.md → blob 13324aa806c6 · vision-og-principper.md → blob 185a8abc2eb0 · forretningsforstaaelse.md → blob e50a30495b0f |
