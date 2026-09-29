@@ -91,3 +91,6 @@ En godkendelse henviser til præcis den fil og version (blob/commit) han så.
 | M-84 | 2026-09-29 | »Jeg godkender på GitHub« | valgt svar på »GitHub kræver din godkendelse (kodeejer @mgrubak) af PR #183, før den kan merges. Hvordan vil du have det?« (alternativet var admin-merge og at fjerne kravet) |
 | M-85 | 2026-09-29 | »er den klar?« | spørgsmål om PR #183 efter hans godkendelse på GitHub |
 | M-86 | 2026-09-29 | »1. ja« | svar på punkt 1 »Dit ja til de 32 tekstrettelser i beskeden ovenfor« (trin 10, fremlagt ordret i chatten 29/9): stork-2-0-master-plan.md → blob c6c2ed255b45 · disciplin.md → blob 13324aa806c6 · vision-og-principper.md → blob 185a8abc2eb0 · forretningsforstaaelse.md → blob e50a30495b0f |
+| M-87 | 2026-09-29 | »Straks« | valgt svar på »Når en med rettighed ændrer antal hviledage på en lokation (fx fra 14 til 21 dage), skal ændringen så gælde med det samme, eller først når den er godkendt? …« (alternativet var »Først når godkendt«; kildetjekkets fund 1) |
+| M-88 | 2026-09-29 | »hvad er ændringer i forhold til forrige krav« | spørgsmål til fremlæggelsen af pakke 1's krav-rettelser (14 ændrede steder) |
+| M-89 | 2026-09-29 | »krav ok« | pakke 1's krav efter kildetjekket 29/9 (fremlagt som de 14 ændrede steder + resumé): lokations-skabelon-krav.md → blob cee4d8192cfa |
