@@ -97,6 +97,10 @@ jobs:
         run: |
           bash scripts/v5/testdb-start.sh "$RUNNER_TEMP/testdb"
           cat "$RUNNER_TEMP/testdb/testdb.env" >> "$GITHUB_ENV"
+      - name: PR-historikken (godkendte plan-blobs efter squash-merge)
+        # en pakkes godkendte plan kan være rettet teknisk efter `plan ok`; efter squash-merge findes den godkendte blob kun i
+        # PR'ens historik, som GitHub beholder under refs/pull/<n>/head
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/origin/pr/*'
       - name: Dommeren fra base-branchen
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then REF="origin/${{ github.base_ref }}"; git fetch --quiet origin "${{ github.base_ref }}"; else REF=HEAD; fi
@@ -207,7 +211,8 @@ jobs:
       contents: read
     services:
       postgres:
-        image: public.ecr.aws/supabase/postgres:17.6.1.121
+        # supabase/postgres 17.6.1.121 (linux/amd64), pinnet på digest; GHCR i stedet for ECR's kvote for anonyme hentninger
+        image: ghcr.io/supabase/postgres@sha256:d47ea5650400dacaa0cb2026517c95e891d2ec1dfd5f79fcfbf26b551054fa4f
         env:
           POSTGRES_PASSWORD: dbtest
         ports:
