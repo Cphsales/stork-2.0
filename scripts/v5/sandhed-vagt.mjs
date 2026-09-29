@@ -35,8 +35,9 @@ export function raekker(ledger) {
 }
 
 // erGodkendelse(ord, ordet?) → hans citat er netop godkendelses-ordet (uden `ordet`: ja · ok · krav ok · plan ok · slut ok),
-// evt. med »tak« og punktum — eller den afgrænsede form »ok til planen« (M-81). Alt andet er ikke en godkendelse.
-const FORM = /^(ja|ok|krav ok|plan ok|slut ok)( tak)?[.!]?$/u;
+// evt. med et punktnummer foran (svar på et nummereret spørgsmål, fx »1. ja«), »tak« og punktum — eller den afgrænsede
+// form »ok til planen« (M-81). Alt andet er ikke en godkendelse.
+const FORM = /^(?:\d{1,2}[.)] ?)?(ja|ok|krav ok|plan ok|slut ok)( tak)?[.!]?$/u;
 const AFGRAENSET = /^ok til planen[.!]?$/u;
 export function erGodkendelse(ord, ordet) {
   const m = String(ord ?? "").trim().match(/^»([\s\S]*)«$/);
