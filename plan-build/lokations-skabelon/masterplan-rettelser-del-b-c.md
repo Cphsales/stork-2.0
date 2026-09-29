@@ -7,7 +7,7 @@ Denne fil flyttes ind i `plan-build/lokations-skabelon/` med pakke 1's første c
 
 **Grundlag:**
 - Pakke 1-kravet, godkendt (M-38 »krav ok«, blob `9402164d`).
-- Ledgeren (i dag `plan-build/lokations-skabelon/mathias-ord.md`; flyttes til `docs/sandhed/mathias-ord.md` i oprydningens 4.1 trin 3, H5).
+- Ledgeren `docs/sandhed/mathias-ord.md` (indtil 2026-09-24 i `plan-build/lokations-skabelon/mathias-ord.md`).
 - Kravets poster med trin-nummer (»IKKE i scope« l.411-417 og nedstrøms-noterne i K-1, K-2, K-5, K-6): hver skrives ind ved sit trin (H6) — trin 24 i B2, trin 29 i B3. Lokations-skabelonens egne forbrugsflader (trin 24-29, l.411) står allerede i B1.
 - Planens forhåndsgodkendte tekst: plan.md §7, **Blok A** (l.734-767) og **Blok B** (l.772-774) @ `87a877b`. Den er brugt ordret, med de ændringer der står under hver rettelse.
 - **Blok C** (l.776-780) udgår. Det er et forslag i workflow-planen §3 trin 1 og dækkes af dit `ok` til planen (Blok C's rettelse af henvisningen »afgørelse fra rettelse 17« laves i stedet direkte i B1: Blok A henviser til Appendix A).
