@@ -29,3 +29,23 @@ tilladelse (nævnt i krav-arbejdet — mangler ordret Mathias-kilde i ledgeren).
 | gruppens type | CHECK-værdier `'kaede','enkelt_butik','messe_operatoer','andet'` (ASCII æ/ø→ae/oe) | plan.md §4 · §1.12 |
 | kontaktperson | `core_identity.gruppe_kontakter` | plan.md §4 · K-7/§11 |
 | klient | eksisterende `core_identity.clients` · param-/kolonnenavn `klient_id` (dansk i pakkens flade; tabellen uændret) | plan.md §4 |
+
+## Plan v3.8 (pakke 1) — nye navne
+
+| Mathias' ord | systemord (planens navne) | kilde |
+|---|---|---|
+| lokation | `core_identity.lokationer` · indgange `lokation_*` | plan v3.8 · M-23/M-24 · §1.12 |
+| kobles på / kobles fra (gruppen) | `core_identity.gruppe_klient_koblinger` · `gruppe_klient_kobl` · `gruppe_klient_frakobl` | plan v3.8 · M-12/M-17 |
+| fravælge / ophæve fravalget | `core_identity.lokation_klient_fravalg` · `lokation_klient_fravaelg` · `lokation_klient_fravalg_ophaev` | plan v3.8 · M-17 · K-3 ac 6 |
+| må stå på (klienten på lokationen) | `klient_maa_staa_paa(klient, lokation, dato)` · `lokation_klienter` (afledt ret, ingen gemt tilladelse) | plan v3.8 · forretningsforstaaelse §14 · K-6 ac 7 |
+| kan bookes | `lokation_er_bookbar` · `stand_er_bookbar` (kun status aktiv) | plan v3.8 · M-25.1 |
+| sætte i dvale / stoppe dvaleperioden / nedlægge / genåbne | `lokation_saet_status` (samme handling for alle skift) | plan v3.8 · M-25/M-27b/M-28 |
+| dvale til en dato | `dvale_ophoer` (første dag lokationen kan bookes igen) | plan v3.8 · K-5 |
+| antal hviledage | `lokationer.hviledage` (heltal, dage; NULL = intet valgt) | plan v3.8 · M-21 |
+| dagspris | `dagspris` · `lokation_dagspris_paa` · `stand_dagspris_paa` · `pris_historik` | plan v3.8 · K-1/K-2 |
+| type (butik / messe / marked / event / andet) | CHECK-værdierne `'butik','messe','marked','event','andet'` | plan v3.8 · K-1 |
+| taget ud af brug (gruppe, stand, kontaktperson) | `is_active = false` · `gruppe_saet_aktiv` · `stand_saet_aktiv` · `gruppe_kontakt_saet_aktiv` | plan v3.8 · K-2/K-3 ac 5 |
+| gruppeskift (lokationen skifter ejer) | `lokation_saet_gruppe` · `lokation_gruppe_historik` | plan v3.8 · K-6 ac 7 |
+| anonymisere | `anonymiser_gruppe_kontakt` · `anonymiser_lokation` | plan v3.8 · K-7 |
+| årsag | parameteren `p_change_reason` | plan v3.8 · K-8 |
+| systemets dag | `core_identity.dags_dato_utc()` (UTC-dagen) | plan v3.8 · afvigelse A7 |
