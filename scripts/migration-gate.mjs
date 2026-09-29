@@ -7,7 +7,7 @@
 // Migration-filerne er sandheden — classification.json bevares som
 // transitions-fallback indtil cleanup-commit.
 //
-// Princip (Mathias' låste UI-konfig-regel): Gaten validerer KUN
+// Princip (værdier styres i UI): Gaten validerer KUN
 // existence af klassifikations-rækken pr. (schema, table, column).
 // Den må IKKE validere værdier (pii_level/category/retention) —
 // værdier er UI-konfigurerbare.

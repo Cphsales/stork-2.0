@@ -2,7 +2,10 @@
 
 Backend lever på et selvstændigt Supabase B-projekt
 (`imtxvrymaqbgcvsarlib`, Region: West EU (Ireland)).
-PostgreSQL 17. Tom database — migrations ankommer i lag B/C.
+PostgreSQL 17. Skemaet bygges af migrationerne i `supabase/migrations/`
+(masterplanens trin 1-10) og er i drift. Tabeller og funktioner ligger i
+`core_identity`, `core_compliance` og `core_money`; `public` holdes tom
+(fitness `schema-ownership`, trin 1 `20260514120000_t1_drop_public.sql`).
 
 ## Toolchain
 
@@ -51,10 +54,9 @@ pnpm exec supabase status             # verificerer linket
 | `pnpm exec supabase migration new <name>`          | Opretter ny migration-fil i `supabase/migrations/`                                                             |
 | `pnpm exec supabase db push`                       | Push migrations til remote                                                                                     |
 | `pnpm exec supabase db pull`                       | Pull schema-ændringer fra remote til ny migration                                                              |
-| `pnpm exec supabase functions deploy <name>`       | Deploy edge function                                                                                           |
 | `pnpm exec supabase gen types typescript --linked` | Generér TS-typer fra remote schema                                                                             |
 
-## RLS-template (lag C1)
+## RLS-template
 
 Hver feature-tabel skal have RLS aktiveret OG forced. Default deny —
 ingen rolle har implicit adgang, heller ikke owner eller service_role.
@@ -62,9 +64,9 @@ ingen rolle har implicit adgang, heller ikke owner eller service_role.
 **Standard-mønster for ny tabel:**
 
 ```sql
-CREATE TABLE public.example (...);
-ALTER TABLE public.example ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.example FORCE ROW LEVEL SECURITY;
+CREATE TABLE core_<domæne>.example (...);
+ALTER TABLE core_<domæne>.example ENABLE ROW LEVEL SECURITY;
+ALTER TABLE core_<domæne>.example FORCE ROW LEVEL SECURITY;
 -- Tilføj policies efter behov for authenticated.
 ```
 
@@ -74,7 +76,7 @@ der ikke kan gå gennem SECURITY DEFINER):
 
 ```sql
 -- skip-force-rls: <eksplicit begrundelse>
-ALTER TABLE public.example ENABLE ROW LEVEL SECURITY;
+ALTER TABLE core_<domæne>.example ENABLE ROW LEVEL SECURITY;
 ```
 
 **Privilegerede operationer** (cron-jobs, webhook-ingest, snapshot-
@@ -84,17 +86,23 @@ Ikke via direkte service-role-API-kald.
 
 ### Helper-funktioner
 
-| Funktion                       | Returner          | Status                                           |
-| ------------------------------ | ----------------- | ------------------------------------------------ |
-| `public.current_employee_id()` | `uuid` (null)     | Stub i C1. Lag D mapper `auth.uid()` → employees |
-| `public.is_admin()`            | `boolean` (false) | Stub i C1. Lag D læser `role_page_permissions`   |
+| Funktion                                                          | Returner  |
+| ----------------------------------------------------------------- | --------- |
+| `core_identity.current_employee_id()`                             | `uuid`    |
+| `core_identity.is_admin()`                                        | `boolean` |
+| `core_identity.has_permission(p_page_key, p_tab_key, p_can_edit)` | `boolean` |
+| `core_identity.has_permission_action(p_action_id)`                | `boolean` |
 
-Stubs returnerer safe defaults så feature-tabeller i lag D kan reference
-dem i policies uden circular dependency.
+En tabel med RLS og 0 policies (default-deny) skal have markøren
+`-- skip-force-rls: <begrundelse>` eller `-- default-deny: <begrundelse>`
+(fitness `db-rls-policies`). App-roller har ingen direkte skrive-grants
+på core\_\* — skrivning går via SECURITY DEFINER-RPC'er (fitness
+`app-write-revoke-discipline`, G065).
 
-## Audit-template (lag C2)
+## Audit-template
 
-Alle feature-tabeller får audit via `public.stork_audit()`-trigger.
+Alle feature-tabeller får audit via `core_compliance.stork_audit()`-trigger
+(fitness `audit-trigger-coverage`; undtagelser i `AUDIT_EXEMPT_SNAPSHOT_TABLES`).
 Audit-log er append-only, immutable, og kun læselig via SECURITY
 DEFINER RPC med permission-check.
 
@@ -102,8 +110,8 @@ DEFINER RPC med permission-check.
 
 ```sql
 CREATE TRIGGER example_audit
-  AFTER INSERT OR UPDATE OR DELETE ON public.example
-  FOR EACH ROW EXECUTE FUNCTION public.stork_audit();
+  AFTER INSERT OR UPDATE OR DELETE ON core_<domæne>.example
+  FOR EACH ROW EXECUTE FUNCTION core_compliance.stork_audit();
 ```
 
 **Session-vars callere kan sætte for at berige audit-rækker:**
@@ -117,43 +125,44 @@ SET LOCAL stork.schema_version = '20260511152603';
 
 `source_type` auto-detekteres ellers via:
 `pg_trigger_depth()` → `current_user` → `auth.uid()` → fallback.
-6 mulige værdier: `manual / cron / webhook / trigger_cascade /
-service_role / unknown`.
+7 mulige værdier: `manual / cron / webhook / trigger_cascade /
+service_role / unknown / migration`.
 
 **Læs audit:**
 
 ```sql
-SELECT * FROM public.audit_log_read(
+SELECT * FROM core_compliance.audit_log_read(
+  p_table_schema => 'core_money',
   p_table_name => 'pay_periods',
   p_record_id => '<id>',
   p_limit => 50
 );
 ```
 
-Kalder skal være admin (per `public.is_admin()`-helper). C1-stub
-returnerer false → ingen kan læse indtil lag D låser op.
+Kalder skal have rettigheden `audit.log` (`has_permission('audit', 'log', false)`).
 
-**PII-filter-hook:** `public.audit_filter_values(schema, table, jsonb)`.
-C2-stub returnerer values uændret. Lag D omdefinerer til at hashe
-kolonner med `pii_level=direct` inden de gemmes.
+**PII-filter-hook:** `core_compliance.audit_filter_values(schema, table, jsonb)`
+hasher kolonner med `pii_level=direct` før de gemmes. Ukendt tabel eller
+kolonne: WARNING og værdien bevares uændret, medmindre
+`stork.audit_filter_strict='true'` (LENIENT-default = G001).
 
 **Audit-failure-policy:** hvis `stork_audit()` RAISE'r, bobler det op
 til main transaction → main rulles tilbage. Compliance kræver vores
 adgangslog, så "audit failure = transaction failure" er bevidst.
 
-## Cron-skabelon (lag C3)
+## Cron-skabelon
 
-**Princip:** `pg_cron` til DB-interne jobs, scheduled edge functions
-til eksterne. Hybrid mønster — `pg_cron` tickrer + edge function
-gør arbejdet — bruges når DB-jobs skal kalde eksterne API'er.
+**Princip:** `pg_cron` til DB-interne jobs. Der findes ingen edge
+functions endnu; eksterne kald afgøres når de første integrationer
+bygges (masterplan trin 21).
 
 **Extensions aktiveret:** `pg_cron`, `btree_gist` (til C4),
 `pg_net` (til hybrid pg_cron → edge function).
 
 ### Heartbeat-pattern
 
-Hver cron-job rapporterer status til `public.cron_heartbeats`
-via `public.cron_heartbeat_record()`. Failure-rows auditeres
+Hver cron-job rapporterer status til `core_compliance.cron_heartbeats`
+via `core_compliance.cron_heartbeat_record()` (status `ok / failure / skipped / partial_failure`). Cron-bodies skal sætte `stork.change_reason` (fitness `cron-change-reason`). Failure-rows auditeres
 automatisk via WHEN-trigger (kun failures, ikke successes — ellers
 ville audit_log eksplodere).
 
@@ -170,9 +179,9 @@ SELECT cron.schedule(
     v_error text;
   BEGIN
     -- Job-logik her
-    DELETE FROM public.example_tokens WHERE expires_at < now();
+    DELETE FROM core_<domæne>.example_tokens WHERE expires_at < now();
 
-    PERFORM public.cron_heartbeat_record(
+    PERFORM core_compliance.cron_heartbeat_record(
       'cleanup_expired_tokens',
       '0 * * * *',
       'ok',
@@ -181,7 +190,7 @@ SELECT cron.schedule(
     );
   EXCEPTION WHEN OTHERS THEN
     v_error := SQLERRM;
-    PERFORM public.cron_heartbeat_record(
+    PERFORM core_compliance.cron_heartbeat_record(
       'cleanup_expired_tokens',
       '0 * * * *',
       'failure',
@@ -195,51 +204,15 @@ SELECT cron.schedule(
 );
 ```
 
-### Eksempel: edge function med heartbeat (hybrid pattern)
-
-```typescript
-// supabase/functions/sync-something/index.ts
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-Deno.serve(async (_req) => {
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const start = Date.now();
-  try {
-    // Job-logik via SECURITY DEFINER RPCs — IKKE direkte table-INSERTs
-    // (service_role respekterer FORCE RLS på feature-tabeller).
-    await supabase.rpc("cron_heartbeat_record", {
-      p_job_name: "sync-something",
-      p_schedule: "edge-function-scheduled",
-      p_status: "ok",
-      p_duration_ms: Date.now() - start,
-    });
-    return new Response("ok");
-  } catch (err) {
-    await supabase.rpc("cron_heartbeat_record", {
-      p_job_name: "sync-something",
-      p_schedule: "edge-function-scheduled",
-      p_status: "failure",
-      p_error: String(err),
-      p_duration_ms: Date.now() - start,
-    });
-    return new Response(String(err), { status: 500 });
-  }
-});
-```
-
-Edge function deploy: `pnpm exec supabase functions deploy sync-something`.
-Schedule edge function: brug Supabase Studio → Functions → Schedule,
-eller `pg_cron + pg_net.http_post()` for at trigge fra DB.
-
 ### Notifikation ved failure
 
 **TODO:** email/Slack-notifikation når `cron_heartbeats.last_status='failure'`
 eller når en job ikke har kørt i for lang tid. Separat beslutning
 når email-provider er valgt. Indtil da: failures synlige i
 `audit_log` (filter source_type='cron') og via
-`public.cron_heartbeats_read()` RPC.
+`core_compliance.cron_heartbeats_read()` RPC (rettighed `audit.cron`).
 
-## Period-lock-template (lag C4)
+## Period-lock-template
 
 Generic mønster for "tal låses, data må ikke" der bruges på tværs af
 domæner (løn implementeret nu; KPI senere).
@@ -251,10 +224,10 @@ domæner (løn implementeret nu; KPI senere).
 3. `{domain}_corrections` — immutable kompenserings-modposter
 4. Cron-job + `on_period_lock()`-trigger der materialiserer snapshots
 
-Lag C4 instans: `pay_periods` + `commission_snapshots` + `salary_corrections`
+Instans (trin 4, `core_money`): `pay_periods` + `commission_snapshots` + `salary_corrections`
 
-- `ensure_pay_periods`-cron. Lag D får `kpi_snapshots`/`kpi_corrections`.
-  Lag E udvider med faktisk materialisering i `on_period_lock()`.
+- `ensure_pay_periods`-cron. Beregningen er stadig et skelet (G012);
+  den reelle materialisering kommer med trin 14 + 22.
 
 ### pay_periods — periode-livscyklus
 
@@ -307,7 +280,7 @@ Skriv-RPCs sætter dem via `SET LOCAL` / `set_config(..., true)` inden mutation.
 Policy `WITH CHECK (current_setting('stork.allow_X_write', true) = 'true')`
 matcher kun når session-var er sat.
 
-### Status-engangs-transitionspattern (sales kommer i lag E)
+### Status-engangs-transitionspattern (sales kommer i trin 14)
 
 For tabeller hvor en kolonne flytter sig én vej (sales.status: pending →
 completed/afvist), bygges BEFORE UPDATE-trigger der nægter transitioner
@@ -316,14 +289,14 @@ udenfor normal-pathen. Rollback ved menneskelig fejl sker via
 `stork.allow_<table>_status_correction = 'true'`-session-var som triggeren
 genkender og lader transition igennem.
 
-Eksempel-template dokumenteres her, bygges ved sales-tabel i lag E.
+Eksempel-template dokumenteres her, bygges ved sales-tabellen.
 Generic helper-funktion bygges først ved 3+ brugere (rule of three).
 
-## Klassifikations-systemet (lag D1)
+## Klassifikations-systemet
 
-`public.data_field_definitions` er registry over hvad hver kolonne pr. kilde
-er klassificeret som. Lag D6 importerer eksisterende `classification.json`
-hertil og flipper migration-gate til Phase 2 (strict).
+`core_compliance.data_field_definitions` er registry over hvad hver kolonne pr. kilde
+er klassificeret som. Migration-gate kører Phase 2 (strict) i CI; tabellen i
+databasen er sandheden.
 
 ### Skema
 
@@ -333,7 +306,7 @@ hertil og flipper migration-gate til Phase 2 (strict).
 | `table_schema` + `table_name` + `column_name` | UNIQUE             | Kolonne-pr-kilde                                                          |
 | `category`                                    | enum (CHECK)       | `operationel` / `konfiguration` / `master_data` / `audit` / `raw_payload` |
 | `pii_level`                                   | enum (CHECK)       | `none` / `indirect` / `direct`                                            |
-| `retention_type`                              | enum (CHECK, NULL) | `time_based` / `event_based` / `legal` / `manual`                         |
+| `retention_type`                              | enum (CHECK, NULL) | `time_based` / `event_based` / `manual` / `permanent` (NULL = ikke valgt) |
 | `retention_value`                             | jsonb (NULL)       | Struktur valideret pr. type, se nedenfor                                  |
 | `match_role`                                  | text (NULL)        | Per kolonne-per-kilde — fri tekst nu, strammere i lag E                   |
 | `purpose`                                     | text NOT NULL      | Fri tekst, audit-kontekst                                                 |
@@ -346,19 +319,19 @@ Valideret via BEFORE INSERT/UPDATE-trigger:
 | -------------- | -------------------------------------------------------------------- |
 | `time_based`   | `{"max_days": positive integer}`                                     |
 | `event_based`  | `{"event": non-empty string, "days_after": non-negative integer}`    |
-| `legal`        | `{"max_days": positive integer}` — lovgivning er fast MAKS           |
+| `permanent`    | NULL — ingen sletning (fx audit-struktur)                            |
 | `manual`       | `{"max_days": positive integer}` ELLER `{"event": non-empty string}` |
 
 ### Mathias-principper håndhævet
 
 - **Kolonne-pr-kilde** via UNIQUE(schema, table, column). Eesy.customer_id og TDC.customer_id har hver deres række (forskellige retention-aftaler)
-- **Lovgivning er fast MAKS** — `retention_type='legal'` valideres som positive integer max_days, ingen forlængelse-mekanisme i skema
+- **`legal` er fjernet** (masterplan rettelse 24); tidligere legal-rækker er NULL eller `permanent` (`20260514180500_d1_d2_drop_legal_convert_rows.sql`)
 - **Formål påkrævet** via NOT NULL + length(trim) > 0 CHECK
 - **Kategorier låst** som CHECK enum (Mathias' U3-afgørelse)
 
 ### RPCs
 
-- `data_field_definition_upsert(...)` — admin-only via `is_admin()` (C1-stub afviser indtil D4)
+- `core_compliance.data_field_definition_upsert(...)` — kræver rettigheden `classification.manage`
 - `data_field_definition_delete(schema, table, column, change_reason)` — admin-only
 
 Begge kræver `change_reason` for audit-trail.
@@ -366,7 +339,6 @@ Begge kræver `change_reason` for audit-trail.
 ### Read-adgang
 
 Authenticated kan SELECT direkte via policy (metadata, ikke selv PII).
-Lag D opdaterer policy til at konsultere permission-system når det lander.
 
 ## Migration-disciplin
 
@@ -376,74 +348,50 @@ Migrations lever i `supabase/migrations/`. Filnavnskonvention:
 ### Migration-gate
 
 `scripts/migration-gate.mjs` parser hver migration, finder kolonner
-fra `CREATE TABLE` og `ALTER TABLE ADD COLUMN`, og tjekker dem mod
-`supabase/classification.json`.
+fra `CREATE TABLE` og `ALTER TABLE ADD COLUMN`, og tjekker at hver har
+en klassifikations-række (`INSERT INTO … data_field_definitions` i
+migrationerne). Gaten tjekker kun at rækken findes, ikke værdierne —
+værdierne styres i UI.
 
-**Phase 1 (lag B-D, default):** uklassificerede kolonner giver
-`::warning::` i CI men blokerer ikke merge.
-
-**Phase 2 (efter lag D):** samme tjek, men som `::error::` der
-fejler CI. Aktiveres via `MIGRATION_GATE_STRICT=true` env var i CI.
+**Phase 2 (strict) kører i CI** (`MIGRATION_GATE_STRICT=true`, `ci.yml`):
+en uklassificeret kolonne fejler CI. Lokalt uden variablen: kun warning.
 
 ```bash
-pnpm migration:check                           # Phase 1
-MIGRATION_GATE_STRICT=true pnpm migration:check # Phase 2 simulation
+pnpm migration:check                            # lokalt: warning
+MIGRATION_GATE_STRICT=true pnpm migration:check # som i CI
 ```
+
+Gaten ser ikke DDL der bygges dynamisk med `EXECUTE format(...)` (G082).
 
 ### Klassifikations-registry
 
-`supabase/classification.json` er Phase 1's enkle registry:
+`supabase/classification.json` er en tom overgangsfil (`"columns": {}`).
+Sandheden er `core_compliance.data_field_definitions` i databasen.
 
-```json
-{
-  "columns": {
-    "public.tablename.columnname": {}
-  }
-}
-```
-
-I Phase 1 tæller eksistens af nøglen som "klassificeret".
-Lag D introducerer skemaet (pii_level, retention_type osv.) som
-hver indgang skal opfylde, og flytter registryet til en DB-tabel.
-
-## Database-typer + schema-snapshot
-
-Begge bygger på `supabase --linked`. Engangs-setup per dev-maskine:
+## Database-typer
 
 ```bash
-pnpm exec supabase login          # browser-auth, gemmer access token
-pnpm supabase:link                # link til imtxvrymaqbgcvsarlib via config.toml
+pnpm types:generate   # regenerér packages/types/src/database.ts fra det linkede projekt
 ```
 
-CI har `SUPABASE_ACCESS_TOKEN`-secret sat på repo'et — link sker
-automatisk i workflow før drift-checks kører.
+`packages/types/src/database.ts` dækker `public`, `core_identity`,
+`core_compliance` og `core_money` (`scripts/types-gen.sh`). En PR med nye
+migrationer tjekkes i CI mod testdatabasen med pakkens migrationer
+(jobbet »Byggetjek og slutdom«), fordi driften først får migrationerne efter merge.
+Generér typerne mod en lokal database med migrationerne, eller efter deploy.
 
-### Types — packages/types/src/database.ts
+## Ny tabel eller RPC i fundamentet — tjekliste
 
-```bash
-pnpm types:generate   # regenerér fra remote schema → packages/types/src/database.ts
-pnpm types:check      # CI-check: drift → exit 1
-```
+CI håndhæver det meste, men det står kun her samlet:
 
-Placeholder-Database-typen blev pre-genereret i B1. Når første
-migration lander, kør `pnpm types:generate` lokalt og commit.
+- `dedup_key`-kolonne eller `-- no-dedup-key: <grund>` (fitness `dedup-key-or-opt-out`)
+- audit-trigger eller post i `AUDIT_EXEMPT_SNAPSHOT_TABLES` (fitness `audit-trigger-coverage`)
+- klassifikation af hver kolonne i samme migration (migration-gate, strict)
+- SECURITY DEFINER-funktion: post i `SECDEF_SANCTIONED` (fitness `secdef-marker-discipline`) og `supabase/advisor-baseline.json` med begrundelse (fitness `advisor-baseline`)
+- Postgres giver EXECUTE til PUBLIC som default: `revoke execute … from public, anon` og derefter eksplicit `grant execute` til den rolle der skal kalde
+- nyt permission-area/page/tab: seed grant til superadmin eksplicit — seedet i `20260518000010_t9_seed_owners.sql` dækkede kun de areas der fandtes dengang
+- ny `change_type` i pending-flowet: udvid `pending_changes_select`, ellers kan godkendere ikke se den
+- regenerér typer (`pnpm types:generate`)
+- skrivning kun via SECURITY DEFINER-RPC (ingen direkte grants, fitness `app-write-revoke-discipline`)
 
-### Schema-snapshot — supabase/schema.sql
-
-```bash
-pnpm schema:pull      # supabase db dump --linked --schema public → supabase/schema.sql
-pnpm schema:check     # CI-check: drift → exit 1
-```
-
-Snapshot er strukturel ground truth (DDL, ingen data). Når
-migrations lander på remote, kør `pnpm schema:pull` lokalt og commit.
-
-Indtil første pull er filen en placeholder med marker — CI's
-schema drift check springer over til filen er populated. Det betyder
-første migration's PR SKAL include en opdateret schema.sql.
-
-## Edge functions
-
-Edge functions lever i `supabase/functions/<name>/index.ts`. Lag B
-introducerer skabelon + disciplin (Deno-runtime, error-handling,
-audit-integration).
+Der findes ingen edge functions i repoet.

@@ -1,8 +1,6 @@
 # RPC permission matrix
 
-<!-- governance-owns: rpc-side-mapping -->
-
-**Auto-genereret fra live DB introspection 2026-05-15** efter R-runde-2 (R7a-R7d + R7c verify_anonymization_consistency-konvertering).
+**Genereret fra live DB introspection 2026-05-15.** Tabellen er ikke regenereret siden; RPC'er fra trin 9-10 (fx `permission_actions`, `has_permission_action`) mangler. Regenereres fra databasen med `supabase/tests/smoke/m1_permission_matrix.sql`-mønstret (teknisk gæld G083).
 
 **Format:** RPC → (page_key, tab_key, can_edit) → auth-type. Auto-verificeret via `supabase/tests/smoke/m1_permission_matrix.sql`.
 
@@ -75,9 +73,9 @@
 | `core_money.pay_period_lock`                          | pay_periods                 | lock                 | true     | has_permission                                              |
 | `core_money.pay_period_settings_update`               | pay_periods                 | settings             | true     | has_permission                                              |
 
-## Q-SEED konsistens (verificeret PASS via m1-test)
+## Superadmin-dækning (verificeres af m1-test)
 
-Hver (page_key, tab_key) i tabellen ovenfor har matching row i `core_identity.role_page_permissions` for superadmin-rolle med `can_view=true`. Auto-verificeret 2026-05-15 — ingen missing-violations.
+Hver (page_key, tab_key) i tabellen ovenfor skal være dækket for superadmin i `core_identity.role_permission_grants` (tab-, page- eller area-grant med `can_access=true`); `m1_permission_matrix.sql` tjekker det.
 
 ## Pre-cutover lifecycle-state
 
@@ -94,6 +92,6 @@ Hver (page_key, tab_key) i tabellen ovenfor har matching row i `core_identity.ro
 Når ny RPC tilføjes:
 
 1. Skriv RPC med `has_permission(page, tab, can_edit)`-check (eller dokumentér `is_admin()`-undtagelse i G-nummer)
-2. Tilføj seed-row til `core_identity.role_page_permissions` for superadmin via ON CONFLICT DO NOTHING
+2. Tilføj seed-grant til `core_identity.role_permission_grants` for superadmin via ON CONFLICT DO NOTHING
 3. `smoke/m1_permission_matrix.sql` fanger missing-rows på næste CI-run
 4. Regenérer denne fil ved at køre `pg_proc`-introspection mod live DB og opdatere RPC-tabellen ovenfor manuelt

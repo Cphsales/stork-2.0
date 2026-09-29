@@ -15,7 +15,10 @@ stork-2.0/
 │   ├── types/            @stork/types: auto-generated Database-typer
 │   ├── utils/            @stork/utils: rene helpers
 │   └── eslint-config/    @stork/eslint-config: delt ESLint-config
-├── supabase/             migrations, edge functions, config
+├── supabase/             migrations, tests, config
+├── docs/                 Mathias' dokumenter (strategi/), krav og ledger (sandhed/), teknisk gæld (teknisk/)
+├── plan-build/           pakkernes planer, målelag og slut-rapporter
+├── scripts/v5/           workflowets værktøjer: byggetjek, vagt, hooks, rolletekster
 └── .github/workflows/    CI
 ```
 
@@ -58,21 +61,11 @@ Fra repo-rod:
 - `pnpm format` / `pnpm format:check` — Prettier
 - `pnpm exec supabase <cmd>` — Supabase CLI (se `supabase/README.md`)
 
-## Disciplin-mekanismer
+## Workflow
 
-- **Pre-commit:** Husky + lint-staged. Prettier kører på alle staged
-  tekst-filer (`*.{ts,tsx,js,jsx,json,md,yml,yaml,css,html}`); ESLint
-  kører kun på `apps/web/**/*.{ts,tsx}` (jf. `package.json#lint-staged`).
-  Hook-konfiguration i `.husky/pre-commit`.
-- **CI:** GitHub Actions kører hele pipelinen på PRs
-  (`.github/workflows/ci.yml`)
-- **Branch-protection:** Påkrævede checks + review + linear history.
-  Konfiguration dokumenteret i `.github/BRANCH_PROTECTION.md`
-- **ESLint:** Delt config i `@stork/eslint-config` med Stork-regler
-  (no-console, no-explicit-any, strict no-unused-vars)
-- **TypeScript:** `tsconfig.base.json` med fuld strict +
-  noUncheckedIndexedAccess + exactOptionalPropertyTypes
+Hver pakke bygges efter `docs/strategi/disciplin.md`: krav (`krav ok`) → plan (`plan ok`) → tests og byg → slutprøve (`slut ok`).
 
-## Status
-
-Fase 0 — fundament.
+- **Pre-commit:** rollens zoner (`scripts/v5/pre-commit-zone.mjs`), vagten for Mathias' dokumenter (`scripts/v5/sandhed-vagt.mjs`) og lint-staged (Prettier; ESLint på `apps/web`).
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, test, build, migration-gate, fitness, vagten og byggetjekket. Samle-tjekket `Lint, typecheck, test, build` er det krævede statustjek på main.
+- **Deploy:** `migrations-deploy.yml` deployer migrationer ved merge til main.
+- **ESLint:** delt config i `@stork/eslint-config`. **TypeScript:** `tsconfig.base.json` med fuld strict.

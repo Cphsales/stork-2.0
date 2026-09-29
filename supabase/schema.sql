@@ -1,3 +1,0 @@
--- PLACEHOLDER: snapshot af supabase imtxvrymaqbgcvsarlib (public schema).
--- Populates ved første `pnpm schema:pull` efter `pnpm supabase:link`.
--- CI's "Schema drift check" springer dette over indtil filen er populated.

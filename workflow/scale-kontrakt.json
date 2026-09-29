@@ -1,7 +1,0 @@
-{
-  "_kontrakt": "S5 (Leverance 2): scale-router. Ruter dybde/effort/kontrol-intensitet til pakke-scale (1-9). ALTID-PÅ-gulvet scaler aldrig ned (integritet); kun scale-routede kontroller lettes ved lav scale. Lav→DIRECT, høj→DELEGATED, midt→SIGNAL.",
-  "altidPaa": ["sha-binding", "egen-kanal", "krav-id", "gate-state", "stale-stop"],
-  "scaleRoutet": ["cross-review-dybde", "djaevel-scope", "recon-dybde"],
-  "lavMax": 3,
-  "hoejMin": 7
-}

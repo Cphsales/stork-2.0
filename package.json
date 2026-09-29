@@ -18,21 +18,12 @@
     "format:check": "prettier --check .",
     "supabase:link": "supabase link --project-ref imtxvrymaqbgcvsarlib",
     "types:generate": "bash scripts/types-gen.sh --write",
-    "types:check": "bash scripts/types-gen.sh --check",
-    "schema:pull": "supabase db dump --linked --schema public --file supabase/schema.sql",
-    "schema:check": "bash scripts/schema-check.sh",
     "migration:check": "node scripts/migration-gate.mjs",
     "fitness": "node scripts/fitness.mjs",
     "fitness:selftest": "node scripts/fitness.selftest.mjs",
-    "governance:check": "node scripts/governance-check.mjs",
-    "governance:selftest": "node scripts/governance-check.selftest.mjs",
-    "kaede:selftest": "node scripts/kaede/dirigent.selftest.mjs",
-    "workflow:selftest": "node scripts/workflow/selvtjek.selftest.mjs && node scripts/workflow/selvtjek.mjs && node scripts/workflow/worklog-check.mjs && node scripts/workflow/roller-check.mjs && node scripts/workflow/s15-light-check.mjs",
-    "kaede:dry-run": "node scripts/kaede/dirigent.mjs --dry-run",
+    "v5:selftest": "node scripts/v5/byggetjek.selftest.mjs && node scripts/v5/sandhed-vagt.selftest.mjs && node scripts/v5/hooks.selftest.mjs && node scripts/v5/codex-run.selftest.mjs && node scripts/v5/pg-runner.selftest.mjs && node scripts/v5/test-runner.selftest.mjs && node scripts/v5/forventnings-manifest.selftest.mjs && node scripts/v5/angrebs-indeks.selftest.mjs",
     "db:test": "node scripts/run-db-tests.mjs",
-    "scope:check": "bash -c 'patterns=$(paste -sd\"|\" scripts/scope-cleanup-patterns.txt); hits=$(git grep -iE \"$patterns\" -- docs/ supabase/ scripts/ \":(exclude)scripts/scope-cleanup-patterns.txt\"); if [ -n \"$hits\" ]; then echo \"$hits\"; exit 1; else exit 0; fi'",
-    "prepare": "husky",
-    "selvtjek:docs": "node scripts/selvtjek-docs.mjs"
+    "prepare": "husky"
   },
   "devDependencies": {
     "husky": "^9.1.7",
