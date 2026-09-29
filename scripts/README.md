@@ -45,3 +45,5 @@ Byggetjekket kører alle migrationer på en tom Supabase-Postgres med styret klo
 ## Fitness checks
 
 Tilføj en ny check: implementér en async function i `scripts/fitness.mjs`, der returnerer `{ name, violations: string[] }`, og push den til `checks`-arrayet nederst i filen.
+
+Katalog-tjekkene sammenligner repoet med databasen. De kører med `--kandidat` mod testdatabasen med PR'ens migrationer (byggetjek-jobbet, `FITNESS_DATABASE_URL`); resten kører i governance-jobbet. Produktets lister (SECDEF-markører, immutable-guards, TRUNCATE-blok, T9-RPC'er) står i `supabase/fitness-lister.json` og udvides af byggeren i pakkens PR.
