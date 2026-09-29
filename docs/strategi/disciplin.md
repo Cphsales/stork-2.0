@@ -15,7 +15,7 @@
 | **Mathias** | Tanker, funktioner, logik, vision. Eneste beslutningstager. Giver de tre godkendelses-ord: `krav ok` · `plan ok` · `slut ok`. Vælger masterplan-trinnet der åbnes som pakke |
 | **claude-ai-rollen** | Skriver kravet i dialog med Mathias, i hans sprog (trin 1). Læser slut-rapporten mod kravet og hans dokumenter og skriver fremlæggelsen for ham (trin 4). Formulerer rettelser til hans dokumenter efter §8.1. Kører i en Claude Code-session (M-5). Det er den aktør, de ældre regler i denne fil kalder »Claude.ai« |
 | **Code — planner og bygger** | Én rolle i to trin: skriver den korte plan og afgør teknikken (trin 2); bygger efter planen, vælger det planen ikke afgør og skriver valgene i slut-rapporten, som den også skriver (trin 3). Låsene (`plan ok` og testlåsen) holder plan og byg adskilt |
-| **Codex** | Slår op hvad Mathias' dokumenter og koden allerede siger om masterplan-trinnet, før krav-dialogen, og holder kravet op mod dokumenterne begge veje (trin 1). Læser planen og genlæser den ene rettelse (trin 2). Skriver testene og slutprøven ud fra kravet og ejer manifestet, testindekset, testvalg-filen og slutprøven (trin 3). Gennemser den samlede ændring én gang (trin 3). Afgør om et trin der ikke lukker, skyldes indhold eller teknik (§3.4). Skriver aldrig produktkode |
+| **Codex** | Slår op hvad Mathias' dokumenter og koden allerede siger om masterplan-trinnet, før krav-dialogen, og holder kravet op mod dokumenterne begge veje (trin 1). Læser planen og vurderer hver rettelse og de krav, den berører (trin 2). Skriver testene og slutprøven ud fra kravet og ejer manifestet, testindekset, testvalg-filen og slutprøven (trin 3). Gennemser den samlede ændring én gang (trin 3). Afgør om et trin der ikke lukker, skyldes indhold eller teknik (§3.4). Skriver aldrig produktkode |
 | **code-reviewer** | Dømmer at testene dækker hvert krav (trin 3) |
 | **Fabrikken** | Den session Mathias taler med. Som orkestrator starter den de øvrige rollers sessioner, overdrager mellem dem og merger pakke-PR'en på betingelserne i §6; som orkestrator ændrer den aldrig indhold og taler aldrig på Mathias' vegne (§9.5). I trin 1 og 4 bærer den claude-ai-rollen (§1 »Sessioner«) |
 | **CI** | Kører byggetjekket (§2 trin 3) og slutdommen. Afviser at pakke-kode merges uden `slut ok` i ledgeren (§6) |
@@ -52,7 +52,7 @@ Alle pakker kører fuld disciplin. Ingen skala-distinktion.
 - `plan ok` → `plan.md` (afsnittet »Mathias' ½ side« er fremlæggelsen)
 - `slut ok` → `slut-rapport.md` (afsnittet »Fremlæggelse for Mathias« er fremlæggelsen) og den prøvede kodeversion, som rapporten angiver (commit)
 
-**Chat = fil:** en fremlæggelse er filens tekst gengivet ordret i chatten, læst fra filen og ikke genskrevet (§3.10). Den der beder om ordet, kontrollerer først at den gengivne tekst er filens tekst. Ændres filen, fremlægges den igen, før ordet bedes om. Ledgeren er eneste kilde til ordene: hooken, byggetjekket og samle-tjekket læser den, og der findes ingen særskilte godkendelses-filer. Mathias giver ordet i chatten og rører ikke GitHub (§6).
+**Chat = fil:** en fremlæggelse er filens tekst gengivet ordret i chatten, læst fra filen og ikke genskrevet (§3.10). Den der beder om ordet, kontrollerer først at den gengivne tekst er filens tekst. Ændres filen, fremlægges den igen, før ordet bedes om. Ledgeren er eneste kilde til ordene: hooken, byggetjekket og samle-tjekket læser den, og der findes ingen særskilte godkendelses-filer. Mathias giver ordet i chatten; på GitHub godkender han kun PR'en (§6).
 
 **To regler:**
 1. **Teknik eller indhold:** reglen står i §3.4.
@@ -71,7 +71,7 @@ Et krav-dokument er **Mathias' forretningsgange** for én masterplan-pakke — i
 
 **For-tjek før første spørgsmål:** før claude-ai-rollen stiller Mathias sit første spørgsmål, slår Codex op på pakkens masterplan-trin, hvad forretningsforstaaelse, vision-og-principper, masterplanen, ledgeren og den eksisterende kode allerede afgør. Rollen bruger for-tjekket i afled-før-spørg. Kildetjekket af udkastet kommer bagefter (nedenfor).
 
-De fem regler nedenfor (afled-før-spørg, bord-testen, ét-skridts-reglen, spørgsmålets form, antag aldrig) gælder **hvert spørgsmål til Mathias i alle trin**, ikke kun i krav-trinnet. De står ordret som i rolleteksten fra september; de få ord workflowet ændrer, står i Del B.3.
+De fem regler nedenfor (afled-før-spørg, bord-testen, ét-skridts-reglen, spørgsmålets form, antag aldrig) gælder **hvert spørgsmål til Mathias i alle trin**, ikke kun i krav-trinnet.
 
 **Afled-før-spørg:** elicitér FØRST fra kilderne, SÅ fra Mathias. Før du stiller ham et åbent spørgsmål, SKAL du have undersøgt hans allerede-nedskrevne holdninger — de låste docs (vision-og-principper · forretningsforstaaelse) + masterplanens afgørelser + hvad eksisterende kode allerede afgør (som Codex' for-tjek melder det) — og præsentere det AFLEDTE svar til bekræftelse: _"din sandhed siger X (citat) → foreslået svar Y — korrekt?"_ Kilderne omfatter **MØNSTER-ANALOGI**, ikke kun ordret tekst: en regel han har låst ét sted overføres som forslag til det analoge sted. Kun punkter kilderne reelt IKKE besvarer må stå som åbne spørgsmål. Grænsen står fast: et afledt svar er et FORSLAG med citeret kilde — Mathias' bekræftelse er sandheden (antag-aldrig gælder uændret; et ubekræftet afledt svar må ALDRIG størkne til et acceptkriterie).
 
@@ -215,7 +215,7 @@ Fuld dømmekrafts-pris hvor dømmekraft kræves; mekanik hvor mekanik beviseligt
 
 ## §4 Bevarelses-disciplin — hvad gemmes, hvad slettes
 
-**Princip:** kun kravet, den godkendte plan (slut-version) og slut-rapporten overlever pakken — **plus ledgeren, som altid bliver**. Ordbogen bliver også: den er fælles for hele Stork. Resten lever i git-history.
+**Princip:** kun kravet, den godkendte plan (slut-version), slut-rapporten og målelaget (som regressionstest) overlever pakken — **plus ledgeren, som altid bliver**. Ordbogen bliver også: den er fælles for hele Stork. Resten lever i git-history.
 
 **Bevares på main:**
 - kravet: `docs/sandhed/krav/<pakke>-krav.md`
@@ -258,9 +258,9 @@ Hvem der retter en fejl, og hvornår Mathias spørges: §3.4.
 
 ## §6 Drift
 
-- **Spærring før drift:** byggetjekket og slutdommen indgår i det krævede samle-tjek i hoved-CI (`Lint, typecheck, test, build`). Samle-tjekket afviser også en pakke-PR (migrationer, app), medmindre ledgeren har en `slut ok`-post der refererer slut-rapportens blob og den prøvede kodeversion, og alt i PR'en er uændret i forhold til det prøvede commit, bortset fra afslutningsfilerne, som kontrolleres efter §2 trin 4, punkt (1)–(3). Samle-tjekket sammenligner hele repoet, så også nye kodestier, `package.json`, låsefil og konfiguration er dækket. En senere kodeændring gør posten ugyldig. Et manglende eller oversprunget tjek tæller som rødt. Dommerne køres fra main's version, så en ændring ikke kan ændre sin egen dommer. *Status: byggetjekket bliver obligatorisk, når det omlagte tjek ligger på main; slutdommen og `slut ok`-kravet, når slutdommens dommer er bygget — før noget kan få `slut ok`. Indtil da merges ingen pakke-kode (migrationer, app) uden grønt byggetjek og Mathias' `slut ok`.*
+- **Spærring før drift:** byggetjekket og slutdommen indgår i det krævede samle-tjek i hoved-CI (`Lint, typecheck, test, build`). Samle-tjekket afviser også en pakke-PR (migrationer, app), medmindre ledgeren har en `slut ok`-post der refererer slut-rapportens blob og den prøvede kodeversion, og alt i PR'en er uændret i forhold til det prøvede commit, bortset fra afslutningsfilerne, som kontrolleres efter §2 trin 4, punkt (1)–(3). Samle-tjekket sammenligner hele repoet, så også nye kodestier, `package.json`, låsefil og konfiguration er dækket. En senere kodeændring gør posten ugyldig. Et manglende eller oversprunget tjek tæller som rødt. Dommerne køres fra main's version, så en ændring ikke kan ændre sin egen dommer.
 - **Merge:** fabrikken merger en pakke-PR kun når tre ting er opfyldt: samle-tjekket er grønt · Codex' samlede gennemgang, som kører uden for PR'en, har bekræftet at PR'en hverken rører `.github/` eller dommerne (merge-dommen) · ledgeren har Mathias' `slut ok` for slut-rapporten og den prøvede kodeversion, og PR'ens kode er stadig den version (§9.5).
-- **Mathias rører ikke GitHub.** Derfor er CI-spærringen værnet før drift, ikke et klik.
+- **Mathias' godkendelse på GitHub:** GitHub kræver desuden, at Mathias godkender PR'en som kodeejer (`.github/CODEOWNERS`, M-84). Fabrikken beder om den, når de tre betingelser ovenfor er opfyldt. Værnet før drift er CI-spærringen.
 - **Deploy:** `migrations-deploy.yml` deployer til live og regenererer types ved push til main, der rører `supabase/migrations/`. Fabrikken følger deployet af det mergede commit til det er lykkedes; fejler det, går fejlen til Code — planner og bygger, og pakken er ikke færdig før deployet er lykkedes. Pakkens types genereres og kontrolleres mod testdatabasen med pakkens migrationer før slutprøven (ikke mod driften, som først får migrationerne efter merge). Opretter deployet alligevel en types-PR, ejer fabrikken den, til den er merget.
 - **Codex kaldes gennem indpakningen** `scripts/v5/codex-run.sh`. Kaldet har sit eget Codex-hjem, så den lokale opsætning aldrig arves. Netværk er slået fra, og domme køres kun-læse.
 - **Kendte grænser (ærligt):** et `ok` i chatten kan i princippet skrives af en AI. Derfor bindes det til filens tekst og står i ledgeren.
