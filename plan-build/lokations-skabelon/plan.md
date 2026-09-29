@@ -1,8 +1,10 @@
 # lokations-skabelon — Plan v3.8
 
-**Krav:** docs/sandhed/krav/lokations-skabelon-krav.md (@ blob cee4d8192cfa, M-89) · **Ordbog:** docs/sandhed/ordbog.md · **Målelag (bruges som det er; i trin 3 opdateres bindingerne til krav og plan, og Codex tilføjer G001's post — eneste undtagelse, se G/H-opslaget):** `forventnings-manifest.json` @ 4e84481d6df1 · `angrebs-spec.json` @ dd6cec8da39f · `prover.json` @ 88c45f7bc323 · **Masterplan-rettelser:** `masterplan-rettelser-del-b-c.md` @ 57c906230985 (Del B følger med `slut ok`)
+**Krav:** docs/sandhed/krav/lokations-skabelon-krav.md (@ blob cee4d8192cfa, M-89) · **Ordbog:** docs/sandhed/ordbog.md · **Målelag:** `forventnings-manifest.json` @ 4e84481d6df1 · `angrebs-spec.json` @ dd6cec8da39f · `prover.json` @ 88c45f7bc323 (se »Målelaget i trin 3« nedenfor) · **Masterplan-rettelser:** `masterplan-rettelser-del-b-c.md` @ 57c906230985 (Del B følger med `slut ok`)
 
 v3.8 afløser v3.7 (blob 934291780be9). v3.7's tekniske afgørelser står, medmindre denne plan siger andet. Fundamentet er læst i `supabase/migrations/` 29/9; seneste migration er `20260610190000`, og alle definitioner planen bygger på er de seneste (angivet ved fil nedenfor).
+
+**Målelaget i trin 3:** manifestet genudledes ikke. Ud over bindingerne til krav og plan får det kun G001's post (G/H-opslaget). Codex færdiggør i trin 3 testene, testindekset og slutprøven, så indekset er komplet mod manifestet og `scripts/v5/angrebs-indeks-validate.mjs` er grøn, før dækningsdommen låser dem. Hver ny test registreres med `covers` og testfilens blob i `angrebs-spec.json`. Indekset mangler i dag bl.a. `K-1/ac-3:FS` for prishistorikken.
 
 **Leverancerækkefølge:** workflow-PR #188 (grenen `claude/fitness-kandidat`: fitness' katalog-tjek med `--kandidat` mod testdatabasen i byggetjek-jobbet, G006) merges til main → pakkens byg begynder.
 
@@ -355,7 +357,7 @@ Alle signaturer på de fire fundament-funktioner bevares med samme argumentnavne
 
 | G/H | Løses-i | Håndtering |
 | --- | --- | --- |
-| G001 (HØJ) audit-filteret er lempeligt som standard | pakke 1, plan v3.8 | **Tages med**, byggetrin 1.0 (se ovenfor). Undtagelse fra »kun bindinger« i trin 3: Codex tilføjer én manifestpost og den negative test for G001 under K-7 (»uklassificeret kolonne«). Forløbet: en ikke-persondata-klassifikation på en pakke-kolonne slettes via `data_field_definition_delete` (fx `core_identity.lokationer.adresse`), og derefter afvises næste skrivning på tabellen gennem en pakke-indgang med P0001 `audit_filter_values: ukendt kolonne core_identity.lokationer.adresse i input` (afvisningssted `core_compliance.audit_filter_values`); intet skrives. Tjekket før byg (29/9): testdatabasen med fundamentets fulde migrationskæde har 30 auditerede tabeller og 0 kolonner uden klassifikation. Byggetrin 1.0's katalog-tjek bevarer værnet: findes en sådan kolonne ved byg eller deploy, stopper byggeriet (HALT), og klassifikationen vælges ikke i byggeriet |
+| G001 (HØJ) audit-filteret er lempeligt som standard | pakke 1, plan v3.8 | **Tages med**, byggetrin 1.0 (se ovenfor). Manifestets eneste nye post ud over bindingerne: i trin 3 tilføjer Codex G001's post og den negative test under K-7 (»uklassificeret kolonne«). Forløbet: en ikke-persondata-klassifikation på en pakke-kolonne slettes via `data_field_definition_delete` (fx `core_identity.lokationer.adresse`), og derefter afvises næste skrivning på tabellen gennem en pakke-indgang med P0001 `audit_filter_values: ukendt kolonne core_identity.lokationer.adresse i input` (afvisningssted `core_compliance.audit_filter_values`); intet skrives. Tjekket før byg (29/9): testdatabasen med fundamentets fulde migrationskæde har 30 auditerede tabeller og 0 kolonner uden klassifikation. Byggetrin 1.0's katalog-tjek bevarer værnet: findes en sådan kolonne ved byg eller deploy, stopper byggeriet (HALT), og klassifikationen vælges ikke i byggeriet |
 | G006 (MELLEM) fire live-fitness-tjek kan give grønt uden at køre | pakke 1, trin 2 | **Løst i workflow-PR #188** (merges før pakkens byg): alle live-tjek er fail-closed i CI, og katalog-tjekkene kører mod kandidaten. Pakken gør intet ud over at levere sine poster i listerne |
 | G049 (MELLEM) mønstret for at udvide dispatcheren er ikke skrevet ned | næste pakke der udvider dispatcheren | **Tages med for pakkens egne ændringer:** signatur, alle eksisterende grene og `else` bevares (§3.1-tabellen). Tjeklisten i §10.2 er en workflow-ændring og venter til mellem pakker |
 | G051 (LAV) funktioner redefineret uden signatur-diff | næste pakke der ændrer funktioner | **Tages med:** de fire fundament-funktioner bevarer signatur og defaults; gennemgangen tjekker linje for linje (§3.1). Fitness-tjekket i G051's plan ligger i `scripts/` og er udskudt |
@@ -450,7 +452,7 @@ Kravets øvrige plan-mekanik (K-6: gældende dato og versionering) er afgjort s�
 - En ny lokation er aktiv fra start. Type og dagspris er krævet (0 kr. er en pris), adresse er valgfri.
 - En gruppe har faste felter: navn, type (valgfri) og kontaktpersoner. Et nyt felt, fx CVR, kræver en udvikler. Kravets udgangspunkt var »som for klienter«.
 - Kun en lokations navn og adresse kan markeres som persondata i UI, og de kan så altid anonymiseres.
-- Den sidste stand i brug kan ikke tages ud af brug. En nedlagt lokation får først nye stande efter genåbning.
+- En stand slettes aldrig, heller ikke en ekstra stand; den tages ud af brug. Den sidste stand i brug kan ikke tages ud af brug. En nedlagt lokation får først nye stande efter genåbning.
 - En gruppe taget ud af brug får ingen nye lokationer, gruppeskift eller klienter, og en inaktiv klient kobles ikke på. Superadmin kan alligevel.
 - Gruppeskift sker straks, og klienternes ret følger den nye gruppe fra samme dag.
 - Kobling, frakobling og fravalg har 24 timers fortrydelsesfrist, som kan ændres i UI. En ændring gælder fra den ønskede dato, eller fra gennemførelsen, hvis den er senere.
